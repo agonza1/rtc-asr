@@ -1,0 +1,181 @@
+# Realtime ASR Service - Monitoring Configuration
+# Prometheus metrics and alerting rules
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ASR Service
+  - job_name: 'asr-service'
+    static_configs:
+      - targets: ['localhost:8080']
+        labels:
+          service: 'asr'
+          environment: 'production'
+    metrics_path: '/api/metrics'
+    scrape_interval: 10s
+
+  # Node Exporter (for resource monitoring)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+
+  # Prometheus Blackbox Exporter (for HTTP probes)
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://localhost:8080/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+      - source_labels: [__meta_job]
+        target_label: job
+      - source_labels: [job, instance]
+        target_label: __address__
+        replacement: blackbox:9115
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+# Alerting rules
+rule_files:
+  - alerts/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Metrics definitions
+metrics:
+  # Request metrics
+  - name: asr_requests_total
+    type: counter
+    help: Total number of transcription requests
+    labels:
+      - status
+      - language
+      - model
+
+  # Latency metrics
+  - name: asr_latency_seconds
+    type: histogram
+    help: ASR request latency in seconds
+    labels:
+      - percentile
+    buckets: [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]
+
+  # Memory metrics
+  - name: asr_memory_usage_bytes
+    type: gauge
+    help: Memory usage in bytes
+    labels:
+      - component
+
+  # GPU metrics (if applicable)
+  - name: asr_gpu_utilization_percent
+    type: gauge
+    help: GPU utilization percentage
+    labels:
+      - gpu
+
+# Alert rules
+alerts:
+  - name: HighLatency
+    expr: asr_latency_p99 > 1.0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High ASR latency detected"
+      description: "P99 latency is above 1000ms for 5 minutes"
+
+  - name: HighErrorRate
+    expr: (asr_errors_total / asr_requests_total) > 0.05
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High error rate"
+      description: "Error rate is above 5% for 10 minutes"
+
+  - name: MemoryPressure
+    expr: asr_memory_usage_bytes > 2.147e+9
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage"
+      description: "Memory usage is above 2GB"
+
+  - name: GPUUtilizationLow
+    expr: asr_gpu_utilization_percent < 10
+    for: 30m
+    labels:
+      severity: info
+    annotations:
+      summary: "Low GPU utilization"
+      description: "GPU utilization is below 10% for 30 minutes"
+
+  - name: WebSocketDisconnections
+    expr: rate(asr_websocket_disconnections[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "WebSocket disconnections"
+      description: "High rate of WebSocket disconnections"
+
+# Prometheus queries for dashboard
+dashboard_queries:
+  - name: Request Rate
+    expr: rate(asr_requests_total[5m])
+
+  - name: Latency Distribution
+    expr: histogram_quantile(0.5, asr_latency_seconds_bucket)
+
+  - name: Error Rate
+    expr: (asr_errors_total / asr_requests_total) * 100
+
+  - name: Memory Usage
+    expr: asr_memory_usage_bytes / 1024 / 1024
+
+  - name: GPU Utilization
+    expr: asr_gpu_utilization_percent
+
+# Dashboard layout
+dashboard:
+  title: "Realtime ASR Service Dashboard"
+  refresh: 15s
+  rows:
+    - title: "Requests"
+      panels:
+        - name: "Request Rate"
+          expr: rate(asr_requests_total[5m])
+          type: "graph"
+    - title: "Latency"
+      panels:
+        - name: "P50, P95, P99 Latency"
+          expr: |
+            histogram_quantile(
+              0.50, sum(asr_latency_seconds_bucket) by (le)
+            )
+          type: "graph"
+    - title: "Memory"
+      panels:
+        - name: "Memory Usage"
+          expr: asr_memory_usage_bytes
+          type: "graph"
+    - title: "GPU"
+      panels:
+        - name: "GPU Utilization"
+          expr: asr_gpu_utilization_percent
+          type: "graph"
