@@ -1,6 +1,6 @@
 # Realtime ASR Service
 
-Real-time speech recognition service using Qwen3-ASR-1.7B model. Provides streaming transcription for voice AI applications with sub-200ms latency.
+Realtime speech recognition service for voice AI applications with REST and WebSocket interfaces.
 
 ![Status](https://img.shields.io/badge/status-ready-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
@@ -8,13 +8,15 @@ Real-time speech recognition service using Qwen3-ASR-1.7B model. Provides stream
 
 ## Features
 
-- ⚡ **Real-time**: Sub-200ms streaming latency
+- ⚡ **Streaming-ready**: REST and WebSocket interfaces for transcription flows
 - 🌐 **Multilingual**: Support for 10+ languages (English, Spanish, French, Chinese, Japanese, etc.)
 - 🎯 **Streaming**: WebSocket API for continuous transcription
 - 📦 **Containerized**: Docker-ready with GPU support
 - 🔒 **Secure**: API key authentication support
 - 📊 **Metrics**: Prometheus-compatible metrics endpoint
 - 🔄 **Fallback**: Automatic Whisper fallback if model fails
+
+> Benchmark status: latency, throughput, and accuracy figures in this repository are not yet validated. Treat performance-related material as provisional until the real ASR path and benchmark harness are complete.
 
 ## Quick Start
 
@@ -130,14 +132,11 @@ CUDA_VISIBLE_DEVICES=0
 
 ## Performance
 
-| Metric | Value |
-|--------|-------|
-| **Latency P50** | ~120ms |
-| **Latency P99** | ~780ms |
-| **Throughput** | 25 req/s (GPU), 5 req/s (CPU) |
-| **WER** | ~8% (English) |
+Validated benchmark results are not available yet.
 
-See [Benchmarks](./docs/benchmarks.md) for details.
+- Do not rely on published latency, throughput, or WER claims in this repository.
+- The production transcription path is being wired to a real ASR backend, and benchmark numbers will be published only after measurement is reproducible.
+- See [Benchmarks](./docs/benchmarks.md) for the current validation status and planned harness.
 
 ## Requirements
 

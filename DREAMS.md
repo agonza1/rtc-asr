@@ -15,7 +15,7 @@ A lightweight Docker service that:
 - Streams audio chunks for real-time transcription
 - Exposes REST/gRPC endpoints for external integration
 - Supports multiple languages (en, es, fr, de, zh, etc.)
-- Maintains sub-500ms latency for 16kHz audio
+- Targets low-latency transcription for 16kHz audio; measured results remain unvalidated until the benchmark harness is complete
 
 ## Architecture
 ```
@@ -62,8 +62,8 @@ A lightweight Docker service that:
 ## Acceptance Criteria
 - [ ] Service starts with `docker compose up`
 - [ ] Model loads within 30 seconds
-- [ ] Sub-500ms latency for 16kHz audio chunks
-- [ ] Accurate transcription (>85% WER on English)
+- [ ] Validate latency targets for 16kHz audio chunks with a reproducible benchmark harness
+- [ ] Validate transcription accuracy against a documented evaluation set
 - [ ] Multiple language support via config
 - [ ] REST endpoint `/api/transcribe`
 - [ ] WebSocket endpoint `/ws/stream`

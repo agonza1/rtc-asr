@@ -41,10 +41,10 @@ GET /api/models
 **Response:**
 ```json
 {
-  "models": ["Qwen3-ASR-1.7B"],
-  "languages": ["en", "es", "fr", "de", "zh", "ja", "ko", "it"],
+  "models": ["default"],
+  "languages": ["en"],
   "sample_rate": 16000,
-  "latency_ms": "<500ms"
+  "benchmark_status": "unvalidated"
 }
 ```
 
@@ -317,13 +317,15 @@ CORS_ORIGINS=http://localhost:3000,http://example.com
 
 ### Request Timing
 
-Response headers include timing information:
+Response headers may include request metadata such as:
 
 ```
 X-Request-ID: abc123
 X-Processing-Time: 145ms
-X-Model: Qwen3-ASR-1.7B
+X-Model: default
 ```
+
+`X-Processing-Time` is per-request instrumentation and should not be treated as a validated benchmark figure.
 
 ---
 
@@ -342,9 +344,10 @@ GET /api/metrics
     "es": 200,
     "fr": 123
   },
-  "latency_p50_ms": 120,
-  "latency_p95_ms": 450,
-  "latency_p99_ms": 780,
+  "benchmark_status": "unvalidated",
+  "latency_p50_ms": null,
+  "latency_p95_ms": null,
+  "latency_p99_ms": null,
   "errors_total": 12,
   "model": "Qwen3-ASR-1.7B"
 }
