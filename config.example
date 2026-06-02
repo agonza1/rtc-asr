@@ -1,0 +1,43 @@
+# Realtime ASR Service Configuration
+# Copy to .env and customize
+
+# Model Settings
+MODEL_NAME=Qwen/Qwen3-ASR-1.7B
+MODEL_PATH=/models/Qwen3-ASR-1.7B
+# Use Whisper as fallback if Qwen model fails to load
+USE_WHISPER_FALLBACK=true
+
+# Audio Settings
+AUDIO_SAMPLE_RATE=16000
+AUDIO_CHUNK_SIZE=1024
+MAX_LATENCY_MS=500
+
+# Service Settings
+HOST=0.0.0.0
+PORT=8080
+WORKERS=1
+
+# Logging
+LOG_LEVEL=info
+
+# GPU Settings (optional)
+CUDA_VISIBLE_DEVICES=0
+
+# Maximum transcription length
+MAX_TRANSCRIPT_LENGTH=500
+
+# Model batch size (for inference)
+BATCH_SIZE=1
+
+# Enable model warmup (load model on startup)
+WARMUP_MODEL=true
+
+# Default language
+DEFAULT_LANGUAGE=en
+
+# Supported languages (comma-separated)
+SUPPORTED_LANGUAGES=en,es,fr,de,zh,jp,ko,it,pt,ru
+
+# API Rate limiting (optional)
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60
