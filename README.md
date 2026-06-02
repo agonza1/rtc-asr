@@ -1,14 +1,18 @@
 # Realtime ASR Service
 
-Real-time speech recognition service using Qwen3-ASR-1.7B model. Provides streaming transcription for voice AI applications with sub-200ms latency.
+Real-time speech recognition service using Qwen3-ASR-1.7B model. The service is under active MVP implementation; latency, throughput, and accuracy claims are targets until the real ASR implementation and benchmark harness are complete.
 
-![Status](https://img.shields.io/badge/status-ready-brightgreen)
+![Status](https://img.shields.io/badge/status-MVP%20scaffold-yellow)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+## Benchmark Status
+
+Published benchmark figures in this repository are provisional and unvalidated. They should not be treated as accurate measured results until the real ASR implementation, benchmark harness, fixture set, and measurement environment are complete and documented.
+
 ## Features
 
-- ⚡ **Real-time**: Sub-200ms streaming latency
+- ⚡ **Real-time target**: Low-latency streaming, pending validated benchmarks
 - 🌐 **Multilingual**: Support for 10+ languages (English, Spanish, French, Chinese, Japanese, etc.)
 - 🎯 **Streaming**: WebSocket API for continuous transcription
 - 📦 **Containerized**: Docker-ready with GPU support
@@ -130,14 +134,16 @@ CUDA_VISIBLE_DEVICES=0
 
 ## Performance
 
+The figures below are provisional planning targets from the recovered scaffold, not validated measurements. Do not use them for production planning, vendor comparisons, or performance claims until measured results are available from the completed benchmark harness.
+
 | Metric | Value |
 |--------|-------|
-| **Latency P50** | ~120ms |
-| **Latency P99** | ~780ms |
-| **Throughput** | 25 req/s (GPU), 5 req/s (CPU) |
-| **WER** | ~8% (English) |
+| **Latency P50** | Provisional target: ~120ms |
+| **Latency P99** | Provisional target: ~780ms |
+| **Throughput** | Provisional target: 25 req/s (GPU), 5 req/s (CPU) |
+| **WER** | Provisional target: ~8% (English) |
 
-See [Benchmarks](./docs/benchmarks.md) for details.
+See [Benchmarks](./docs/benchmarks.md) for provisional details. Validated results will be published after the real ASR implementation and benchmark harness are complete.
 
 ## Requirements
 
