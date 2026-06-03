@@ -80,6 +80,8 @@ The server replies with:
 { "type": "final", "text": "hello world", "chunks_received": 2, "is_final": true }
 ```
 
+After a `final` event, the connection stays open so the client can send another `start` event for the next utterance without reconnecting.
+
 ## Configuration
 
 Preferred environment variables:

@@ -169,6 +169,8 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                 event_type = str(payload.get("type", "")).strip().lower()
 
                 if event_type == "start":
+                    if session is not None:
+                        raise ValueError("Finish the active stream before starting a new one")
                     session = _create_stream_session(payload, services.config.sample_rate)
                     await websocket.send_json(
                         {
@@ -217,8 +219,8 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         sample_rate=session.sample_rate,
                     )
                     await websocket.send_json(_stream_event("final", session, final_result))
-                    await websocket.close(code=1000)
-                    return
+                    session = None
+                    continue
 
                 raise ValueError("Unsupported stream event type")
         except WebSocketDisconnect:

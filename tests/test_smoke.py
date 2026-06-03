@@ -179,6 +179,90 @@ def test_websocket_stream_emits_partial_and_final_events() -> None:
     ]
 
 
+def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
+    transcriber = FakeTranscriber()
+    first_chunk = b"first"
+    second_chunk = b"second"
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(first_chunk).decode("ascii"),
+                }
+            )
+            assert websocket.receive_json()["type"] == "partial"
+
+            websocket.send_json({"type": "stop"})
+            first_final = websocket.receive_json()
+            assert first_final == {
+                "type": "final",
+                "is_final": True,
+                "chunks_received": 1,
+                "buffered_bytes": len(first_chunk),
+                "text": "fixture transcription 2",
+                "language": "en",
+                "duration_ms": 125,
+                "backend": "fake-whisper",
+                "model": "fixture-adapter",
+            }
+
+            websocket.send_json({"type": "start", "language": "es", "sample_rate": 8000})
+            second_ready = websocket.receive_json()
+            assert second_ready == {
+                "type": "ready",
+                "backend": "fake-whisper",
+                "model": "fixture-adapter",
+                "language": "es",
+                "sample_rate": 8000,
+                "partial_interval_chunks": 1,
+            }
+
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(second_chunk).decode("ascii"),
+                }
+            )
+            second_partial = websocket.receive_json()
+            assert second_partial == {
+                "type": "partial",
+                "is_final": False,
+                "chunks_received": 1,
+                "buffered_bytes": len(second_chunk),
+                "text": "fixture transcription 3",
+                "language": "es",
+                "duration_ms": 125,
+                "backend": "fake-whisper",
+                "model": "fixture-adapter",
+            }
+
+            websocket.send_json({"type": "stop"})
+            second_final = websocket.receive_json()
+            assert second_final == {
+                "type": "final",
+                "is_final": True,
+                "chunks_received": 1,
+                "buffered_bytes": len(second_chunk),
+                "text": "fixture transcription 4",
+                "language": "es",
+                "duration_ms": 125,
+                "backend": "fake-whisper",
+                "model": "fixture-adapter",
+            }
+
+    assert transcriber.calls == [
+        {"audio_size": len(first_chunk), "language": "en", "sample_rate": 16000, "prefix": first_chunk[:4]},
+        {"audio_size": len(first_chunk), "language": "en", "sample_rate": 16000, "prefix": first_chunk[:4]},
+        {"audio_size": len(second_chunk), "language": "es", "sample_rate": 8000, "prefix": second_chunk[:4]},
+        {"audio_size": len(second_chunk), "language": "es", "sample_rate": 8000, "prefix": second_chunk[:4]},
+    ]
+
+
 def test_legacy_env_aliases_and_cuda_detection(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MODEL_NAME", "small.en")
     monkeypatch.delenv("ASR_MODEL_SIZE", raising=False)
