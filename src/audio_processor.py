@@ -1,223 +1,113 @@
-"""
-Audio Processor for Realtime ASR Service
-Handles audio loading, resampling, chunking, and streaming
-"""
+"""Audio decoding and normalization helpers."""
+
+from __future__ import annotations
 
 import io
-import numpy as np
-from typing import Optional, Callable, AsyncGenerator
+import wave
 from dataclasses import dataclass
-import time
 
-import torchaudio
-from torchaudio import transforms
+import numpy as np
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class AudioConfig:
-    """Configuration for audio processing."""
     sample_rate: int = 16000
-    chunk_size: int = 1024  # 62.5ms at 16kHz
-    max_latency_ms: int = 500
-    device: str = "cuda" if True else "cpu"
+
+
+@dataclass(slots=True, frozen=True)
+class DecodedAudio:
+    samples: np.ndarray
+    sample_rate: int
+
+    @property
+    def duration_ms(self) -> int:
+        if self.samples.size == 0:
+            return 0
+        return int(round((self.samples.shape[0] / self.sample_rate) * 1000))
 
 
 class AudioProcessor:
-    """
-    Audio processor for real-time ASR.
-    
-    Handles:
-    - Audio file loading (WAV, FLAC, MP3)
-    - Audio resampling to target sample rate
-    - Audio chunking for streaming
-    - Buffer management for low-latency streaming
-    """
-    
-    def __init__(self):
-        self.config = AudioConfig()
-        self._buffer: Optional[np.ndarray] = None
-        self._buffer_index: int = 0
-        self._session_start: float = 0
-        
-    def load_audio(self, audio_data: bytes) -> np.ndarray:
-        """
-        Load audio data from bytes.
-        
-        Args:
-            audio_data: Raw audio bytes
-        
-        Returns:
-            Audio waveform as numpy array
-        """
+    """Load supported audio bytes and normalize them to mono float32."""
+
+    def __init__(self, config: AudioConfig | None = None):
+        self.config = config or AudioConfig()
+
+    def load_audio(self, audio_data: bytes, sample_rate: int | None = None) -> DecodedAudio:
+        if not audio_data:
+            raise ValueError("No audio data provided")
+
         try:
-            # Try different formats
-            for extension in ['', '.wav', '.flac', '.ogg']:
-                try:
-                    tensor, sr = torchaudio.load(io.BytesIO(audio_data + b''))
-                    
-                    # Resample if needed
-                    if sr != self.config.sample_rate:
-                        from torchaudio.functional import resample
-                        tensor = resample(tensor, sr, self.config.sample_rate)
-                    
-                    # Convert to numpy
-                    audio = tensor.squeeze().numpy()
-                    return audio
-                    
-                except Exception:
-                    continue
-            
-            raise ValueError("Could not load audio file")
-            
-        except Exception as e:
-            # Try base64 decoding if it looks like base64
+            samples, detected_rate = self._decode_wav(audio_data)
+        except (wave.Error, ValueError):
             try:
-                import base64
-                # If it's already decoded, treat as raw audio
-                audio = np.frombuffer(audio_data, dtype=np.float32)
-                # Normalize
-                audio = audio / np.max(np.abs(audio)) if np.max(np.abs(audio)) > 0 else audio
-                return audio
-            except:
-                raise ValueError(f"Could not load audio: {e}")
-    
-    def transcribe(
-        self,
-        audio_data: bytes,
-        model,
-        language: Optional[str] = None
-    ) -> dict:
-        """
-        Transcribe complete audio recording.
-        
-        Args:
-            audio_data: Raw audio bytes
-            model: ASR model instance
-            language: Optional language code
-        
-        Returns:
-            Transcription result
-        """
-        # Load and prepare audio
-        audio = self.load_audio(audio_data)
-        
-        # In production, would call model.transcribe()
-        # For now, return mock result
-        return {
-            "text": "[Transcription] This is a mock transcription",
-            "language": language,
-            "confidence": 0.92,
-            "duration_ms": len(audio) * 1000 // self.config.sample_rate
-        }
-    
-    def transcribe_chunk(
-        self,
-        audio_data: bytes,
-        model,
-        language: Optional[str] = None,
-        session: Optional[dict] = None
-    ) -> dict:
-        """
-        Process a single audio chunk.
-        
-        Args:
-            audio_data: Raw audio chunk bytes
-            model: ASR model instance
-            language: Optional language code
-            session: Optional session state
-        
-        Returns:
-            Partial transcription result
-        """
-        # In production, this would:
-        # 1. Add chunk to buffer
-        # 2. Run inference on buffer
-        # 3. Return partial text
-        # 4. Clear buffer
-        
-        return {
-            "partial_text": "",
-            "confidence": 0.95
-        }
-    
-    async def stream_transcribe(
-        self,
-        audio_data: bytes,
-        model,
-        language: Optional[str] = None,
-        on_chunk: Optional[Callable] = None
-    ) -> AsyncGenerator[dict, None]:
-        """
-        Stream transcription for real-time audio.
-        
-        Args:
-            audio_data: Raw audio bytes (streaming)
-            model: ASR model instance
-            language: Optional language code
-            on_chunk: Optional callback for each chunk
-        
-        Yields:
-            Partial transcription results
-        """
-        # Initialize session
-        self._buffer = np.zeros(0)
-        self._buffer_index = 0
-        
-        chunk_index = 0
-        start_time = time.time()
-        
-        # In production, would process stream in chunks
-        # For now, yield welcome message
-        yield {
-            "type": "welcome",
-            "message": "Streaming transcription started",
-            "language": language
-        }
-        
-        # In production loop:
-        # while chunk:
-        #     yield self._process_chunk(chunk)
-        
-        # Simulate completion
-        yield {
-            "type": "complete",
-            "text": "[Stream Complete] This is a mock completion",
-            "duration_ms": int((time.time() - start_time) * 1000)
-        }
-    
-    def flush_buffer(self) -> Optional[str]:
-        """
-        Flush and return any buffered audio.
-        
-        Returns:
-            Text transcription or None
-        """
-        if self._buffer is not None and len(self._buffer) > 0:
-            # In production, would run inference on buffer
-            text = "[Flushed buffer] This is a mock flush result"
-            
-            # Reset buffer
-            self._buffer = np.zeros(0)
-            self._buffer_index = 0
-            
-            return text
+                samples, detected_rate = self._decode_with_soundfile(audio_data)
+            except ValueError:
+                if sample_rate is None:
+                    raise ValueError("Unsupported audio format; provide WAV data or specify sample_rate for raw PCM16 audio")
+                samples = self._decode_pcm16(audio_data)
+                detected_rate = sample_rate
+
+        target_rate = self.config.sample_rate
+        if detected_rate != target_rate:
+            samples = self._resample(samples, detected_rate, target_rate)
+            detected_rate = target_rate
+
+        return DecodedAudio(samples=samples, sample_rate=detected_rate)
+
+    def cleanup(self) -> None:
         return None
-    
-    def get_buffer_state(self) -> dict:
-        """Get current buffer state."""
-        if self._buffer is None:
-            return {
-                "samples": 0,
-                "duration_ms": 0
-            }
-        
-        return {
-            "samples": len(self._buffer),
-            "duration_ms": len(self._buffer) * 1000 // self.config.sample_rate,
-            "samples_to_flush": len(self._buffer) * self.config.sample_rate // 16000
-        }
-    
-    def cleanup(self):
-        """Clean up resources."""
-        self._buffer = None
-        self._buffer_index = 0
+
+    def _decode_wav(self, audio_data: bytes) -> tuple[np.ndarray, int]:
+        with wave.open(io.BytesIO(audio_data), "rb") as wav_file:
+            frame_rate = wav_file.getframerate()
+            channels = wav_file.getnchannels()
+            sample_width = wav_file.getsampwidth()
+            frames = wav_file.readframes(wav_file.getnframes())
+
+        if sample_width == 1:
+            pcm = np.frombuffer(frames, dtype=np.uint8).astype(np.float32)
+            pcm = (pcm - 128.0) / 128.0
+        elif sample_width == 2:
+            pcm = np.frombuffer(frames, dtype="<i2").astype(np.float32) / 32768.0
+        elif sample_width == 4:
+            pcm = np.frombuffer(frames, dtype="<i4").astype(np.float32) / 2147483648.0
+        else:
+            raise ValueError(f"Unsupported WAV sample width: {sample_width}")
+
+        if channels > 1:
+            pcm = pcm.reshape(-1, channels).mean(axis=1)
+
+        return pcm.astype(np.float32, copy=False), frame_rate
+
+    def _decode_with_soundfile(self, audio_data: bytes) -> tuple[np.ndarray, int]:
+        try:
+            import soundfile as sf
+        except ImportError as exc:
+            raise ValueError("soundfile is not installed") from exc
+
+        try:
+            samples, sample_rate = sf.read(io.BytesIO(audio_data), dtype="float32", always_2d=False)
+        except RuntimeError as exc:
+            raise ValueError("soundfile could not decode audio") from exc
+
+        if isinstance(samples, np.ndarray) and samples.ndim > 1:
+            samples = samples.mean(axis=1)
+
+        return np.asarray(samples, dtype=np.float32), int(sample_rate)
+
+    def _decode_pcm16(self, audio_data: bytes) -> np.ndarray:
+        if len(audio_data) % 2 != 0:
+            raise ValueError("Raw PCM16 audio must contain an even number of bytes")
+        return np.frombuffer(audio_data, dtype="<i2").astype(np.float32) / 32768.0
+
+    def _resample(self, samples: np.ndarray, source_rate: int, target_rate: int) -> np.ndarray:
+        if samples.size == 0:
+            return samples.astype(np.float32, copy=False)
+
+        duration_seconds = samples.shape[0] / source_rate
+        target_length = max(int(round(duration_seconds * target_rate)), 1)
+
+        source_positions = np.linspace(0.0, duration_seconds, num=samples.shape[0], endpoint=False)
+        target_positions = np.linspace(0.0, duration_seconds, num=target_length, endpoint=False)
+        resampled = np.interp(target_positions, source_positions, samples)
+        return resampled.astype(np.float32, copy=False)
