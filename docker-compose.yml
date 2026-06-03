@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   asr-service:
@@ -8,16 +8,13 @@ services:
     ports:
       - "${PORT:-8080}:8080"
     environment:
-      - MODEL_NAME=${MODEL_NAME:-Qwen/Qwen3-ASR-1.7B}
-      - MODEL_PATH=${MODEL_PATH:-/models/Qwen3-ASR-1.7B}
-      - USE_WHISPER_FALLBACK=${USE_WHISPER_FALLBACK:-true}
-      - AUDIO_SAMPLE_RATE=${AUDIO_SAMPLE_RATE:-16000}
-      - AUDIO_CHUNK_SIZE=${AUDIO_CHUNK_SIZE:-1024}
-      - MAX_LATENCY_MS=${MAX_LATENCY_MS:-500}
       - HOST=${HOST:-0.0.0.0}
       - PORT=${PORT:-8080}
-      - WORKERS=${WORKERS:-1}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SAMPLE_RATE=${SAMPLE_RATE:-16000}
+      - ASR_MODEL_SIZE=${ASR_MODEL_SIZE:-small.en}
+      - ASR_DEVICE=${ASR_DEVICE:-cuda}
+      - ASR_COMPUTE_TYPE=${ASR_COMPUTE_TYPE:-float16}
+      - ASR_VAD_FILTER=${ASR_VAD_FILTER:-true}
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
     volumes:
       - model_data:/models

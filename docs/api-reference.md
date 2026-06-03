@@ -1,444 +1,194 @@
 # API Reference
 
-## Overview
-
-The Realtime ASR Service exposes multiple endpoints for speech recognition:
-
-- **REST API**: For synchronous transcription requests
-- **WebSocket API**: For real-time streaming
-- **Streaming HTTP**: For partial results
-
 ## Base URL
 
 ```
 http://localhost:8080
 ```
 
-## Endpoints
-
-### Health Check
+## Health Check
 
 ```http
 GET /health
 ```
 
-**Response:**
+Example response:
+
 ```json
 {
   "status": "healthy",
-  "service": "realtime-asr"
+  "service": "realtime-asr",
+  "backend": "faster-whisper",
+  "model": "small.en",
+  "model_loaded": false
 }
 ```
 
----
-
-### List Models
+## List Models
 
 ```http
 GET /api/models
 ```
 
-**Response:**
+Example response:
+
 ```json
 {
-  "models": ["default"],
-  "languages": ["en"],
-  "sample_rate": 16000,
-  "benchmark_status": "unvalidated"
+  "models": ["small.en"],
+  "backend": "faster-whisper",
+  "sample_rate": 16000
 }
 ```
 
----
-
-### Synchronous Transcription
+## Synchronous Transcription
 
 ```http
 POST /api/transcribe
 Content-Type: application/json
 ```
 
-**Request:**
+Request body:
+
 ```json
 {
-  "audio": "base64_encoded_audio_data",
+  "audio_data": "base64_encoded_audio_data",
   "language": "en",
-  "sample_rate": 16000,
-  "stream": false
+  "sample_rate": 16000
 }
 ```
 
-**Response:**
+Example response:
+
 ```json
 {
-  "text": "Hello world, how are you today?",
+  "text": "hello world",
   "language": "en",
   "duration_ms": 2500,
-  "confidence": 0.95,
-  "chunks": [
-    {
-      "offset": 0,
-      "text": "Hello world"
-    },
-    {
-      "offset": 1500,
-      "text": ", how are you"
-    },
-    {
-      "offset": 2400,
-      "text": " today?"
-    }
-  ]
+  "backend": "faster-whisper",
+  "model": "small.en",
+  "language_probability": 0.98
 }
 ```
 
----
+`audio` is accepted as an alias for `audio_data`.
 
-### File Transcription
+## File Transcription
 
 ```http
 POST /api/transcribe/file
 Content-Type: multipart/form-data
 ```
 
-**Request:**
-- `file`: Audio file (WAV, FLAC, MP3)
-- `language`: Optional language code
-- `sample_rate`: Optional sample rate
+Form fields:
 
-**Response:**
+- `file`: required audio file
+- `language`: optional language code
+- `sample_rate`: optional sample rate override for raw PCM payloads
+
+Example response:
+
 ```json
 {
   "filename": "recording.wav",
-  "text": "This is a transcription of the audio file.",
-  "language": "en",
-  "duration_ms": 5000
+  "transcription": {
+    "text": "hello world",
+    "language": "en",
+    "duration_ms": 2500,
+    "backend": "faster-whisper",
+    "model": "small.en"
+  }
 }
 ```
 
----
-
-### Streaming Transcription
-
-```http
-POST /api/stream
-Content-Type: application/json
-```
-
-**Request:**
-```json
-{
-  "audio": "base64_encoded_audio_chunk",
-  "chunk_index": 0,
-  "language": "en"
-}
-```
-
-**Response:**
-```json
-{
-  "chunk": 0,
-  "partial_text": "Hello",
-  "final_text": "Hello",
-  "confidence": 0.92
-}
-```
-
----
-
-### WebSocket Streaming
+## WebSocket Streaming
 
 ```http
 WebSocket /ws/stream
 ```
 
-**Protocol:**
+Client event sequence:
 
-1. **Connect:**
-   ```json
-   {
-     "type": "connect"
-   }
-   ```
+1. Start the stream:
 
-2. **Receive Welcome:**
-   ```json
-   {
-     "type": "welcome",
-     "message": "Connected to ASR stream",
-     "status": "ready"
-   }
-   ```
-
-3. **Send Audio Chunk:**
-   ```json
-   {
-     "type": "audio",
-     "audio": "base64_encoded_audio",
-     "language": "en"
-   }
-   ```
-
-4. **Receive Partial Result:**
-   ```json
-   {
-     "type": "partial",
-     "chunk": 0,
-     "text": "Hello",
-     "confidence": 0.92
-   }
-   ```
-
-5. **Flush (Optional):**
-   ```json
-   {
-     "type": "flush"
-   }
-   ```
-
-6. **Receive Final Result:**
-   ```json
-   {
-     "type": "complete",
-     "text": "Hello, how are you today?",
-     "duration_ms": 3500
-   }
-   ```
-
----
-
-### WebSocket Events
-
-| Event Type | Description |
-|------------|-------------|
-| `welcome` | Connection established |
-| `partial` | Partial transcription result |
-| `complete` | Final transcription result |
-| `flush` | Request to flush buffer |
-| `error` | Error occurred |
-
----
-
-### Error Responses
-
-**400 Bad Request:**
 ```json
 {
-  "detail": "Invalid audio format"
+  "type": "start",
+  "language": "en",
+  "sample_rate": 16000,
+  "partial_interval_chunks": 1
 }
 ```
 
-**404 Not Found:**
+2. Send one or more audio chunks:
+
 ```json
 {
-  "detail": "Endpoint not found"
+  "type": "audio",
+  "audio_data": "base64_encoded_audio_chunk"
 }
 ```
 
-**500 Internal Server Error:**
+3. Finish the stream:
+
 ```json
 {
-  "detail": "Model inference failed"
+  "type": "stop"
 }
 ```
 
-**503 Service Unavailable:**
+Server events:
+
 ```json
 {
-  "detail": "Service not initialized"
+  "type": "ready",
+  "backend": "faster-whisper",
+  "model": "small.en",
+  "language": "en",
+  "sample_rate": 16000,
+  "partial_interval_chunks": 1
 }
 ```
 
----
-
-### Rate Limiting
-
-Requests are limited to prevent abuse:
-
-- **Rate**: 100 requests per minute
-- **Headers**:
-  - `X-RateLimit-Limit`: 100
-  - `X-RateLimit-Remaining`: 99
-  - `X-RateLimit-Reset`: Unix timestamp
-
-**429 Too Many Requests:**
 ```json
 {
-  "detail": "Rate limit exceeded. Please retry after 60 seconds.",
-  "retry_after": 60
+  "type": "partial",
+  "is_final": false,
+  "chunks_received": 1,
+  "buffered_bytes": 1024,
+  "text": "hello",
+  "language": "en",
+  "duration_ms": 320,
+  "backend": "faster-whisper",
+  "model": "small.en"
 }
 ```
 
----
-
-### Authentication (Optional)
-
-API keys can be configured via environment variable:
-
-```bash
-export ASR_API_KEY=your-api-key
-export ASR_API_SECRET=your-api-secret
-```
-
-**Headers:**
-```
-Authorization: Bearer {api-key}
-X-API-Key: {api-key}
-```
-
-**Response:**
 ```json
 {
-  "text": "...",
-  "authenticated": true
+  "type": "final",
+  "is_final": true,
+  "chunks_received": 2,
+  "buffered_bytes": 2048,
+  "text": "hello world",
+  "language": "en",
+  "duration_ms": 640,
+  "backend": "faster-whisper",
+  "model": "small.en"
 }
 ```
 
----
+Notes:
 
-### CORS Configuration
+- Partial events are emitted against the buffered audio accumulated for the connection.
+- The current HTTP `POST /api/stream` route is still not implemented; use `/ws/stream` for streaming.
+- Invalid event ordering or invalid base64 audio results in a websocket `error` event followed by connection close.
 
-By default, CORS is enabled for all origins:
+## Errors
 
-```javascript
-{
-  "allow_origins": ["*"],
-  "allow_methods": ["*"],
-  "allow_headers": ["*"]
-}
-```
+HTTP errors follow FastAPI's default schema:
 
-To restrict origins, configure in `.env`:
-
-```env
-CORS_ORIGINS=http://localhost:3000,http://example.com
-```
-
----
-
-### Request Timing
-
-Response headers may include request metadata such as:
-
-```
-X-Request-ID: abc123
-X-Processing-Time: 145ms
-X-Model: default
-```
-
-`X-Processing-Time` is per-request instrumentation and should not be treated as a validated benchmark figure.
-
----
-
-### Metrics Endpoint
-
-```http
-GET /api/metrics
-```
-
-**Response:**
 ```json
 {
-  "requests_total": 1523,
-  "requests_by_language": {
-    "en": 1200,
-    "es": 200,
-    "fr": 123
-  },
-  "benchmark_status": "unvalidated",
-  "latency_p50_ms": null,
-  "latency_p95_ms": null,
-  "latency_p99_ms": null,
-  "errors_total": 12,
-  "model": "Qwen3-ASR-1.7B"
+  "detail": "audio_data must be valid base64-encoded audio bytes"
 }
 ```
-
----
-
-### Usage Examples
-
-#### Python Example
-
-```python
-import requests
-import base64
-
-# Synchronous transcription
-def transcribe(audio_data, language="en"):
-    url = "http://localhost:8080/api/transcribe"
-    headers = {
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "audio": base64.b64encode(audio_data).decode('utf-8'),
-        "language": language
-    }
-    response = requests.post(url, headers=headers, json=payload)
-    return response.json()
-
-# Streaming transcription
-def stream_transcribe(audio_chunks):
-    url = "http://localhost:8080/api/stream"
-    
-    for chunk in audio_chunks:
-        payload = {
-            "audio": base64.b64encode(chunk).decode('utf-8'),
-            "chunk_index": len(audio_chunks)
-        }
-        response = requests.post(url, json=payload)
-        yield response.json()
-```
-
-#### JavaScript Example
-
-```javascript
-const ASR_API = 'http://localhost:8080';
-
-async function transcribe(audioData, language = 'en') {
-  const response = await fetch(`${ASR_API}/api/transcribe`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      audio: Buffer.from(audioData).toString('base64'),
-      language
-    })
-  });
-  
-  return await response.json();
-}
-
-async function streamTranscribe(audioStream) {
-  const ws = new WebSocket(`${ASR_API}/ws/stream`);
-  
-  ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'connect' }));
-  };
-  
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    
-    if (data.type === 'partial') {
-      console.log('Partial:', data.text);
-    }
-    
-    if (data.type === 'complete') {
-      console.log('Complete:', data.text);
-    }
-  };
-  
-  // Send audio chunks...
-  
-  return ws;
-}
-```
-
----
-
-## Next Steps
-
-- See [Pipecat Integration](./pipecat-integration.md)
-- See [LiveKit Integration](./livekit-integration.md)
-- See [Performance Benchmarks](./benchmarks.md)
-- See [Troubleshooting](./troubleshooting.md)

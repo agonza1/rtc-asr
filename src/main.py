@@ -6,9 +6,10 @@ import base64
 import binascii
 import logging
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket
+from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 import uvicorn
@@ -44,6 +45,20 @@ class AppServices:
     config: AppConfig
     audio_processor: AudioProcessor
     transcriber: Transcriber
+
+
+@dataclass(slots=True)
+class StreamSession:
+    language: str | None
+    sample_rate: int
+    partial_interval_chunks: int = 1
+    audio_buffer: bytearray = field(default_factory=bytearray, repr=False)
+    chunks_received: int = 0
+    last_partial_text: str = ""
+
+    def append_audio(self, chunk: bytes) -> None:
+        self.audio_buffer.extend(chunk)
+        self.chunks_received += 1
 
 
 def create_app(config: AppConfig | None = None, transcriber: Transcriber | None = None) -> FastAPI:
@@ -139,21 +154,103 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
     async def stream_transcribe() -> None:
         raise HTTPException(
             status_code=501,
-            detail="Streaming chunk transcription is not implemented yet; use /api/transcribe for file-based requests.",
+            detail="Streaming chunk transcription is available on /ws/stream; the HTTP streaming route is not implemented yet.",
         )
 
     @app.websocket("/ws/stream")
     async def websocket_stream(websocket: WebSocket) -> None:
         await websocket.accept()
-        await websocket.send_json(
-            {
-                "type": "error",
-                "message": "Streaming transcription is not implemented yet; use POST /api/transcribe while /ws/stream state management is built.",
-            }
-        )
-        await websocket.close(code=1003)
+        services = app.state.services
+        session: StreamSession | None = None
+
+        try:
+            while True:
+                payload = await websocket.receive_json()
+                event_type = str(payload.get("type", "")).strip().lower()
+
+                if event_type == "start":
+                    session = _create_stream_session(payload, services.config.sample_rate)
+                    await websocket.send_json(
+                        {
+                            "type": "ready",
+                            "backend": services.transcriber.backend_name,
+                            "model": services.transcriber.model_name,
+                            "language": session.language,
+                            "sample_rate": session.sample_rate,
+                            "partial_interval_chunks": session.partial_interval_chunks,
+                        }
+                    )
+                    continue
+
+                if event_type == "audio":
+                    if session is None:
+                        raise ValueError("Send a start event before audio chunks")
+
+                    audio_bytes = _decode_websocket_audio(payload)
+                    session.append_audio(audio_bytes)
+
+                    if session.chunks_received % session.partial_interval_chunks != 0:
+                        continue
+
+                    partial = _run_transcription(
+                        services,
+                        audio_bytes=bytes(session.audio_buffer),
+                        language=session.language,
+                        sample_rate=session.sample_rate,
+                    )
+                    partial_text = str(partial.get("text", "")).strip()
+                    if partial_text and partial_text != session.last_partial_text:
+                        session.last_partial_text = partial_text
+                        await websocket.send_json(_stream_event("partial", session, partial))
+                    continue
+
+                if event_type == "stop":
+                    if session is None:
+                        raise ValueError("Send a start event before stopping the stream")
+                    if not session.audio_buffer:
+                        raise ValueError("No audio chunks received for this stream")
+
+                    final_result = _run_transcription(
+                        services,
+                        audio_bytes=bytes(session.audio_buffer),
+                        language=session.language,
+                        sample_rate=session.sample_rate,
+                    )
+                    await websocket.send_json(_stream_event("final", session, final_result))
+                    await websocket.close(code=1000)
+                    return
+
+                raise ValueError("Unsupported stream event type")
+        except WebSocketDisconnect:
+            return
+        except ASRUnavailableError as exc:
+            await _close_websocket_error(websocket, str(exc), code=1011)
+        except ValueError as exc:
+            await _close_websocket_error(websocket, str(exc), code=1003)
+        except Exception:  # pragma: no cover - defensive websocket boundary
+            logger.exception("Unexpected websocket stream error")
+            await _close_websocket_error(websocket, "Unexpected streaming error", code=1011)
 
     return app
+
+
+def _create_stream_session(payload: dict[str, Any], default_sample_rate: int) -> StreamSession:
+    sample_rate = payload.get("sample_rate", default_sample_rate)
+    partial_interval = payload.get("partial_interval_chunks", 1)
+    language = payload.get("language", "en")
+
+    if not isinstance(sample_rate, int) or sample_rate < 1:
+        raise ValueError("sample_rate must be a positive integer")
+    if not isinstance(partial_interval, int) or partial_interval < 1:
+        raise ValueError("partial_interval_chunks must be a positive integer")
+    if language is not None and not isinstance(language, str):
+        raise ValueError("language must be a string or null")
+
+    return StreamSession(
+        language=language,
+        sample_rate=sample_rate,
+        partial_interval_chunks=partial_interval,
+    )
 
 
 def _decode_base64_audio(encoded_audio: str) -> bytes:
@@ -161,6 +258,41 @@ def _decode_base64_audio(encoded_audio: str) -> bytes:
         return base64.b64decode(encoded_audio, validate=True)
     except (ValueError, binascii.Error) as exc:
         raise HTTPException(status_code=400, detail="audio_data must be valid base64-encoded audio bytes") from exc
+
+
+def _decode_websocket_audio(payload: dict[str, Any]) -> bytes:
+    encoded_audio = payload.get("audio_data") or payload.get("audio")
+    if not encoded_audio or not isinstance(encoded_audio, str):
+        raise ValueError("audio_data or audio is required for audio events")
+
+    try:
+        return base64.b64decode(encoded_audio, validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise ValueError("audio_data must be valid base64-encoded audio bytes") from exc
+
+
+def _stream_event(event_type: str, session: StreamSession, transcript: dict[str, object]) -> dict[str, object]:
+    return {
+        "type": event_type,
+        "is_final": event_type == "final",
+        "chunks_received": session.chunks_received,
+        "buffered_bytes": len(session.audio_buffer),
+        **transcript,
+    }
+
+
+def _run_transcription(
+    services: AppServices,
+    *,
+    audio_bytes: bytes,
+    language: str | None,
+    sample_rate: int | None,
+) -> dict[str, object]:
+    return services.transcriber.transcribe(
+        audio_bytes,
+        language=language,
+        sample_rate=sample_rate,
+    )
 
 
 def _transcribe_bytes(
@@ -171,8 +303,9 @@ def _transcribe_bytes(
     sample_rate: int | None,
 ) -> dict[str, object]:
     try:
-        return services.transcriber.transcribe(
-            audio_bytes,
+        return _run_transcription(
+            services,
+            audio_bytes=audio_bytes,
             language=language,
             sample_rate=sample_rate,
         )
@@ -183,6 +316,14 @@ def _transcribe_bytes(
     except Exception as exc:  # pragma: no cover - defensive API boundary
         logger.exception("Unexpected transcription error")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+async def _close_websocket_error(websocket: WebSocket, message: str, *, code: int) -> None:
+    try:
+        await websocket.send_json({"type": "error", "message": message})
+        await websocket.close(code=code)
+    except RuntimeError:
+        return
 
 
 app = create_app()

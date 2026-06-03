@@ -13,6 +13,26 @@ def _env_flag(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _first_env(*names: str) -> str | None:
+    for name in names:
+        value = os.getenv(name)
+        if value:
+            return value
+    return None
+
+
+def _default_asr_device(default: str) -> str:
+    explicit = _first_env("ASR_DEVICE")
+    if explicit:
+        return explicit
+
+    visible_devices = _first_env("CUDA_VISIBLE_DEVICES")
+    if visible_devices and visible_devices.strip() not in {"", "-1", "none", "None"}:
+        return "cuda"
+
+    return default
+
+
 @dataclass(slots=True)
 class AppConfig:
     """Runtime configuration loaded from environment variables."""
@@ -37,10 +57,10 @@ class AppConfig:
             app_version=os.getenv("APP_VERSION", defaults.app_version),
             host=os.getenv("HOST", defaults.host),
             port=int(os.getenv("PORT", str(defaults.port))),
-            sample_rate=int(os.getenv("SAMPLE_RATE", str(defaults.sample_rate))),
+            sample_rate=int(_first_env("SAMPLE_RATE", "AUDIO_SAMPLE_RATE") or str(defaults.sample_rate)),
             asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
-            asr_model_size=os.getenv("ASR_MODEL_SIZE", defaults.asr_model_size),
-            asr_device=os.getenv("ASR_DEVICE", defaults.asr_device),
+            asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
+            asr_device=_default_asr_device(defaults.asr_device),
             asr_compute_type=os.getenv("ASR_COMPUTE_TYPE", defaults.asr_compute_type),
             asr_vad_filter=_env_flag("ASR_VAD_FILTER", defaults.asr_vad_filter),
         )
