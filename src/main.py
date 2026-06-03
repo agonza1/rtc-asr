@@ -49,16 +49,22 @@ class AppServices:
 
 @dataclass(slots=True)
 class StreamSession:
+    stream_id: int
     language: str | None
     sample_rate: int
     partial_interval_chunks: int = 1
     audio_buffer: bytearray = field(default_factory=bytearray, repr=False)
     chunks_received: int = 0
-    last_partial_text: str = ""
+    last_partial_chunks_received: int = 0
+    last_partial_result: dict[str, object] | None = None
 
     def append_audio(self, chunk: bytes) -> None:
         self.audio_buffer.extend(chunk)
         self.chunks_received += 1
+
+    def record_partial(self, transcript: dict[str, object]) -> None:
+        self.last_partial_result = transcript
+        self.last_partial_chunks_received = self.chunks_received
 
 
 def create_app(config: AppConfig | None = None, transcriber: Transcriber | None = None) -> FastAPI:
@@ -162,6 +168,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         await websocket.accept()
         services = app.state.services
         session: StreamSession | None = None
+        next_stream_id = 1
 
         try:
             while True:
@@ -169,10 +176,18 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                 event_type = str(payload.get("type", "")).strip().lower()
 
                 if event_type == "start":
-                    session = _create_stream_session(payload, services.config.sample_rate)
+                    if session is not None:
+                        raise ValueError("Finish the active stream before starting a new one")
+                    session = _create_stream_session(
+                        payload,
+                        services.config.sample_rate,
+                        stream_id=next_stream_id,
+                    )
+                    next_stream_id += 1
                     await websocket.send_json(
                         {
                             "type": "ready",
+                            "stream_id": session.stream_id,
                             "backend": services.transcriber.backend_name,
                             "model": services.transcriber.model_name,
                             "language": session.language,
@@ -198,9 +213,9 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         language=session.language,
                         sample_rate=session.sample_rate,
                     )
+                    session.record_partial(partial)
                     partial_text = str(partial.get("text", "")).strip()
-                    if partial_text and partial_text != session.last_partial_text:
-                        session.last_partial_text = partial_text
+                    if partial_text:
                         await websocket.send_json(_stream_event("partial", session, partial))
                     continue
 
@@ -210,15 +225,10 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     if not session.audio_buffer:
                         raise ValueError("No audio chunks received for this stream")
 
-                    final_result = _run_transcription(
-                        services,
-                        audio_bytes=bytes(session.audio_buffer),
-                        language=session.language,
-                        sample_rate=session.sample_rate,
-                    )
+                    final_result = _resolve_final_result(session, services)
                     await websocket.send_json(_stream_event("final", session, final_result))
-                    await websocket.close(code=1000)
-                    return
+                    session = None
+                    continue
 
                 raise ValueError("Unsupported stream event type")
         except WebSocketDisconnect:
@@ -234,7 +244,12 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
     return app
 
 
-def _create_stream_session(payload: dict[str, Any], default_sample_rate: int) -> StreamSession:
+def _create_stream_session(
+    payload: dict[str, Any],
+    default_sample_rate: int,
+    *,
+    stream_id: int,
+) -> StreamSession:
     sample_rate = payload.get("sample_rate", default_sample_rate)
     partial_interval = payload.get("partial_interval_chunks", 1)
     language = payload.get("language", "en")
@@ -247,6 +262,7 @@ def _create_stream_session(payload: dict[str, Any], default_sample_rate: int) ->
         raise ValueError("language must be a string or null")
 
     return StreamSession(
+        stream_id=stream_id,
         language=language,
         sample_rate=sample_rate,
         partial_interval_chunks=partial_interval,
@@ -274,11 +290,27 @@ def _decode_websocket_audio(payload: dict[str, Any]) -> bytes:
 def _stream_event(event_type: str, session: StreamSession, transcript: dict[str, object]) -> dict[str, object]:
     return {
         "type": event_type,
+        "stream_id": session.stream_id,
         "is_final": event_type == "final",
         "chunks_received": session.chunks_received,
         "buffered_bytes": len(session.audio_buffer),
         **transcript,
     }
+
+
+def _resolve_final_result(session: StreamSession, services: AppServices) -> dict[str, object]:
+    if (
+        session.last_partial_result is not None
+        and session.last_partial_chunks_received == session.chunks_received
+    ):
+        return session.last_partial_result
+
+    return _run_transcription(
+        services,
+        audio_bytes=bytes(session.audio_buffer),
+        language=session.language,
+        sample_rate=session.sample_rate,
+    )
 
 
 def _run_transcription(

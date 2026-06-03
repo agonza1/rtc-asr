@@ -179,7 +179,8 @@ Server events:
 
 Notes:
 
-- Partial events are emitted against the buffered audio accumulated for the connection.
+- Partial events are emitted against the buffered audio accumulated for the active stream on that connection.
+- After a `final` event, the websocket remains open and can accept a new `start` event for the next stream.
 - The current HTTP `POST /api/stream` route is still not implemented; use `/ws/stream` for streaming.
 - Invalid event ordering or invalid base64 audio results in a websocket `error` event followed by connection close.
 
