@@ -55,10 +55,16 @@ class StreamSession:
     audio_buffer: bytearray = field(default_factory=bytearray, repr=False)
     chunks_received: int = 0
     last_partial_text: str = ""
+    last_partial_chunks_received: int = 0
+    last_partial_result: dict[str, object] | None = None
 
     def append_audio(self, chunk: bytes) -> None:
         self.audio_buffer.extend(chunk)
         self.chunks_received += 1
+
+    def record_partial(self, transcript: dict[str, object]) -> None:
+        self.last_partial_result = transcript
+        self.last_partial_chunks_received = self.chunks_received
 
 
 def create_app(config: AppConfig | None = None, transcriber: Transcriber | None = None) -> FastAPI:
@@ -200,6 +206,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         language=session.language,
                         sample_rate=session.sample_rate,
                     )
+                    session.record_partial(partial)
                     partial_text = str(partial.get("text", "")).strip()
                     if partial_text and partial_text != session.last_partial_text:
                         session.last_partial_text = partial_text
@@ -212,12 +219,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     if not session.audio_buffer:
                         raise ValueError("No audio chunks received for this stream")
 
-                    final_result = _run_transcription(
-                        services,
-                        audio_bytes=bytes(session.audio_buffer),
-                        language=session.language,
-                        sample_rate=session.sample_rate,
-                    )
+                    final_result = _resolve_final_result(session, services)
                     await websocket.send_json(_stream_event("final", session, final_result))
                     session = None
                     continue
@@ -281,6 +283,21 @@ def _stream_event(event_type: str, session: StreamSession, transcript: dict[str,
         "buffered_bytes": len(session.audio_buffer),
         **transcript,
     }
+
+
+def _resolve_final_result(session: StreamSession, services: AppServices) -> dict[str, object]:
+    if (
+        session.last_partial_result is not None
+        and session.last_partial_chunks_received == session.chunks_received
+    ):
+        return session.last_partial_result
+
+    return _run_transcription(
+        services,
+        audio_bytes=bytes(session.audio_buffer),
+        language=session.language,
+        sample_rate=session.sample_rate,
+    )
 
 
 def _run_transcription(
