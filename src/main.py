@@ -54,7 +54,6 @@ class StreamSession:
     partial_interval_chunks: int = 1
     audio_buffer: bytearray = field(default_factory=bytearray, repr=False)
     chunks_received: int = 0
-    last_partial_text: str = ""
     last_partial_chunks_received: int = 0
     last_partial_result: dict[str, object] | None = None
 
@@ -208,8 +207,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     )
                     session.record_partial(partial)
                     partial_text = str(partial.get("text", "")).strip()
-                    if partial_text and partial_text != session.last_partial_text:
-                        session.last_partial_text = partial_text
+                    if partial_text:
                         await websocket.send_json(_stream_event("partial", session, partial))
                     continue
 

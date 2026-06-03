@@ -40,6 +40,13 @@ class FakeTranscriber:
         }
 
 
+class StableTextTranscriber(FakeTranscriber):
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
+        result = super().transcribe(audio_data, language=language, sample_rate=sample_rate)
+        result["text"] = "steady partial"
+        return result
+
+
 def test_health_smoke() -> None:
     transcriber = FakeTranscriber()
     with TestClient(create_app(transcriber=transcriber)) as client:
@@ -336,3 +343,81 @@ def test_legacy_env_aliases_and_cuda_detection(monkeypatch: pytest.MonkeyPatch) 
     assert config.asr_model_size == "small.en"
     assert config.sample_rate == 22050
     assert config.asr_device == "cuda"
+
+
+def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
+    transcriber = StableTextTranscriber()
+    first_chunk = b"first"
+    second_chunk = b"second"
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(first_chunk).decode("ascii"),
+                }
+            )
+            first_partial = websocket.receive_json()
+
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(second_chunk).decode("ascii"),
+                }
+            )
+            second_partial = websocket.receive_json()
+
+            websocket.send_json({"type": "stop"})
+            final_event = websocket.receive_json()
+
+    assert first_partial == {
+        "type": "partial",
+        "is_final": False,
+        "chunks_received": 1,
+        "buffered_bytes": len(first_chunk),
+        "text": "steady partial",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert second_partial == {
+        "type": "partial",
+        "is_final": False,
+        "chunks_received": 2,
+        "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "text": "steady partial",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert final_event == {
+        "type": "final",
+        "is_final": True,
+        "chunks_received": 2,
+        "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "text": "steady partial",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert transcriber.calls == [
+        {
+            "audio_size": len(first_chunk),
+            "language": "en",
+            "sample_rate": 16000,
+            "prefix": first_chunk[:4],
+        },
+        {
+            "audio_size": len(first_chunk) + len(second_chunk),
+            "language": "en",
+            "sample_rate": 16000,
+            "prefix": first_chunk[:4],
+        },
+    ]
