@@ -69,15 +69,15 @@ Connect to `ws://localhost:8080/ws/stream` and send JSON events:
 The server replies with:
 
 ```json
-{ "type": "ready", "backend": "faster-whisper", "model": "small.en" }
+{ "type": "ready", "stream_id": 1, "backend": "faster-whisper", "model": "small.en" }
 ```
 
 ```json
-{ "type": "partial", "text": "hello", "chunks_received": 1, "is_final": false }
+{ "type": "partial", "stream_id": 1, "text": "hello", "chunks_received": 1, "is_final": false }
 ```
 
 ```json
-{ "type": "final", "text": "hello world", "chunks_received": 2, "is_final": true }
+{ "type": "final", "stream_id": 1, "text": "hello world", "chunks_received": 2, "is_final": true }
 ```
 
 After a `final` event, the connection stays open so the client can send another `start` event for the next utterance without reconnecting.

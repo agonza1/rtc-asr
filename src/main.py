@@ -49,6 +49,7 @@ class AppServices:
 
 @dataclass(slots=True)
 class StreamSession:
+    stream_id: int
     language: str | None
     sample_rate: int
     partial_interval_chunks: int = 1
@@ -167,6 +168,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         await websocket.accept()
         services = app.state.services
         session: StreamSession | None = None
+        next_stream_id = 1
 
         try:
             while True:
@@ -176,10 +178,16 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                 if event_type == "start":
                     if session is not None:
                         raise ValueError("Finish the active stream before starting a new one")
-                    session = _create_stream_session(payload, services.config.sample_rate)
+                    session = _create_stream_session(
+                        payload,
+                        services.config.sample_rate,
+                        stream_id=next_stream_id,
+                    )
+                    next_stream_id += 1
                     await websocket.send_json(
                         {
                             "type": "ready",
+                            "stream_id": session.stream_id,
                             "backend": services.transcriber.backend_name,
                             "model": services.transcriber.model_name,
                             "language": session.language,
@@ -236,7 +244,12 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
     return app
 
 
-def _create_stream_session(payload: dict[str, Any], default_sample_rate: int) -> StreamSession:
+def _create_stream_session(
+    payload: dict[str, Any],
+    default_sample_rate: int,
+    *,
+    stream_id: int,
+) -> StreamSession:
     sample_rate = payload.get("sample_rate", default_sample_rate)
     partial_interval = payload.get("partial_interval_chunks", 1)
     language = payload.get("language", "en")
@@ -249,6 +262,7 @@ def _create_stream_session(payload: dict[str, Any], default_sample_rate: int) ->
         raise ValueError("language must be a string or null")
 
     return StreamSession(
+        stream_id=stream_id,
         language=language,
         sample_rate=sample_rate,
         partial_interval_chunks=partial_interval,
@@ -276,6 +290,7 @@ def _decode_websocket_audio(payload: dict[str, Any]) -> bytes:
 def _stream_event(event_type: str, session: StreamSession, transcript: dict[str, object]) -> dict[str, object]:
     return {
         "type": event_type,
+        "stream_id": session.stream_id,
         "is_final": event_type == "final",
         "chunks_received": session.chunks_received,
         "buffered_bytes": len(session.audio_buffer),
