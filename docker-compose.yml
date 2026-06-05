@@ -1,34 +1,32 @@
-version: "3.8"
-
 services:
   asr-service:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - .env
     ports:
       - "${PORT:-8080}:8080"
     environment:
-      - HOST=${HOST:-0.0.0.0}
-      - PORT=${PORT:-8080}
-      - SAMPLE_RATE=${SAMPLE_RATE:-16000}
-      - ASR_MODEL_SIZE=${ASR_MODEL_SIZE:-small.en}
-      - ASR_DEVICE=${ASR_DEVICE:-cuda}
-      - ASR_COMPUTE_TYPE=${ASR_COMPUTE_TYPE:-float16}
-      - ASR_VAD_FILTER=${ASR_VAD_FILTER:-true}
-      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-8080}
+      SAMPLE_RATE: ${SAMPLE_RATE:-16000}
+      ASR_BACKEND: ${ASR_BACKEND:-faster-whisper}
+      ASR_MODEL_SIZE: ${ASR_MODEL_SIZE:-tiny.en}
+      ASR_DEVICE: ${ASR_DEVICE:-cpu}
+      ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE:-int8}
+      ASR_VAD_FILTER: ${ASR_VAD_FILTER:-true}
+      ASR_PRELOAD_MODEL: ${ASR_PRELOAD_MODEL:-true}
+      CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10m
     volumes:
-      - model_data:/models
-      - ./config:/app/config:ro
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      - huggingface_cache:/home/app/.cache/huggingface
     restart: unless-stopped
 
 volumes:
-  model_data:
-    name: realtime-asr-models
-    driver: local
+  huggingface_cache:

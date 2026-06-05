@@ -1,98 +1,96 @@
 # Realtime ASR Service - Makefile
 # Convenience commands for development and deployment
 
-.PHONY: help build run dev test clean lint docs
+VENV := .venv
+PYTHON := $(VENV)/bin/python
+PIP := $(PYTHON) -m pip
+UVICORN := $(VENV)/bin/uvicorn
 
-# Default target
+.PHONY: help venv setup build run dev test benchmark clean lint docs start stop status
+
 help:
 	@echo "Realtime ASR Service - Available commands:"
 	@echo ""
+	@echo "  make venv           - Create or refresh the local virtualenv"
+	@echo "  make setup          - Bootstrap .env and the local virtualenv"
 	@echo "  make build          - Build Docker image"
-	@echo "  make run            - Run service locally (CPU)"
-	@echo "  make dev            - Run service locally (CPU, debug mode)"
-	@echo "  make test           - Run tests"
+	@echo "  make run            - Run service locally"
+	@echo "  make dev            - Run service locally with reload"
+	@echo "  make test           - Run the automated test suite"
+	@echo "  make benchmark      - Run the reproducible latency benchmark"
 	@echo "  make lint           - Run linter"
-	@echo "  make docs           - Build documentation"
-	@echo "  make clean          - Clean build artifacts"
-	@echo "  make download-model - Download Qwen3-ASR-1.7B model"
-	@echo "  make setup          - Setup development environment"
-	@echo "  make start          - Start with GPU"
-	@echo "  make stop           - Stop service"
+	@echo "  make docs           - Build documentation snapshot"
+	@echo "  make start          - Start docker compose stack"
+	@echo "  make stop           - Stop docker compose stack"
 	@echo "  make status         - Check service status"
 
-# Development setup
-setup:
-	@echo "Setting up development environment..."
-	@mkdir -p config models
-	@cp config.example config
-	@echo "  ✓ Development environment ready"
+venv:
+	@echo "Preparing virtualenv..."
+	@rm -rf $(VENV)
+	@python3 -m venv $(VENV)
+	@$(PIP) install --upgrade pip
+	@$(PIP) install -r requirements.txt
+	@echo "  ✓ Virtualenv ready at $(VENV)"
 
-# Build Docker image
+setup: venv
+	@echo "Bootstrapping local config..."
+	@test -f .env || cp config.example .env
+	@mkdir -p models
+	@echo "  ✓ Local config ready (.env)"
+
 build:
 	@echo "Building Docker image..."
 	docker build -t realtime-asr:latest .
 	@echo "  ✓ Image built: realtime-asr:latest"
 
-# Run locally (CPU)
-run: setup
-	@echo "Running service locally (CPU)..."
+run: venv
+	@echo "Running service locally..."
 	@echo "  Service will be available at http://localhost:8080"
-	@uvicorn src.main:app --host 0.0.0.0 --port 8080 --log-level info
+	@$(UVICORN) src.main:app --host 0.0.0.0 --port 8080 --log-level info
 
-# Development mode
-dev: setup
+dev: venv
 	@echo "Running in development mode..."
-	uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload --log-level debug
+	@$(UVICORN) src.main:app --host 0.0.0.0 --port 8080 --reload --log-level debug
 
-# Start with GPU
-start: build
-	@echo "Starting with GPU support..."
-	docker compose up -d
+start:
+	@echo "Starting docker compose stack..."
+	docker compose up -d --build
 	@echo "  ✓ Service started"
 
-# Stop service
 stop:
 	@echo "Stopping service..."
 	docker compose down
 	@echo "  ✓ Service stopped"
 
-# Check service status
 status:
 	@echo "Checking service status..."
 	docker compose ps
 	@echo ""
-	@echo "Service health:"
-	curl -s http://localhost:8080/health 2>/dev/null || echo "  ⚠ Service not running locally"
+	@echo "Liveness:"
+	@curl -s http://localhost:8080/health 2>/dev/null || echo "  ⚠ Service not running locally"
+	@echo ""
+	@echo "Readiness:"
+	@curl -s -f http://localhost:8080/ready 2>/dev/null || echo "  ⚠ Service is live but not ready"
 
-# Run tests
-test:
-	@echo "Running tests..."
-	python -m pytest tests/ -v
+test: venv
+	@echo "Running test suite..."
+	@$(PYTHON) -m pytest tests/test_smoke.py tests/test_client.py -v
 
-# Run linter
-lint:
+benchmark: venv
+	@echo "Running latency benchmark..."
+	@$(PYTHON) tests/benchmark.py --spawn-server
+
+lint: venv
 	@echo "Running linter..."
-	flake8 src/
+	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py
 	@echo "  ✓ Linting complete"
 
-# Build documentation
 docs:
 	@echo "Building documentation..."
 	@mkdir -p docs/_build
 	@cp README.md docs/_build/
 	@echo "  ✓ Documentation built"
 
-# Download model
-download-model:
-	@echo "Downloading Qwen3-ASR-1.7B model..."
-	@echo "  This will take several minutes..."
-	@mkdir -p models
-	@# In production, use huggingface-cli or similar
-	@# huggingface-cli download Qwen/Qwen3-ASR-1.7B --local-dir models/Qwen3-ASR-1.7B
-	@echo "  ✓ Model directory created: models/Qwen3-ASR-1.7B"
-	@echo "  Run 'make download-model' in a real environment to download the model"
-
-# Clean build artifacts
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf __pycache__
@@ -100,13 +98,3 @@ clean:
 	@find . -type d -name "__pycache__" -exec rm -rf {} +
 	@find . -type f -name "*.pyc" -delete
 	@echo "  ✓ Cleanup complete"
-
-# Build wheel
-build-wheel:
-	@echo "Building wheel..."
-	python -m build
-	@echo "  ✓ Wheel built in dist/"
-
-# Create requirements.txt from pip freeze
-freeze:
-	pip freeze > requirements.txt

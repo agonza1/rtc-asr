@@ -1,255 +1,121 @@
 # Pipecat Integration Guide
 
-This guide shows how to integrate the Realtime ASR Service with Pipecat for real-time speech recognition.
+This guide shows how to bridge Pipecat audio into the current `rtc-asr` streaming API.
 
-## Overview
+The service now uses the lightweight `faster-whisper` path in `src/model_loader.py`. Streaming partials and finals are emitted only on `ws://.../ws/stream`; do not call `POST /api/stream`, and there is no `/api/flush` route.
 
-Pipecat is a Python framework for building voice AI applications. This integration allows you to use Qwen3-ASR-1.7B as the STT component in your Pipecat applications.
+## Protocol Summary
 
-## Setup
-
-### 1. Install Dependencies
-
-```bash
-pip install pipecat-sdk aiortc
-```
-
-### 2. Configure ASR Service
-
-Make sure the ASR service is running:
-
-```bash
-docker compose up -d
-```
-
-### 3. Create STT Channel
-
-```python
-from pipecat.stt import STT
-from pipecat.pipeline.processor import SyncProcessor
-from pipecat.frames.audio import AudioFrame
-from pipecat.frames.text import TextFrame
-import base64
-import json
-
-class QwenASRProcessor(SyncProcessor):
-    """
-    Pipecat processor for Qwen3-ASR-1.7B
-    """
-    
-    def __init__(self, asr_url="http://localhost:8080"):
-        self.asr_url = asr_url
-        self.client = None  # Initialize HTTP client
-        
-    async def on_start(self) -> bool:
-        """Initialize ASR client."""
-        self.client = self.create_http_client()
-        return True
-    
-    def create_http_client(self):
-        """Create HTTP client for ASR requests."""
-        import requests
-        return requests.Session()
-    
-    async def process(self, payload) -> list:
-        """
-        Process audio frames for transcription.
-        
-        Args:
-            payload: List of AudioFrame objects
-        
-        Returns:
-            List of TextFrame objects
-        """
-        if not payload:
-            return []
-        
-        # Collect audio frames
-        audio_frames = payload
-        total_samples = sum(frame.samples for frame in audio_frames)
-        
-        if total_samples < 16000:  # Minimum 1 second of audio
-            return payload
-        
-        # In production, combine frames and send to ASR
-        # This is a simplified example
-        return payload
-    
-    def on_destroy(self):
-        """Cleanup resources."""
-        if self.client:
-            self.client.close()
-```
-
-### 4. Add to Pipeline
-
-```python
-from pipecat.pipeline.pipeline import Pipeline
-from pipecat.pipeline.player import VolumePlayer
-from pipecat.pipeline recorder import PipelineRecorder
-
-# Create STT channel
-stt_channel = STT(
-    language="en",
-    model="whisper",  # Or use your Qwen model
-    device="cuda"
-)
-
-# Create TTS channel
-tts_channel = TTS(
-    engine="edge-tts",
-    voice="en-US-JennyNeural"
-)
-
-# Create pipeline
-pipeline = Pipeline(
-    stt_channel,
-    tts_channel
-)
-```
-
-## Streaming Integration
-
-For low-latency streaming, use WebSockets:
-
-```python
-import websockets
-
-class WebSocketASRProcessor(SyncProcessor):
-    def __init__(self, ws_url="ws://localhost:8080/ws/stream"):
-        self.ws_url = ws_url
-        self.websocket = None
-        self.buffer = bytearray()
-    
-    async def on_start(self) -> bool:
-        """Connect to WebSocket."""
-        self.websocket = await websockets.connect(self.ws_url)
-        await self.websocket.send(json.dumps({"type": "connect"}))
-        return True
-    
-    async def process(self, payload) -> list:
-        """Process audio frames."""
-        if not payload:
-            return payload
-        
-        # Collect audio and send to WebSocket
-        for frame in payload:
-            # Convert audio to base64 and send
-            audio_data = base64.b64encode(frame.data).decode('utf-8')
-            message = json.dumps({
-                "type": "audio",
-                "audio": audio_data,
-                "language": "en"
-            })
-            await self.websocket.send(message)
-        
-        return payload
-    
-    def on_destroy(self):
-        """Close WebSocket connection."""
-        if self.websocket:
-            self.websocket.close()
-```
-
-## Advanced Configuration
-
-### Using with Config Files
-
-Create `config/pipecat.asr.json`:
+Open one websocket per utterance or per continuous stream and use this event order:
 
 ```json
-{
-  "asr_service": {
-    "url": "http://localhost:8080",
-    "language": "en",
-    "sample_rate": 16000,
-    "fallback": true
-  },
-  "buffering": {
-    "chunk_size_ms": 50,
-    "max_latency_ms": 200
-  },
-  "transcription": {
-    "max_length": 500,
-    "min_confidence": 0.6
-  }
-}
+{ "type": "start", "language": "en", "sample_rate": 16000, "partial_interval_chunks": 1, "partial_window_seconds": 2.0 }
 ```
 
-### Load Configuration
+```json
+{ "type": "audio", "audio_data": "base64_encoded_pcm16_chunk" }
+```
+
+```json
+{ "type": "stop" }
+```
+
+The server responds with:
+
+- `ready` after `start`
+- `partial` after each configured chunk interval
+- `final` after `stop`
+- `error` before close if the event order or audio payload is invalid
+
+## Recommended Client Helper
+
+This repo includes a tested websocket helper in `src/rtc_client.py`. If your Pipecat app lives in another repository, copy that file or vendor the same logic.
 
 ```python
-import json
+from src.rtc_client import AsyncASRClient
 
-with open("config/pipecat.asr.json") as f:
-    config = json.load(f)
 
-asr_config = STTChannelConfig(
-    language=config["asr_service"]["language"],
-    sample_rate=config["asr_service"]["sample_rate"],
-    fallback=config["asr_service"]["fallback"]
-)
+class PipecatASRBridge:
+    def __init__(self, ws_url: str = "ws://localhost:8080/ws/stream") -> None:
+        self._ws_url = ws_url
+        self._client: AsyncASRClient | None = None
+
+    async def start_stream(self, *, language: str | None = "en", sample_rate: int = 16000) -> dict:
+        self._client = AsyncASRClient(self._ws_url)
+        return await self._client.start(
+            language=language,
+            sample_rate=sample_rate,
+            partial_interval_chunks=1,
+            partial_window_seconds=2.0,
+            max_buffer_seconds=30.0,
+        )
+
+    async def send_audio_chunk(self, pcm16_chunk: bytes) -> str:
+        if self._client is None:
+            raise RuntimeError("Call start_stream() before send_audio_chunk()")
+        event = await self._client.send_audio(pcm16_chunk)
+        return event.text
+
+    async def stop_stream(self) -> str:
+        if self._client is None:
+            raise RuntimeError("Call start_stream() before stop_stream()")
+        final_event = await self._client.stop()
+        await self._client.close()
+        self._client = None
+        return final_event.text
 ```
 
-## Error Handling
+## Wiring Into Pipecat
+
+Pipecat APIs move between releases, so keep the websocket bridge stable and adapt only the processor wrapper to your installed Pipecat version.
+
+Typical flow:
+
+1. Start an `AsyncASRClient` when Pipecat begins a new speech segment.
+2. Convert each Pipecat audio frame to mono PCM16 bytes.
+3. Call `send_audio_chunk()` for every chunk and forward non-empty `partial` text into your transcript/event pipeline.
+4. Call `stop_stream()` when VAD or turn detection ends the segment and publish the returned final transcript.
+
+Minimal processor sketch:
 
 ```python
-class RobustASRProcessor(SyncProcessor):
-    def __init__(self, asr_url="http://localhost:8080"):
-        self.asr_url = asr_url
-        self.retry_count = 0
-        self.max_retries = 3
-    
-    async def process(self, payload) -> list:
-        try:
-            result = await self.transcribe_audio(payload)
-            return result
-        except Exception as e:
-            self.retry_count += 1
-            
-            if self.retry_count <= self.max_retries:
-                await asyncio.sleep(2 ** self.retry_count)
-                return self.process(payload)
-            
-            # Return payload as-is on failure
-            return payload
-    
-    async def transcribe_audio(self, payload):
-        """Transcribe audio with error handling."""
-        # Implementation...
-        pass
+class MyPipecatProcessor:
+    def __init__(self) -> None:
+        self._asr = PipecatASRBridge()
+
+    async def on_segment_start(self) -> None:
+        await self._asr.start_stream(language="en", sample_rate=16000)
+
+    async def on_audio_chunk(self, pcm16_chunk: bytes) -> str:
+        return await self._asr.send_audio_chunk(pcm16_chunk)
+
+    async def on_segment_end(self) -> str:
+        return await self._asr.stop_stream()
 ```
 
-## Performance Tips
+## Audio Format Notes
 
-1. **Use WebSocket** for streaming instead of REST API
-2. **Buffer 100-200ms** of audio before sending
-3. **Process in parallel** if using multiple microphones
-4. **Monitor latency** with `/api/metrics` endpoint
-5. **Use GPU** for faster inference
+- Lowest-friction path: send raw mono PCM16 chunks and set `sample_rate` in the `start` event.
+- The server can resample raw PCM16 if your Pipecat source is not already 16kHz.
+- If you send WAV or another encoded format instead of raw PCM16, each websocket `audio_data` payload still needs to be a complete decodable chunk.
 
-## Troubleshooting
+## Local Verification
 
-### Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| Connection timeout | Check ASR service is running |
-| Audio format error | Ensure 16kHz mono audio |
-| High latency | Use WebSocket streaming |
-| Language detection errors | Set explicit `language` parameter |
-
-### Debug Mode
-
-Enable debug logging:
+Start the service:
 
 ```bash
-docker compose down
-LOG_LEVEL=debug docker compose up -d
+docker compose up -d --build
 ```
 
-## Next Steps
+Then run the repo tests that cover the helper and websocket protocol:
 
-- See [LiveKit integration](./livekit-integration.md)
-- See [API documentation](./api-reference.md)
-- See [Performance benchmarks](./benchmarks.md)
+```bash
+pytest tests/test_client.py tests/test_smoke.py -v
+python3 -m compileall src tests
+```
+
+## Related Docs
+
+- [API Reference](./api-reference.md)
+- [LiveKit Integration](./livekit-integration.md)
+- [Troubleshooting](./troubleshooting.md)
