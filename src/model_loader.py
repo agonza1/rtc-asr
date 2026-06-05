@@ -19,12 +19,16 @@ class Transcriber(Protocol):
 
     def is_loaded(self) -> bool: ...
 
+    def preload(self) -> None: ...
+
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]: ...
+
+    def describe(self) -> dict[str, Any]: ...
 
 
 @dataclass(slots=True)
 class FasterWhisperAdapter:
-    """Lazy faster-whisper wrapper used by the HTTP transcription endpoints."""
+    """Lazy faster-whisper wrapper used by the transcription endpoints."""
 
     config: AppConfig
     audio_processor: AudioProcessor
@@ -37,6 +41,9 @@ class FasterWhisperAdapter:
 
     def is_loaded(self) -> bool:
         return self._model is not None
+
+    def preload(self) -> None:
+        self._load_model()
 
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
         decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
@@ -64,6 +71,27 @@ class FasterWhisperAdapter:
             "language_probability": probability,
         }
 
+    def describe(self) -> dict[str, Any]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "device": self.config.asr_device,
+            "compute_type": self.config.asr_compute_type,
+            "loaded": self.is_loaded(),
+            "streaming": {
+                "transport": "websocket",
+                "path": "/ws/stream",
+                "reusable_connection": True,
+                "message_types": ["start", "audio", "stop"],
+                "event_types": ["ready", "partial", "final", "error"],
+            },
+            "audio": {
+                "target_sample_rate": self.audio_processor.config.sample_rate,
+                "channels": 1,
+                "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
+            },
+        }
+
     def _load_model(self) -> Any:
         if self._model is not None:
             return self._model
@@ -83,7 +111,14 @@ class FasterWhisperAdapter:
         return self._model
 
 
+BACKEND_ALIASES = {
+    "faster-whisper": "faster-whisper",
+    "whisper": "faster-whisper",
+}
+
+
 def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Transcriber:
-    if config.asr_backend != "faster-whisper":
+    backend = BACKEND_ALIASES.get(config.asr_backend, config.asr_backend)
+    if backend != "faster-whisper":
         raise ASRUnavailableError(f"Unsupported ASR backend: {config.asr_backend}")
     return FasterWhisperAdapter(config=config, audio_processor=audio_processor)

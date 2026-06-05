@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import base64
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -8,6 +10,7 @@ import pytest
 
 from src.config import AppConfig
 from src.main import create_app
+from src.streaming import ASRWebSocketClient, StreamConfig
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 DEFAULT_MAX_BUFFER_BYTES = AppConfig().stream_max_buffer_bytes
@@ -19,9 +22,24 @@ class FakeTranscriber:
 
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
+        self.preload_calls = 0
 
     def is_loaded(self) -> bool:
-        return True
+        return self.preload_calls > 0
+
+    def preload(self) -> None:
+        self.preload_calls += 1
+
+    def describe(self) -> dict[str, object]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "loaded": self.is_loaded(),
+            "streaming": {
+                "transport": "websocket",
+                "path": "/ws/stream",
+            },
+        }
 
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
         self.calls.append(
@@ -48,6 +66,15 @@ class StableTextTranscriber(FakeTranscriber):
         return result
 
 
+class FailingPreloadTranscriber(FakeTranscriber):
+    def __init__(self, exc: Exception) -> None:
+        super().__init__()
+        self.exc = exc
+
+    def preload(self) -> None:
+        raise self.exc
+
+
 def test_health_smoke() -> None:
     transcriber = FakeTranscriber()
     with TestClient(create_app(transcriber=transcriber)) as client:
@@ -61,6 +88,66 @@ def test_health_smoke() -> None:
         "model": "fixture-adapter",
         "model_loaded": True,
     }
+
+
+def test_ready_and_model_capabilities_smoke() -> None:
+    transcriber = FakeTranscriber()
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        ready = client.get("/ready")
+        models = client.get("/api/models")
+
+    assert ready.status_code == 200
+    assert ready.json() == {
+        "status": "ready",
+        "service": "realtime-asr",
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+        "model_loaded": True,
+        "preload_error": None,
+    }
+    assert models.status_code == 200
+    assert models.json() == {
+        "models": ["fixture-adapter"],
+        "backend": "fake-whisper",
+        "sample_rate": 16000,
+        "capabilities": {
+            "backend": "fake-whisper",
+            "model": "fixture-adapter",
+            "loaded": True,
+            "streaming": {
+                "transport": "websocket",
+                "path": "/ws/stream",
+            },
+        },
+    }
+    assert transcriber.preload_calls == 1
+
+
+def test_ready_returns_503_when_preload_is_degraded() -> None:
+    transcriber = FailingPreloadTranscriber(RuntimeError("model download failed"))
+    config = AppConfig(asr_fail_fast=False)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        ready = client.get("/ready")
+
+    assert ready.status_code == 503
+    assert ready.json() == {
+        "status": "degraded",
+        "service": "realtime-asr",
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+        "model_loaded": False,
+        "preload_error": "model download failed",
+    }
+
+
+def test_fail_fast_raises_for_non_asr_preload_failures() -> None:
+    transcriber = FailingPreloadTranscriber(RuntimeError("invalid device"))
+    config = AppConfig(asr_fail_fast=True)
+
+    with pytest.raises(RuntimeError, match="invalid device"):
+        with TestClient(create_app(config=config, transcriber=transcriber)):
+            pass
 
 
 def test_transcribe_smoke_fixture() -> None:
@@ -571,6 +658,7 @@ def test_websocket_stream_rejects_audio_that_exceeds_the_session_buffer_limit() 
     }
     assert transcriber.calls == []
 
+
 def test_websocket_stream_error_payload_includes_close_code() -> None:
     transcriber = FakeTranscriber()
 
@@ -584,3 +672,65 @@ def test_websocket_stream_error_payload_includes_close_code() -> None:
         "message": "Send a start event before stopping the stream",
         "code": 1003,
     }
+
+
+def test_streaming_client_drains_stale_partial_before_final() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "ready",
+                        "stream_id": 1,
+                        "backend": "fake-whisper",
+                        "model": "fixture-adapter",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "partial_interval_chunks": 1,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "partial",
+                        "stream_id": 1,
+                        "is_final": False,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hel",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "final",
+                        "stream_id": 1,
+                        "is_final": True,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hello",
+                    }
+                ),
+            ]
+            self.recv_calls = 0
+            self.sent: list[dict[str, object]] = []
+
+        async def send(self, data: str) -> None:
+            self.sent.append(json.loads(data))
+
+        async def recv(self) -> str:
+            self.recv_calls += 1
+            if self.recv_calls == 2:
+                await asyncio.sleep(0.05)
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        events = await client.transcribe_once([b"hel"], config=StreamConfig(partial_event_timeout_seconds=0.01))
+
+        assert [event.type for event in events] == ["ready", "final"]
+        assert events[-1].text == "hello"
+
+    asyncio.run(scenario())

@@ -12,6 +12,7 @@ from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
 import uvicorn
 
@@ -46,6 +47,7 @@ class AppServices:
     config: AppConfig
     audio_processor: AudioProcessor
     transcriber: Transcriber
+    preload_error: str | None = None
 
 
 class StreamClientError(ValueError):
@@ -99,6 +101,14 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             services.transcriber.backend_name,
             services.transcriber.model_name,
         )
+        if services.config.asr_preload_model:
+            try:
+                services.transcriber.preload()
+            except Exception as exc:
+                services.preload_error = str(exc)
+                logger.warning("ASR preload failed: %s", exc)
+                if services.config.asr_fail_fast:
+                    raise
         try:
             yield
         finally:
@@ -130,13 +140,29 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             "model_loaded": current.transcriber.is_loaded(),
         }
 
+    @app.get("/ready")
+    async def readiness_check() -> JSONResponse:
+        current = app.state.services
+        is_ready = current.preload_error is None
+        payload = {
+            "status": "ready" if is_ready else "degraded",
+            "service": "realtime-asr",
+            "backend": current.transcriber.backend_name,
+            "model": current.transcriber.model_name,
+            "model_loaded": current.transcriber.is_loaded(),
+            "preload_error": current.preload_error,
+        }
+        return JSONResponse(status_code=200 if is_ready else 503, content=payload)
+
     @app.get("/api/models")
     async def list_models() -> dict[str, object]:
         current = app.state.services
+        description = current.transcriber.describe()
         return {
             "models": [current.transcriber.model_name],
             "backend": current.transcriber.backend_name,
             "sample_rate": current.config.sample_rate,
+            "capabilities": description,
         }
 
     @app.post("/api/transcribe")

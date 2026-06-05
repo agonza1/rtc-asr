@@ -10,7 +10,8 @@ Realtime speech recognition service with REST transcription endpoints and a buff
 
 ## Current Scope
 
-- `GET /health` reports service/backend readiness
+- `GET /health` reports liveness and active backend metadata
+- `GET /ready` reports preload readiness and startup degradation state
 - `POST /api/transcribe` accepts base64 audio payloads and routes them through the configured transcriber
 - `POST /api/transcribe/file` accepts uploaded audio files
 - `GET /api/models` reports the active backend/model configuration
@@ -40,6 +41,9 @@ docker compose logs -f
 ```bash
 # Health check
 curl http://localhost:8080/health
+
+# Readiness check
+curl http://localhost:8080/ready
 
 # List models
 curl http://localhost:8080/api/models
@@ -95,6 +99,8 @@ ASR_MODEL_SIZE=small.en
 ASR_DEVICE=cpu
 ASR_COMPUTE_TYPE=int8
 ASR_VAD_FILTER=true
+ASR_PRELOAD_MODEL=true
+ASR_FAIL_FAST=false
 ```
 
 For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`.
