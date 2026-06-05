@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 from dataclasses import dataclass
@@ -48,6 +49,8 @@ class AsyncASRClient:
         self.ws_url = ws_url
         self._connect_fn = connect_fn
         self._websocket: WebSocketConnection | None = None
+        self._partial_interval_chunks = 1
+        self._chunks_sent = 0
 
     async def connect(self) -> WebSocketConnection:
         if self._websocket is not None:
@@ -80,19 +83,38 @@ class AsyncASRClient:
         ready_event = await self._recv_json()
         if ready_event.get("type") != "ready":
             raise RuntimeError(f"Expected ready event, got: {ready_event}")
+        self._partial_interval_chunks = partial_interval_chunks
+        self._chunks_sent = 0
         return ready_event
 
-    async def send_audio(self, chunk: bytes) -> TranscriptEvent:
+    async def send_audio(
+        self,
+        chunk: bytes,
+        *,
+        expect_response: bool | None = None,
+        response_timeout: float = 0.1,
+    ) -> TranscriptEvent | None:
         websocket = self._require_websocket()
         await websocket.send(json.dumps({
             "type": "audio",
             "audio_data": base64.b64encode(chunk).decode("ascii"),
         }))
-        return TranscriptEvent.from_payload(await self._recv_json())
+        self._chunks_sent += 1
+
+        if expect_response is None:
+            expect_response = self._chunks_sent % self._partial_interval_chunks == 0
+        if not expect_response:
+            return None
+
+        payload = await self._recv_json_with_timeout(response_timeout)
+        if payload is None:
+            return None
+        return TranscriptEvent.from_payload(payload)
 
     async def stop(self) -> TranscriptEvent:
         websocket = self._require_websocket()
         await websocket.send(json.dumps({"type": "stop"}))
+        self._chunks_sent = 0
         return TranscriptEvent.from_payload(await self._recv_json())
 
     async def close(self) -> None:
@@ -107,6 +129,13 @@ class AsyncASRClient:
         if payload.get("type") == "error":
             raise RuntimeError(str(payload.get("message", "Unknown ASR websocket error")))
         return payload
+
+
+    async def _recv_json_with_timeout(self, timeout: float) -> dict[str, Any] | None:
+        try:
+            return await asyncio.wait_for(self._recv_json(), timeout=timeout)
+        except TimeoutError:
+            return None
 
     def _require_websocket(self) -> WebSocketConnection:
         if self._websocket is None:
