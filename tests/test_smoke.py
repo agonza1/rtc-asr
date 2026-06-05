@@ -451,3 +451,18 @@ def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
             "prefix": first_chunk[:4],
         },
     ]
+
+
+def test_websocket_stream_error_payload_includes_close_code() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "stop"})
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "message": "Send a start event before stopping the stream",
+        "code": 1003,
+    }

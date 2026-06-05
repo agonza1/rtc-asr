@@ -352,7 +352,7 @@ def _transcribe_bytes(
 
 async def _close_websocket_error(websocket: WebSocket, message: str, *, code: int) -> None:
     try:
-        await websocket.send_json({"type": "error", "message": message})
+        await websocket.send_json({"type": "error", "message": message, "code": code})
         await websocket.close(code=code)
     except RuntimeError:
         return
