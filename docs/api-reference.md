@@ -24,6 +24,25 @@ Example response:
 }
 ```
 
+## Readiness Check
+
+```http
+GET /ready
+```
+
+Example response:
+
+```json
+{
+  "status": "ready",
+  "service": "realtime-asr",
+  "backend": "faster-whisper",
+  "model": "small.en",
+  "model_loaded": true,
+  "preload_error": null
+}
+```
+
 ## List Models
 
 ```http
@@ -36,7 +55,17 @@ Example response:
 {
   "models": ["small.en"],
   "backend": "faster-whisper",
-  "sample_rate": 16000
+  "sample_rate": 16000,
+  "capabilities": {
+    "backend": "faster-whisper",
+    "model": "small.en",
+    "loaded": true,
+    "streaming": {
+      "transport": "websocket",
+      "path": "/ws/stream",
+      "reusable_connection": true
+    }
+  }
 }
 ```
 

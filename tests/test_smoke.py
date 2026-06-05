@@ -19,9 +19,24 @@ class FakeTranscriber:
 
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
+        self.preload_calls = 0
 
     def is_loaded(self) -> bool:
-        return True
+        return self.preload_calls > 0
+
+    def preload(self) -> None:
+        self.preload_calls += 1
+
+    def describe(self) -> dict[str, object]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "loaded": self.is_loaded(),
+            "streaming": {
+                "transport": "websocket",
+                "path": "/ws/stream",
+            },
+        }
 
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
         self.calls.append(
@@ -61,6 +76,39 @@ def test_health_smoke() -> None:
         "model": "fixture-adapter",
         "model_loaded": True,
     }
+
+
+def test_ready_and_model_capabilities_smoke() -> None:
+    transcriber = FakeTranscriber()
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        ready = client.get("/ready")
+        models = client.get("/api/models")
+
+    assert ready.status_code == 200
+    assert ready.json() == {
+        "status": "ready",
+        "service": "realtime-asr",
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+        "model_loaded": True,
+        "preload_error": None,
+    }
+    assert models.status_code == 200
+    assert models.json() == {
+        "models": ["fixture-adapter"],
+        "backend": "fake-whisper",
+        "sample_rate": 16000,
+        "capabilities": {
+            "backend": "fake-whisper",
+            "model": "fixture-adapter",
+            "loaded": True,
+            "streaming": {
+                "transport": "websocket",
+                "path": "/ws/stream",
+            },
+        },
+    }
+    assert transcriber.preload_calls == 1
 
 
 def test_transcribe_smoke_fixture() -> None:

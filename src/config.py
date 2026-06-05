@@ -6,6 +6,14 @@ import os
 from dataclasses import dataclass
 
 
+def _cors_origins(value: str | None, default: tuple[str, ...]) -> tuple[str, ...]:
+    if value is None:
+        return default
+
+    origins = tuple(origin.strip() for origin in value.split(",") if origin.strip())
+    return origins or default
+
+
 def _env_flag(name: str, default: bool) -> bool:
     value = os.getenv(name)
     if value is None:
@@ -49,6 +57,8 @@ class AppConfig:
     asr_device: str = "cpu"
     asr_compute_type: str = "int8"
     asr_vad_filter: bool = True
+    asr_preload_model: bool = True
+    asr_fail_fast: bool = False
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -64,6 +74,7 @@ class AppConfig:
             app_version=os.getenv("APP_VERSION", defaults.app_version),
             host=os.getenv("HOST", defaults.host),
             port=int(os.getenv("PORT", str(defaults.port))),
+            cors_origins=_cors_origins(os.getenv("CORS_ORIGINS"), defaults.cors_origins),
             sample_rate=int(_first_env("SAMPLE_RATE", "AUDIO_SAMPLE_RATE") or str(defaults.sample_rate)),
             stream_max_buffer_bytes=stream_max_buffer_bytes,
             asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
@@ -71,4 +82,6 @@ class AppConfig:
             asr_device=_default_asr_device(defaults.asr_device),
             asr_compute_type=os.getenv("ASR_COMPUTE_TYPE", defaults.asr_compute_type),
             asr_vad_filter=_env_flag("ASR_VAD_FILTER", defaults.asr_vad_filter),
+            asr_preload_model=_env_flag("ASR_PRELOAD_MODEL", defaults.asr_preload_model),
+            asr_fail_fast=_env_flag("ASR_FAIL_FAST", defaults.asr_fail_fast),
         )
