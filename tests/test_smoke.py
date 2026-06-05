@@ -10,6 +10,7 @@ from src.config import AppConfig
 from src.main import create_app
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
+DEFAULT_MAX_BUFFER_BYTES = AppConfig().stream_max_buffer_bytes
 
 
 class FakeTranscriber:
@@ -115,6 +116,7 @@ def test_websocket_stream_emits_partial_and_final_events() -> None:
                 "language": "en",
                 "sample_rate": 16000,
                 "partial_interval_chunks": 1,
+                "max_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
             }
 
             websocket.send_json({
@@ -128,6 +130,7 @@ def test_websocket_stream_emits_partial_and_final_events() -> None:
                 "is_final": False,
                 "chunks_received": 1,
                 "buffered_bytes": len(chunk_one),
+                "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(chunk_one),
                 "text": "fixture transcription 1",
                 "language": "en",
                 "duration_ms": 125,
@@ -146,6 +149,7 @@ def test_websocket_stream_emits_partial_and_final_events() -> None:
                 "is_final": False,
                 "chunks_received": 2,
                 "buffered_bytes": len(chunk_one) + len(chunk_two),
+                "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(chunk_one) - len(chunk_two),
                 "text": "fixture transcription 2",
                 "language": "en",
                 "duration_ms": 125,
@@ -161,6 +165,7 @@ def test_websocket_stream_emits_partial_and_final_events() -> None:
                 "is_final": True,
                 "chunks_received": 2,
                 "buffered_bytes": len(chunk_one) + len(chunk_two),
+                "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(chunk_one) - len(chunk_two),
                 "text": "fixture transcription 2",
                 "language": "en",
                 "duration_ms": 125,
@@ -209,6 +214,7 @@ def test_websocket_stream_accepts_binary_audio_frames() -> None:
         "is_final": False,
         "chunks_received": 1,
         "buffered_bytes": len(first_chunk),
+        "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(first_chunk),
         "text": "fixture transcription 1",
         "language": "en",
         "duration_ms": 125,
@@ -221,6 +227,7 @@ def test_websocket_stream_accepts_binary_audio_frames() -> None:
         "is_final": False,
         "chunks_received": 2,
         "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(first_chunk) - len(second_chunk),
         "text": "fixture transcription 2",
         "language": "en",
         "duration_ms": 125,
@@ -233,6 +240,7 @@ def test_websocket_stream_accepts_binary_audio_frames() -> None:
         "is_final": True,
         "chunks_received": 2,
         "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(first_chunk) - len(second_chunk),
         "text": "fixture transcription 2",
         "language": "en",
         "duration_ms": 125,
@@ -276,6 +284,7 @@ def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
                 "is_final": True,
                 "chunks_received": 1,
                 "buffered_bytes": len(first_chunk),
+                "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(first_chunk),
                 "text": "fixture transcription 1",
                 "language": "en",
                 "duration_ms": 125,
@@ -293,6 +302,7 @@ def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
                 "language": "es",
                 "sample_rate": 8000,
                 "partial_interval_chunks": 1,
+                "max_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
             }
 
             websocket.send_json(
@@ -308,6 +318,7 @@ def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
                 "is_final": False,
                 "chunks_received": 1,
                 "buffered_bytes": len(second_chunk),
+                "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(second_chunk),
                 "text": "fixture transcription 2",
                 "language": "es",
                 "duration_ms": 125,
@@ -323,6 +334,7 @@ def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
                 "is_final": True,
                 "chunks_received": 1,
                 "buffered_bytes": len(second_chunk),
+                "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(second_chunk),
                 "text": "fixture transcription 2",
                 "language": "es",
                 "duration_ms": 125,
@@ -401,6 +413,7 @@ def test_websocket_stream_retranscribes_on_stop_when_partial_interval_skips_late
         "is_final": True,
         "chunks_received": 3,
         "buffered_bytes": len(first_chunk) + len(second_chunk) + len(third_chunk),
+        "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(first_chunk) - len(second_chunk) - len(third_chunk),
         "text": "fixture transcription 2",
         "language": "en",
         "duration_ms": 125,
@@ -438,6 +451,17 @@ def test_legacy_env_aliases_and_cuda_detection(monkeypatch: pytest.MonkeyPatch) 
     assert config.asr_device == "cuda"
 
 
+@pytest.mark.parametrize("invalid_value", ["0", "-1"])
+def test_stream_max_buffer_bytes_must_be_positive(
+    monkeypatch: pytest.MonkeyPatch,
+    invalid_value: str,
+) -> None:
+    monkeypatch.setenv("STREAM_MAX_BUFFER_BYTES", invalid_value)
+
+    with pytest.raises(ValueError, match="STREAM_MAX_BUFFER_BYTES must be a positive integer"):
+        AppConfig.from_env()
+
+
 def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
     transcriber = StableTextTranscriber()
     first_chunk = b"first"
@@ -473,6 +497,7 @@ def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
         "is_final": False,
         "chunks_received": 1,
         "buffered_bytes": len(first_chunk),
+        "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(first_chunk),
         "text": "steady partial",
         "language": "en",
         "duration_ms": 125,
@@ -485,6 +510,7 @@ def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
         "is_final": False,
         "chunks_received": 2,
         "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(first_chunk) - len(second_chunk),
         "text": "steady partial",
         "language": "en",
         "duration_ms": 125,
@@ -497,6 +523,7 @@ def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
         "is_final": True,
         "chunks_received": 2,
         "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(first_chunk) - len(second_chunk),
         "text": "steady partial",
         "language": "en",
         "duration_ms": 125,

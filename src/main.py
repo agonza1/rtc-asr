@@ -206,6 +206,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                             "language": session.language,
                             "sample_rate": session.sample_rate,
                             "partial_interval_chunks": session.partial_interval_chunks,
+                            "max_buffer_bytes": session.max_buffer_bytes,
                         }
                     )
                     continue
@@ -334,12 +335,14 @@ async def _receive_stream_event(
 
 
 def _stream_event(event_type: str, session: StreamSession, transcript: dict[str, object]) -> dict[str, object]:
+    buffered_bytes = len(session.audio_buffer)
     return {
         "type": event_type,
         "stream_id": session.stream_id,
         "is_final": event_type == "final",
         "chunks_received": session.chunks_received,
-        "buffered_bytes": len(session.audio_buffer),
+        "buffered_bytes": buffered_bytes,
+        "remaining_buffer_bytes": session.max_buffer_bytes - buffered_bytes,
         **transcript,
     }
 

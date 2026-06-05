@@ -53,15 +53,19 @@ class AppConfig:
     @classmethod
     def from_env(cls) -> "AppConfig":
         defaults = cls()
+        stream_max_buffer_bytes = int(
+            os.getenv("STREAM_MAX_BUFFER_BYTES", str(defaults.stream_max_buffer_bytes))
+        )
+        if stream_max_buffer_bytes <= 0:
+            raise ValueError("STREAM_MAX_BUFFER_BYTES must be a positive integer")
+
         return cls(
             app_name=os.getenv("APP_NAME", defaults.app_name),
             app_version=os.getenv("APP_VERSION", defaults.app_version),
             host=os.getenv("HOST", defaults.host),
             port=int(os.getenv("PORT", str(defaults.port))),
             sample_rate=int(_first_env("SAMPLE_RATE", "AUDIO_SAMPLE_RATE") or str(defaults.sample_rate)),
-            stream_max_buffer_bytes=int(
-                os.getenv("STREAM_MAX_BUFFER_BYTES", str(defaults.stream_max_buffer_bytes))
-            ),
+            stream_max_buffer_bytes=stream_max_buffer_bytes,
             asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
             asr_device=_default_asr_device(defaults.asr_device),
