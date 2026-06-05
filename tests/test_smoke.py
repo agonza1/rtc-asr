@@ -587,7 +587,7 @@ def test_websocket_rejects_duplicate_start_events() -> None:
             })
             assert websocket.receive_json() == {
                 "type": "error",
-                "message": "Stream already started for this connection",
+                "message": "Finish the active stream before starting a new one",
                 "code": 1003,
             }
 
