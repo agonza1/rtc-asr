@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import base64
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -8,6 +10,7 @@ import pytest
 
 from src.config import AppConfig
 from src.main import create_app
+from src.streaming import ASRWebSocketClient, StreamConfig
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 DEFAULT_MAX_BUFFER_BYTES = AppConfig().stream_max_buffer_bytes
@@ -655,6 +658,7 @@ def test_websocket_stream_rejects_audio_that_exceeds_the_session_buffer_limit() 
     }
     assert transcriber.calls == []
 
+
 def test_websocket_stream_error_payload_includes_close_code() -> None:
     transcriber = FakeTranscriber()
 
@@ -668,3 +672,65 @@ def test_websocket_stream_error_payload_includes_close_code() -> None:
         "message": "Send a start event before stopping the stream",
         "code": 1003,
     }
+
+
+def test_streaming_client_drains_stale_partial_before_final() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "ready",
+                        "stream_id": 1,
+                        "backend": "fake-whisper",
+                        "model": "fixture-adapter",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "partial_interval_chunks": 1,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "partial",
+                        "stream_id": 1,
+                        "is_final": False,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hel",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "final",
+                        "stream_id": 1,
+                        "is_final": True,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hello",
+                    }
+                ),
+            ]
+            self.recv_calls = 0
+            self.sent: list[dict[str, object]] = []
+
+        async def send(self, data: str) -> None:
+            self.sent.append(json.loads(data))
+
+        async def recv(self) -> str:
+            self.recv_calls += 1
+            if self.recv_calls == 2:
+                await asyncio.sleep(0.05)
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        events = await client.transcribe_once([b"hel"], config=StreamConfig(partial_event_timeout_seconds=0.01))
+
+        assert [event.type for event in events] == ["ready", "final"]
+        assert events[-1].text == "hello"
+
+    asyncio.run(scenario())

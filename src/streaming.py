@@ -97,7 +97,10 @@ class ASRWebSocketClient:
 
     async def stop_stream(self) -> TranscriptEvent:
         await self._send_json({"type": "stop"})
-        return await self.receive_event()
+        while True:
+            event = await self.receive_event()
+            if event.type != "partial":
+                return event
 
     async def receive_event(self) -> TranscriptEvent:
         websocket = self._require_websocket()
