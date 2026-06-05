@@ -43,6 +43,7 @@ class AppConfig:
     port: int = 8080
     cors_origins: tuple[str, ...] = ("*",)
     sample_rate: int = 16000
+    stream_max_buffer_bytes: int = 1024 * 1024
     asr_backend: str = "faster-whisper"
     asr_model_size: str = "tiny.en"
     asr_device: str = "cpu"
@@ -58,6 +59,9 @@ class AppConfig:
             host=os.getenv("HOST", defaults.host),
             port=int(os.getenv("PORT", str(defaults.port))),
             sample_rate=int(_first_env("SAMPLE_RATE", "AUDIO_SAMPLE_RATE") or str(defaults.sample_rate)),
+            stream_max_buffer_bytes=int(
+                os.getenv("STREAM_MAX_BUFFER_BYTES", str(defaults.stream_max_buffer_bytes))
+            ),
             asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
             asr_device=_default_asr_device(defaults.asr_device),

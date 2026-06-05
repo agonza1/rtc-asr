@@ -519,6 +519,31 @@ def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
     ]
 
 
+
+def test_websocket_stream_rejects_audio_that_exceeds_the_session_buffer_limit() -> None:
+    transcriber = FakeTranscriber()
+    config = AppConfig(stream_max_buffer_bytes=8)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(b"overflow!").decode("ascii"),
+                }
+            )
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "message": "Stream buffer exceeded 8 bytes; send stop and start a new stream",
+        "code": 1009,
+    }
+    assert transcriber.calls == []
+
 def test_websocket_stream_error_payload_includes_close_code() -> None:
     transcriber = FakeTranscriber()
 
