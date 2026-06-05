@@ -184,6 +184,72 @@ def test_websocket_stream_emits_partial_and_final_events() -> None:
     ]
 
 
+def test_websocket_stream_accepts_binary_audio_frames() -> None:
+    transcriber = FakeTranscriber()
+    first_chunk = b"first"
+    second_chunk = b"second"
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(first_chunk)
+            first_partial = websocket.receive_json()
+
+            websocket.send_bytes(second_chunk)
+            second_partial = websocket.receive_json()
+
+            websocket.send_json({"type": "stop"})
+            final_event = websocket.receive_json()
+
+    assert first_partial == {
+        "type": "partial",
+        "stream_id": 1,
+        "is_final": False,
+        "chunks_received": 1,
+        "buffered_bytes": len(first_chunk),
+        "text": "fixture transcription 1",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert second_partial == {
+        "type": "partial",
+        "stream_id": 1,
+        "is_final": False,
+        "chunks_received": 2,
+        "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "text": "fixture transcription 2",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert final_event == {
+        "type": "final",
+        "stream_id": 1,
+        "is_final": True,
+        "chunks_received": 2,
+        "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "text": "fixture transcription 2",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert transcriber.calls == [
+        {"audio_size": len(first_chunk), "language": "en", "sample_rate": 16000, "prefix": first_chunk[:4]},
+        {
+            "audio_size": len(first_chunk) + len(second_chunk),
+            "language": "en",
+            "sample_rate": 16000,
+            "prefix": first_chunk[:4],
+        },
+    ]
+
+
 def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
     transcriber = FakeTranscriber()
     first_chunk = b"first"

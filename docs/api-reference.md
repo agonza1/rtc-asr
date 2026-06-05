@@ -119,7 +119,7 @@ Client event sequence:
 }
 ```
 
-2. Send one or more audio chunks:
+2. Send one or more audio chunks as JSON base64 events or raw binary websocket frames after `start`:
 
 ```json
 {
@@ -127,6 +127,8 @@ Client event sequence:
   "audio_data": "base64_encoded_audio_chunk"
 }
 ```
+
+Or send the chunk bytes directly as a binary websocket frame once the stream is ready.
 
 3. Finish the stream:
 

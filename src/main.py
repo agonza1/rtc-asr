@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import json
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -172,8 +173,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
 
         try:
             while True:
-                payload = await websocket.receive_json()
-                event_type = str(payload.get("type", "")).strip().lower()
+                payload, event_type = await _receive_stream_event(websocket, session)
 
                 if event_type == "start":
                     if session is not None:
@@ -285,6 +285,36 @@ def _decode_websocket_audio(payload: dict[str, Any]) -> bytes:
         return base64.b64decode(encoded_audio, validate=True)
     except (ValueError, binascii.Error) as exc:
         raise ValueError("audio_data must be valid base64-encoded audio bytes") from exc
+
+
+async def _receive_stream_event(
+    websocket: WebSocket,
+    session: StreamSession | None,
+) -> tuple[dict[str, Any], str]:
+    message = await websocket.receive()
+    if message["type"] == "websocket.disconnect":
+        raise WebSocketDisconnect(message["code"], message.get("reason"))
+
+    binary_audio = message.get("bytes")
+    if binary_audio is not None:
+        if session is None:
+            raise ValueError("Send a start event before audio chunks")
+        return {"audio_data": base64.b64encode(binary_audio).decode("ascii")}, "audio"
+
+    raw_text = message.get("text")
+    if raw_text is None:
+        raise ValueError("Stream events must be JSON text or binary audio frames")
+
+    try:
+        payload = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        raise ValueError("Stream events must be valid JSON") from exc
+
+    if not isinstance(payload, dict):
+        raise ValueError("Stream events must be JSON objects")
+
+    event_type = str(payload.get("type", "")).strip().lower()
+    return payload, event_type
 
 
 def _stream_event(event_type: str, session: StreamSession, transcript: dict[str, object]) -> dict[str, object]:
