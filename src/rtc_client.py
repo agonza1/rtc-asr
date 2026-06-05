@@ -115,7 +115,10 @@ class AsyncASRClient:
         websocket = self._require_websocket()
         await websocket.send(json.dumps({"type": "stop"}))
         self._chunks_sent = 0
-        return TranscriptEvent.from_payload(await self._recv_json())
+        while True:
+            event = TranscriptEvent.from_payload(await self._recv_json())
+            if event.type != "partial":
+                return event
 
     async def close(self) -> None:
         if self._websocket is None:

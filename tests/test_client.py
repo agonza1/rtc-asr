@@ -145,3 +145,57 @@ def test_async_asr_client_tolerates_missing_partial_event() -> None:
         assert final_event.text == 'hello'
 
     asyncio.run(scenario())
+
+
+def test_async_asr_client_drains_stale_partial_before_final() -> None:
+    class DelayedPartialWebSocket(FakeWebSocket):
+        def __init__(self) -> None:
+            super().__init__([
+                {
+                    'type': 'ready',
+                    'backend': 'fake-whisper',
+                    'model': 'fixture-adapter',
+                    'language': 'en',
+                    'sample_rate': 16000,
+                    'partial_interval_chunks': 1,
+                },
+                {
+                    'type': 'partial',
+                    'is_final': False,
+                    'chunks_received': 1,
+                    'buffered_bytes': 3,
+                    'text': 'hel',
+                },
+                {
+                    'type': 'final',
+                    'is_final': True,
+                    'chunks_received': 1,
+                    'buffered_bytes': 3,
+                    'text': 'hello',
+                },
+            ])
+            self.recv_calls = 0
+
+        async def recv(self) -> str:
+            self.recv_calls += 1
+            if self.recv_calls == 2:
+                await asyncio.sleep(0.05)
+            return await super().recv()
+
+    websocket = DelayedPartialWebSocket()
+
+    async def fake_connect(_: str) -> DelayedPartialWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        client = AsyncASRClient('ws://example.test/ws/stream', connect_fn=fake_connect)
+        await client.start()
+        partial_event = await client.send_audio(b'hel', response_timeout=0.01)
+        final_event = await client.stop()
+        await client.close()
+
+        assert partial_event is None
+        assert final_event.type == 'final'
+        assert final_event.text == 'hello'
+
+    asyncio.run(scenario())
