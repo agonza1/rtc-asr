@@ -63,6 +63,15 @@ class StableTextTranscriber(FakeTranscriber):
         return result
 
 
+class FailingPreloadTranscriber(FakeTranscriber):
+    def __init__(self, exc: Exception) -> None:
+        super().__init__()
+        self.exc = exc
+
+    def preload(self) -> None:
+        raise self.exc
+
+
 def test_health_smoke() -> None:
     transcriber = FakeTranscriber()
     with TestClient(create_app(transcriber=transcriber)) as client:
@@ -109,6 +118,33 @@ def test_ready_and_model_capabilities_smoke() -> None:
         },
     }
     assert transcriber.preload_calls == 1
+
+
+def test_ready_returns_503_when_preload_is_degraded() -> None:
+    transcriber = FailingPreloadTranscriber(RuntimeError("model download failed"))
+    config = AppConfig(asr_fail_fast=False)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        ready = client.get("/ready")
+
+    assert ready.status_code == 503
+    assert ready.json() == {
+        "status": "degraded",
+        "service": "realtime-asr",
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+        "model_loaded": False,
+        "preload_error": "model download failed",
+    }
+
+
+def test_fail_fast_raises_for_non_asr_preload_failures() -> None:
+    transcriber = FailingPreloadTranscriber(RuntimeError("invalid device"))
+    config = AppConfig(asr_fail_fast=True)
+
+    with pytest.raises(RuntimeError, match="invalid device"):
+        with TestClient(create_app(config=config, transcriber=transcriber)):
+            pass
 
 
 def test_transcribe_smoke_fixture() -> None:

@@ -17,6 +17,7 @@ class StreamConfig:
     language: str | None = "en"
     sample_rate: int = 16000
     partial_interval_chunks: int = 1
+    partial_event_timeout_seconds: float = 0.1
 
     def as_payload(self) -> dict[str, Any]:
         return {
@@ -108,12 +109,23 @@ class ASRWebSocketClient:
         ready = await self.start_stream(config)
         events.append(ready)
 
-        for chunk in chunks:
+        for chunk_index, chunk in enumerate(chunks, start=1):
             await self.send_audio_chunk(chunk)
-            events.append(await self.receive_event())
+            if chunk_index % config.partial_interval_chunks != 0:
+                continue
+
+            partial_event = await self._receive_optional_event(timeout=config.partial_event_timeout_seconds)
+            if partial_event is not None:
+                events.append(partial_event)
 
         events.append(await self.stop_stream())
         return events
+
+    async def _receive_optional_event(self, *, timeout: float) -> TranscriptEvent | None:
+        try:
+            return await asyncio.wait_for(self.receive_event(), timeout=timeout)
+        except TimeoutError:
+            return None
 
     async def _send_json(self, payload: dict[str, Any]) -> None:
         websocket = self._require_websocket()

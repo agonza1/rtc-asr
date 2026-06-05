@@ -12,6 +12,7 @@ from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
 import uvicorn
 
@@ -103,7 +104,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         if services.config.asr_preload_model:
             try:
                 services.transcriber.preload()
-            except ASRUnavailableError as exc:
+            except Exception as exc:
                 services.preload_error = str(exc)
                 logger.warning("ASR preload failed: %s", exc)
                 if services.config.asr_fail_fast:
@@ -140,10 +141,10 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         }
 
     @app.get("/ready")
-    async def readiness_check() -> dict[str, object]:
+    async def readiness_check() -> JSONResponse:
         current = app.state.services
         is_ready = current.preload_error is None
-        return {
+        payload = {
             "status": "ready" if is_ready else "degraded",
             "service": "realtime-asr",
             "backend": current.transcriber.backend_name,
@@ -151,6 +152,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             "model_loaded": current.transcriber.is_loaded(),
             "preload_error": current.preload_error,
         }
+        return JSONResponse(status_code=200 if is_ready else 503, content=payload)
 
     @app.get("/api/models")
     async def list_models() -> dict[str, object]:
