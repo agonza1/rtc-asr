@@ -14,7 +14,7 @@ Realtime speech recognition service with REST transcription endpoints and a buff
 - `POST /api/transcribe` accepts base64 audio payloads and routes them through the configured transcriber
 - `POST /api/transcribe/file` accepts uploaded audio files
 - `GET /api/models` reports the active backend/model configuration
-- `ws://.../ws/stream` accepts `start`, `audio`, and `stop` events and emits buffered `partial`/`final` transcript events
+- `ws://.../ws/stream` accepts `start`, `audio`, and `stop` events, plus raw binary audio frames after `start`, and emits buffered `partial`/`final` transcript events
 - smoke tests inject a fake transcriber, so local verification does not need to download a Whisper model
 
 ## Quick Start
