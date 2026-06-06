@@ -10,7 +10,7 @@ import pytest
 
 from src.config import AppConfig
 from src.main import create_app
-from src.streaming import ASRWebSocketClient, StreamConfig
+from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 DEFAULT_MAX_BUFFER_BYTES = AppConfig().stream_max_buffer_bytes
@@ -735,6 +735,79 @@ def test_websocket_stream_rejects_binary_audio_before_start() -> None:
         "code": 1003,
     }
     assert transcriber.calls == []
+
+
+def test_transcript_event_parses_remaining_buffer_bytes() -> None:
+    event = TranscriptEvent.from_payload({
+        "type": "partial",
+        "text": "hel",
+        "stream_id": 1,
+        "buffered_bytes": 3,
+        "remaining_buffer_bytes": 1021,
+    })
+
+    assert event.type == "partial"
+    assert event.text == "hel"
+    assert event.stream_id == 1
+    assert event.buffered_bytes == 3
+    assert event.remaining_buffer_bytes == 1021
+
+
+def test_streaming_client_stops_after_error_event() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "ready",
+                        "stream_id": 1,
+                        "backend": "fake-whisper",
+                        "model": "fixture-adapter",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "partial_interval_chunks": 1,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "backend unavailable",
+                        "code": 1011,
+                    }
+                ),
+            ]
+            self.sent: list[dict[str, object]] = []
+
+        async def send(self, data: str) -> None:
+            self.sent.append(json.loads(data))
+
+        async def recv(self) -> str:
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        events = await client.transcribe_once([b"hel"], config=StreamConfig(partial_event_timeout_seconds=0.01))
+
+        assert [event.type for event in events] == ["ready", "error"]
+        assert events[-1].text == "backend unavailable"
+        assert client._websocket.sent == [
+            {
+                "type": "start",
+                "language": "en",
+                "sample_rate": 16000,
+                "partial_interval_chunks": 1,
+            },
+            {
+                "type": "audio",
+                "audio_data": base64.b64encode(b"hel").decode("ascii"),
+            },
+        ]
+
+    asyncio.run(scenario())
 
 
 def test_streaming_client_drains_stale_partial_before_final() -> None:

@@ -37,6 +37,7 @@ class TranscriptEvent:
     is_final: bool = False
     chunks_received: int = 0
     buffered_bytes: int = 0
+    remaining_buffer_bytes: int = 0
     language: str | None = None
     backend: str | None = None
     model: str | None = None
@@ -52,6 +53,7 @@ class TranscriptEvent:
             is_final=bool(payload.get("is_final", False)),
             chunks_received=_maybe_int(payload.get("chunks_received")) or 0,
             buffered_bytes=_maybe_int(payload.get("buffered_bytes")) or 0,
+            remaining_buffer_bytes=_maybe_int(payload.get("remaining_buffer_bytes")) or 0,
             language=_maybe_str(payload.get("language")),
             backend=_maybe_str(payload.get("backend")),
             model=_maybe_str(payload.get("model")),
