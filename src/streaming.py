@@ -124,8 +124,12 @@ class ASRWebSocketClient:
                 continue
 
             partial_event = await self._receive_optional_event(timeout=config.partial_event_timeout_seconds)
-            if partial_event is not None:
-                events.append(partial_event)
+            if partial_event is None:
+                continue
+
+            events.append(partial_event)
+            if partial_event.type == "error":
+                return events
 
         events.append(await self.stop_stream())
         return events

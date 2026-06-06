@@ -78,6 +78,22 @@ class FailingPreloadTranscriber(FakeTranscriber):
         raise self.exc
 
 
+class RecoveringPreloadTranscriber(FakeTranscriber):
+    def __init__(self) -> None:
+        super().__init__()
+        self.loaded = False
+
+    def is_loaded(self) -> bool:
+        return self.loaded
+
+    def preload(self) -> None:
+        raise RuntimeError("model download failed")
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
+        self.loaded = True
+        return super().transcribe(audio_data, language=language, sample_rate=sample_rate)
+
+
 def test_health_smoke() -> None:
     transcriber = FakeTranscriber()
     with TestClient(create_app(transcriber=transcriber)) as client:
@@ -145,6 +161,31 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
         "model_loaded": False,
         "preload_error": "model download failed",
     }
+
+
+def test_ready_recovers_after_successful_transcription() -> None:
+    transcriber = RecoveringPreloadTranscriber()
+    config = AppConfig(asr_fail_fast=False)
+    fixture_bytes = FIXTURE_PATH.read_bytes()
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        degraded_ready = client.get("/ready")
+        transcribe = client.post(
+            "/api/transcribe",
+            json={
+                "audio_data": base64.b64encode(fixture_bytes).decode("ascii"),
+                "language": "en",
+                "sample_rate": 16000,
+            },
+        )
+        recovered_ready = client.get("/ready")
+
+    assert degraded_ready.status_code == 503
+    assert degraded_ready.json()["preload_error"] == "model download failed"
+    assert transcribe.status_code == 200
+    assert recovered_ready.status_code == 200
+    assert recovered_ready.json()["preload_error"] is None
+    assert recovered_ready.json()["model_loaded"] is True
 
 
 def test_fail_fast_raises_for_non_asr_preload_failures() -> None:
@@ -754,6 +795,66 @@ def test_streaming_client_drains_stale_partial_before_final() -> None:
 
         assert [event.type for event in events] == ["ready", "final"]
         assert events[-1].text == "hello"
+
+    asyncio.run(scenario())
+
+
+def test_streaming_client_stops_after_error_event() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "ready",
+                        "stream_id": 1,
+                        "backend": "fake-whisper",
+                        "model": "fixture-adapter",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "partial_interval_chunks": 1,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "model download failed",
+                        "code": 1011,
+                    }
+                ),
+            ]
+            self.sent: list[object] = []
+
+        async def send(self, data: str | bytes) -> None:
+            self.sent.append(data)
+
+        async def recv(self) -> str:
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        events = await client.transcribe_once([b"hel"], config=StreamConfig())
+
+        assert [event.type for event in events] == ["ready", "error"]
+        assert client._websocket.sent == [
+            json.dumps(
+                {
+                    "type": "start",
+                    "language": "en",
+                    "sample_rate": 16000,
+                    "partial_interval_chunks": 1,
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(b"hel").decode("ascii"),
+                }
+            ),
+        ]
 
     asyncio.run(scenario())
 
