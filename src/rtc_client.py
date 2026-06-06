@@ -133,7 +133,7 @@ class AsyncASRClient:
         await websocket.send(json.dumps({"type": "cancel"}))
         self._chunks_sent = 0
         while True:
-            event = TranscriptEvent.from_payload(await self._recv_json())
+            event = TranscriptEvent.from_payload(await self._recv_json(allow_error=True))
             if event.type in {"canceled", "error"}:
                 return event
 
@@ -143,10 +143,10 @@ class AsyncASRClient:
         await self._websocket.close(code=1000)
         self._websocket = None
 
-    async def _recv_json(self) -> dict[str, Any]:
+    async def _recv_json(self, *, allow_error: bool = False) -> dict[str, Any]:
         websocket = self._require_websocket()
         payload = json.loads(await websocket.recv())
-        if payload.get("type") == "error":
+        if payload.get("type") == "error" and not allow_error:
             raise RuntimeError(str(payload.get("message", "Unknown ASR websocket error")))
         return payload
 

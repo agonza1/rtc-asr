@@ -340,9 +340,9 @@ def _shared_capabilities(audio_processor: AudioProcessor) -> dict[str, Any]:
             "transport": "websocket",
             "path": "/ws/stream",
             "reusable_connection": True,
-            "message_types": ["start", "audio", "stop"],
+            "message_types": ["start", "audio", "stop", "cancel"],
             "audio_frame_formats": ["json-base64", "binary"],
-            "event_types": ["ready", "partial", "final", "error"],
+            "event_types": ["ready", "partial", "final", "canceled", "error"],
         },
         "audio": {
             "target_sample_rate": audio_processor.config.sample_rate,

@@ -264,6 +264,48 @@ def test_async_asr_client_can_cancel_stream() -> None:
     asyncio.run(scenario())
 
 
+def test_async_asr_client_returns_cancel_error_events() -> None:
+    websocket = FakeWebSocket([
+        {
+            'type': 'ready',
+            'backend': 'fake-whisper',
+            'model': 'fixture-adapter',
+            'language': 'en',
+            'sample_rate': 16000,
+            'partial_interval_chunks': 1,
+        },
+        {
+            'type': 'error',
+            'message': 'Send a start event before canceling the stream',
+            'code': 1003,
+        },
+    ])
+
+    async def fake_connect(_: str) -> FakeWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        client = AsyncASRClient('ws://example.test/ws/stream', connect_fn=fake_connect)
+        await client.start()
+        cancel_event = await client.cancel()
+        await client.close()
+
+        assert cancel_event.type == 'error'
+        assert cancel_event.text == 'Send a start event before canceling the stream'
+        assert cancel_event.raw['code'] == 1003
+        assert websocket.sent == [
+            {
+                'type': 'start',
+                'language': 'en',
+                'sample_rate': 16000,
+                'partial_interval_chunks': 1,
+            },
+            {'type': 'cancel'},
+        ]
+
+    asyncio.run(scenario())
+
+
 def test_async_asr_client_rejects_invalid_start_arguments() -> None:
     async def scenario() -> None:
         client = AsyncASRClient('ws://example.test/ws/stream')
