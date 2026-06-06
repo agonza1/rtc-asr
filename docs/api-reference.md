@@ -63,7 +63,9 @@ Example response:
     "streaming": {
       "transport": "websocket",
       "path": "/ws/stream",
-      "reusable_connection": true
+      "reusable_connection": true,
+      "message_types": ["start", "audio", "stop"],
+      "audio_frame_formats": ["json-base64", "binary"]
     }
   }
 }
@@ -172,11 +174,13 @@ Server events:
 ```json
 {
   "type": "ready",
+  "stream_id": 1,
   "backend": "faster-whisper",
   "model": "small.en",
   "language": "en",
   "sample_rate": 16000,
-  "partial_interval_chunks": 1
+  "partial_interval_chunks": 1,
+  "max_buffer_bytes": 262144
 }
 ```
 

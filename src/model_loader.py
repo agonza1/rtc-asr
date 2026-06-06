@@ -83,6 +83,7 @@ class FasterWhisperAdapter:
                 "path": "/ws/stream",
                 "reusable_connection": True,
                 "message_types": ["start", "audio", "stop"],
+                "audio_frame_formats": ["json-base64", "binary"],
                 "event_types": ["ready", "partial", "final", "error"],
             },
             "audio": {

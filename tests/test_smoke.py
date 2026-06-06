@@ -38,6 +38,9 @@ class FakeTranscriber:
             "streaming": {
                 "transport": "websocket",
                 "path": "/ws/stream",
+                "reusable_connection": True,
+                "message_types": ["start", "audio", "stop"],
+                "audio_frame_formats": ["json-base64", "binary"],
             },
         }
 
@@ -117,6 +120,9 @@ def test_ready_and_model_capabilities_smoke() -> None:
             "streaming": {
                 "transport": "websocket",
                 "path": "/ws/stream",
+                "reusable_connection": True,
+                "message_types": ["start", "audio", "stop"],
+                "audio_frame_formats": ["json-base64", "binary"],
             },
         },
     }
@@ -674,6 +680,22 @@ def test_websocket_stream_error_payload_includes_close_code() -> None:
     }
 
 
+def test_websocket_stream_rejects_binary_audio_before_start() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_bytes(b"orphan-audio")
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "message": "Send a start event before audio chunks",
+        "code": 1003,
+    }
+    assert transcriber.calls == []
+
+
 def test_streaming_client_drains_stale_partial_before_final() -> None:
     class FakeSocket:
         def __init__(self) -> None:
@@ -732,5 +754,73 @@ def test_streaming_client_drains_stale_partial_before_final() -> None:
 
         assert [event.type for event in events] == ["ready", "final"]
         assert events[-1].text == "hello"
+
+    asyncio.run(scenario())
+
+
+def test_streaming_client_can_send_binary_audio_frames() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "ready",
+                        "stream_id": 1,
+                        "backend": "fake-whisper",
+                        "model": "fixture-adapter",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "partial_interval_chunks": 1,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "partial",
+                        "stream_id": 1,
+                        "is_final": False,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hel",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "final",
+                        "stream_id": 1,
+                        "is_final": True,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hello",
+                    }
+                ),
+            ]
+            self.sent: list[object] = []
+
+        async def send(self, data: str | bytes) -> None:
+            self.sent.append(data)
+
+        async def recv(self) -> str:
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        await client.transcribe_once([b"hel"], config=StreamConfig(send_binary_frames=True))
+
+        assert client._websocket.sent == [
+            json.dumps(
+                {
+                    "type": "start",
+                    "language": "en",
+                    "sample_rate": 16000,
+                    "partial_interval_chunks": 1,
+                }
+            ),
+            b"hel",
+            json.dumps({"type": "stop"}),
+        ]
 
     asyncio.run(scenario())
