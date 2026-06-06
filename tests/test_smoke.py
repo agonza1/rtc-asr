@@ -482,6 +482,25 @@ def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
     ]
 
 
+def test_websocket_stream_rejects_start_while_another_stream_is_active() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_json({"type": "start", "language": "es", "sample_rate": 8000})
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "message": "Finish the active stream before starting a new one",
+        "code": 1003,
+    }
+    assert transcriber.calls == []
+
+
 def test_websocket_stream_ids_reset_for_a_new_connection() -> None:
     transcriber = FakeTranscriber()
 
