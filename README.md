@@ -6,7 +6,7 @@ Realtime speech recognition service with REST transcription endpoints and a buff
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> Benchmark status: latency, throughput, and accuracy figures in this repository are not yet validated. Treat performance-related material as provisional until the real ASR path and benchmark harness are complete.
+> Benchmark status: the repository now includes validated single-node CPU baselines for `faster-whisper` and Compose-backed `qwen-asr`. Treat broader load, GPU, and corpus-level accuracy claims as provisional until additional benchmark slices are published.
 
 ## Current Scope
 
@@ -35,6 +35,8 @@ docker compose build
 docker compose up -d
 docker compose ps
 docker compose logs -f
+# qwen-asr Compose benchmark path
+make benchmark-compose-qwen
 ```
 
 ## REST API

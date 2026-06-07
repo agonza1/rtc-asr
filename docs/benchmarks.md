@@ -1,8 +1,12 @@
 # Performance Benchmarks
 
-Measured on June 3, 2026 with the checked-in `tests/benchmark.py` harness. These figures validate the current single-node latency baseline for the `faster-whisper` `tiny.en` CPU path; they are not a substitute for broader load, GPU, or accuracy testing.
+This page tracks validated single-node benchmark runs for the current `rtc-asr` service. The numbers below are measured results from the checked-in `tests/benchmark.py` harness; they are useful baselines, not universal performance guarantees.
 
-## Latest Baseline
+## Latest Validated Runs
+
+### Faster-Whisper CPU Baseline
+
+Measured on June 3, 2026.
 
 Environment:
 
@@ -24,50 +28,113 @@ Measured results:
 
 Representative transcript:
 
-```
+```text
 the quick-brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTCSR service.
 ```
 
+### Qwen Compose CPU Baseline
+
+Measured on June 7, 2026 against the Docker Compose stack.
+
+Environment:
+
+- Host: macOS 26.5.1 arm64
+- Python benchmark client: 3.14.4
+- Execution mode: `docker compose`
+- Backend: `qwen-asr`
+- Model: `Qwen/Qwen3-ASR-0.6B`
+- Device: CPU / `float32`
+- Audio: 2.587 s synthesized speech clip from `say`
+- Reference transcript: `Quick benchmark phrase for rtc asr.`
+
+Measured results:
+
+- REST `POST /api/transcribe`: 1691.4 ms mean, 1692.5 ms p95, 1690.3 ms min, 1692.5 ms max
+- REST real-time factor: 0.654
+- WebSocket partial latency: 1349.7 ms mean, 1863.0 ms p95, 749.9 ms first partial, 1863.0 ms last partial
+- WebSocket final latency after `stop`: 0.7 ms
+- REST transcript: `Quick benchmark phrase for RTCASR.`
+- Streaming final transcript: `Quick benchmark phrase for RTCASR.`
+- Accuracy (normalized WER): `0.333`
+- Accuracy (normalized CER): `0.0`
+
+Interpretation notes:
+
+- The measured Qwen CPU path is substantially slower than the `faster-whisper` `tiny.en` CPU baseline, but it stayed below real time for this short utterance.
+- The transcript collapsed `rtc asr` into `RTCASR`, which counts as a one-token word-boundary miss in normalized WER while preserving the underlying character sequence, hence `CER=0.0`.
+- The very small `final_ms` value reflects that most of the work already happened during the streaming partial passes.
+
+Versioned artifact:
+
+- `docs/benchmark-results/qwen-compose-2026-06-07.json`
+
 ## Reproduce
 
-Run the existing faster-whisper baseline locally:
+### Faster-Whisper Baseline
+
+Run the existing local baseline:
 
 ```bash
 make benchmark
 ```
 
-Invoke the harness directly against an already-running server:
+Or invoke the harness directly against an already-running server:
 
 ```bash
-.venv/bin/python tests/benchmark.py --url http://127.0.0.1:8090 --ws-url ws://127.0.0.1:8090/ws/stream
+.venv/bin/python tests/benchmark.py \
+  --url http://127.0.0.1:8090 \
+  --ws-url ws://127.0.0.1:8090/ws/stream
 ```
 
-Benchmark Qwen side-by-side with the whisper path by letting the harness spawn each backend with explicit settings:
+### Qwen Compose Baseline
+
+Use the checked-in Compose workflow:
 
 ```bash
-.venv/bin/python tests/benchmark.py --spawn-server --backend faster-whisper --model tiny.en --device cpu --compute-type int8
-.venv/bin/python tests/benchmark.py --spawn-server --backend qwen-asr --model Qwen/Qwen3-ASR-0.6B --device cpu --qwen-dtype float32
+make benchmark-compose-qwen
 ```
 
-Useful options:
+What that target does:
 
-- `--audio-file /path/to/sample.wav` to benchmark a specific clip
-- `--chunk-ms 100` to test a tighter streaming cadence
-- `--spawn-server` to let the harness boot a local uvicorn server
-- `--backend qwen-asr` to compare the alternate backend with the same harness
-- `--device cuda` to measure GPU-backed runs once the host is provisioned
-- `--partial-window 1.0` to compare a smaller streaming window
+- creates a writable local Hugging Face cache at `.cache/huggingface`
+- builds the image with a CPU PyTorch wheel from the official PyTorch CPU index so Compose does not pull the much larger CUDA stack for the default CPU path
+- starts `docker compose` with `ASR_BACKEND=qwen-asr`, `ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B`, `ASR_DEVICE=cpu`, and `ASR_QWEN_DTYPE=float32`
+- waits for `GET /ready` to return `200`
+- runs the benchmark client against `http://127.0.0.1:8080`
 
-## Interpretation
+Equivalent manual commands:
 
-These numbers are low-latency enough for the current MVP path because the rolling-window stream keeps the first and last partials in the same band across the full 7.28 s utterance instead of drifting upward with buffer length. Interim latency stays around 130-180 ms for most chunks, while the final result still uses the full buffered utterance.
+```bash
+mkdir -p .cache/huggingface
+ASR_BACKEND=qwen-asr \
+ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B \
+ASR_DEVICE=cpu \
+ASR_QWEN_DTYPE=float32 \
+docker compose up -d --build
+
+until curl -fsS http://127.0.0.1:8080/ready >/dev/null; do sleep 5; done
+
+.venv/bin/python tests/benchmark.py \
+  --url http://127.0.0.1:8080 \
+  --ws-url ws://127.0.0.1:8080/ws/stream \
+  --speech-text 'Quick benchmark phrase for rtc asr.' \
+  --rest-runs 2 \
+  --chunk-ms 1000
+```
+
+## Methodology Notes
+
+- `tests/benchmark.py` now records simple accuracy metadata in addition to latency metrics.
+- When benchmarking synthesized speech without an explicit reference file, the harness uses the synthesized prompt text as the reference transcript.
+- The harness also records live backend metadata from `GET /api/models`, so benchmark artifacts reflect the actual running service even when the client is pointed at an already-running container.
+- Word error rate and character error rate are normalized after lowercasing and punctuation stripping.
 
 ## Remaining Gaps
 
 Still not covered by this document:
 
-- Concurrent REST or WebSocket load
-- GPU-specific measurements
-- Memory and CPU saturation curves
-- Accuracy / WER against a labeled corpus
-- Longer multi-turn streaming sessions
+- concurrent REST or WebSocket load
+- GPU-backed Qwen measurements
+- memory and CPU saturation curves
+- corpus-level WER across more than a single synthesized utterance
+- longer multi-turn streaming sessions

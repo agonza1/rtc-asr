@@ -23,6 +23,8 @@ services:
       ASR_QWEN_DEVICE_MAP: ${ASR_QWEN_DEVICE_MAP:-}
       ASR_QWEN_MAX_NEW_TOKENS: ${ASR_QWEN_MAX_NEW_TOKENS:-256}
       ASR_QWEN_MAX_INFERENCE_BATCH_SIZE: ${ASR_QWEN_MAX_INFERENCE_BATCH_SIZE:-1}
+      HF_HOME: /app/.cache/huggingface
+      HUGGINGFACE_HUB_CACHE: /app/.cache/huggingface/hub
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-}
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/ready"]
@@ -31,8 +33,5 @@ services:
       retries: 3
       start_period: 10m
     volumes:
-      - huggingface_cache:/home/app/.cache/huggingface
+      - ./.cache/huggingface:/app/.cache/huggingface
     restart: unless-stopped
-
-volumes:
-  huggingface_cache:

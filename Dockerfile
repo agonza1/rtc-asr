@@ -16,8 +16,10 @@ WORKDIR /app
 RUN python -m venv /opt/venv
 
 COPY requirements.txt ./
-RUN /opt/venv/bin/pip install --upgrade pip && \
-    /opt/venv/bin/pip install -r requirements.txt
+RUN grep -v '^torch$' requirements.txt > requirements.docker.txt && \
+    /opt/venv/bin/pip install --upgrade pip && \
+    /opt/venv/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch && \
+    /opt/venv/bin/pip install -r requirements.docker.txt
 
 COPY src ./src
 COPY config.example ./
