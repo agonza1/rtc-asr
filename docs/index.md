@@ -29,7 +29,7 @@ docs/
 1. **Read the README** - Overview and quick start
 2. **Review API Reference** - Understand available endpoints
 3. **Choose Integration** - Pipecat or LiveKit
-4. **Check Benchmarks** - Review validation status and planned measurement methodology
+4. **Check Benchmarks** - Review the latest measured latency baseline and reproduction steps
 5. **Follow Troubleshooting** - Common issues to watch for
 
 ## Architecture Overview
@@ -126,7 +126,7 @@ curl -X POST http://localhost:8080/api/transcribe \
 
 ```bash
 # Run benchmark
-python tests/benchmark.py
+make benchmark
 ```
 
 ## Resources

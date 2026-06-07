@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 import pytest
+from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
 from src.main import create_app
@@ -660,6 +661,54 @@ def test_stream_max_buffer_bytes_must_be_positive(
         AppConfig.from_env()
 
 
+def test_websocket_rejects_audio_before_start() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({
+                "type": "audio",
+                "audio_data": base64.b64encode(b"premature").decode("ascii"),
+            })
+            assert websocket.receive_json() == {
+                "type": "error",
+                "message": "Send a start event before audio chunks",
+                "code": 1003,
+            }
+
+            with pytest.raises(WebSocketDisconnect) as exc_info:
+                websocket.receive_json()
+
+    assert exc_info.value.code == 1003
+    assert transcriber.calls == []
+
+
+def test_websocket_rejects_duplicate_start_events() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_json({
+                "type": "start",
+                "language": "en",
+                "sample_rate": 16000,
+            })
+            assert websocket.receive_json() == {
+                "type": "error",
+                "message": "Finish the active stream before starting a new one",
+                "code": 1003,
+            }
+
+            with pytest.raises(WebSocketDisconnect) as exc_info:
+                websocket.receive_json()
+
+    assert exc_info.value.code == 1003
+    assert transcriber.calls == []
+
+
 def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
     transcriber = StableTextTranscriber()
     first_chunk = b"first"
@@ -1086,20 +1135,32 @@ def test_streaming_client_can_cancel_a_stream() -> None:
             self.responses = [
                 json.dumps(
                     {
+                        "type": "partial",
+                        "stream_id": 1,
+                        "is_final": False,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hel",
+                    }
+                ),
+                json.dumps(
+                    {
                         "type": "canceled",
                         "stream_id": 1,
                         "chunks_received": 1,
                         "buffered_bytes": 3,
                         "remaining_buffer_bytes": 1021,
                     }
-                )
+                ),
             ]
+            self.recv_calls = 0
             self.sent: list[object] = []
 
         async def send(self, data: str | bytes) -> None:
             self.sent.append(data)
 
         async def recv(self) -> str:
+            self.recv_calls += 1
             return self.responses.pop(0)
 
         async def close(self) -> None:
@@ -1113,6 +1174,7 @@ def test_streaming_client_can_cancel_a_stream() -> None:
         assert event.type == "canceled"
         assert event.stream_id == 1
         assert event.remaining_buffer_bytes == 1021
+        assert client._websocket.recv_calls == 2
         assert client._websocket.sent == [json.dumps({"type": "cancel"})]
 
     asyncio.run(scenario())
