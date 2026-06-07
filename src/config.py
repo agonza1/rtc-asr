@@ -59,6 +59,11 @@ class AppConfig:
     asr_vad_filter: bool = True
     asr_preload_model: bool = True
     asr_fail_fast: bool = False
+    asr_qwen_model: str = "Qwen/Qwen3-ASR-0.6B"
+    asr_qwen_dtype: str = "auto"
+    asr_qwen_device_map: str | None = None
+    asr_qwen_max_new_tokens: int = 256
+    asr_qwen_max_inference_batch_size: int = 1
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -84,4 +89,16 @@ class AppConfig:
             asr_vad_filter=_env_flag("ASR_VAD_FILTER", defaults.asr_vad_filter),
             asr_preload_model=_env_flag("ASR_PRELOAD_MODEL", defaults.asr_preload_model),
             asr_fail_fast=_env_flag("ASR_FAIL_FAST", defaults.asr_fail_fast),
+            asr_qwen_model=os.getenv("ASR_QWEN_MODEL", defaults.asr_qwen_model),
+            asr_qwen_dtype=os.getenv("ASR_QWEN_DTYPE", defaults.asr_qwen_dtype),
+            asr_qwen_device_map=os.getenv("ASR_QWEN_DEVICE_MAP", defaults.asr_qwen_device_map),
+            asr_qwen_max_new_tokens=int(
+                os.getenv("ASR_QWEN_MAX_NEW_TOKENS", str(defaults.asr_qwen_max_new_tokens))
+            ),
+            asr_qwen_max_inference_batch_size=int(
+                os.getenv(
+                    "ASR_QWEN_MAX_INFERENCE_BATCH_SIZE",
+                    str(defaults.asr_qwen_max_inference_batch_size),
+                )
+            ),
         )
