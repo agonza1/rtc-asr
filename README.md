@@ -24,6 +24,7 @@ Realtime speech recognition service with REST transcription endpoints and a buff
 
 ```bash
 pip install -r requirements.txt
+# requirements.txt now includes torch for the qwen-asr backend
 uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
@@ -107,7 +108,7 @@ ASR_QWEN_MAX_NEW_TOKENS=256
 ASR_QWEN_MAX_INFERENCE_BATCH_SIZE=1
 ```
 
-For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; the service keeps the same REST and websocket contract while swapping providers underneath.
+For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; `requirements.txt` installs `torch` alongside `qwen-asr` so fresh environments can preload that backend without extra manual steps. The service keeps the same REST and websocket contract while swapping providers underneath.
 
 ## Verification
 
