@@ -22,19 +22,23 @@ ConnectFn = Callable[[str], Awaitable[WebSocketConnection]]
 class TranscriptEvent:
     type: str
     text: str
+    stream_id: int | None
     is_final: bool
     chunks_received: int
     buffered_bytes: int
+    remaining_buffer_bytes: int
     raw: dict[str, Any]
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "TranscriptEvent":
         return cls(
             type=str(payload.get("type", "")),
-            text=str(payload.get("text", "")),
+            text=str(payload.get("text", payload.get("message", ""))),
+            stream_id=_maybe_int(payload.get("stream_id")),
             is_final=bool(payload.get("is_final", False)),
-            chunks_received=int(payload.get("chunks_received", 0)),
-            buffered_bytes=int(payload.get("buffered_bytes", 0)),
+            chunks_received=_maybe_int(payload.get("chunks_received")) or 0,
+            buffered_bytes=_maybe_int(payload.get("buffered_bytes")) or 0,
+            remaining_buffer_bytes=_maybe_int(payload.get("remaining_buffer_bytes")) or 0,
             raw=payload,
         )
 
@@ -120,6 +124,15 @@ class AsyncASRClient:
             if event.type != "partial":
                 return event
 
+    async def cancel(self) -> TranscriptEvent:
+        websocket = self._require_websocket()
+        await websocket.send(json.dumps({"type": "cancel"}))
+        self._chunks_sent = 0
+        while True:
+            event = TranscriptEvent.from_payload(await self._recv_json())
+            if event.type in {"canceled", "error"}:
+                return event
+
     async def close(self) -> None:
         if self._websocket is None:
             return
@@ -150,3 +163,7 @@ async def _default_connect(ws_url: str) -> WebSocketConnection:
     import websockets
 
     return await websockets.connect(ws_url, max_size=2**23)
+
+
+def _maybe_int(value: Any) -> int | None:
+    return value if isinstance(value, int) else None
