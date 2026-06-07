@@ -20,6 +20,14 @@ class StreamConfig:
     partial_event_timeout_seconds: float = 0.1
     send_binary_frames: bool = False
 
+    def __post_init__(self) -> None:
+        if self.sample_rate < 1:
+            raise ValueError("sample_rate must be a positive integer")
+        if self.partial_interval_chunks < 1:
+            raise ValueError("partial_interval_chunks must be a positive integer")
+        if self.partial_event_timeout_seconds < 0:
+            raise ValueError("partial_event_timeout_seconds must be zero or greater")
+
     def as_payload(self) -> dict[str, Any]:
         return {
             "type": "start",

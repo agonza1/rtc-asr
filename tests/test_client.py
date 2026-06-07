@@ -4,6 +4,8 @@ import asyncio
 import base64
 import json
 
+import pytest
+
 from src.rtc_client import AsyncASRClient
 
 
@@ -197,5 +199,79 @@ def test_async_asr_client_drains_stale_partial_before_final() -> None:
         assert partial_event is None
         assert final_event.type == 'final'
         assert final_event.text == 'hello'
+
+    asyncio.run(scenario())
+
+
+def test_async_asr_client_can_cancel_stream() -> None:
+    websocket = FakeWebSocket([
+        {
+            'type': 'ready',
+            'backend': 'fake-whisper',
+            'model': 'fixture-adapter',
+            'language': 'en',
+            'sample_rate': 16000,
+            'partial_interval_chunks': 1,
+        },
+        {
+            'type': 'partial',
+            'is_final': False,
+            'stream_id': 7,
+            'chunks_received': 1,
+            'buffered_bytes': 3,
+            'remaining_buffer_bytes': 1021,
+            'text': 'hel',
+        },
+        {
+            'type': 'canceled',
+            'stream_id': 7,
+            'chunks_received': 1,
+            'buffered_bytes': 3,
+            'remaining_buffer_bytes': 1021,
+        },
+    ])
+
+    async def fake_connect(_: str) -> FakeWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        client = AsyncASRClient('ws://example.test/ws/stream', connect_fn=fake_connect)
+        await client.start()
+        partial_event = await client.send_audio(b'hel')
+        canceled_event = await client.cancel()
+        await client.close()
+
+        assert partial_event is not None
+        assert partial_event.stream_id == 7
+        assert partial_event.remaining_buffer_bytes == 1021
+        assert canceled_event.type == 'canceled'
+        assert canceled_event.stream_id == 7
+        assert canceled_event.remaining_buffer_bytes == 1021
+        assert websocket.sent == [
+            {
+                'type': 'start',
+                'language': 'en',
+                'sample_rate': 16000,
+                'partial_interval_chunks': 1,
+            },
+            {
+                'type': 'audio',
+                'audio_data': base64.b64encode(b'hel').decode('ascii'),
+            },
+            {'type': 'cancel'},
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_async_asr_client_rejects_invalid_start_arguments() -> None:
+    async def scenario() -> None:
+        client = AsyncASRClient('ws://example.test/ws/stream')
+
+        with pytest.raises(ValueError, match='sample_rate must be a positive integer'):
+            await client.start(sample_rate=0)
+
+        with pytest.raises(ValueError, match='partial_interval_chunks must be a positive integer'):
+            await client.start(partial_interval_chunks=0)
 
     asyncio.run(scenario())
