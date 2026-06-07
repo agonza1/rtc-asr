@@ -483,6 +483,51 @@ def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
     ]
 
 
+def test_websocket_stream_cancel_resets_state_without_transcribing() -> None:
+    transcriber = FakeTranscriber()
+    chunk = b"first"
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(chunk).decode("ascii"),
+                }
+            )
+            assert websocket.receive_json()["type"] == "partial"
+
+            websocket.send_json({"type": "cancel"})
+            canceled = websocket.receive_json()
+            assert canceled == {
+                "type": "canceled",
+                "stream_id": 1,
+                "chunks_received": 1,
+                "buffered_bytes": len(chunk),
+                "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(chunk),
+            }
+
+            websocket.send_json({"type": "start", "language": "es", "sample_rate": 8000})
+            second_ready = websocket.receive_json()
+            assert second_ready == {
+                "type": "ready",
+                "stream_id": 2,
+                "backend": "fake-whisper",
+                "model": "fixture-adapter",
+                "language": "es",
+                "sample_rate": 8000,
+                "partial_interval_chunks": 1,
+                "max_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
+            }
+
+    assert transcriber.calls == [
+        {"audio_size": len(chunk), "language": "en", "sample_rate": 16000, "prefix": chunk[:4]},
+    ]
+
+
 def test_websocket_stream_rejects_start_while_another_stream_is_active() -> None:
     transcriber = FakeTranscriber()
 
@@ -789,6 +834,22 @@ def test_websocket_stream_error_payload_includes_close_code() -> None:
     }
 
 
+def test_websocket_stream_rejects_cancel_before_start() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "cancel"})
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "message": "Send a start event before canceling the stream",
+        "code": 1003,
+    }
+    assert transcriber.calls == []
+
+
 def test_websocket_stream_rejects_binary_audio_before_start() -> None:
     transcriber = FakeTranscriber()
 
@@ -1064,5 +1125,56 @@ def test_streaming_client_can_send_binary_audio_frames() -> None:
             b"hel",
             json.dumps({"type": "stop"}),
         ]
+
+    asyncio.run(scenario())
+
+
+def test_streaming_client_can_cancel_a_stream() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "partial",
+                        "stream_id": 1,
+                        "is_final": False,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hel",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "canceled",
+                        "stream_id": 1,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "remaining_buffer_bytes": 1021,
+                    }
+                ),
+            ]
+            self.recv_calls = 0
+            self.sent: list[object] = []
+
+        async def send(self, data: str | bytes) -> None:
+            self.sent.append(data)
+
+        async def recv(self) -> str:
+            self.recv_calls += 1
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        event = await client.cancel_stream()
+
+        assert event.type == "canceled"
+        assert event.stream_id == 1
+        assert event.remaining_buffer_bytes == 1021
+        assert client._websocket.recv_calls == 2
+        assert client._websocket.sent == [json.dumps({"type": "cancel"})]
 
     asyncio.run(scenario())

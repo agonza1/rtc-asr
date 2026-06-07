@@ -110,6 +110,13 @@ class ASRWebSocketClient:
             if event.type != "partial":
                 return event
 
+    async def cancel_stream(self) -> TranscriptEvent:
+        await self._send_json({"type": "cancel"})
+        while True:
+            event = await self.receive_event()
+            if event.type in {"canceled", "error"}:
+                return event
+
     async def receive_event(self) -> TranscriptEvent:
         websocket = self._require_websocket()
         payload = json.loads(await websocket.recv())

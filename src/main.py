@@ -270,6 +270,22 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     session = None
                     continue
 
+                if event_type == "cancel":
+                    if session is None:
+                        raise StreamClientError("Send a start event before canceling the stream")
+
+                    await websocket.send_json(
+                        {
+                            "type": "canceled",
+                            "stream_id": session.stream_id,
+                            "chunks_received": session.chunks_received,
+                            "buffered_bytes": len(session.audio_buffer),
+                            "remaining_buffer_bytes": session.max_buffer_bytes - len(session.audio_buffer),
+                        }
+                    )
+                    session = None
+                    continue
+
                 raise StreamClientError("Unsupported stream event type")
         except WebSocketDisconnect:
             return
