@@ -18,6 +18,7 @@ class StreamConfig:
     sample_rate: int = 16000
     partial_interval_chunks: int = 1
     partial_event_timeout_seconds: float = 0.1
+    send_binary_frames: bool = False
 
     def as_payload(self) -> dict[str, Any]:
         return {
@@ -36,6 +37,7 @@ class TranscriptEvent:
     is_final: bool = False
     chunks_received: int = 0
     buffered_bytes: int = 0
+    remaining_buffer_bytes: int = 0
     language: str | None = None
     backend: str | None = None
     model: str | None = None
@@ -51,6 +53,7 @@ class TranscriptEvent:
             is_final=bool(payload.get("is_final", False)),
             chunks_received=_maybe_int(payload.get("chunks_received")) or 0,
             buffered_bytes=_maybe_int(payload.get("buffered_bytes")) or 0,
+            remaining_buffer_bytes=_maybe_int(payload.get("remaining_buffer_bytes")) or 0,
             language=_maybe_str(payload.get("language")),
             backend=_maybe_str(payload.get("backend")),
             model=_maybe_str(payload.get("model")),
@@ -89,7 +92,12 @@ class ASRWebSocketClient:
         await self._send_json(config.as_payload())
         return await self.receive_event()
 
-    async def send_audio_chunk(self, chunk: bytes) -> None:
+    async def send_audio_chunk(self, chunk: bytes, *, binary: bool = False) -> None:
+        websocket = self._require_websocket()
+        if binary:
+            await websocket.send(chunk)
+            return
+
         await self._send_json({
             "type": "audio",
             "audio_data": base64.b64encode(chunk).decode("ascii"),
@@ -113,13 +121,17 @@ class ASRWebSocketClient:
         events.append(ready)
 
         for chunk_index, chunk in enumerate(chunks, start=1):
-            await self.send_audio_chunk(chunk)
+            await self.send_audio_chunk(chunk, binary=config.send_binary_frames)
             if chunk_index % config.partial_interval_chunks != 0:
                 continue
 
             partial_event = await self._receive_optional_event(timeout=config.partial_event_timeout_seconds)
-            if partial_event is not None:
-                events.append(partial_event)
+            if partial_event is None:
+                continue
+
+            events.append(partial_event)
+            if partial_event.type == "error":
+                return events
 
         events.append(await self.stop_stream())
         return events

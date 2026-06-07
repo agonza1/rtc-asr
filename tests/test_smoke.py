@@ -11,7 +11,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
 from src.main import create_app
-from src.streaming import ASRWebSocketClient, StreamConfig
+from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 DEFAULT_MAX_BUFFER_BYTES = AppConfig().stream_max_buffer_bytes
@@ -39,6 +39,9 @@ class FakeTranscriber:
             "streaming": {
                 "transport": "websocket",
                 "path": "/ws/stream",
+                "reusable_connection": True,
+                "message_types": ["start", "audio", "stop"],
+                "audio_frame_formats": ["json-base64", "binary"],
             },
         }
 
@@ -74,6 +77,22 @@ class FailingPreloadTranscriber(FakeTranscriber):
 
     def preload(self) -> None:
         raise self.exc
+
+
+class RecoveringPreloadTranscriber(FakeTranscriber):
+    def __init__(self) -> None:
+        super().__init__()
+        self.loaded = False
+
+    def is_loaded(self) -> bool:
+        return self.loaded
+
+    def preload(self) -> None:
+        raise RuntimeError("model download failed")
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
+        self.loaded = True
+        return super().transcribe(audio_data, language=language, sample_rate=sample_rate)
 
 
 def test_health_smoke() -> None:
@@ -118,6 +137,9 @@ def test_ready_and_model_capabilities_smoke() -> None:
             "streaming": {
                 "transport": "websocket",
                 "path": "/ws/stream",
+                "reusable_connection": True,
+                "message_types": ["start", "audio", "stop"],
+                "audio_frame_formats": ["json-base64", "binary"],
             },
         },
     }
@@ -140,6 +162,31 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
         "model_loaded": False,
         "preload_error": "model download failed",
     }
+
+
+def test_ready_recovers_after_successful_transcription() -> None:
+    transcriber = RecoveringPreloadTranscriber()
+    config = AppConfig(asr_fail_fast=False)
+    fixture_bytes = FIXTURE_PATH.read_bytes()
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        degraded_ready = client.get("/ready")
+        transcribe = client.post(
+            "/api/transcribe",
+            json={
+                "audio_data": base64.b64encode(fixture_bytes).decode("ascii"),
+                "language": "en",
+                "sample_rate": 16000,
+            },
+        )
+        recovered_ready = client.get("/ready")
+
+    assert degraded_ready.status_code == 503
+    assert degraded_ready.json()["preload_error"] == "model download failed"
+    assert transcribe.status_code == 200
+    assert recovered_ready.status_code == 200
+    assert recovered_ready.json()["preload_error"] is None
+    assert recovered_ready.json()["model_loaded"] is True
 
 
 def test_fail_fast_raises_for_non_asr_preload_failures() -> None:
@@ -436,6 +483,25 @@ def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
     ]
 
 
+def test_websocket_stream_rejects_start_while_another_stream_is_active() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_json({"type": "start", "language": "es", "sample_rate": 8000})
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "message": "Finish the active stream before starting a new one",
+        "code": 1003,
+    }
+    assert transcriber.calls == []
+
+
 def test_websocket_stream_ids_reset_for_a_new_connection() -> None:
     transcriber = FakeTranscriber()
 
@@ -723,6 +789,95 @@ def test_websocket_stream_error_payload_includes_close_code() -> None:
     }
 
 
+def test_websocket_stream_rejects_binary_audio_before_start() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_bytes(b"orphan-audio")
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "message": "Send a start event before audio chunks",
+        "code": 1003,
+    }
+    assert transcriber.calls == []
+
+
+def test_transcript_event_parses_remaining_buffer_bytes() -> None:
+    event = TranscriptEvent.from_payload({
+        "type": "partial",
+        "text": "hel",
+        "stream_id": 1,
+        "buffered_bytes": 3,
+        "remaining_buffer_bytes": 1021,
+    })
+
+    assert event.type == "partial"
+    assert event.text == "hel"
+    assert event.stream_id == 1
+    assert event.buffered_bytes == 3
+    assert event.remaining_buffer_bytes == 1021
+
+
+def test_streaming_client_stops_after_error_event() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "ready",
+                        "stream_id": 1,
+                        "backend": "fake-whisper",
+                        "model": "fixture-adapter",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "partial_interval_chunks": 1,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "backend unavailable",
+                        "code": 1011,
+                    }
+                ),
+            ]
+            self.sent: list[dict[str, object]] = []
+
+        async def send(self, data: str) -> None:
+            self.sent.append(json.loads(data))
+
+        async def recv(self) -> str:
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        events = await client.transcribe_once([b"hel"], config=StreamConfig(partial_event_timeout_seconds=0.01))
+
+        assert [event.type for event in events] == ["ready", "error"]
+        assert events[-1].text == "backend unavailable"
+        assert client._websocket.sent == [
+            {
+                "type": "start",
+                "language": "en",
+                "sample_rate": 16000,
+                "partial_interval_chunks": 1,
+            },
+            {
+                "type": "audio",
+                "audio_data": base64.b64encode(b"hel").decode("ascii"),
+            },
+        ]
+
+    asyncio.run(scenario())
+
+
 def test_streaming_client_drains_stale_partial_before_final() -> None:
     class FakeSocket:
         def __init__(self) -> None:
@@ -781,5 +936,133 @@ def test_streaming_client_drains_stale_partial_before_final() -> None:
 
         assert [event.type for event in events] == ["ready", "final"]
         assert events[-1].text == "hello"
+
+    asyncio.run(scenario())
+
+
+def test_streaming_client_stops_after_error_event() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "ready",
+                        "stream_id": 1,
+                        "backend": "fake-whisper",
+                        "model": "fixture-adapter",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "partial_interval_chunks": 1,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": "model download failed",
+                        "code": 1011,
+                    }
+                ),
+            ]
+            self.sent: list[object] = []
+
+        async def send(self, data: str | bytes) -> None:
+            self.sent.append(data)
+
+        async def recv(self) -> str:
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        events = await client.transcribe_once([b"hel"], config=StreamConfig())
+
+        assert [event.type for event in events] == ["ready", "error"]
+        assert client._websocket.sent == [
+            json.dumps(
+                {
+                    "type": "start",
+                    "language": "en",
+                    "sample_rate": 16000,
+                    "partial_interval_chunks": 1,
+                }
+            ),
+            json.dumps(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(b"hel").decode("ascii"),
+                }
+            ),
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_streaming_client_can_send_binary_audio_frames() -> None:
+    class FakeSocket:
+        def __init__(self) -> None:
+            self.responses = [
+                json.dumps(
+                    {
+                        "type": "ready",
+                        "stream_id": 1,
+                        "backend": "fake-whisper",
+                        "model": "fixture-adapter",
+                        "language": "en",
+                        "sample_rate": 16000,
+                        "partial_interval_chunks": 1,
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "partial",
+                        "stream_id": 1,
+                        "is_final": False,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hel",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "final",
+                        "stream_id": 1,
+                        "is_final": True,
+                        "chunks_received": 1,
+                        "buffered_bytes": 3,
+                        "text": "hello",
+                    }
+                ),
+            ]
+            self.sent: list[object] = []
+
+        async def send(self, data: str | bytes) -> None:
+            self.sent.append(data)
+
+        async def recv(self) -> str:
+            return self.responses.pop(0)
+
+        async def close(self) -> None:
+            return None
+
+    async def scenario() -> None:
+        client = ASRWebSocketClient("ws://example.test/ws")
+        client._websocket = FakeSocket()
+        await client.transcribe_once([b"hel"], config=StreamConfig(send_binary_frames=True))
+
+        assert client._websocket.sent == [
+            json.dumps(
+                {
+                    "type": "start",
+                    "language": "en",
+                    "sample_rate": 16000,
+                    "partial_interval_chunks": 1,
+                }
+            ),
+            b"hel",
+            json.dumps({"type": "stop"}),
+        ]
 
     asyncio.run(scenario())

@@ -395,11 +395,13 @@ def _run_transcription(
     language: str | None,
     sample_rate: int | None,
 ) -> dict[str, object]:
-    return services.transcriber.transcribe(
+    result = services.transcriber.transcribe(
         audio_bytes,
         language=language,
         sample_rate=sample_rate,
     )
+    services.preload_error = None
+    return result
 
 
 def _transcribe_bytes(
