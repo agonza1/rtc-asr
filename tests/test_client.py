@@ -4,6 +4,8 @@ import asyncio
 import base64
 import json
 
+import pytest
+
 from src.rtc_client import AsyncASRClient
 
 
@@ -258,5 +260,18 @@ def test_async_asr_client_can_cancel_stream() -> None:
             },
             {'type': 'cancel'},
         ]
+
+    asyncio.run(scenario())
+
+
+def test_async_asr_client_rejects_invalid_start_arguments() -> None:
+    async def scenario() -> None:
+        client = AsyncASRClient('ws://example.test/ws/stream')
+
+        with pytest.raises(ValueError, match='sample_rate must be a positive integer'):
+            await client.start(sample_rate=0)
+
+        with pytest.raises(ValueError, match='partial_interval_chunks must be a positive integer'):
+            await client.start(partial_interval_chunks=0)
 
     asyncio.run(scenario())

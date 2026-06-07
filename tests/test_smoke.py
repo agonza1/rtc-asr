@@ -1178,3 +1178,13 @@ def test_streaming_client_can_cancel_a_stream() -> None:
         assert client._websocket.sent == [json.dumps({"type": "cancel"})]
 
     asyncio.run(scenario())
+
+
+def test_stream_config_rejects_invalid_partial_interval_chunks() -> None:
+    with pytest.raises(ValueError, match='partial_interval_chunks must be a positive integer'):
+        StreamConfig(partial_interval_chunks=0)
+
+
+def test_stream_config_rejects_negative_partial_event_timeout() -> None:
+    with pytest.raises(ValueError, match='partial_event_timeout_seconds must be zero or greater'):
+        StreamConfig(partial_event_timeout_seconds=-0.1)

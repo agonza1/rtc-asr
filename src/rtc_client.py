@@ -72,6 +72,10 @@ class AsyncASRClient:
         partial_window_seconds: float | None = None,
         max_buffer_seconds: float | None = None,
     ) -> dict[str, Any]:
+        if sample_rate < 1:
+            raise ValueError("sample_rate must be a positive integer")
+        if partial_interval_chunks < 1:
+            raise ValueError("partial_interval_chunks must be a positive integer")
         websocket = await self.connect()
         payload: dict[str, Any] = {
             "type": "start",
