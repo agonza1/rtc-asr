@@ -30,16 +30,23 @@ the quick-brown fox jumps over the lazy dog. This is a real-time ASR latency ben
 
 ## Reproduce
 
-Run the same benchmark locally:
+Run the existing faster-whisper baseline locally:
 
 ```bash
 make benchmark
 ```
 
-Or invoke the harness directly against an already-running server:
+Invoke the harness directly against an already-running server:
 
 ```bash
 .venv/bin/python tests/benchmark.py --url http://127.0.0.1:8090 --ws-url ws://127.0.0.1:8090/ws/stream
+```
+
+Benchmark Qwen side-by-side with the whisper path by letting the harness spawn each backend with explicit settings:
+
+```bash
+.venv/bin/python tests/benchmark.py --spawn-server --backend faster-whisper --model tiny.en --device cpu --compute-type int8
+.venv/bin/python tests/benchmark.py --spawn-server --backend qwen-asr --model Qwen/Qwen3-ASR-0.6B --device cpu --qwen-dtype float32
 ```
 
 Useful options:
@@ -47,6 +54,8 @@ Useful options:
 - `--audio-file /path/to/sample.wav` to benchmark a specific clip
 - `--chunk-ms 100` to test a tighter streaming cadence
 - `--spawn-server` to let the harness boot a local uvicorn server
+- `--backend qwen-asr` to compare the alternate backend with the same harness
+- `--device cuda` to measure GPU-backed runs once the host is provisioned
 - `--partial-window 1.0` to compare a smaller streaming window
 
 ## Interpretation
