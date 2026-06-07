@@ -17,6 +17,14 @@ ASR_VAD_FILTER=true
 ASR_PRELOAD_MODEL=true
 ASR_FAIL_FAST=false
 
+# Optional qwen-asr backend settings
+# Set ASR_BACKEND=qwen-asr to enable these.
+ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B
+ASR_QWEN_DTYPE=auto
+# ASR_QWEN_DEVICE_MAP=cuda:0
+ASR_QWEN_MAX_NEW_TOKENS=256
+ASR_QWEN_MAX_INFERENCE_BATCH_SIZE=1
+
 # GPU Settings (optional)
 CUDA_VISIBLE_DEVICES=0
 

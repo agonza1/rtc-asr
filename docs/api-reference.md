@@ -6,6 +6,8 @@
 http://localhost:8080
 ```
 
+Supported backends: `faster-whisper` and `qwen-asr` (also selectable via the aliases `whisper`, `qwen`, and `qwen3-asr`). The HTTP and websocket response shapes stay the same across backends, but backend-specific metadata such as `language_probability` may only be present when the provider returns it.
+
 ## Health Check
 
 ```http
