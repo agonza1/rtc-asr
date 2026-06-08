@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
         ENABLE_PARAKEET_RUNTIME: ${ENABLE_PARAKEET_RUNTIME:-}
     env_file:
       - path: .env
