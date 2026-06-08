@@ -367,7 +367,8 @@ def _coerce_positive_seconds(value: Any, *, field_name: str) -> float | None:
 
 
 def _seconds_to_buffer_bytes(seconds: float, sample_rate: int) -> int:
-    return max(1, round(seconds * sample_rate * 2))
+    sample_count = max(1, round(seconds * sample_rate))
+    return sample_count * 2
 
 
 def _decode_base64_audio(encoded_audio: str) -> bytes:

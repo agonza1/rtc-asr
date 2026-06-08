@@ -10,7 +10,7 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
-from src.main import create_app
+from src.main import _seconds_to_buffer_bytes, create_app
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
@@ -916,6 +916,11 @@ def test_websocket_stream_rejects_invalid_window_overrides(field_name: str, valu
         "code": 1003,
     }
     assert transcriber.calls == []
+
+
+def test_seconds_to_buffer_bytes_returns_whole_pcm16_samples() -> None:
+    assert _seconds_to_buffer_bytes(0.0001, 16000) == 4
+    assert _seconds_to_buffer_bytes(0.5, 4) == 4
 
 
 def test_websocket_stream_rejects_audio_that_exceeds_the_session_buffer_limit() -> None:
