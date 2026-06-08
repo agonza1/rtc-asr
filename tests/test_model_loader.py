@@ -166,6 +166,28 @@ def test_qwen_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyP
         adapter.preload()
 
 
+def test_qwen_adapter_raises_actionable_error_for_transformers_version_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_import = builtins.__import__
+
+    def fake_import(name: str, globals: object = None, locals: object = None, fromlist: tuple[str, ...] = (), level: int = 0):
+        if name == "qwen_asr":
+            raise TypeError("check_model_inputs() missing 1 required positional argument: 'func'")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    monkeypatch.setattr("src.model_loader._installed_package_version", lambda name: "5.10.0.dev0")
+
+    adapter = QwenASRAdapter(
+        config=AppConfig(asr_backend="qwen-asr"),
+        audio_processor=AudioProcessor(),
+    )
+
+    with pytest.raises(ASRUnavailableError, match=r"transformers version \(5\.10\.0\.dev0\)"):
+        adapter.preload()
+
+
 def test_parakeet_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     real_import = builtins.__import__
 

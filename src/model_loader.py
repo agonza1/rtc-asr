@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from importlib import metadata
 from typing import Any, Protocol
 
 from .audio_processor import AudioProcessor
@@ -162,6 +163,16 @@ class QwenASRAdapter:
             raise ASRUnavailableError(
                 "The qwen-asr backend is not installed. Install requirements.txt to enable ASR_BACKEND=qwen-asr."
             ) from exc
+        except TypeError as exc:
+            message = str(exc)
+            if "check_model_inputs" not in message:
+                raise
+            transformers_version = _installed_package_version("transformers") or "unknown"
+            raise ASRUnavailableError(
+                "The qwen-asr backend is incompatible with the installed transformers "
+                f"version ({transformers_version}). Install the repo-pinned qwen stack with "
+                "`pip install -r requirements.txt` so qwen-asr can use transformers==4.57.6."
+            ) from exc
 
         kwargs = {
             "dtype": _resolve_torch_dtype(torch, self.config.asr_qwen_dtype, self.config.asr_device),
@@ -294,6 +305,13 @@ def _normalize_qwen_language(language: str | None) -> str | None:
     if language is None:
         return None
     return QWEN_LANGUAGE_ALIASES.get(language.lower(), language)
+
+
+def _installed_package_version(name: str) -> str | None:
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return None
 
 
 def _resolve_torch_dtype(torch: Any, configured_dtype: str, device: str) -> Any:
