@@ -1130,7 +1130,7 @@ def test_streaming_client_drains_stale_partial_before_final() -> None:
     asyncio.run(scenario())
 
 
-def test_streaming_client_stops_after_error_event() -> None:
+def test_streaming_client_stops_after_model_download_error_event() -> None:
     class FakeSocket:
         def __init__(self) -> None:
             self.responses = [
@@ -1170,6 +1170,7 @@ def test_streaming_client_stops_after_error_event() -> None:
         events = await client.transcribe_once([b"hel"], config=StreamConfig())
 
         assert [event.type for event in events] == ["ready", "error"]
+        assert events[-1].text == "model download failed"
         assert client._websocket.sent == [
             json.dumps(
                 {
