@@ -140,7 +140,7 @@ def test_parakeet_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyt
     assert calls["kwargs"] == {
         "model": "nvidia/parakeet-tdt-0.6b-v3",
         "device": "cpu",
-        "torch_dtype": fake_torch.float32,
+        "dtype": fake_torch.float32,
     }
     audio = calls["audio"]
     assert audio["sampling_rate"] == 16000

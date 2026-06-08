@@ -241,7 +241,7 @@ class ParakeetAdapter:
             "automatic-speech-recognition",
             model=self.model_name,
             device=self.config.asr_device,
-            torch_dtype=_resolve_torch_dtype(torch, self.config.asr_parakeet_dtype, self.config.asr_device),
+            dtype=_resolve_torch_dtype(torch, self.config.asr_parakeet_dtype, self.config.asr_device),
         )
         return self._pipeline
 
