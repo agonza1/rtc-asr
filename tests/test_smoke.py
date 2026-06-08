@@ -40,8 +40,9 @@ class FakeTranscriber:
                 "transport": "websocket",
                 "path": "/ws/stream",
                 "reusable_connection": True,
-                "message_types": ["start", "audio", "stop"],
+                "message_types": ["start", "audio", "stop", "cancel"],
                 "audio_frame_formats": ["json-base64", "binary"],
+                "event_types": ["ready", "partial", "final", "canceled", "error"],
             },
         }
 
@@ -138,8 +139,9 @@ def test_ready_and_model_capabilities_smoke() -> None:
                 "transport": "websocket",
                 "path": "/ws/stream",
                 "reusable_connection": True,
-                "message_types": ["start", "audio", "stop"],
+                "message_types": ["start", "audio", "stop", "cancel"],
                 "audio_frame_formats": ["json-base64", "binary"],
+                "event_types": ["ready", "partial", "final", "canceled", "error"],
             },
         },
     }
