@@ -78,19 +78,7 @@ class FasterWhisperAdapter:
             "device": self.config.asr_device,
             "compute_type": self.config.asr_compute_type,
             "loaded": self.is_loaded(),
-            "streaming": {
-                "transport": "websocket",
-                "path": "/ws/stream",
-                "reusable_connection": True,
-                "message_types": ["start", "audio", "stop"],
-                "audio_frame_formats": ["json-base64", "binary"],
-                "event_types": ["ready", "partial", "final", "error"],
-            },
-            "audio": {
-                "target_sample_rate": self.audio_processor.config.sample_rate,
-                "channels": 1,
-                "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
-            },
+            **_shared_capabilities(self.audio_processor),
         }
 
     def _load_model(self) -> Any:
@@ -160,19 +148,7 @@ class QwenASRAdapter:
             "max_new_tokens": self.config.asr_qwen_max_new_tokens,
             "max_inference_batch_size": self.config.asr_qwen_max_inference_batch_size,
             "loaded": self.is_loaded(),
-            "streaming": {
-                "transport": "websocket",
-                "path": "/ws/stream",
-                "reusable_connection": True,
-                "message_types": ["start", "audio", "stop"],
-                "audio_frame_formats": ["json-base64", "binary"],
-                "event_types": ["ready", "partial", "final", "error"],
-            },
-            "audio": {
-                "target_sample_rate": self.audio_processor.config.sample_rate,
-                "channels": 1,
-                "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
-            },
+            **_shared_capabilities(self.audio_processor),
         }
 
     def _load_model(self) -> Any:
@@ -188,7 +164,7 @@ class QwenASRAdapter:
             ) from exc
 
         kwargs = {
-            "dtype": _resolve_qwen_dtype(torch, self.config.asr_qwen_dtype, self.config.asr_device),
+            "dtype": _resolve_torch_dtype(torch, self.config.asr_qwen_dtype, self.config.asr_device),
             "device_map": self._device_map(),
             "max_new_tokens": self.config.asr_qwen_max_new_tokens,
             "max_inference_batch_size": self.config.asr_qwen_max_inference_batch_size,
@@ -202,12 +178,82 @@ class QwenASRAdapter:
         return self.config.asr_device
 
 
+@dataclass(slots=True)
+class ParakeetAdapter:
+    """Transformers pipeline wrapper for NVIDIA Parakeet ASR models."""
+
+    config: AppConfig
+    audio_processor: AudioProcessor
+    backend_name: str = field(init=False, default="parakeet")
+    model_name: str = field(init=False)
+    _pipeline: Any | None = field(init=False, default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        self.model_name = self.config.asr_parakeet_model
+
+    def is_loaded(self) -> bool:
+        return self._pipeline is not None
+
+    def preload(self) -> None:
+        self._load_pipeline()
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
+        decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
+        pipeline = self._load_pipeline()
+        result = pipeline(
+            {"array": decoded_audio.samples, "sampling_rate": decoded_audio.sample_rate}
+        )
+        text = _extract_pipeline_text(result)
+
+        return {
+            "text": text,
+            "language": language,
+            "duration_ms": decoded_audio.duration_ms,
+            "backend": self.backend_name,
+            "model": self.model_name,
+        }
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "device": self.config.asr_device,
+            "dtype": self.config.asr_parakeet_dtype,
+            "implementation": "transformers.pipeline",
+            "task": "automatic-speech-recognition",
+            "loaded": self.is_loaded(),
+            **_shared_capabilities(self.audio_processor),
+        }
+
+    def _load_pipeline(self) -> Any:
+        if self._pipeline is not None:
+            return self._pipeline
+
+        try:
+            import torch
+            from transformers import pipeline
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The parakeet backend requires transformers and torch. Install requirements.txt to enable ASR_BACKEND=parakeet."
+            ) from exc
+
+        self._pipeline = pipeline(
+            "automatic-speech-recognition",
+            model=self.model_name,
+            device=self.config.asr_device,
+            torch_dtype=_resolve_torch_dtype(torch, self.config.asr_parakeet_dtype, self.config.asr_device),
+        )
+        return self._pipeline
+
+
 BACKEND_ALIASES = {
     "faster-whisper": "faster-whisper",
     "whisper": "faster-whisper",
     "qwen": "qwen-asr",
     "qwen-asr": "qwen-asr",
     "qwen3-asr": "qwen-asr",
+    "parakeet": "parakeet",
+    "parakeet-asr": "parakeet",
 }
 
 
@@ -250,7 +296,7 @@ def _normalize_qwen_language(language: str | None) -> str | None:
     return QWEN_LANGUAGE_ALIASES.get(language.lower(), language)
 
 
-def _resolve_qwen_dtype(torch: Any, configured_dtype: str, device: str) -> Any:
+def _resolve_torch_dtype(torch: Any, configured_dtype: str, device: str) -> Any:
     dtype_name = configured_dtype.strip().lower()
     if dtype_name == "auto":
         dtype_name = "bfloat16" if device.startswith("cuda") else "float32"
@@ -258,7 +304,34 @@ def _resolve_qwen_dtype(torch: Any, configured_dtype: str, device: str) -> Any:
     try:
         return getattr(torch, dtype_name)
     except AttributeError as exc:
-        raise ASRUnavailableError(f"Unsupported Qwen dtype: {configured_dtype}") from exc
+        raise ASRUnavailableError(f"Unsupported dtype: {configured_dtype}") from exc
+
+
+def _extract_pipeline_text(result: Any) -> str:
+    if isinstance(result, dict):
+        text = result.get("text", "")
+        return str(text).strip()
+    if isinstance(result, list) and result:
+        return _extract_pipeline_text(result[0])
+    return str(result).strip()
+
+
+def _shared_capabilities(audio_processor: AudioProcessor) -> dict[str, Any]:
+    return {
+        "streaming": {
+            "transport": "websocket",
+            "path": "/ws/stream",
+            "reusable_connection": True,
+            "message_types": ["start", "audio", "stop"],
+            "audio_frame_formats": ["json-base64", "binary"],
+            "event_types": ["ready", "partial", "final", "error"],
+        },
+        "audio": {
+            "target_sample_rate": audio_processor.config.sample_rate,
+            "channels": 1,
+            "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
+        },
+    }
 
 
 def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Transcriber:
@@ -267,4 +340,6 @@ def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Tra
         return FasterWhisperAdapter(config=config, audio_processor=audio_processor)
     if backend == "qwen-asr":
         return QwenASRAdapter(config=config, audio_processor=audio_processor)
+    if backend == "parakeet":
+        return ParakeetAdapter(config=config, audio_processor=audio_processor)
     raise ASRUnavailableError(f"Unsupported ASR backend: {config.asr_backend}")

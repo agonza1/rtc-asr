@@ -64,6 +64,8 @@ class AppConfig:
     asr_qwen_device_map: str | None = None
     asr_qwen_max_new_tokens: int = 256
     asr_qwen_max_inference_batch_size: int = 1
+    asr_parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
+    asr_parakeet_dtype: str = "auto"
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -101,4 +103,6 @@ class AppConfig:
                     str(defaults.asr_qwen_max_inference_batch_size),
                 )
             ),
+            asr_parakeet_model=os.getenv("ASR_PARAKEET_MODEL", defaults.asr_parakeet_model),
+            asr_parakeet_dtype=os.getenv("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype),
         )
