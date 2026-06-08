@@ -8,7 +8,7 @@ from typing import Any, Awaitable, Callable, Protocol
 
 
 class WebSocketConnection(Protocol):
-    async def send(self, data: str) -> None: ...
+    async def send(self, data: str | bytes) -> None: ...
 
     async def recv(self) -> str: ...
 
@@ -55,6 +55,7 @@ class AsyncASRClient:
         self._websocket: WebSocketConnection | None = None
         self._partial_interval_chunks = 1
         self._chunks_sent = 0
+        self._send_binary_frames = False
 
     async def connect(self) -> WebSocketConnection:
         if self._websocket is not None:
@@ -71,6 +72,7 @@ class AsyncASRClient:
         partial_interval_chunks: int = 1,
         partial_window_seconds: float | None = None,
         max_buffer_seconds: float | None = None,
+        send_binary_frames: bool = False,
     ) -> dict[str, Any]:
         if sample_rate < 1:
             raise ValueError("sample_rate must be a positive integer")
@@ -95,20 +97,26 @@ class AsyncASRClient:
             raise RuntimeError(f"Expected ready event, got: {ready_event}")
         self._partial_interval_chunks = partial_interval_chunks
         self._chunks_sent = 0
+        self._send_binary_frames = send_binary_frames
         return ready_event
 
     async def send_audio(
         self,
         chunk: bytes,
         *,
+        binary: bool | None = None,
         expect_response: bool | None = None,
         response_timeout: float = 0.1,
     ) -> TranscriptEvent | None:
         websocket = self._require_websocket()
-        await websocket.send(json.dumps({
-            "type": "audio",
-            "audio_data": base64.b64encode(chunk).decode("ascii"),
-        }))
+        use_binary = self._send_binary_frames if binary is None else binary
+        if use_binary:
+            await websocket.send(chunk)
+        else:
+            await websocket.send(json.dumps({
+                "type": "audio",
+                "audio_data": base64.b64encode(chunk).decode("ascii"),
+            }))
         self._chunks_sent += 1
 
         if expect_response is None:
@@ -125,6 +133,7 @@ class AsyncASRClient:
         websocket = self._require_websocket()
         await websocket.send(json.dumps({"type": "stop"}))
         self._chunks_sent = 0
+        self._send_binary_frames = False
         while True:
             event = TranscriptEvent.from_payload(await self._recv_json(raise_on_error=False))
             if event.type != "partial":
@@ -134,6 +143,7 @@ class AsyncASRClient:
         websocket = self._require_websocket()
         await websocket.send(json.dumps({"type": "cancel"}))
         self._chunks_sent = 0
+        self._send_binary_frames = False
         while True:
             event = TranscriptEvent.from_payload(await self._recv_json(raise_on_error=False))
             if event.type in {"canceled", "error"}:
@@ -144,6 +154,7 @@ class AsyncASRClient:
             return
         await self._websocket.close(code=1000)
         self._websocket = None
+        self._send_binary_frames = False
 
     async def _recv_json(self, *, raise_on_error: bool = True) -> dict[str, Any]:
         websocket = self._require_websocket()
