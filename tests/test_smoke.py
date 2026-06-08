@@ -10,7 +10,7 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
-from src.main import create_app
+from src.main import _seconds_to_buffer_bytes, create_app
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
@@ -792,6 +792,135 @@ def test_websocket_stream_emits_partial_updates_when_text_is_stable() -> None:
         },
     ]
 
+
+def test_websocket_stream_applies_partial_window_and_max_buffer_overrides() -> None:
+    transcriber = FakeTranscriber()
+    first_chunk = b"abcd"
+    second_chunk = b"efgh"
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "language": "en",
+                    "sample_rate": 4,
+                    "partial_interval_chunks": 1,
+                    "partial_window_seconds": 0.5,
+                    "max_buffer_seconds": 1.0,
+                }
+            )
+            ready = websocket.receive_json()
+            assert ready == {
+                "type": "ready",
+                "stream_id": 1,
+                "backend": "fake-whisper",
+                "model": "fixture-adapter",
+                "language": "en",
+                "sample_rate": 4,
+                "partial_interval_chunks": 1,
+                "partial_window_seconds": 0.5,
+                "max_buffer_seconds": 1.0,
+                "max_buffer_bytes": 8,
+            }
+
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(first_chunk).decode("ascii"),
+                }
+            )
+            assert websocket.receive_json()["type"] == "partial"
+
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(second_chunk).decode("ascii"),
+                }
+            )
+            second_partial = websocket.receive_json()
+
+            websocket.send_json({"type": "stop"})
+            final_event = websocket.receive_json()
+
+    assert second_partial == {
+        "type": "partial",
+        "stream_id": 1,
+        "is_final": False,
+        "chunks_received": 2,
+        "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "remaining_buffer_bytes": 0,
+        "text": "fixture transcription 2",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert final_event == {
+        "type": "final",
+        "stream_id": 1,
+        "is_final": True,
+        "chunks_received": 2,
+        "buffered_bytes": len(first_chunk) + len(second_chunk),
+        "remaining_buffer_bytes": 0,
+        "text": "fixture transcription 3",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert transcriber.calls == [
+        {
+            "audio_size": len(first_chunk),
+            "language": "en",
+            "sample_rate": 4,
+            "prefix": first_chunk[:4],
+        },
+        {
+            "audio_size": len(second_chunk),
+            "language": "en",
+            "sample_rate": 4,
+            "prefix": second_chunk[:4],
+        },
+        {
+            "audio_size": len(first_chunk) + len(second_chunk),
+            "language": "en",
+            "sample_rate": 4,
+            "prefix": first_chunk[:4],
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [("partial_window_seconds", 0), ("max_buffer_seconds", -1)],
+)
+def test_websocket_stream_rejects_invalid_window_overrides(field_name: str, value: int) -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "language": "en",
+                    "sample_rate": 16000,
+                    field_name: value,
+                }
+            )
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "message": f"{field_name} must be a positive number",
+        "code": 1003,
+    }
+    assert transcriber.calls == []
+
+
+def test_seconds_to_buffer_bytes_returns_whole_pcm16_samples() -> None:
+    assert _seconds_to_buffer_bytes(0.0001, 16000) == 4
+    assert _seconds_to_buffer_bytes(0.5, 4) == 4
 
 
 def test_websocket_stream_rejects_audio_that_exceeds_the_session_buffer_limit() -> None:
