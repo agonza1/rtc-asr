@@ -1191,6 +1191,19 @@ def test_streaming_client_stops_after_model_download_error_event() -> None:
     asyncio.run(scenario())
 
 
+def test_stream_config_includes_stream_window_overrides() -> None:
+    config = StreamConfig(partial_window_seconds=1.5, max_buffer_seconds=6.0)
+
+    assert config.as_payload() == {
+        "type": "start",
+        "language": "en",
+        "sample_rate": 16000,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 1.5,
+        "max_buffer_seconds": 6.0,
+    }
+
+
 def test_streaming_client_can_send_binary_audio_frames() -> None:
     class FakeSocket:
         def __init__(self) -> None:
@@ -1318,3 +1331,14 @@ def test_stream_config_rejects_invalid_partial_interval_chunks() -> None:
 def test_stream_config_rejects_negative_partial_event_timeout() -> None:
     with pytest.raises(ValueError, match='partial_event_timeout_seconds must be zero or greater'):
         StreamConfig(partial_event_timeout_seconds=-0.1)
+
+def test_stream_config_rejects_non_positive_partial_window_seconds() -> None:
+    with pytest.raises(ValueError, match='partial_window_seconds must be greater than zero'):
+        StreamConfig(partial_window_seconds=0)
+
+
+def test_stream_config_rejects_non_positive_max_buffer_seconds() -> None:
+    with pytest.raises(ValueError, match='max_buffer_seconds must be greater than zero'):
+        StreamConfig(max_buffer_seconds=0)
+
+

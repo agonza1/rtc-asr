@@ -17,6 +17,8 @@ class StreamConfig:
     language: str | None = "en"
     sample_rate: int = 16000
     partial_interval_chunks: int = 1
+    partial_window_seconds: float | None = None
+    max_buffer_seconds: float | None = None
     partial_event_timeout_seconds: float = 0.1
     send_binary_frames: bool = False
 
@@ -25,16 +27,25 @@ class StreamConfig:
             raise ValueError("sample_rate must be a positive integer")
         if self.partial_interval_chunks < 1:
             raise ValueError("partial_interval_chunks must be a positive integer")
+        if self.partial_window_seconds is not None and self.partial_window_seconds <= 0:
+            raise ValueError("partial_window_seconds must be greater than zero")
+        if self.max_buffer_seconds is not None and self.max_buffer_seconds <= 0:
+            raise ValueError("max_buffer_seconds must be greater than zero")
         if self.partial_event_timeout_seconds < 0:
             raise ValueError("partial_event_timeout_seconds must be zero or greater")
 
     def as_payload(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "type": "start",
             "language": self.language,
             "sample_rate": self.sample_rate,
             "partial_interval_chunks": self.partial_interval_chunks,
         }
+        if self.partial_window_seconds is not None:
+            payload["partial_window_seconds"] = self.partial_window_seconds
+        if self.max_buffer_seconds is not None:
+            payload["max_buffer_seconds"] = self.max_buffer_seconds
+        return payload
 
 
 @dataclass(slots=True, frozen=True)
