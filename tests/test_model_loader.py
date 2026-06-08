@@ -9,20 +9,21 @@ import pytest
 
 from src.audio_processor import AudioProcessor
 from src.config import AppConfig
-from src.model_loader import ASRUnavailableError, QwenASRAdapter, build_transcriber
+from src.model_loader import ASRUnavailableError, QwenASRAdapter, UltravoxAdapter, build_transcriber
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 
 
 @pytest.mark.parametrize("backend", ["qwen", "qwen-asr", "qwen3-asr"])
 def test_build_transcriber_accepts_qwen_aliases(backend: str) -> None:
-    transcriber = build_transcriber(
-        AppConfig(asr_backend=backend),
-        AudioProcessor(),
-    )
-
+    transcriber = build_transcriber(AppConfig(asr_backend=backend), AudioProcessor())
     assert isinstance(transcriber, QwenASRAdapter)
-    assert transcriber.model_name == "Qwen/Qwen3-ASR-0.6B"
+
+
+def test_build_transcriber_accepts_ultravox_alias() -> None:
+    transcriber = build_transcriber(AppConfig(asr_backend="ultravox"), AudioProcessor())
+    assert isinstance(transcriber, UltravoxAdapter)
+    assert transcriber.model_name == "fixie-ai/ultravox-v0_6-llama-3_1-8b"
 
 
 def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -51,13 +52,45 @@ def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPat
     monkeypatch.setitem(sys.modules, "torch", fake_torch)
 
     adapter = QwenASRAdapter(
+        config=AppConfig(asr_backend="qwen-asr", asr_device="cuda:0"),
+        audio_processor=AudioProcessor(),
+    )
+    result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
+
+    assert result["text"] == "hello world"
+    assert calls["language"] == "English"
+
+
+def test_ultravox_adapter_transcribe_uses_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_pipeline(**kwargs: object):
+        calls["kwargs"] = kwargs
+
+        def run(payload: dict[str, object], *, max_new_tokens: int) -> dict[str, object]:
+            calls["payload"] = payload
+            calls["max_new_tokens"] = max_new_tokens
+            return {"generated_text": [{"role": "assistant", "content": "  hello from ultravox  "}]}
+
+        return run
+
+    fake_transformers = ModuleType("transformers")
+    fake_transformers.pipeline = fake_pipeline
+    fake_torch = ModuleType("torch")
+    fake_torch.bfloat16 = object()
+    fake_torch.float32 = object()
+
+    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+    adapter = UltravoxAdapter(
         config=AppConfig(
-            asr_backend="qwen-asr",
-            asr_device="cuda:0",
-            asr_qwen_model="Qwen/Qwen3-ASR-1.7B",
-            asr_qwen_dtype="auto",
-            asr_qwen_max_new_tokens=512,
-            asr_qwen_max_inference_batch_size=4,
+            asr_backend="ultravox",
+            asr_ultravox_model="fixie-ai/ultravox-v0_6-llama-3_1-8b",
+            asr_ultravox_dtype="auto",
+            asr_ultravox_max_new_tokens=64,
+            asr_ultravox_prompt="Transcribe exactly.",
+            asr_device="cpu",
         ),
         audio_processor=AudioProcessor(),
     )
@@ -65,57 +98,49 @@ def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPat
     result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
 
     assert result == {
-        "text": "hello world",
-        "language": "English",
+        "text": "hello from ultravox",
+        "language": "en",
         "duration_ms": 125,
-        "backend": "qwen-asr",
-        "model": "Qwen/Qwen3-ASR-1.7B",
+        "backend": "ultravox",
+        "model": "fixie-ai/ultravox-v0_6-llama-3_1-8b",
     }
-    assert calls["model_name"] == "Qwen/Qwen3-ASR-1.7B"
     assert calls["kwargs"] == {
-        "dtype": fake_torch.bfloat16,
-        "device_map": "cuda:0",
-        "max_new_tokens": 512,
-        "max_inference_batch_size": 4,
+        "model": "fixie-ai/ultravox-v0_6-llama-3_1-8b",
+        "trust_remote_code": True,
+        "device": "cpu",
+        "torch_dtype": fake_torch.float32,
     }
-    audio_samples, audio_sample_rate = calls["audio"]
-    assert audio_sample_rate == 16000
-    assert getattr(audio_samples, "shape", (0,))[0] > 0
-    assert calls["language"] == "English"
+    assert calls["payload"]["sampling_rate"] == 16000
+    assert calls["payload"]["turns"] == [{"role": "system", "content": "Transcribe exactly."}]
+    assert calls["max_new_tokens"] == 64
 
 
-def test_qwen_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ultravox_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     real_import = builtins.__import__
 
     def fake_import(name: str, globals: object = None, locals: object = None, fromlist: tuple[str, ...] = (), level: int = 0):
-        if name in {"qwen_asr", "torch"}:
+        if name in {"transformers", "torch"}:
             raise ImportError(name)
         return real_import(name, globals, locals, fromlist, level)
 
     monkeypatch.setattr(builtins, "__import__", fake_import)
+    adapter = UltravoxAdapter(config=AppConfig(asr_backend="ultravox"), audio_processor=AudioProcessor())
 
-    adapter = QwenASRAdapter(
-        config=AppConfig(asr_backend="qwen-asr"),
-        audio_processor=AudioProcessor(),
-    )
-
-    with pytest.raises(ASRUnavailableError, match="qwen-asr backend is not installed"):
+    with pytest.raises(ASRUnavailableError, match="ultravox backend requires transformers and torch"):
         adapter.preload()
 
 
-def test_app_config_reads_qwen_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("ASR_BACKEND", "qwen")
-    monkeypatch.setenv("ASR_QWEN_MODEL", "Qwen/Qwen3-ASR-1.7B")
-    monkeypatch.setenv("ASR_QWEN_DTYPE", "float32")
-    monkeypatch.setenv("ASR_QWEN_DEVICE_MAP", "cpu")
-    monkeypatch.setenv("ASR_QWEN_MAX_NEW_TOKENS", "1024")
-    monkeypatch.setenv("ASR_QWEN_MAX_INFERENCE_BATCH_SIZE", "3")
+def test_app_config_reads_ultravox_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASR_BACKEND", "ultravox")
+    monkeypatch.setenv("ASR_ULTRAVOX_MODEL", "fixie-ai/ultravox-v0_6-llama-3_1-8b")
+    monkeypatch.setenv("ASR_ULTRAVOX_DTYPE", "float32")
+    monkeypatch.setenv("ASR_ULTRAVOX_MAX_NEW_TOKENS", "72")
+    monkeypatch.setenv("ASR_ULTRAVOX_PROMPT", "Transcribe the clip.")
 
     config = AppConfig.from_env()
 
-    assert config.asr_backend == "qwen"
-    assert config.asr_qwen_model == "Qwen/Qwen3-ASR-1.7B"
-    assert config.asr_qwen_dtype == "float32"
-    assert config.asr_qwen_device_map == "cpu"
-    assert config.asr_qwen_max_new_tokens == 1024
-    assert config.asr_qwen_max_inference_batch_size == 3
+    assert config.asr_backend == "ultravox"
+    assert config.asr_ultravox_model == "fixie-ai/ultravox-v0_6-llama-3_1-8b"
+    assert config.asr_ultravox_dtype == "float32"
+    assert config.asr_ultravox_max_new_tokens == 72
+    assert config.asr_ultravox_prompt == "Transcribe the clip."

@@ -37,6 +37,7 @@ docker compose ps
 docker compose logs -f
 # qwen-asr Compose benchmark path
 make benchmark-compose-qwen
+make benchmark-compose-ultravox
 ```
 
 ## REST API
@@ -108,9 +109,13 @@ ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B
 ASR_QWEN_DTYPE=auto
 ASR_QWEN_MAX_NEW_TOKENS=256
 ASR_QWEN_MAX_INFERENCE_BATCH_SIZE=1
+ASR_ULTRAVOX_MODEL=fixie-ai/ultravox-v0_6-llama-3_1-8b
+ASR_ULTRAVOX_DTYPE=auto
+ASR_ULTRAVOX_MAX_NEW_TOKENS=128
+ASR_ULTRAVOX_PROMPT=Transcribe the spoken audio exactly and return only the transcript.
 ```
 
-For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; `requirements.txt` installs `torch` alongside `qwen-asr` so fresh environments can preload that backend without extra manual steps. The service keeps the same REST and websocket contract while swapping providers underneath.
+For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; `requirements.txt` installs `torch` alongside `qwen-asr` so fresh environments can preload that backend without extra manual steps. Set `ASR_BACKEND=ultravox` to route the same REST and websocket contract through a fixed-prompt Ultravox transcription pipeline using `ASR_ULTRAVOX_MODEL`, `ASR_ULTRAVOX_DTYPE`, and `ASR_ULTRAVOX_MAX_NEW_TOKENS`. The service keeps the same REST and websocket contract while swapping providers underneath.
 
 ## Verification
 

@@ -9,8 +9,11 @@ COMPOSE_URL ?= http://127.0.0.1:8080
 COMPOSE_WS_URL ?= ws://127.0.0.1:8080/ws/stream
 QWEN_COMPOSE_MODEL ?= Qwen/Qwen3-ASR-0.6B
 QWEN_COMPOSE_DTYPE ?= float32
+ULTRAVOX_COMPOSE_MODEL ?= fixie-ai/ultravox-v0_6-llama-3_1-8b
+ULTRAVOX_COMPOSE_DTYPE ?= float32
+ULTRAVOX_MAX_NEW_TOKENS ?= 128
 
-.PHONY: help venv setup build run dev test benchmark benchmark-compose-qwen clean lint docs start stop status
+.PHONY: help venv setup build run dev test benchmark benchmark-compose-qwen benchmark-compose-ultravox clean lint docs start stop status
 
 help:
 	@echo "Realtime ASR Service - Available commands:"
@@ -92,6 +95,14 @@ benchmark-compose-qwen:
 	@ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
 	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL)
+
+benchmark-compose-ultravox:
+	@echo "Starting docker compose stack with ultravox on CPU..."
+	@mkdir -p .cache/huggingface
+	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
+	@ASR_BACKEND=ultravox ASR_ULTRAVOX_MODEL=$(ULTRAVOX_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_ULTRAVOX_DTYPE=$(ULTRAVOX_COMPOSE_DTYPE) ASR_ULTRAVOX_MAX_NEW_TOKENS=$(ULTRAVOX_MAX_NEW_TOKENS) docker compose up -d --build
+	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
+	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS)
 
 lint: venv
 	@echo "Running linter..."
