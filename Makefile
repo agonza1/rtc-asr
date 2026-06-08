@@ -52,7 +52,9 @@ build:
 	@echo "Building Docker image..."
 	@base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
-		if ! docker pull "$${base_image}"; then \
+		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			echo "Using cached default base image $${base_image}"; \
+		elif ! docker pull "$${base_image}"; then \
 			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
 			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
 			docker pull "$${base_image}"; \
@@ -106,7 +108,9 @@ benchmark-compose-qwen:
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
 	@base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
-		if ! docker pull "$${base_image}"; then \
+		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			echo "Using cached default base image $${base_image}"; \
+		elif ! docker pull "$${base_image}"; then \
 			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
 			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
 			docker pull "$${base_image}"; \
@@ -124,7 +128,9 @@ benchmark-compose-parakeet:
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
 	@base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
-		if ! docker pull "$${base_image}"; then \
+		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			echo "Using cached default base image $${base_image}"; \
+		elif ! docker pull "$${base_image}"; then \
 			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
 			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
 			docker pull "$${base_image}"; \
