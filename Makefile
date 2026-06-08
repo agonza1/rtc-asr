@@ -9,6 +9,8 @@ COMPOSE_URL ?= http://127.0.0.1:8080
 COMPOSE_WS_URL ?= ws://127.0.0.1:8080/ws/stream
 QWEN_COMPOSE_MODEL ?= Qwen/Qwen3-ASR-0.6B
 QWEN_COMPOSE_DTYPE ?= float32
+PYTHON_BASE_IMAGE ?= python:3.11-slim
+PYTHON_BASE_IMAGE_FALLBACK ?= mirror.gcr.io/library/python:3.11-slim
 PARAKEET_COMPOSE_MODEL ?= nvidia/parakeet-tdt-0.6b-v3
 PARAKEET_COMPOSE_DTYPE ?= float32
 
@@ -47,7 +49,13 @@ setup: venv
 
 build:
 	@echo "Building Docker image..."
-	docker build -t realtime-asr:latest .
+	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	if ! docker pull "$${base_image}"; then \
+		echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
+		base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
+		docker pull "$${base_image}"; \
+	fi; \
+	docker build --build-arg PYTHON_BASE_IMAGE="$${base_image}" -t realtime-asr:latest .
 	@echo "  ✓ Image built: realtime-asr:latest"
 
 run: venv
@@ -91,7 +99,13 @@ benchmark-compose-qwen:
 	@echo "Starting docker compose stack with qwen-asr on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
-	@ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) docker compose up -d --build
+	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	if ! docker pull "$${base_image}"; then \
+		echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
+		base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
+		docker pull "$${base_image}"; \
+	fi; \
+	ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
 	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL)
 
@@ -99,7 +113,13 @@ benchmark-compose-parakeet:
 	@echo "Starting docker compose stack with parakeet on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
-	@ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) docker compose up -d --build
+	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	if ! docker pull "$${base_image}"; then \
+		echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
+		base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
+		docker pull "$${base_image}"; \
+	fi; \
+	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
 	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE)
 

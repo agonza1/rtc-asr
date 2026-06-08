@@ -34,7 +34,7 @@ the quick-brown fox jumps over the lazy dog. This is a real-time ASR latency ben
 
 ### Qwen Compose CPU Baseline
 
-Measured on June 7, 2026 against the Docker Compose stack.
+Measured on June 8, 2026 against the Docker Compose stack.
 
 Environment:
 
@@ -44,29 +44,29 @@ Environment:
 - Backend: `qwen-asr`
 - Model: `Qwen/Qwen3-ASR-0.6B`
 - Device: CPU / `float32`
-- Audio: 2.587 s synthesized speech clip from `say`
-- Reference transcript: `Quick benchmark phrase for rtc asr.`
+- Audio: 7.28 s synthesized speech clip from `say`
+- Reference transcript: `The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.`
 
 Measured results:
 
-- REST `POST /api/transcribe`: 1691.4 ms mean, 1692.5 ms p95, 1690.3 ms min, 1692.5 ms max
-- REST real-time factor: 0.654
-- WebSocket partial latency: 1349.7 ms mean, 1863.0 ms p95, 749.9 ms first partial, 1863.0 ms last partial
-- WebSocket final latency after `stop`: 0.7 ms
-- REST transcript: `Quick benchmark phrase for RTCASR.`
-- Streaming final transcript: `Quick benchmark phrase for RTCASR.`
-- Accuracy (normalized WER): `0.333`
+- REST `POST /api/transcribe`: 5482.2 ms mean, 5904.4 ms p95, 5221.7 ms min, 5904.4 ms max
+- REST real-time factor: 0.753
+- WebSocket partial latency: 3696.1 ms mean, 6314.4 ms p95, 1468.2 ms first partial, 5436.3 ms last partial
+- WebSocket final latency after `stop`: 0.9 ms
+- REST transcript: `The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.`
+- Streaming final transcript: `The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.`
+- Accuracy (normalized WER): `0.095`
 - Accuracy (normalized CER): `0.0`
 
 Interpretation notes:
 
-- The measured Qwen CPU path is substantially slower than the `faster-whisper` `tiny.en` CPU baseline, but it stayed below real time for this short utterance.
-- The transcript collapsed `rtc asr` into `RTCASR`, which counts as a one-token word-boundary miss in normalized WER while preserving the underlying character sequence, hence `CER=0.0`.
+- The measured Qwen CPU path is still substantially slower than the `faster-whisper` `tiny.en` CPU baseline, but it remained below real time across a longer synthesized utterance.
+- The main accuracy miss is word-boundary normalization: `realtime` became `real-time`, which increases WER while leaving normalized CER at `0.0`.
 - The very small `final_ms` value reflects that most of the work already happened during the streaming partial passes.
 
 Versioned artifact:
 
-- `docs/benchmark-results/qwen-compose-2026-06-07.json`
+- `docs/benchmark-results/qwen-compose-2026-06-08.json`
 
 ## Reproduce
 
@@ -97,6 +97,7 @@ make benchmark-compose-qwen
 What that target does:
 
 - creates a writable local Hugging Face cache at `.cache/huggingface`
+- primes the Python base image with `docker pull`; if Docker Hub flakes, the workflow retries with `mirror.gcr.io/library/python:3.11-slim` before building
 - builds the image with a CPU PyTorch wheel from the official PyTorch CPU index so Compose does not pull the much larger CUDA stack for the default CPU path
 - starts `docker compose` with `ASR_BACKEND=qwen-asr`, `ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B`, `ASR_DEVICE=cpu`, and `ASR_QWEN_DTYPE=float32`
 - waits for `GET /ready` to return `200`
@@ -110,16 +111,13 @@ ASR_BACKEND=qwen-asr \
 ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B \
 ASR_DEVICE=cpu \
 ASR_QWEN_DTYPE=float32 \
-docker compose up -d --build
+PYTHON_BASE_IMAGE=python:3.11-slim docker compose up -d --build
 
 until curl -fsS http://127.0.0.1:8080/ready >/dev/null; do sleep 5; done
 
 .venv/bin/python tests/benchmark.py \
   --url http://127.0.0.1:8080 \
-  --ws-url ws://127.0.0.1:8080/ws/stream \
-  --speech-text 'Quick benchmark phrase for rtc asr.' \
-  --rest-runs 2 \
-  --chunk-ms 1000
+  --ws-url ws://127.0.0.1:8080/ws/stream
 ```
 
 ## Methodology Notes
