@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        ENABLE_PARAKEET_RUNTIME: ${ENABLE_PARAKEET_RUNTIME:-}
     env_file:
       - path: .env
         required: false

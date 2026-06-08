@@ -99,7 +99,7 @@ benchmark-compose-parakeet:
 	@echo "Starting docker compose stack with parakeet on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
-	@ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) docker compose up -d --build
+	@ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
 	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE)
 

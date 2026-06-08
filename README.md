@@ -40,6 +40,8 @@ make benchmark-compose-qwen
 make benchmark-compose-parakeet
 ```
 
+The Parakeet compose benchmark target overrides the container image to a known-good Hugging Face pair, `transformers==5.10.2` plus `huggingface_hub==1.18.0`, which recognizes NVIDIA's upstream `parakeet_tdt` architecture while leaving the default `qwen-asr` dependency pin untouched.
+
 ## REST API
 
 ```bash
