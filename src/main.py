@@ -63,6 +63,9 @@ class StreamSession:
     sample_rate: int
     max_buffer_bytes: int
     partial_interval_chunks: int = 1
+    partial_window_seconds: float | None = None
+    max_buffer_seconds: float | None = None
+    partial_window_bytes: int | None = None
     audio_buffer: bytearray = field(default_factory=bytearray, repr=False)
     chunks_received: int = 0
     last_partial_chunks_received: int = 0
@@ -81,6 +84,11 @@ class StreamSession:
     def record_partial(self, transcript: dict[str, object]) -> None:
         self.last_partial_result = transcript
         self.last_partial_chunks_received = self.chunks_received
+
+    def partial_audio_bytes(self) -> bytes:
+        if self.partial_window_bytes is None or len(self.audio_buffer) <= self.partial_window_bytes:
+            return bytes(self.audio_buffer)
+        return bytes(self.audio_buffer[-self.partial_window_bytes :])
 
 
 def create_app(config: AppConfig | None = None, transcriber: Transcriber | None = None) -> FastAPI:
@@ -223,18 +231,21 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         stream_id=next_stream_id,
                     )
                     next_stream_id += 1
-                    await websocket.send_json(
-                        {
-                            "type": "ready",
-                            "stream_id": session.stream_id,
-                            "backend": services.transcriber.backend_name,
-                            "model": services.transcriber.model_name,
-                            "language": session.language,
-                            "sample_rate": session.sample_rate,
-                            "partial_interval_chunks": session.partial_interval_chunks,
-                            "max_buffer_bytes": session.max_buffer_bytes,
-                        }
-                    )
+                    ready_payload = {
+                        "type": "ready",
+                        "stream_id": session.stream_id,
+                        "backend": services.transcriber.backend_name,
+                        "model": services.transcriber.model_name,
+                        "language": session.language,
+                        "sample_rate": session.sample_rate,
+                        "partial_interval_chunks": session.partial_interval_chunks,
+                        "max_buffer_bytes": session.max_buffer_bytes,
+                    }
+                    if session.partial_window_seconds is not None:
+                        ready_payload["partial_window_seconds"] = session.partial_window_seconds
+                    if session.max_buffer_seconds is not None:
+                        ready_payload["max_buffer_seconds"] = session.max_buffer_seconds
+                    await websocket.send_json(ready_payload)
                     continue
 
                 if event_type == "audio":
@@ -249,7 +260,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
 
                     partial = _run_transcription(
                         services,
-                        audio_bytes=bytes(session.audio_buffer),
+                        audio_bytes=session.partial_audio_bytes(),
                         language=session.language,
                         sample_rate=session.sample_rate,
                     )
@@ -311,6 +322,14 @@ def _create_stream_session(
     sample_rate = payload.get("sample_rate", config.sample_rate)
     partial_interval = payload.get("partial_interval_chunks", 1)
     language = payload.get("language", "en")
+    partial_window_seconds = _coerce_positive_seconds(
+        payload.get("partial_window_seconds"),
+        field_name="partial_window_seconds",
+    )
+    max_buffer_seconds = _coerce_positive_seconds(
+        payload.get("max_buffer_seconds"),
+        field_name="max_buffer_seconds",
+    )
 
     if not isinstance(sample_rate, int) or sample_rate < 1:
         raise StreamClientError("sample_rate must be a positive integer")
@@ -319,13 +338,36 @@ def _create_stream_session(
     if language is not None and not isinstance(language, str):
         raise StreamClientError("language must be a string or null")
 
+    max_buffer_bytes = config.stream_max_buffer_bytes
+    if max_buffer_seconds is not None:
+        max_buffer_bytes = min(max_buffer_bytes, _seconds_to_buffer_bytes(max_buffer_seconds, sample_rate))
+
+    partial_window_bytes = None
+    if partial_window_seconds is not None:
+        partial_window_bytes = min(max_buffer_bytes, _seconds_to_buffer_bytes(partial_window_seconds, sample_rate))
+
     return StreamSession(
         stream_id=stream_id,
         language=language,
         sample_rate=sample_rate,
-        max_buffer_bytes=config.stream_max_buffer_bytes,
+        max_buffer_bytes=max_buffer_bytes,
         partial_interval_chunks=partial_interval,
+        partial_window_seconds=partial_window_seconds,
+        max_buffer_seconds=max_buffer_seconds,
+        partial_window_bytes=partial_window_bytes,
     )
+
+
+def _coerce_positive_seconds(value: Any, *, field_name: str) -> float | None:
+    if value is None:
+        return None
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+        raise StreamClientError(f"{field_name} must be a positive number")
+    return float(value)
+
+
+def _seconds_to_buffer_bytes(seconds: float, sample_rate: int) -> int:
+    return max(1, round(seconds * sample_rate * 2))
 
 
 def _decode_base64_audio(encoded_audio: str) -> bytes:
@@ -393,6 +435,7 @@ def _resolve_final_result(session: StreamSession, services: AppServices) -> dict
     if (
         session.last_partial_result is not None
         and session.last_partial_chunks_received == session.chunks_received
+        and (session.partial_window_bytes is None or len(session.audio_buffer) <= session.partial_window_bytes)
     ):
         return session.last_partial_result
 
