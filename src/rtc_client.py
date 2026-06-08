@@ -76,6 +76,8 @@ class AsyncASRClient:
             raise ValueError("sample_rate must be a positive integer")
         if partial_interval_chunks < 1:
             raise ValueError("partial_interval_chunks must be a positive integer")
+        _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
+        _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
         websocket = await self.connect()
         payload: dict[str, Any] = {
             "type": "start",
@@ -171,3 +173,10 @@ async def _default_connect(ws_url: str) -> WebSocketConnection:
 
 def _maybe_int(value: Any) -> int | None:
     return value if isinstance(value, int) else None
+
+
+def _validate_positive_number(value: Any, *, field_name: str) -> None:
+    if value is None:
+        return
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+        raise ValueError(f"{field_name} must be a positive number")

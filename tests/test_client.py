@@ -27,6 +27,21 @@ class FakeWebSocket:
         self.closed_with = code
 
 
+import importlib
+import sys
+
+
+def test_importing_rtc_client_does_not_load_main_module() -> None:
+    sys.modules.pop("src", None)
+    sys.modules.pop("src.main", None)
+    sys.modules.pop("src.rtc_client", None)
+
+    rtc_client = importlib.import_module("src.rtc_client")
+
+    assert rtc_client.AsyncASRClient is not None
+    assert "src.main" not in sys.modules
+
+
 def test_async_asr_client_stream_flow() -> None:
     websocket = FakeWebSocket([
         {
@@ -99,6 +114,19 @@ def test_async_asr_client_stream_flow() -> None:
             {'type': 'stop'},
         ]
         assert websocket.closed_with == 1000
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("param_name", "param_value"),
+    [("partial_window_seconds", 0), ("max_buffer_seconds", -1), ("partial_window_seconds", True)],
+)
+def test_async_asr_client_rejects_invalid_optional_window_settings(param_name: str, param_value: object) -> None:
+    async def scenario() -> None:
+        client = AsyncASRClient("ws://example.test/ws/stream")
+        with pytest.raises(ValueError, match=rf"{param_name} must be a positive number"):
+            await client.start(**{param_name: param_value})
 
     asyncio.run(scenario())
 
