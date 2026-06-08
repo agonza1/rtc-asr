@@ -46,8 +46,11 @@ Useful options:
 
 - `--audio-file /path/to/sample.wav` to benchmark a specific clip
 - `--chunk-ms 100` to test a tighter streaming cadence
+- `--partial-interval-chunks 2` to reduce partial-event frequency
+- `--binary-frames` to measure raw PCM websocket frames instead of JSON base64
 - `--spawn-server` to let the harness boot a local uvicorn server
 - `--partial-window 1.0` to compare a smaller streaming window
+- `--max-buffer 4.0` to clamp the per-stream websocket buffer budget
 
 ## Interpretation
 

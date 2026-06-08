@@ -39,8 +39,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--spawn-server", action="store_true", help="Start a local uvicorn server for the benchmark run")
     parser.add_argument("--rest-runs", type=int, default=5, help="Number of REST runs")
     parser.add_argument("--chunk-ms", type=int, default=250, help="Streaming chunk duration in milliseconds")
+    parser.add_argument("--partial-interval-chunks", type=int, default=1, help="Streaming partial cadence in chunks")
+    parser.add_argument("--binary-frames", action="store_true", help="Send raw PCM bytes over websocket instead of JSON base64 frames")
     parser.add_argument("--model", default="tiny.en", help="Model name when spawning a local server")
     parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
+    parser.add_argument("--max-buffer", type=float, help="Optional stream buffer cap in seconds for websocket benchmarking")
     return parser.parse_args()
 
 
@@ -189,27 +192,53 @@ async def run_rest_benchmark(base_url: str, wav_bytes: bytes, sample_rate: int, 
     }
 
 
-async def run_ws_benchmark(ws_url: str, raw_pcm: bytes, sample_rate: int, chunk_ms: int) -> dict[str, object]:
+def _connect_websocket(ws_url: str):
+    return websockets.connect(ws_url, max_size=2**23)
+
+
+async def run_ws_benchmark(
+    ws_url: str,
+    raw_pcm: bytes,
+    sample_rate: int,
+    chunk_ms: int,
+    *,
+    partial_interval_chunks: int = 1,
+    send_binary_frames: bool = False,
+    partial_window_seconds: float | None = None,
+    max_buffer_seconds: float | None = None,
+    connect_fn=None,
+) -> dict[str, object]:
     chunk_size = max(int(sample_rate * 2 * chunk_ms / 1000), 2)
     if chunk_size % 2:
         chunk_size += 1
     chunks = [raw_pcm[index:index + chunk_size] for index in range(0, len(raw_pcm), chunk_size)]
     partial_latencies = []
     partial_text = ""
-    async with websockets.connect(ws_url, max_size=2**23) as websocket:
-        await websocket.send(json.dumps({
+    connect = connect_fn or _connect_websocket
+    async with connect(ws_url) as websocket:
+        start_payload: dict[str, object] = {
             "type": "start",
             "language": "en",
             "sample_rate": sample_rate,
-            "partial_interval_chunks": 1,
-        }))
+            "partial_interval_chunks": partial_interval_chunks,
+        }
+        if partial_window_seconds is not None:
+            start_payload["partial_window_seconds"] = partial_window_seconds
+        if max_buffer_seconds is not None:
+            start_payload["max_buffer_seconds"] = max_buffer_seconds
+        await websocket.send(json.dumps(start_payload))
         ready_event = json.loads(await websocket.recv())
+        if ready_event.get("type") != "ready":
+            raise RuntimeError(f"Expected ready event, got: {ready_event}")
         for chunk in chunks:
             started = time.perf_counter()
-            await websocket.send(json.dumps({
-                "type": "audio",
-                "audio_data": base64.b64encode(chunk).decode("ascii"),
-            }))
+            if send_binary_frames:
+                await websocket.send(chunk)
+            else:
+                await websocket.send(json.dumps({
+                    "type": "audio",
+                    "audio_data": base64.b64encode(chunk).decode("ascii"),
+                }))
             event = json.loads(await websocket.recv())
             partial_latencies.append((time.perf_counter() - started) * 1000)
             partial_text = event.get("text", "")
@@ -220,6 +249,7 @@ async def run_ws_benchmark(ws_url: str, raw_pcm: bytes, sample_rate: int, chunk_
     return {
         "chunks": len(chunks),
         "chunk_ms": chunk_ms,
+        "binary_frames": send_binary_frames,
         "partial_mean_ms": round(statistics.mean(partial_latencies), 1),
         "partial_p95_ms": round(percentile(partial_latencies, 0.95), 1),
         "partial_first_ms": round(partial_latencies[0], 1),
@@ -245,7 +275,16 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             server.start()
             await server.wait_ready()
         rest = await run_rest_benchmark(args.url, wav_bytes, sample_rate, args.rest_runs, duration_s)
-        ws = await run_ws_benchmark(args.ws_url, raw_pcm, sample_rate, args.chunk_ms)
+        ws = await run_ws_benchmark(
+            args.ws_url,
+            raw_pcm,
+            sample_rate,
+            args.chunk_ms,
+            partial_interval_chunks=args.partial_interval_chunks,
+            send_binary_frames=args.binary_frames,
+            partial_window_seconds=args.partial_window,
+            max_buffer_seconds=args.max_buffer,
+        )
         return {
             "environment": describe_environment(),
             "audio": {
