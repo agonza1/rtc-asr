@@ -47,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cpu", help="ASR device when spawning a local server")
     parser.add_argument("--compute-type", default="int8", help="Compute type for faster-whisper when spawning a local server")
     parser.add_argument("--qwen-dtype", default="auto", help="Dtype for qwen-asr when spawning a local server")
+    parser.add_argument("--parakeet-dtype", default="auto", help="Dtype for parakeet when spawning a local server")
     parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
     return parser.parse_args()
 
@@ -194,6 +195,7 @@ class ManagedServer:
         device: str,
         compute_type: str,
         qwen_dtype: str,
+        parakeet_dtype: str,
     ) -> None:
         self.url = url
         self.model = model
@@ -202,6 +204,7 @@ class ManagedServer:
         self.device = device
         self.compute_type = compute_type
         self.qwen_dtype = qwen_dtype
+        self.parakeet_dtype = parakeet_dtype
         self.process: subprocess.Popen[str] | None = None
 
     def start(self) -> None:
@@ -213,6 +216,9 @@ class ManagedServer:
         if self.backend == "qwen-asr":
             env.setdefault("ASR_QWEN_MODEL", self.model)
             env.setdefault("ASR_QWEN_DTYPE", self.qwen_dtype)
+        elif self.backend == "parakeet":
+            env.setdefault("ASR_PARAKEET_MODEL", self.model)
+            env.setdefault("ASR_PARAKEET_DTYPE", self.parakeet_dtype)
         else:
             env.setdefault("ASR_MODEL_SIZE", self.model)
             env.setdefault("ASR_COMPUTE_TYPE", self.compute_type)
@@ -351,6 +357,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         device=args.device,
         compute_type=args.compute_type,
         qwen_dtype=args.qwen_dtype,
+        parakeet_dtype=args.parakeet_dtype,
     ) if args.spawn_server else None
 
     try:
@@ -369,11 +376,17 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         effective_device = capabilities.get("device", args.device) if isinstance(capabilities, dict) else args.device
         effective_compute_type = None
         effective_qwen_dtype = None
+        effective_parakeet_dtype = None
         if effective_backend == "qwen-asr":
             if isinstance(capabilities, dict):
                 effective_qwen_dtype = capabilities.get("dtype")
             if effective_qwen_dtype is None:
                 effective_qwen_dtype = args.qwen_dtype
+        elif effective_backend == "parakeet":
+            if isinstance(capabilities, dict):
+                effective_parakeet_dtype = capabilities.get("dtype")
+            if effective_parakeet_dtype is None:
+                effective_parakeet_dtype = args.parakeet_dtype
         else:
             if isinstance(capabilities, dict):
                 effective_compute_type = capabilities.get("compute_type")
@@ -394,6 +407,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "device": effective_device,
                 "compute_type": effective_compute_type,
                 "qwen_dtype": effective_qwen_dtype,
+                "parakeet_dtype": effective_parakeet_dtype,
             },
             "service": service,
             "rest": rest,
