@@ -97,7 +97,7 @@ make benchmark-compose-qwen
 What that target does:
 
 - creates a writable local Hugging Face cache at `.cache/huggingface`
-- primes the Python base image with `docker pull`; if Docker Hub flakes, the workflow retries with `mirror.gcr.io/library/python:3.11-slim` before building
+- primes the default Python base image with `docker pull`; if Docker Hub flakes, the workflow retries with `mirror.gcr.io/library/python:3.11-slim` before building, while explicit `PYTHON_BASE_IMAGE` overrides are used as-is
 - builds the image with a CPU PyTorch wheel from the official PyTorch CPU index so Compose does not pull the much larger CUDA stack for the default CPU path
 - starts `docker compose` with `ASR_BACKEND=qwen-asr`, `ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B`, `ASR_DEVICE=cpu`, and `ASR_QWEN_DTYPE=float32`
 - waits for `GET /ready` to return `200`
