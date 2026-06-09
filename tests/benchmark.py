@@ -230,7 +230,7 @@ async def run_ws_benchmark(
         ready_event = json.loads(await websocket.recv())
         if ready_event.get("type") != "ready":
             raise RuntimeError(f"Expected ready event, got: {ready_event}")
-        for chunk in chunks:
+        for chunk_index, chunk in enumerate(chunks, start=1):
             started = time.perf_counter()
             if send_binary_frames:
                 await websocket.send(chunk)
@@ -239,6 +239,8 @@ async def run_ws_benchmark(
                     "type": "audio",
                     "audio_data": base64.b64encode(chunk).decode("ascii"),
                 }))
+            if chunk_index % partial_interval_chunks != 0:
+                continue
             event = json.loads(await websocket.recv())
             partial_latencies.append((time.perf_counter() - started) * 1000)
             partial_text = event.get("text", "")
@@ -246,14 +248,17 @@ async def run_ws_benchmark(
         await websocket.send(json.dumps({"type": "stop"}))
         final_event = json.loads(await websocket.recv())
         final_ms = (time.perf_counter() - started) * 1000
+    partial_summary = {
+        "partial_mean_ms": round(statistics.mean(partial_latencies), 1) if partial_latencies else None,
+        "partial_p95_ms": round(percentile(partial_latencies, 0.95), 1) if partial_latencies else None,
+        "partial_first_ms": round(partial_latencies[0], 1) if partial_latencies else None,
+        "partial_last_ms": round(partial_latencies[-1], 1) if partial_latencies else None,
+    }
     return {
         "chunks": len(chunks),
         "chunk_ms": chunk_ms,
         "binary_frames": send_binary_frames,
-        "partial_mean_ms": round(statistics.mean(partial_latencies), 1),
-        "partial_p95_ms": round(percentile(partial_latencies, 0.95), 1),
-        "partial_first_ms": round(partial_latencies[0], 1),
-        "partial_last_ms": round(partial_latencies[-1], 1),
+        **partial_summary,
         "final_ms": round(final_ms, 1),
         "ready": ready_event,
         "last_partial": partial_text,

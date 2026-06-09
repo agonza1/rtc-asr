@@ -64,7 +64,6 @@ def test_run_ws_benchmark_supports_binary_frames_and_window_overrides() -> None:
     websocket = FakeBenchmarkWebSocket(
         [
             {"type": "ready", "stream_id": 11},
-            {"type": "partial", "text": "chunk one"},
             {"type": "partial", "text": "chunk two"},
             {"type": "final", "text": "done"},
         ]
@@ -88,6 +87,9 @@ def test_run_ws_benchmark_supports_binary_frames_and_window_overrides() -> None:
 
         assert result["binary_frames"] is True
         assert result["chunks"] == 2
+        assert result["last_partial"] == "chunk two"
+        assert result["partial_first_ms"] is not None
+        assert result["partial_last_ms"] is not None
         assert result["final_transcript"] == "done"
         assert websocket.sent == [
             {
@@ -100,6 +102,49 @@ def test_run_ws_benchmark_supports_binary_frames_and_window_overrides() -> None:
             },
             b"ab",
             b"cd",
+            {"type": "stop"},
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_run_ws_benchmark_allows_sparse_partial_cadence() -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"ab",
+            4,
+            250,
+            partial_interval_chunks=2,
+            connect_fn=fake_connect,
+        )
+
+        assert result["chunks"] == 1
+        assert result["last_partial"] == ""
+        assert result["partial_mean_ms"] is None
+        assert result["partial_p95_ms"] is None
+        assert result["final_transcript"] == "done"
+        assert websocket.sent == [
+            {
+                "type": "start",
+                "language": "en",
+                "sample_rate": 4,
+                "partial_interval_chunks": 2,
+            },
+            {
+                "type": "audio",
+                "audio_data": "YWI=",
+            },
             {"type": "stop"},
         ]
 
