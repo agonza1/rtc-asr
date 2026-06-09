@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
 
 from tests.benchmark import compute_accuracy_metrics, normalize_text, resolve_reference_text, summarize_latencies
 
@@ -43,3 +44,27 @@ def test_summarize_latencies_reports_mean_and_p90() -> None:
     assert summary["min_ms"] == 10.0
     assert summary["max_ms"] == 30.0
     assert summary["rtf_mean"] == 0.01
+
+
+def test_parse_args_accepts_ultravox_options(monkeypatch) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "benchmark.py",
+            "--backend",
+            "ultravox",
+            "--ultravox-dtype",
+            "float32",
+            "--ultravox-max-new-tokens",
+            "96",
+        ],
+    )
+
+    from tests.benchmark import parse_args
+
+    args = parse_args()
+
+    assert args.backend == "ultravox"
+    assert args.ultravox_dtype == "float32"
+    assert args.ultravox_max_new_tokens == 96
