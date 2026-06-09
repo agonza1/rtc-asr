@@ -1,6 +1,19 @@
 # Performance Benchmarks
 
-This page tracks validated single-node benchmark runs for the current `rtc-asr` service. The numbers below are measured results from the checked-in `tests/benchmark.py` harness; they are useful baselines, not universal performance guarantees.
+This page tracks validated single-node benchmark runs for the current `rtc-asr` service.
+The benchmark harness now runs 10 samples per model and reports mean, p90, p95, min, and max
+for REST and streaming latencies. Each sample runs the existing REST loop plus one full streaming
+session, so the published numbers are less noisy than the original one-off snapshots.
+
+## At a Glance
+
+| Model | Backend | Sample Count | REST Mean / P90 | Streaming Partial Mean / P90 | Final Mean | Accuracy |
+| --- | --- | ---: | --- | --- | --- | --- |
+| `tiny.en` | `faster-whisper` | 10 | see snapshot below | see snapshot below | see snapshot below | see snapshot below |
+| `Qwen/Qwen3-ASR-0.6B` | `qwen-asr` | 10 | see snapshot below | see snapshot below | see snapshot below | see snapshot below |
+
+The rows below are the latest validated snapshots currently checked into the repo. Rerun the commands in
+*Reproduce* to refresh them with the 10-sample harness output.
 
 ## Latest Validated Runs
 
@@ -72,7 +85,7 @@ Versioned artifact:
 
 ### Faster-Whisper Baseline
 
-Run the existing local baseline:
+Run the local baseline with 10 samples per model:
 
 ```bash
 make benchmark
@@ -83,7 +96,8 @@ Or invoke the harness directly against an already-running server:
 ```bash
 .venv/bin/python tests/benchmark.py \
   --url http://127.0.0.1:8090 \
-  --ws-url ws://127.0.0.1:8090/ws/stream
+  --ws-url ws://127.0.0.1:8090/ws/stream \
+  --sample-count 10
 ```
 
 ### Qwen Compose Baseline
@@ -101,7 +115,7 @@ What that target does:
 - builds the image with a CPU PyTorch wheel from the official PyTorch CPU index so Compose does not pull the much larger CUDA stack for the default CPU path
 - starts `docker compose` with `ASR_BACKEND=qwen-asr`, `ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B`, `ASR_DEVICE=cpu`, and `ASR_QWEN_DTYPE=float32`
 - waits for `GET /ready` to return `200`
-- runs the benchmark client against `http://127.0.0.1:8080`
+- runs the benchmark client against `http://127.0.0.1:8080` with `--sample-count 10`
 
 Equivalent manual commands:
 
@@ -117,12 +131,14 @@ until curl -fsS http://127.0.0.1:8080/ready >/dev/null; do sleep 5; done
 
 .venv/bin/python tests/benchmark.py \
   --url http://127.0.0.1:8080 \
-  --ws-url ws://127.0.0.1:8080/ws/stream
+  --ws-url ws://127.0.0.1:8080/ws/stream \
+  --sample-count 10
 ```
 
 ## Methodology Notes
 
-- `tests/benchmark.py` now records simple accuracy metadata in addition to latency metrics.
+- `tests/benchmark.py` now emits 10-sample benchmark summaries and retains per-sample REST/streaming data under `samples`.
+- The harness records simple accuracy metadata in addition to latency metrics.
 - When benchmarking synthesized speech without an explicit reference file, the harness uses the synthesized prompt text as the reference transcript.
 - The harness also records live backend metadata from `GET /api/models`, so benchmark artifacts reflect the actual running service even when the client is pointed at an already-running container.
 - Word error rate and character error rate are normalized after lowercasing and punctuation stripping.
