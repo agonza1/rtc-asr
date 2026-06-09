@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.benchmark import compute_accuracy_metrics, normalize_text, resolve_reference_text
+from tests.benchmark import compute_accuracy_metrics, normalize_text, resolve_reference_text, summarize_latencies
 
 MODULE_PATH = Path(__file__).with_name("benchmark.py")
 SPEC = importlib.util.spec_from_file_location("rtc_asr_benchmark", MODULE_PATH)
@@ -70,12 +70,29 @@ def test_resolve_reference_text_prefers_explicit_inputs(tmp_path: Path) -> None:
     assert resolve_reference_text(args, synthesized=False) is None
 
 
-def test_parse_args_accepts_binary_frame_and_window_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_summarize_latencies_reports_mean_and_p90() -> None:
+    summary = summarize_latencies([10.0, 20.0, 30.0], duration_s=2.0)
+
+    assert summary["mean_ms"] == 20.0
+    assert summary["p90_ms"] == 30.0
+    assert summary["p95_ms"] == 30.0
+    assert summary["min_ms"] == 10.0
+    assert summary["max_ms"] == 30.0
+    assert summary["rtf_mean"] == 0.01
+
+
+def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         sys,
         "argv",
         [
             "benchmark.py",
+            "--backend",
+            "ultravox",
+            "--ultravox-dtype",
+            "float32",
+            "--ultravox-max-new-tokens",
+            "96",
             "--binary-frames",
             "--partial-interval-chunks",
             "3",
@@ -86,6 +103,9 @@ def test_parse_args_accepts_binary_frame_and_window_flags(monkeypatch: pytest.Mo
 
     args = benchmark.parse_args()
 
+    assert args.backend == "ultravox"
+    assert args.ultravox_dtype == "float32"
+    assert args.ultravox_max_new_tokens == 96
     assert args.binary_frames is True
     assert args.partial_interval_chunks == 3
     assert args.max_buffer == 4.5
@@ -163,6 +183,7 @@ def test_run_ws_benchmark_allows_sparse_partial_cadence() -> None:
         assert result["chunks"] == 1
         assert result["last_partial"] == ""
         assert result["partial_mean_ms"] is None
+        assert result["partial_p90_ms"] is None
         assert result["partial_p95_ms"] is None
         assert result["final_transcript"] == "done"
         assert websocket.sent == [
