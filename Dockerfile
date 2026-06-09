@@ -1,4 +1,7 @@
-FROM python:3.11-slim
+ARG PYTHON_BASE_IMAGE=python:3.11-slim
+FROM ${PYTHON_BASE_IMAGE}
+
+ARG ENABLE_PARAKEET_RUNTIME=""
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -16,8 +19,11 @@ WORKDIR /app
 RUN python -m venv /opt/venv
 
 COPY requirements.txt ./
-RUN /opt/venv/bin/pip install --upgrade pip && \
-    /opt/venv/bin/pip install -r requirements.txt
+RUN grep -v '^torch$' requirements.txt > requirements.docker.txt && \
+    /opt/venv/bin/pip install --upgrade pip && \
+    /opt/venv/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch && \
+    /opt/venv/bin/pip install -r requirements.docker.txt && \
+    if [ -n "$ENABLE_PARAKEET_RUNTIME" ]; then /opt/venv/bin/pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2; fi
 
 COPY src ./src
 COPY config.example ./

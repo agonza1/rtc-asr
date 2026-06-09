@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import json
 import importlib
+import json
 import sys
 
 import pytest
@@ -347,7 +347,7 @@ def test_async_asr_client_can_cancel_stream() -> None:
     asyncio.run(scenario())
 
 
-def test_async_asr_client_cancel_returns_error_event() -> None:
+def test_async_asr_client_returns_cancel_error_events() -> None:
     websocket = FakeWebSocket([
         {
             'type': 'ready',
@@ -361,6 +361,7 @@ def test_async_asr_client_cancel_returns_error_event() -> None:
             'type': 'error',
             'stream_id': 7,
             'message': 'Send a start event before canceling the stream',
+            'code': 1003,
         },
     ])
 
@@ -370,12 +371,13 @@ def test_async_asr_client_cancel_returns_error_event() -> None:
     async def scenario() -> None:
         client = AsyncASRClient('ws://example.test/ws/stream', connect_fn=fake_connect)
         await client.start()
-        error_event = await client.cancel()
+        cancel_event = await client.cancel()
         await client.close()
 
-        assert error_event.type == 'error'
-        assert error_event.stream_id == 7
-        assert error_event.text == 'Send a start event before canceling the stream'
+        assert cancel_event.type == 'error'
+        assert cancel_event.stream_id == 7
+        assert cancel_event.text == 'Send a start event before canceling the stream'
+        assert cancel_event.raw['code'] == 1003
         assert websocket.sent == [
             {
                 'type': 'start',

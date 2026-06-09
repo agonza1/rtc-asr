@@ -41,6 +41,13 @@ def _default_asr_device(default: str) -> str:
     return default
 
 
+def _positive_int_env(name: str, default: int) -> int:
+    value = int(os.getenv(name, str(default)))
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
 @dataclass(slots=True)
 class AppConfig:
     """Runtime configuration loaded from environment variables."""
@@ -59,6 +66,13 @@ class AppConfig:
     asr_vad_filter: bool = True
     asr_preload_model: bool = True
     asr_fail_fast: bool = False
+    asr_qwen_model: str = "Qwen/Qwen3-ASR-0.6B"
+    asr_qwen_dtype: str = "auto"
+    asr_qwen_device_map: str | None = None
+    asr_qwen_max_new_tokens: int = 256
+    asr_qwen_max_inference_batch_size: int = 1
+    asr_parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
+    asr_parakeet_dtype: str = "auto"
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -84,4 +98,17 @@ class AppConfig:
             asr_vad_filter=_env_flag("ASR_VAD_FILTER", defaults.asr_vad_filter),
             asr_preload_model=_env_flag("ASR_PRELOAD_MODEL", defaults.asr_preload_model),
             asr_fail_fast=_env_flag("ASR_FAIL_FAST", defaults.asr_fail_fast),
+            asr_qwen_model=os.getenv("ASR_QWEN_MODEL", defaults.asr_qwen_model),
+            asr_qwen_dtype=os.getenv("ASR_QWEN_DTYPE", defaults.asr_qwen_dtype),
+            asr_qwen_device_map=os.getenv("ASR_QWEN_DEVICE_MAP", defaults.asr_qwen_device_map),
+            asr_qwen_max_new_tokens=_positive_int_env(
+                "ASR_QWEN_MAX_NEW_TOKENS",
+                defaults.asr_qwen_max_new_tokens,
+            ),
+            asr_qwen_max_inference_batch_size=_positive_int_env(
+                "ASR_QWEN_MAX_INFERENCE_BATCH_SIZE",
+                defaults.asr_qwen_max_inference_batch_size,
+            ),
+            asr_parakeet_model=os.getenv("ASR_PARAKEET_MODEL", defaults.asr_parakeet_model),
+            asr_parakeet_dtype=os.getenv("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype),
         )

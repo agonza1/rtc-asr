@@ -7,6 +7,7 @@ import io
 import json
 import os
 import platform
+import re
 import shutil
 import signal
 import statistics
@@ -36,12 +37,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ws-url", default="ws://127.0.0.1:8090/ws/stream", help="WebSocket URL for streaming")
     parser.add_argument("--audio-file", type=Path, help="Optional audio file to benchmark instead of synthesized speech")
     parser.add_argument("--speech-text", default=DEFAULT_TEXT, help="Speech text used when synthesizing a local benchmark clip")
+    parser.add_argument("--reference-text", help="Reference transcript used to compute simple accuracy metrics")
+    parser.add_argument("--reference-file", type=Path, help="Path to a UTF-8 transcript file used to compute simple accuracy metrics")
     parser.add_argument("--spawn-server", action="store_true", help="Start a local uvicorn server for the benchmark run")
+    parser.add_argument("--backend", default="faster-whisper", help="ASR backend to benchmark when spawning a local server")
     parser.add_argument("--rest-runs", type=int, default=5, help="Number of REST runs")
     parser.add_argument("--chunk-ms", type=int, default=250, help="Streaming chunk duration in milliseconds")
     parser.add_argument("--partial-interval-chunks", type=int, default=1, help="Streaming partial cadence in chunks")
     parser.add_argument("--binary-frames", action="store_true", help="Send raw PCM bytes over websocket instead of JSON base64 frames")
     parser.add_argument("--model", default="tiny.en", help="Model name when spawning a local server")
+    parser.add_argument("--device", default="cpu", help="ASR device when spawning a local server")
+    parser.add_argument("--compute-type", default="int8", help="Compute type for faster-whisper when spawning a local server")
+    parser.add_argument("--qwen-dtype", default="auto", help="Dtype for qwen-asr when spawning a local server")
+    parser.add_argument("--parakeet-dtype", default="auto", help="Dtype for parakeet when spawning a local server")
     parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
     parser.add_argument("--max-buffer", type=float, help="Optional stream buffer cap in seconds for websocket benchmarking")
     return parser.parse_args()
@@ -94,6 +102,68 @@ def benchmark_audio_path(args: argparse.Namespace) -> Path:
     return FIXTURE_PATH
 
 
+def normalize_text(text: str) -> str:
+    lowered = text.casefold()
+    lowered = re.sub(r"[^\w\s]", " ", lowered)
+    return " ".join(lowered.split())
+
+
+def edit_distance(reference: list[str], hypothesis: list[str]) -> int:
+    if not reference:
+        return len(hypothesis)
+    if not hypothesis:
+        return len(reference)
+
+    previous = list(range(len(hypothesis) + 1))
+    for ref_index, ref_token in enumerate(reference, start=1):
+        current = [ref_index]
+        for hyp_index, hyp_token in enumerate(hypothesis, start=1):
+            substitution_cost = 0 if ref_token == hyp_token else 1
+            current.append(min(
+                previous[hyp_index] + 1,
+                current[hyp_index - 1] + 1,
+                previous[hyp_index - 1] + substitution_cost,
+            ))
+        previous = current
+    return previous[-1]
+
+
+def compute_accuracy_metrics(reference_text: str | None, hypothesis_text: str) -> dict[str, object] | None:
+    if not reference_text:
+        return None
+
+    normalized_reference = normalize_text(reference_text)
+    normalized_hypothesis = normalize_text(hypothesis_text)
+    reference_words = normalized_reference.split()
+    hypothesis_words = normalized_hypothesis.split()
+    reference_chars = list(normalized_reference.replace(" ", ""))
+    hypothesis_chars = list(normalized_hypothesis.replace(" ", ""))
+
+    word_distance = edit_distance(reference_words, hypothesis_words)
+    char_distance = edit_distance(reference_chars, hypothesis_chars)
+
+    return {
+        "reference_text": reference_text,
+        "normalized_reference": normalized_reference,
+        "normalized_hypothesis": normalized_hypothesis,
+        "exact_match": normalized_reference == normalized_hypothesis,
+        "word_error_rate": round(word_distance / max(len(reference_words), 1), 3),
+        "character_error_rate": round(char_distance / max(len(reference_chars), 1), 3),
+        "reference_word_count": len(reference_words),
+        "hypothesis_word_count": len(hypothesis_words),
+    }
+
+
+def resolve_reference_text(args: argparse.Namespace, *, synthesized: bool) -> str | None:
+    if args.reference_text:
+        return args.reference_text.strip()
+    if args.reference_file:
+        return args.reference_file.read_text(encoding="utf-8").strip()
+    if synthesized:
+        return args.speech_text.strip()
+    return None
+
+
 def describe_environment() -> dict[str, object]:
     return {
         "date_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -103,18 +173,58 @@ def describe_environment() -> dict[str, object]:
     }
 
 
+async def fetch_service_metadata(base_url: str) -> dict[str, object] | None:
+    async with httpx.AsyncClient(base_url=base_url, timeout=30.0) as client:
+        try:
+            response = await client.get("/api/models")
+            response.raise_for_status()
+        except httpx.HTTPError:
+            return None
+
+    payload = response.json()
+    if not isinstance(payload, dict):
+        return None
+    return payload
+
+
 class ManagedServer:
-    def __init__(self, url: str, model: str, partial_window: float) -> None:
+    def __init__(
+        self,
+        url: str,
+        model: str,
+        partial_window: float,
+        *,
+        backend: str,
+        device: str,
+        compute_type: str,
+        qwen_dtype: str,
+        parakeet_dtype: str,
+    ) -> None:
         self.url = url
         self.model = model
         self.partial_window = partial_window
+        self.backend = backend
+        self.device = device
+        self.compute_type = compute_type
+        self.qwen_dtype = qwen_dtype
+        self.parakeet_dtype = parakeet_dtype
         self.process: subprocess.Popen[str] | None = None
 
     def start(self) -> None:
         env = os.environ.copy()
-        env.setdefault("ASR_MODEL_SIZE", self.model)
+        env.setdefault("ASR_BACKEND", self.backend)
+        env.setdefault("ASR_DEVICE", self.device)
         env.setdefault("ASR_PRELOAD_MODEL", "true")
         env.setdefault("ASR_STREAM_PARTIAL_WINDOW_SECONDS", str(self.partial_window))
+        if self.backend == "qwen-asr":
+            env.setdefault("ASR_QWEN_MODEL", self.model)
+            env.setdefault("ASR_QWEN_DTYPE", self.qwen_dtype)
+        elif self.backend == "parakeet":
+            env.setdefault("ASR_PARAKEET_MODEL", self.model)
+            env.setdefault("ASR_PARAKEET_DTYPE", self.parakeet_dtype)
+        else:
+            env.setdefault("ASR_MODEL_SIZE", self.model)
+            env.setdefault("ASR_COMPUTE_TYPE", self.compute_type)
         command = [
             sys.executable,
             "-m",
@@ -269,16 +379,27 @@ async def run_ws_benchmark(
 async def async_main(args: argparse.Namespace) -> dict[str, object]:
     audio_path = benchmark_audio_path(args)
     synthesized = audio_path != args.audio_file if args.audio_file else audio_path != FIXTURE_PATH
+    reference_text = resolve_reference_text(args, synthesized=synthesized)
     samples, sample_rate = load_audio(audio_path)
     wav_bytes = make_wav_bytes(samples, sample_rate)
     raw_pcm = (np.clip(samples, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
     duration_s = len(samples) / sample_rate
-    server = ManagedServer(args.url, args.model, args.partial_window) if args.spawn_server else None
+    server = ManagedServer(
+        args.url,
+        args.model,
+        args.partial_window,
+        backend=args.backend,
+        device=args.device,
+        compute_type=args.compute_type,
+        qwen_dtype=args.qwen_dtype,
+        parakeet_dtype=args.parakeet_dtype,
+    ) if args.spawn_server else None
 
     try:
         if server is not None:
             server.start()
             await server.wait_ready()
+        service = await fetch_service_metadata(args.url)
         rest = await run_rest_benchmark(args.url, wav_bytes, sample_rate, args.rest_runs, duration_s)
         ws = await run_ws_benchmark(
             args.ws_url,
@@ -290,6 +411,31 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             partial_window_seconds=args.partial_window,
             max_buffer_seconds=args.max_buffer,
         )
+        rest["accuracy"] = compute_accuracy_metrics(reference_text, str(rest.get("transcript", "")))
+        ws["accuracy"] = compute_accuracy_metrics(reference_text, str(ws.get("final_transcript", "")))
+        capabilities = service.get("capabilities") if isinstance(service, dict) else None
+        service_models = service.get("models") if isinstance(service, dict) else None
+        effective_backend = service.get("backend", args.backend) if isinstance(service, dict) else args.backend
+        effective_model = service_models[0] if isinstance(service_models, list) and service_models else args.model
+        effective_device = capabilities.get("device", args.device) if isinstance(capabilities, dict) else args.device
+        effective_compute_type = None
+        effective_qwen_dtype = None
+        effective_parakeet_dtype = None
+        if effective_backend == "qwen-asr":
+            if isinstance(capabilities, dict):
+                effective_qwen_dtype = capabilities.get("dtype")
+            if effective_qwen_dtype is None:
+                effective_qwen_dtype = args.qwen_dtype
+        elif effective_backend == "parakeet":
+            if isinstance(capabilities, dict):
+                effective_parakeet_dtype = capabilities.get("dtype")
+            if effective_parakeet_dtype is None:
+                effective_parakeet_dtype = args.parakeet_dtype
+        else:
+            if isinstance(capabilities, dict):
+                effective_compute_type = capabilities.get("compute_type")
+            if effective_compute_type is None:
+                effective_compute_type = args.compute_type
         return {
             "environment": describe_environment(),
             "audio": {
@@ -297,7 +443,17 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "duration_s": round(duration_s, 3),
                 "sample_rate": sample_rate,
                 "synthesized": synthesized,
+                "reference_text": reference_text,
             },
+            "backend": {
+                "name": effective_backend,
+                "model": effective_model,
+                "device": effective_device,
+                "compute_type": effective_compute_type,
+                "qwen_dtype": effective_qwen_dtype,
+                "parakeet_dtype": effective_parakeet_dtype,
+            },
+            "service": service,
             "rest": rest,
             "streaming": ws,
         }
