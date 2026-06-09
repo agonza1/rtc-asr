@@ -157,7 +157,6 @@ class QwenASRAdapter:
             return self._model
 
         try:
-            import torch
             from qwen_asr import Qwen3ASRModel
         except ImportError as exc:
             raise ASRUnavailableError(
@@ -172,6 +171,13 @@ class QwenASRAdapter:
                 "The qwen-asr backend is incompatible with the installed transformers "
                 f"version ({transformers_version}). Install the repo-pinned qwen stack with "
                 "`pip install -r requirements.txt` so qwen-asr can use transformers==4.57.6."
+            ) from exc
+
+        try:
+            import torch
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The qwen-asr backend is not installed. Install requirements.txt to enable ASR_BACKEND=qwen-asr."
             ) from exc
 
         kwargs = {
