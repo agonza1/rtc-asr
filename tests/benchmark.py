@@ -52,6 +52,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--qwen-dtype", default="auto", help="Dtype for qwen-asr when spawning a local server")
     parser.add_argument("--parakeet-dtype", default="auto", help="Dtype for parakeet when spawning a local server")
     parser.add_argument("--ultravox-dtype", default="auto", help="Dtype for ultravox when spawning a local server")
+    parser.add_argument(
+        "--ultravox-prompt",
+        default="Transcribe the spoken audio exactly and return only the transcript.",
+        help="Prompt for ultravox when spawning a local server",
+    )
     parser.add_argument("--ultravox-max-new-tokens", type=int, default=128, help="Max new tokens for ultravox when spawning a local server")
     parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
     parser.add_argument("--max-buffer", type=float, help="Optional stream buffer cap in seconds for websocket benchmarking")
@@ -220,6 +225,7 @@ class ManagedServer:
         parakeet_dtype: str,
         ultravox_dtype: str,
         ultravox_max_new_tokens: int,
+        ultravox_prompt: str,
     ) -> None:
         self.url = url
         self.model = model
@@ -231,6 +237,7 @@ class ManagedServer:
         self.parakeet_dtype = parakeet_dtype
         self.ultravox_dtype = ultravox_dtype
         self.ultravox_max_new_tokens = ultravox_max_new_tokens
+        self.ultravox_prompt = ultravox_prompt
         self.process: subprocess.Popen[str] | None = None
 
     def start(self) -> None:
@@ -249,6 +256,7 @@ class ManagedServer:
             env.setdefault("ASR_ULTRAVOX_MODEL", self.model)
             env.setdefault("ASR_ULTRAVOX_DTYPE", self.ultravox_dtype)
             env.setdefault("ASR_ULTRAVOX_MAX_NEW_TOKENS", str(self.ultravox_max_new_tokens))
+            env.setdefault("ASR_ULTRAVOX_PROMPT", self.ultravox_prompt)
         else:
             env.setdefault("ASR_MODEL_SIZE", self.model)
             env.setdefault("ASR_COMPUTE_TYPE", self.compute_type)
@@ -421,6 +429,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         parakeet_dtype=args.parakeet_dtype,
         ultravox_dtype=args.ultravox_dtype,
         ultravox_max_new_tokens=args.ultravox_max_new_tokens,
+        ultravox_prompt=args.ultravox_prompt,
     ) if args.spawn_server else None
 
     try:

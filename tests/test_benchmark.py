@@ -93,6 +93,8 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
             "float32",
             "--ultravox-max-new-tokens",
             "96",
+            "--ultravox-prompt",
+            "Return only the transcript.",
             "--binary-frames",
             "--partial-interval-chunks",
             "3",
@@ -106,6 +108,7 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
     assert args.backend == "ultravox"
     assert args.ultravox_dtype == "float32"
     assert args.ultravox_max_new_tokens == 96
+    assert args.ultravox_prompt == "Return only the transcript."
     assert args.binary_frames is True
     assert args.partial_interval_chunks == 3
     assert args.max_buffer == 4.5
