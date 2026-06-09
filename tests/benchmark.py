@@ -41,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reference-file", type=Path, help="Path to a UTF-8 transcript file used to compute simple accuracy metrics")
     parser.add_argument("--spawn-server", action="store_true", help="Start a local uvicorn server for the benchmark run")
     parser.add_argument("--backend", default="faster-whisper", help="ASR backend to benchmark when spawning a local server")
+    parser.add_argument("--sample-count", type=int, default=10, help="Number of benchmark samples to run per model")
     parser.add_argument("--rest-runs", type=int, default=5, help="Number of REST runs")
     parser.add_argument("--chunk-ms", type=int, default=250, help="Streaming chunk duration in milliseconds")
     parser.add_argument("--model", default="tiny.en", help="Model name when spawning a local server")
@@ -48,6 +49,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--compute-type", default="int8", help="Compute type for faster-whisper when spawning a local server")
     parser.add_argument("--qwen-dtype", default="auto", help="Dtype for qwen-asr when spawning a local server")
     parser.add_argument("--parakeet-dtype", default="auto", help="Dtype for parakeet when spawning a local server")
+    parser.add_argument("--ultravox-dtype", default="auto", help="Dtype for ultravox when spawning a local server")
+    parser.add_argument("--ultravox-max-new-tokens", type=int, default=128, help="Max new tokens for ultravox when spawning a local server")
     parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
     return parser.parse_args()
 
@@ -56,6 +59,22 @@ def percentile(values: list[float], q: float) -> float:
     ordered = sorted(values)
     index = min(len(ordered) - 1, max(0, round((len(ordered) - 1) * q)))
     return ordered[index]
+
+
+def summarize_latencies(values: list[float], *, duration_s: float | None = None) -> dict[str, float]:
+    if not values:
+        raise ValueError("Cannot summarize an empty latency series")
+
+    summary: dict[str, float] = {
+        "mean_ms": round(statistics.mean(values), 1),
+        "p90_ms": round(percentile(values, 0.90), 1),
+        "p95_ms": round(percentile(values, 0.95), 1),
+        "min_ms": round(min(values), 1),
+        "max_ms": round(max(values), 1),
+    }
+    if duration_s is not None:
+        summary["rtf_mean"] = round(statistics.mean(values) / (duration_s * 1000), 3)
+    return summary
 
 
 def make_wav_bytes(samples: np.ndarray, sample_rate: int) -> bytes:
@@ -196,6 +215,8 @@ class ManagedServer:
         compute_type: str,
         qwen_dtype: str,
         parakeet_dtype: str,
+        ultravox_dtype: str,
+        ultravox_max_new_tokens: int,
     ) -> None:
         self.url = url
         self.model = model
@@ -205,6 +226,8 @@ class ManagedServer:
         self.compute_type = compute_type
         self.qwen_dtype = qwen_dtype
         self.parakeet_dtype = parakeet_dtype
+        self.ultravox_dtype = ultravox_dtype
+        self.ultravox_max_new_tokens = ultravox_max_new_tokens
         self.process: subprocess.Popen[str] | None = None
 
     def start(self) -> None:
@@ -219,6 +242,10 @@ class ManagedServer:
         elif self.backend == "parakeet":
             env.setdefault("ASR_PARAKEET_MODEL", self.model)
             env.setdefault("ASR_PARAKEET_DTYPE", self.parakeet_dtype)
+        elif self.backend == "ultravox":
+            env.setdefault("ASR_ULTRAVOX_MODEL", self.model)
+            env.setdefault("ASR_ULTRAVOX_DTYPE", self.ultravox_dtype)
+            env.setdefault("ASR_ULTRAVOX_MAX_NEW_TOKENS", str(self.ultravox_max_new_tokens))
         else:
             env.setdefault("ASR_MODEL_SIZE", self.model)
             env.setdefault("ASR_COMPUTE_TYPE", self.compute_type)
@@ -290,11 +317,8 @@ async def run_rest_benchmark(base_url: str, wav_bytes: bytes, sample_rate: int, 
             transcription = response.json().get("text", "")
     return {
         "runs": runs,
-        "mean_ms": round(statistics.mean(durations), 1),
-        "p95_ms": round(percentile(durations, 0.95), 1),
-        "min_ms": round(min(durations), 1),
-        "max_ms": round(max(durations), 1),
-        "rtf_mean": round(statistics.mean(durations) / (duration_s * 1000), 3),
+        "durations_ms": [round(value, 1) for value in durations],
+        **summarize_latencies(durations, duration_s=duration_s),
         "transcript": transcription,
     }
 
@@ -330,7 +354,9 @@ async def run_ws_benchmark(ws_url: str, raw_pcm: bytes, sample_rate: int, chunk_
     return {
         "chunks": len(chunks),
         "chunk_ms": chunk_ms,
+        "partial_latencies_ms": [round(value, 1) for value in partial_latencies],
         "partial_mean_ms": round(statistics.mean(partial_latencies), 1),
+        "partial_p90_ms": round(percentile(partial_latencies, 0.90), 1),
         "partial_p95_ms": round(percentile(partial_latencies, 0.95), 1),
         "partial_first_ms": round(partial_latencies[0], 1),
         "partial_last_ms": round(partial_latencies[-1], 1),
@@ -358,6 +384,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         compute_type=args.compute_type,
         qwen_dtype=args.qwen_dtype,
         parakeet_dtype=args.parakeet_dtype,
+        ultravox_dtype=args.ultravox_dtype,
+        ultravox_max_new_tokens=args.ultravox_max_new_tokens,
     ) if args.spawn_server else None
 
     try:
@@ -365,10 +393,47 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             server.start()
             await server.wait_ready()
         service = await fetch_service_metadata(args.url)
-        rest = await run_rest_benchmark(args.url, wav_bytes, sample_rate, args.rest_runs, duration_s)
-        ws = await run_ws_benchmark(args.ws_url, raw_pcm, sample_rate, args.chunk_ms)
-        rest["accuracy"] = compute_accuracy_metrics(reference_text, str(rest.get("transcript", "")))
-        ws["accuracy"] = compute_accuracy_metrics(reference_text, str(ws.get("final_transcript", "")))
+
+        sample_count = max(args.sample_count, 1)
+        rest_samples: list[dict[str, object]] = []
+        streaming_samples: list[dict[str, object]] = []
+        rest_durations_all: list[float] = []
+        partial_latencies_all: list[float] = []
+        final_latencies_all: list[float] = []
+
+        for index in range(sample_count):
+            rest = await run_rest_benchmark(args.url, wav_bytes, sample_rate, args.rest_runs, duration_s)
+            ws = await run_ws_benchmark(args.ws_url, raw_pcm, sample_rate, args.chunk_ms)
+            rest["accuracy"] = compute_accuracy_metrics(reference_text, str(rest.get("transcript", "")))
+            ws["accuracy"] = compute_accuracy_metrics(reference_text, str(ws.get("final_transcript", "")))
+            rest_durations_all.extend(float(value) for value in rest.get("durations_ms", []))
+            partial_latencies_all.extend(float(value) for value in ws.get("partial_latencies_ms", []))
+            final_latencies_all.append(float(ws.get("final_ms", 0.0)))
+            rest_samples.append({
+                "sample": index + 1,
+                "mean_ms": rest["mean_ms"],
+                "p90_ms": rest["p90_ms"],
+                "p95_ms": rest["p95_ms"],
+                "min_ms": rest["min_ms"],
+                "max_ms": rest["max_ms"],
+                "rtf_mean": rest["rtf_mean"],
+                "transcript": rest["transcript"],
+                "accuracy": rest["accuracy"],
+            })
+            streaming_samples.append({
+                "sample": index + 1,
+                "partial_mean_ms": ws["partial_mean_ms"],
+                "partial_p90_ms": ws["partial_p90_ms"],
+                "partial_p95_ms": ws["partial_p95_ms"],
+                "partial_first_ms": ws["partial_first_ms"],
+                "partial_last_ms": ws["partial_last_ms"],
+                "final_ms": ws["final_ms"],
+                "ready": ws["ready"],
+                "last_partial": ws["last_partial"],
+                "final_transcript": ws["final_transcript"],
+                "accuracy": ws["accuracy"],
+            })
+
         capabilities = service.get("capabilities") if isinstance(service, dict) else None
         service_models = service.get("models") if isinstance(service, dict) else None
         effective_backend = service.get("backend", args.backend) if isinstance(service, dict) else args.backend
@@ -377,6 +442,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         effective_compute_type = None
         effective_qwen_dtype = None
         effective_parakeet_dtype = None
+        effective_ultravox_dtype = None
         if effective_backend == "qwen-asr":
             if isinstance(capabilities, dict):
                 effective_qwen_dtype = capabilities.get("dtype")
@@ -387,13 +453,47 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 effective_parakeet_dtype = capabilities.get("dtype")
             if effective_parakeet_dtype is None:
                 effective_parakeet_dtype = args.parakeet_dtype
+        elif effective_backend == "ultravox":
+            if isinstance(capabilities, dict):
+                effective_ultravox_dtype = capabilities.get("dtype")
+            if effective_ultravox_dtype is None:
+                effective_ultravox_dtype = args.ultravox_dtype
         else:
             if isinstance(capabilities, dict):
                 effective_compute_type = capabilities.get("compute_type")
             if effective_compute_type is None:
                 effective_compute_type = args.compute_type
+
+        rest_accuracy_samples = [sample["accuracy"] for sample in rest_samples if sample.get("accuracy")]
+        streaming_accuracy_samples = [sample["accuracy"] for sample in streaming_samples if sample.get("accuracy")]
+
+        def summarize_accuracy(samples: list[dict[str, object]]) -> dict[str, object] | None:
+            if not samples:
+                return None
+            word_error_rates = [float(sample["word_error_rate"]) for sample in samples if sample.get("word_error_rate") is not None]
+            character_error_rates = [float(sample["character_error_rate"]) for sample in samples if sample.get("character_error_rate") is not None]
+            exact_match_rate = sum(1 for sample in samples if sample.get("exact_match")) / len(samples)
+            summary: dict[str, object] = {
+                "sample_count": len(samples),
+                "exact_match_rate": round(exact_match_rate, 3),
+                "word_error_rate_mean": round(statistics.mean(word_error_rates), 3) if word_error_rates else None,
+                "word_error_rate_p90": round(percentile(word_error_rates, 0.90), 3) if word_error_rates else None,
+                "character_error_rate_mean": round(statistics.mean(character_error_rates), 3) if character_error_rates else None,
+                "character_error_rate_p90": round(percentile(character_error_rates, 0.90), 3) if character_error_rates else None,
+            }
+            return summary
+
+        rest_summary = summarize_latencies(rest_durations_all, duration_s=duration_s)
+        streaming_summary = summarize_latencies(partial_latencies_all)
+        final_summary = summarize_latencies(final_latencies_all)
+
         return {
             "environment": describe_environment(),
+            "benchmark": {
+                "sample_count": sample_count,
+                "rest_runs_per_sample": args.rest_runs,
+                "chunk_ms": args.chunk_ms,
+            },
             "audio": {
                 "path": str(audio_path),
                 "duration_s": round(duration_s, 3),
@@ -408,10 +508,41 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "compute_type": effective_compute_type,
                 "qwen_dtype": effective_qwen_dtype,
                 "parakeet_dtype": effective_parakeet_dtype,
+                "ultravox_dtype": effective_ultravox_dtype,
             },
             "service": service,
-            "rest": rest,
-            "streaming": ws,
+            "samples": {
+                "rest": rest_samples,
+                "streaming": streaming_samples,
+            },
+            "rest": {
+                "sample_count": sample_count,
+                "runs_per_sample": args.rest_runs,
+                "durations_ms": [round(value, 1) for value in rest_durations_all],
+                **rest_summary,
+                "accuracy": summarize_accuracy(rest_accuracy_samples),
+                "transcript": rest_samples[0]["transcript"] if rest_samples else "",
+            },
+            "streaming": {
+                "sample_count": sample_count,
+                "chunk_ms": args.chunk_ms,
+                "partial_latencies_ms": [round(value, 1) for value in partial_latencies_all],
+                "final_latencies_ms": [round(value, 1) for value in final_latencies_all],
+                "partial_mean_ms": streaming_summary["mean_ms"],
+                "partial_p90_ms": streaming_summary["p90_ms"],
+                "partial_p95_ms": streaming_summary["p95_ms"],
+                "partial_min_ms": streaming_summary["min_ms"],
+                "partial_max_ms": streaming_summary["max_ms"],
+                "final_mean_ms": final_summary["mean_ms"],
+                "final_p90_ms": final_summary["p90_ms"],
+                "final_p95_ms": final_summary["p95_ms"],
+                "final_min_ms": final_summary["min_ms"],
+                "final_max_ms": final_summary["max_ms"],
+                "ready": streaming_samples[0]["ready"] if streaming_samples else None,
+                "last_partial": streaming_samples[0]["last_partial"] if streaming_samples else "",
+                "final_transcript": streaming_samples[0]["final_transcript"] if streaming_samples else "",
+                "accuracy": summarize_accuracy(streaming_accuracy_samples),
+            },
         }
     finally:
         if server is not None:
