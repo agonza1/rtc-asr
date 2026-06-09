@@ -64,10 +64,8 @@ class AppConfig:
     asr_qwen_device_map: str | None = None
     asr_qwen_max_new_tokens: int = 256
     asr_qwen_max_inference_batch_size: int = 1
-    asr_ultravox_model: str = "fixie-ai/ultravox-v0_6-llama-3_1-8b"
-    asr_ultravox_dtype: str = "auto"
-    asr_ultravox_max_new_tokens: int = 128
-    asr_ultravox_prompt: str = "Transcribe the spoken audio exactly and return only the transcript."
+    asr_parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
+    asr_parakeet_dtype: str = "auto"
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -105,10 +103,6 @@ class AppConfig:
                     str(defaults.asr_qwen_max_inference_batch_size),
                 )
             ),
-            asr_ultravox_model=os.getenv("ASR_ULTRAVOX_MODEL", defaults.asr_ultravox_model),
-            asr_ultravox_dtype=os.getenv("ASR_ULTRAVOX_DTYPE", defaults.asr_ultravox_dtype),
-            asr_ultravox_max_new_tokens=int(
-                os.getenv("ASR_ULTRAVOX_MAX_NEW_TOKENS", str(defaults.asr_ultravox_max_new_tokens))
-            ),
-            asr_ultravox_prompt=os.getenv("ASR_ULTRAVOX_PROMPT", defaults.asr_ultravox_prompt),
+            asr_parakeet_model=os.getenv("ASR_PARAKEET_MODEL", defaults.asr_parakeet_model),
+            asr_parakeet_dtype=os.getenv("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype),
         )
