@@ -135,7 +135,7 @@ class AsyncASRClient:
         self._chunks_sent = 0
         self._send_binary_frames = False
         while True:
-            event = TranscriptEvent.from_payload(await self._recv_json(raise_on_error=False))
+            event = TranscriptEvent.from_payload(await self._recv_json(allow_error=True))
             if event.type != "partial":
                 return event
 
