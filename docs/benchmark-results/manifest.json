@@ -1,8 +1,7 @@
 {
-  "generated_at": "2026-06-10T16:31:05Z",
+  "generated_at": "2026-06-10T16:42:11Z",
   "summary": {
-    "asr_count": 5,
-    "experiment_count": 1
+    "asr_count": 5
   },
   "asr_benchmarks": [
     {
@@ -123,30 +122,6 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
-      }
-    }
-  ],
-  "experiments": [
-    {
-      "kind": "experiment",
-      "task": "mlx-text-generation",
-      "model": "Qwen/Qwen3-0.6B-MLX-4bit",
-      "runtime": "mlx-lm / 4-bit",
-      "measured_at": "2026-06-10T03:26:17Z",
-      "sample_count": 3,
-      "artifact_path": "benchmark-results/qwen3-0.6b-mlx-4bit-text-2026-06-10.json",
-      "load": {
-        "load_ms": 506.9,
-        "rss_after_load_mb": 610.7
-      },
-      "summary": {
-        "mean_ms": 171.8,
-        "p95_ms": 172.6,
-        "min_ms": 170.5,
-        "max_ms": 172.6,
-        "output_tokens_mean": 24,
-        "tokens_per_second_overall": 139.7,
-        "rss_after_benchmark_mb": 610.7
       }
     }
   ]

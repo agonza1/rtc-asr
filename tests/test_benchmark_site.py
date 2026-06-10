@@ -1,14 +1,22 @@
+import importlib.util
 import json
+import sys
 from pathlib import Path
 
-from scripts.build_benchmark_manifest import build_manifest
+
+MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "build_benchmark_manifest.py"
+SPEC = importlib.util.spec_from_file_location("rtc_asr_build_benchmark_manifest", MODULE_PATH)
+assert SPEC is not None and SPEC.loader is not None
+manifest_module = importlib.util.module_from_spec(SPEC)
+sys.modules.setdefault("rtc_asr_build_benchmark_manifest", manifest_module)
+SPEC.loader.exec_module(manifest_module)
+build_manifest = manifest_module.build_manifest
 
 
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(Path("docs") / "benchmark-results")
 
     assert manifest["summary"]["asr_count"] == 5
-    assert manifest["summary"]["experiment_count"] == 1
     assert all(entry["backend"] != "ultravox" for entry in manifest["asr_benchmarks"])
 
     qwen_entries = [entry for entry in manifest["asr_benchmarks"] if entry["backend"] == "qwen-asr"]
@@ -23,7 +31,6 @@ def test_checked_in_manifest_matches_generated_output() -> None:
 
     assert checked_in["summary"] == generated["summary"]
     assert checked_in["asr_benchmarks"] == generated["asr_benchmarks"]
-    assert checked_in["experiments"] == generated["experiments"]
 
 
 def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:

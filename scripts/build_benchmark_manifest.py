@@ -58,25 +58,12 @@ def runtime_label(payload: dict[str, Any]) -> str:
         or backend.get("parakeet_dtype")
         or backend.get("ultravox_dtype")
     )
-    benchmark = payload.get("benchmark") or {}
-    task = benchmark.get("task")
-    if task == "mlx-text-generation":
-        model = payload.get("model") or {}
-        runtime = model.get("runtime") or "mlx-lm"
-        precision = model.get("precision") or "unknown precision"
-        return f"{runtime} / {precision}"
     if compute:
         return f"{device} / {compute}"
     return str(device)
 
 
 def benchmark_key(payload: dict[str, Any]) -> str:
-    benchmark = payload.get("benchmark") or {}
-    if benchmark.get("task") == "mlx-text-generation":
-        model = payload.get("model") or {}
-        runtime = model.get("runtime") or "mlx-lm"
-        precision = model.get("precision") or "unknown"
-        return f"mlx-text::{model.get('id', 'unknown')}::{runtime}::{precision}"
     backend = payload.get("backend") or {}
     compute = (
         backend.get("compute_type")
@@ -86,11 +73,7 @@ def benchmark_key(payload: dict[str, Any]) -> str:
         or "default"
     )
     device = backend.get("device") or "unknown"
-    return (
-        f"asr::{backend.get('name', 'unknown')}::{backend.get('model', 'unknown')}"
-        f"::{device}::{compute}"
-    )
-
+    return f"asr::{backend.get('name', 'unknown')}::{backend.get('model', 'unknown')}::{device}::{compute}"
 
 
 def sample_count(payload: dict[str, Any]) -> int:
@@ -113,6 +96,7 @@ def summarize_accuracy(rest: dict[str, Any], streaming: dict[str, Any]) -> dict[
         "word_error_rate_mean": accuracy.get("word_error_rate_mean", accuracy.get("word_error_rate")),
         "character_error_rate_mean": accuracy.get("character_error_rate_mean", accuracy.get("character_error_rate")),
     }
+
 
 def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     backend = payload["backend"]
@@ -141,22 +125,6 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_experiment_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
-    model = payload["model"]
-    summary = payload["summary"]
-    return {
-        "kind": "experiment",
-        "task": payload["benchmark"]["task"],
-        "model": model["id"],
-        "runtime": runtime_label(payload),
-        "measured_at": artifact_timestamp(path, payload),
-        "sample_count": sample_count(payload),
-        "artifact_path": f"benchmark-results/{path.name}",
-        "load": payload.get("load") or {},
-        "summary": summary,
-    }
-
-
 def build_manifest(results_dir: Path) -> dict[str, Any]:
     latest: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     for path in sorted(results_dir.glob("*.json")):
@@ -169,25 +137,15 @@ def build_manifest(results_dir: Path) -> dict[str, Any]:
         if previous is None or stamp > previous[0]:
             latest[key] = (stamp, path, payload)
 
-    asr_entries: list[dict[str, Any]] = []
-    experiment_entries: list[dict[str, Any]] = []
-    for _, path, payload in sorted(latest.values(), key=lambda item: item[0], reverse=True):
-        benchmark = payload.get("benchmark") or {}
-        if benchmark.get("task") == "mlx-text-generation":
-            experiment_entries.append(build_experiment_entry(path, payload))
-        else:
-            asr_entries.append(build_asr_entry(path, payload))
-
+    asr_entries = [
+        build_asr_entry(path, payload)
+        for _, path, payload in sorted(latest.values(), key=lambda item: item[0], reverse=True)
+    ]
     asr_entries.sort(key=lambda item: (item["rest"]["mean_ms"] is None, item["rest"]["mean_ms"] or 0))
-    experiment_entries.sort(key=lambda item: item["measured_at"], reverse=True)
     return {
         "generated_at": iso_now(),
-        "summary": {
-            "asr_count": len(asr_entries),
-            "experiment_count": len(experiment_entries),
-        },
+        "summary": {"asr_count": len(asr_entries)},
         "asr_benchmarks": asr_entries,
-        "experiments": experiment_entries,
     }
 
 
