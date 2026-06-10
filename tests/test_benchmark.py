@@ -100,6 +100,8 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
             "3",
             "--max-buffer",
             "4.5",
+            "--output",
+            "docs/benchmark-results/ultravox-compose-test.json",
         ],
     )
 
@@ -112,6 +114,7 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
     assert args.binary_frames is True
     assert args.partial_interval_chunks == 3
     assert args.max_buffer == 4.5
+    assert args.output == Path("docs/benchmark-results/ultravox-compose-test.json")
 
 
 def test_run_ws_benchmark_supports_binary_frames_and_window_overrides() -> None:

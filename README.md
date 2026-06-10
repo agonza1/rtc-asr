@@ -6,7 +6,7 @@ Realtime speech recognition service with REST transcription endpoints and a buff
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> Benchmark status: the repository now includes validated single-node CPU baselines for `faster-whisper` and Compose-backed `qwen-asr`. Treat broader load, GPU, and corpus-level accuracy claims as provisional until additional benchmark slices are published.
+> Benchmark status: the repository includes validated single-node CPU baselines for `faster-whisper` and Compose-backed `qwen-asr`, plus reproducible Compose benchmark paths for Parakeet and Ultravox. Treat pending Parakeet/Ultravox numbers, broader load, GPU, and corpus-level accuracy claims as provisional until their result artifacts are checked in.
 
 ## Current Scope
 
