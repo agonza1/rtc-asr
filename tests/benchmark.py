@@ -60,6 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ultravox-max-new-tokens", type=int, default=128, help="Max new tokens for ultravox when spawning a local server")
     parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
     parser.add_argument("--max-buffer", type=float, help="Optional stream buffer cap in seconds for websocket benchmarking")
+    parser.add_argument("--output", type=Path, help="Optional path for the benchmark JSON artifact")
     return parser.parse_args()
 
 
@@ -612,7 +613,11 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
 def main() -> None:
     args = parse_args()
     results = asyncio.run(async_main(args))
-    print(json.dumps(results, indent=2))
+    rendered = json.dumps(results, indent=2)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(f"{rendered}\n", encoding="utf-8")
+    print(rendered)
 
 
 if __name__ == "__main__":

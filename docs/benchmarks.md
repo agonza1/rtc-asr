@@ -1,19 +1,22 @@
 # Performance Benchmarks
 
 This page tracks validated single-node benchmark runs for the current `rtc-asr` service.
-The benchmark harness now runs 10 samples per model and reports mean, p90, p95, min, and max
-for REST and streaming latencies. Each sample runs the existing REST loop plus one full streaming
-session, so the published numbers are less noisy than the original one-off snapshots.
+The benchmark harness runs 10 samples per model by default and reports mean, p90, p95, min,
+and max for REST and streaming latencies. Each sample runs the REST loop plus one full
+streaming session, so published numbers are less noisy than one-off snapshots.
 
-## At a Glance
+## Backend Result Matrix
 
-| Model | Backend | Sample Count | REST Mean / P90 | Streaming Partial Mean / P90 | Final Mean | Accuracy |
-| --- | --- | ---: | --- | --- | --- | --- |
-| `tiny.en` | `faster-whisper` | 10 | see snapshot below | see snapshot below | see snapshot below | see snapshot below |
-| `Qwen/Qwen3-ASR-0.6B` | `qwen-asr` | 10 | see snapshot below | see snapshot below | see snapshot below | see snapshot below |
+| Backend | Model | Runtime Path | Samples | Validation Status | Result Artifact | REST Mean / P95 | Streaming Partial Mean / P95 | Final Mean | Accuracy |
+| --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
+| `faster-whisper` | `tiny.en` | local Python CPU / `int8` | 1 legacy snapshot | validated snapshot | inline below | 263.7 ms / 269.1 ms | 177.5 ms / 308.6 ms | 261.3 ms | representative transcript only |
+| `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU / `float32` | 1 legacy snapshot | validated artifact | `docs/benchmark-results/qwen-compose-2026-06-08.json` | 5482.2 ms / 5904.4 ms | 3696.1 ms / 6314.4 ms | 0.9 ms | WER 0.095 / CER 0.0 |
+| `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 planned | benchmark path ready; validated artifact pending | run `make benchmark-compose-parakeet` | pending | pending | pending | pending |
+| `ultravox` | `fixie-ai/ultravox-v0_6-llama-3_1-8b` | Docker Compose CPU / `float32` | 10 planned | benchmark path ready; validated artifact pending | run `make benchmark-compose-ultravox` | pending | pending | pending | pending |
 
-The rows below are the latest validated snapshots currently checked into the repo. Rerun the commands in
-*Reproduce* to refresh them with the 10-sample harness output.
+Use the matrix as the source of truth for which backends have checked-in numbers. A backend should
+move from `pending` to `validated artifact` only after its JSON output is committed under
+`docs/benchmark-results/` and the measured results section below is updated from that artifact.
 
 ## Latest Validated Runs
 
@@ -83,6 +86,9 @@ Versioned artifact:
 
 ## Reproduce
 
+All Compose benchmark targets now write a dated JSON artifact under `docs/benchmark-results/`.
+Override `BENCHMARK_RESULT_DATE` when you want a stable filename during repeated local runs.
+
 ### Faster-Whisper Baseline
 
 Run the local baseline with 10 samples per model:
@@ -97,69 +103,113 @@ Or invoke the harness directly against an already-running server:
 .venv/bin/python tests/benchmark.py \
   --url http://127.0.0.1:8090 \
   --ws-url ws://127.0.0.1:8090/ws/stream \
-  --sample-count 10
+  --sample-count 10 \
+  --output docs/benchmark-results/faster-whisper-local-$(date -u +%Y-%m-%d).json
 ```
 
 ### Qwen Compose Baseline
 
 Use the checked-in Compose workflow:
 
-Useful benchmark flags:
-
-- `--audio-file /path/to/sample.wav` to benchmark a specific clip
-- `--chunk-ms 100` to test a tighter streaming cadence
-- `--partial-interval-chunks 2` to reduce partial-event frequency
-- `--binary-frames` to measure raw PCM websocket frames instead of JSON base64
-- `--spawn-server` to let the harness boot a local uvicorn server
-- `--ultravox-prompt "Return only the transcript."` to benchmark a non-default Ultravox system prompt
-- `--partial-window 1.0` to compare a smaller streaming window
-- `--max-buffer 4.0` to clamp the per-stream websocket buffer budget
-
 ```bash
 make benchmark-compose-qwen
 ```
 
-What that target does:
-
-- creates a writable local Hugging Face cache at `.cache/huggingface`
-- reuses a cached `python:3.11-slim` base image when present; otherwise it tries Docker Hub first and falls back to `mirror.gcr.io/library/python:3.11-slim` only if the default image is not cached locally and the pull fails; explicit `PYTHON_BASE_IMAGE` overrides are used as-is
-- builds the image with a CPU PyTorch wheel from the official PyTorch CPU index so Compose does not pull the much larger CUDA stack for the default CPU path
-- starts `docker compose` with `ASR_BACKEND=qwen-asr`, `ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B`, `ASR_DEVICE=cpu`, and `ASR_QWEN_DTYPE=float32`
-- waits for `GET /ready` to return `200`
-- runs the benchmark client against `http://127.0.0.1:8080` with `--sample-count 10`
-
-Equivalent manual commands:
+Equivalent manual command against an already-running Qwen service:
 
 ```bash
-mkdir -p .cache/huggingface
-ASR_BACKEND=qwen-asr \
-ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B \
-ASR_DEVICE=cpu \
-ASR_QWEN_DTYPE=float32 \
-PYTHON_BASE_IMAGE=python:3.11-slim docker compose up -d --build
-
-until curl -fsS http://127.0.0.1:8080/ready >/dev/null; do sleep 5; done
-
 .venv/bin/python tests/benchmark.py \
   --url http://127.0.0.1:8080 \
   --ws-url ws://127.0.0.1:8080/ws/stream \
-  --sample-count 10
+  --backend qwen-asr \
+  --model Qwen/Qwen3-ASR-0.6B \
+  --qwen-dtype float32 \
+  --sample-count 10 \
+  --output docs/benchmark-results/qwen-compose-$(date -u +%Y-%m-%d).json
 ```
+
+### Parakeet Compose Baseline
+
+Use the Parakeet Compose target to generate the missing validated artifact:
+
+```bash
+make benchmark-compose-parakeet
+```
+
+The target sets `ENABLE_PARAKEET_RUNTIME=1`, `ASR_BACKEND=parakeet`,
+`ASR_PARAKEET_MODEL=nvidia/parakeet-tdt-0.6b-v3`, `ASR_DEVICE=cpu`, and
+`ASR_PARAKEET_DTYPE=float32`. It also writes
+`docs/benchmark-results/parakeet-compose-<date>.json`.
+
+Equivalent manual command against an already-running Parakeet service:
+
+```bash
+.venv/bin/python tests/benchmark.py \
+  --url http://127.0.0.1:8080 \
+  --ws-url ws://127.0.0.1:8080/ws/stream \
+  --backend parakeet \
+  --model nvidia/parakeet-tdt-0.6b-v3 \
+  --parakeet-dtype float32 \
+  --sample-count 10 \
+  --output docs/benchmark-results/parakeet-compose-$(date -u +%Y-%m-%d).json
+```
+
+### Ultravox Compose Baseline
+
+Use the Ultravox Compose target to generate the missing validated artifact:
+
+```bash
+HF_TOKEN=... make benchmark-compose-ultravox
+```
+
+The default Ultravox model depends on gated Hugging Face weights, so export `HF_TOKEN` or
+`HUGGINGFACE_HUB_TOKEN` before running it. The target sets `ASR_BACKEND=ultravox`,
+`ASR_ULTRAVOX_MODEL=fixie-ai/ultravox-v0_6-llama-3_1-8b`, `ASR_DEVICE=cpu`,
+`ASR_ULTRAVOX_DTYPE=float32`, and `ASR_ULTRAVOX_MAX_NEW_TOKENS=128`. It writes
+`docs/benchmark-results/ultravox-compose-<date>.json`.
+
+Equivalent manual command against an already-running Ultravox service:
+
+```bash
+.venv/bin/python tests/benchmark.py \
+  --url http://127.0.0.1:8080 \
+  --ws-url ws://127.0.0.1:8080/ws/stream \
+  --backend ultravox \
+  --model fixie-ai/ultravox-v0_6-llama-3_1-8b \
+  --ultravox-dtype float32 \
+  --ultravox-max-new-tokens 128 \
+  --sample-count 10 \
+  --output docs/benchmark-results/ultravox-compose-$(date -u +%Y-%m-%d).json
+```
+
+### Useful Benchmark Flags
+
+- `--audio-file /path/to/sample.wav` benchmarks a specific clip.
+- `--reference-text "..."` or `--reference-file transcript.txt` controls WER/CER reference text.
+- `--chunk-ms 100` tests a tighter streaming cadence.
+- `--partial-interval-chunks 2` reduces partial-event frequency.
+- `--binary-frames` measures raw PCM websocket frames instead of JSON base64.
+- `--spawn-server` lets the harness boot a local uvicorn server.
+- `--partial-window 1.0` compares a smaller streaming window.
+- `--max-buffer 4.0` clamps the per-stream websocket buffer budget.
+- `--output docs/benchmark-results/<name>.json` stores the exact benchmark artifact that should be reviewed before docs are updated.
 
 ## Methodology Notes
 
-- `tests/benchmark.py` now emits 10-sample benchmark summaries and retains per-sample REST/streaming data under `samples`.
+- `tests/benchmark.py` emits 10-sample benchmark summaries and retains per-sample REST/streaming data under `samples`.
 - The harness records simple accuracy metadata in addition to latency metrics.
 - When benchmarking synthesized speech without an explicit reference file, the harness uses the synthesized prompt text as the reference transcript.
-- The harness also records live backend metadata from `GET /api/models`, so benchmark artifacts reflect the actual running service even when the client is pointed at an already-running container.
+- The harness records live backend metadata from `GET /api/models`, so benchmark artifacts reflect the actual running service even when the client is pointed at an already-running container.
 - Word error rate and character error rate are normalized after lowercasing and punctuation stripping.
+- Commit the JSON artifact first, then copy the summary values from that artifact into the matrix and latest validated run notes.
 
 ## Remaining Gaps
 
 Still not covered by this document:
 
+- checked-in validated Parakeet and Ultravox CPU result artifacts
 - concurrent REST or WebSocket load
-- GPU-backed Qwen measurements
+- GPU-backed Qwen, Parakeet, or Ultravox measurements
 - memory and CPU saturation curves
 - corpus-level WER across more than a single synthesized utterance
 - longer multi-turn streaming sessions
