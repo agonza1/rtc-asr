@@ -33,6 +33,7 @@ FASTER_WHISPER_BASE_MODEL ?= base.en
 FASTER_WHISPER_SMALL_MODEL ?= small.en
 FASTER_WHISPER_COMPUTE_TYPE ?= int8
 
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix
 
 help:
@@ -71,6 +72,18 @@ venv:
 		$(PIP) install -r requirements.txt; \
 	fi
 	@echo "  ✓ Virtualenv ready at $(VENV)"
+
+mlx-venv:
+	@echo "Preparing MLX virtualenv..."
+	@if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import sys" >/dev/null 2>&1; then \
+		echo "  ✓ Reusing existing MLX virtualenv at $(MLX_VENV)"; \
+	else \
+		echo "  Rebuilding $(MLX_VENV) because the interpreter is missing or broken..."; \
+		rm -rf $(MLX_VENV); \
+		python3 -m venv $(MLX_VENV); \
+		$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil; \
+	fi
+	@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"
 
 setup: venv
 	@echo "Bootstrapping local config..."
@@ -234,6 +247,10 @@ benchmark-compose-ultravox: venv
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/ultravox-compose-$(BENCHMARK_RESULT_DATE).json; }
 
+benchmark-qwen-mlx-text: mlx-venv
+	@echo "Benchmarking $(QWEN_MLX_TEXT_MODEL) with mlx-lm on Apple Silicon..."
+	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
+	@$(MLX_PYTHON) scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL) --sample-count $(QWEN_MLX_TEXT_SAMPLE_COUNT) --max-tokens $(QWEN_MLX_TEXT_MAX_TOKENS) --output $(BENCHMARK_RESULTS_DIR)/qwen3-0.6b-mlx-4bit-text-$(BENCHMARK_RESULT_DATE).json
 
 lint: venv
 	@echo "Running linter..."
