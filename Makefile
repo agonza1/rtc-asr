@@ -68,10 +68,15 @@ help:
 
 venv:
 	@echo "Preparing virtualenv..."
-	@rm -rf $(VENV)
-	@python3 -m venv $(VENV)
-	@$(PIP) install --upgrade pip
-	@$(PIP) install -r requirements.txt
+	@if [ -x $(PYTHON) ] && $(PYTHON) -c "import sys" >/dev/null 2>&1; then \
+		echo "  ✓ Reusing existing virtualenv at $(VENV)"; \
+	else \
+		echo "  Rebuilding $(VENV) because the interpreter is missing or broken..."; \
+		rm -rf $(VENV); \
+		python3 -m venv $(VENV); \
+		$(PIP) install --upgrade pip; \
+		$(PIP) install -r requirements.txt; \
+	fi
 	@echo "  ✓ Virtualenv ready at $(VENV)"
 
 setup: venv
@@ -136,23 +141,20 @@ benchmark: venv
 benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-whisper-small
 	@echo "  ✓ faster-whisper benchmark matrix complete with $(BENCHMARK_SAMPLE_COUNT) samples per model"
 
-benchmark-faster-whisper-base:
-	@test -x $(PYTHON) || (echo "Missing $(PYTHON); run make venv before benchmarking." >&2; exit 1)
+benchmark-faster-whisper-base: venv
 	@echo "Running faster-whisper $(FASTER_WHISPER_BASE_MODEL) $(FASTER_WHISPER_COMPUTE_TYPE) latency benchmark..."
 	@$(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_BASE_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_BASE_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
 
-benchmark-faster-whisper-small:
-	@test -x $(PYTHON) || (echo "Missing $(PYTHON); run make venv before benchmarking." >&2; exit 1)
+benchmark-faster-whisper-small: venv
 	@echo "Running faster-whisper $(FASTER_WHISPER_SMALL_MODEL) $(FASTER_WHISPER_COMPUTE_TYPE) latency benchmark..."
 	@$(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_SMALL_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_SMALL_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox
 	@echo "  ✓ Compose benchmark matrix complete with $(BENCHMARK_SAMPLE_COUNT) samples per backend"
 
-benchmark-compose-qwen:
+benchmark-compose-qwen: venv
 	@echo "Starting docker compose stack with qwen-asr on CPU..."
 	@mkdir -p .cache/huggingface
-	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
 	@set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
 	trap cleanup EXIT INT TERM; \
@@ -172,10 +174,9 @@ benchmark-compose-qwen:
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json
 
-benchmark-compose-parakeet:
+benchmark-compose-parakeet: venv
 	@echo "Starting docker compose stack with parakeet on CPU..."
 	@mkdir -p .cache/huggingface
-	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
 	@set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
 	trap cleanup EXIT INT TERM; \
@@ -195,10 +196,9 @@ benchmark-compose-parakeet:
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-compose-$(BENCHMARK_RESULT_DATE).json
 
-benchmark-compose-parakeet-nemo:
+benchmark-compose-parakeet-nemo: venv
 	@echo "Starting docker compose stack with Parakeet 110M through NeMo on CPU..."
 	@mkdir -p .cache/huggingface
-	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
 	@set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
 	trap cleanup EXIT INT TERM; \
@@ -218,10 +218,9 @@ benchmark-compose-parakeet-nemo:
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json
 
-benchmark-compose-ultravox:
+benchmark-compose-ultravox: venv
 	@echo "Starting docker compose stack with ultravox on CPU..."
 	@mkdir -p .cache/huggingface
-	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
 	@test -n "$(HF_TOKEN)$(HUGGINGFACE_HUB_TOKEN)" || (echo "Ultravox default model requires Hugging Face access. Export HF_TOKEN or HUGGINGFACE_HUB_TOKEN before running this target." >&2; exit 1)
 	@set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \

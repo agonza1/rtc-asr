@@ -135,6 +135,8 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
     assert "FASTER_WHISPER_SMALL_MODEL ?= small.en" in makefile
     assert "FASTER_WHISPER_COMPUTE_TYPE ?= int8" in makefile
     assert "benchmark: venv" in makefile
+    assert "benchmark-faster-whisper-base: venv" in makefile
+    assert "benchmark-faster-whisper-small: venv" in makefile
     assert ".NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix" in makefile
     assert "benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-whisper-small" in makefile
     for model_var in ("BASE", "SMALL"):
@@ -159,7 +161,8 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "MLX_VENV ?= .venv-mlx" in makefile
     assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil" in makefile
     assert "scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL)" in makefile
-    for target in ("qwen", "parakeet", "parakeet-nemo-110m", "ultravox"):
+    for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m"), ("benchmark-compose-ultravox: venv", "ultravox")):
+        assert target_name in makefile
         line = next(
             line
             for line in makefile.splitlines()
@@ -174,7 +177,7 @@ def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
     for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo"), ("benchmark-compose-ultravox", "ultravox")):
-        block = makefile.split(f"{target}:\n", 1)[1].split("\n\n", 1)[0]
+        block = makefile.split(f"{target}: venv\n", 1)[1].split("\n\n", 1)[0]
         assert "@set -e; \\" in block
         assert "trap cleanup EXIT INT TERM" in block
         assert "cleanup() { docker compose down >/dev/null 2>&1 || true; }" in block
