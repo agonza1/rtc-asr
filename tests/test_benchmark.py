@@ -187,6 +187,18 @@ def test_makefile_mlx_venv_target_repairs_broken_virtualenvs_before_benchmarks()
     assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil; \\" in mlx_venv_block
     assert '@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"' in mlx_venv_block
 
+def test_makefile_exposes_benchmark_site_sync_targets() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "benchmark-site:" in makefile
+    assert "benchmark-site-check:" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
+    block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
+    assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
+    assert '@echo "  ✓ Benchmark site manifest is up to date"' in block
+
+
 def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 

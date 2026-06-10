@@ -38,7 +38,7 @@ FASTER_WHISPER_BASE_MODEL ?= base.en
 FASTER_WHISPER_SMALL_MODEL ?= small.en
 FASTER_WHISPER_COMPUTE_TYPE ?= int8
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix
 
 help:
@@ -60,6 +60,7 @@ help:
 	@echo "  make benchmark-compose-parakeet-nemo - Start compose and benchmark Parakeet 110M through NeMo"
 	@echo "  make benchmark-compose-ultravox - Start compose, wait for readiness, and benchmark ultravox"
 	@echo "  make lint           - Run linter"
+	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
 	@echo "  make docs           - Build documentation snapshot"
 	@echo "  make start          - Start docker compose stack"
 	@echo "  make stop           - Stop docker compose stack"
@@ -266,6 +267,10 @@ benchmark-site:
 	@echo "Building benchmark site manifest..."
 	@python3 scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json
 	@echo "  ✓ Benchmark site manifest built"
+
+benchmark-site-check:
+	@python3 scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check
+	@echo "  ✓ Benchmark site manifest is up to date"
 
 docs: benchmark-site
 	@echo "Building documentation..."

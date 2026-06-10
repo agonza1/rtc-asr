@@ -34,7 +34,26 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_RESULTS_DIR / "manifest.json",
         help="Output manifest path",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit non-zero when the checked-in manifest does not match generated output",
+    )
     return parser.parse_args()
+
+
+def render_manifest(manifest: dict[str, Any]) -> str:
+    return f"{json.dumps(manifest, indent=2)}\n"
+
+
+def comparable_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    comparable = dict(manifest)
+    comparable.pop("generated_at", None)
+    return comparable
+
+
+def manifests_match(current: dict[str, Any], generated: dict[str, Any]) -> bool:
+    return comparable_manifest(current) == comparable_manifest(generated)
 
 
 def load_payload(path: Path) -> dict[str, Any]:
@@ -325,8 +344,20 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
 def main() -> None:
     args = parse_args()
     manifest = build_manifest(args.results_dir, args.tracks)
+    rendered = render_manifest(manifest)
+
+    if args.check:
+        if not args.output.exists():
+            raise SystemExit(f"Manifest is missing: {args.output}")
+        current = json.loads(args.output.read_text(encoding="utf-8"))
+        if not manifests_match(current, manifest):
+            raise SystemExit(
+                f"Manifest is stale: {args.output}. Run scripts/build_benchmark_manifest.py to regenerate it."
+            )
+        return
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(f"{json.dumps(manifest, indent=2)}\n", encoding="utf-8")
+    args.output.write_text(rendered, encoding="utf-8")
 
 
 if __name__ == "__main__":

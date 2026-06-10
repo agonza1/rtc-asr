@@ -1,8 +1,10 @@
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "build_benchmark_manifest.py"
 SPEC = importlib.util.spec_from_file_location("rtc_asr_build_benchmark_manifest", MODULE_PATH)
@@ -10,7 +12,10 @@ assert SPEC is not None and SPEC.loader is not None
 manifest_module = importlib.util.module_from_spec(SPEC)
 sys.modules.setdefault("rtc_asr_build_benchmark_manifest", manifest_module)
 SPEC.loader.exec_module(manifest_module)
+DEFAULT_RESULTS_DIR = manifest_module.DEFAULT_RESULTS_DIR
 build_manifest = manifest_module.build_manifest
+comparable_manifest = manifest_module.comparable_manifest
+render_manifest = manifest_module.render_manifest
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -154,3 +159,89 @@ def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
     }
 
     assert tracked_artifacts == expected_files
+
+
+def test_render_manifest_matches_checked_in_output() -> None:
+    generated = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    checked_in = json.loads((RESULTS_DIR / "manifest.json").read_text(encoding="utf-8"))
+
+    assert comparable_manifest(generated) == comparable_manifest(checked_in)
+
+
+def test_manifest_check_fails_when_checked_in_file_is_stale(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "demo-2026-06-10.json"
+    artifact_path.write_text(
+        json.dumps(
+            {
+                "backend": {"name": "demo", "model": "demo-v1", "device": "cpu", "compute_type": "int8"},
+                "rest": {"mean_ms": 42, "p95_ms": 64, "rtf_mean": 0.2},
+                "streaming": {"partial_mean_ms": 21, "partial_p95_ms": 32, "final_mean_ms": 30, "final_p95_ms": 45},
+                "environment": {"date_utc": "2026-06-10T00:00:00Z"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    tracks_path = tmp_path / "tracks.json"
+    tracks_path.write_text(
+        json.dumps(
+            {
+                "sample_contract": {"sample_count": 10},
+                "tracks": [
+                    {
+                        "slug": "demo-track",
+                        "label": "demo-track",
+                        "backend": "demo",
+                        "model": "demo-v1",
+                        "device": "cpu",
+                        "compute": "int8",
+                        "lane": "local",
+                        "status": "validated",
+                        "status_detail": "demo artifact",
+                        "target_sample_count": 10,
+                        "run_command": "make benchmark-site",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text("{}\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(MODULE_PATH),
+            "--results-dir",
+            str(tmp_path),
+            "--tracks",
+            str(tracks_path),
+            "--output",
+            str(manifest_path),
+            "--check",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert f"Manifest is stale: {manifest_path}" in result.stderr
+
+
+def test_manifest_check_succeeds_when_checked_in_file_matches_generated_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    generated = build_manifest(DEFAULT_RESULTS_DIR, TRACKS_PATH)
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(render_manifest(generated), encoding="utf-8")
+
+    monkeypatch.chdir(Path(__file__).resolve().parents[1])
+    result = subprocess.run(
+        [sys.executable, str(MODULE_PATH), "--output", str(manifest_path), "--check"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert result.stderr == ""
