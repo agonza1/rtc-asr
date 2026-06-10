@@ -15,6 +15,7 @@ streaming session, so published numbers are less noisy than one-off snapshots.
 | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` | 2388.3 ms / 4098.1 ms | 1715.1 ms / 2968.7 ms | 2215.8 ms | WER 0.095 / CER 0.0 |
 | `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` | 331.4 ms / 511.5 ms | 148.5 ms / 245.8 ms | 379.0 ms | WER 0.19 / CER 0.0 |
 | `ultravox` | `fixie-ai/ultravox-v0_6-llama-3_1-8b` | Docker Compose CPU / `float32` | 10 target | blocked before validation: current token can fetch `fixie-ai/ultravox`, but the model loads gated `meta-llama/Llama-3.1-8B-Instruct` and Hugging Face returned 403 on 2026-06-10 | run `HF_TOKEN=... make benchmark-compose-ultravox` after Llama access is granted | blocked | blocked | blocked | blocked |
+| `qwen-mlx-text` | `Qwen/Qwen3-0.6B-MLX-4bit` | local Apple Silicon MLX / 4-bit | 3 | validated artifact; text-generation feasibility benchmark, not ASR | `docs/benchmark-results/qwen3-0.6b-mlx-4bit-text-2026-06-10.json` | n/a | n/a | 171.8 ms mean generation | 139.7 output tok/s; 610.7 MiB RSS |
 
 Use the matrix as the source of truth for which backends have checked-in numbers. A backend should move to `validated artifact` only after its JSON output is committed under `docs/benchmark-results/` and the measured results section below is updated from that artifact. Blocked rows should name the exact external access or runtime failure observed during the 10-sample target run.
 
@@ -178,6 +179,36 @@ Versioned artifact:
 
 - `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json`
 
+### Qwen3 0.6B MLX 4-bit Text Feasibility Baseline
+
+Measured on June 10, 2026 with `mlx-lm` on local Apple Silicon. This model is a text-generation model, not an ASR model, so it does not use the REST/WebSocket transcription harness and should not be compared directly with ASR latency or WER rows. It is tracked here as a candidate local inference building block for future agent/evaluator paths.
+
+Environment:
+
+- Host: macOS 26.5.1 arm64
+- Python benchmark client: 3.14.4
+- Runtime: `mlx-lm`
+- Model: `Qwen/Qwen3-0.6B-MLX-4bit`
+- Samples: 3 generation samples after one 8-token warmup
+- Prompt: `Return one concise sentence explaining why low-latency local inference matters for voice AI tests.`
+
+Measured results:
+
+- Model load from local cache: 506.9 ms
+- Generation latency: 171.8 ms mean, 172.6 ms p95, 170.5 ms min, 172.6 ms max
+- Output throughput: 139.7 output tokens/sec overall
+- Output tokens: 24 mean
+- Resident memory: 610.7 MiB after load, 610.7 MiB after benchmark
+
+Interpretation notes:
+
+- This confirms the MLX 4-bit Qwen3 0.6B model runs on the local Apple Silicon device with low memory and fast short-form generation. The checked-in artifact was generated from the dedicated `.venv-mlx` target with model files already cached locally.
+- The model card identifies it as `Text Generation`, `MLX`, and `4-bit precision`, with direct `mlx-lm` usage. It is not a speech recognizer and does not replace `qwen-asr`, Parakeet, or faster-whisper in the ASR benchmark matrix.
+
+Versioned artifact:
+
+- `docs/benchmark-results/qwen3-0.6b-mlx-4bit-text-2026-06-10.json`
+
 ## Reproduce
 
 All benchmark targets now use `BENCHMARK_SAMPLE_COUNT=10` by default and write a dated JSON artifact under `docs/benchmark-results/`. Override `BENCHMARK_SAMPLE_COUNT` only for local smoke checks; leave it at 10 for committed matrix results. Override `BENCHMARK_RESULT_DATE` when you want a stable filename during repeated local runs.
@@ -191,6 +222,16 @@ make benchmark-compose-matrix
 ```
 
 This expands to `benchmark-compose-qwen`, `benchmark-compose-parakeet`, `benchmark-compose-parakeet-nemo`, and `benchmark-compose-ultravox`. Each target emits REST mean/p95, streaming partial mean/p95, streaming final mean/p95, and WER/CER accuracy summaries in its JSON artifact. Ultravox still requires `HF_TOKEN` or `HUGGINGFACE_HUB_TOKEN` because the default weights are gated.
+
+### Qwen MLX Text Feasibility Benchmark
+
+Run the optional Apple Silicon text-generation benchmark:
+
+```bash
+make benchmark-qwen-mlx-text
+```
+
+This target prepares a dedicated `.venv-mlx` environment and writes `docs/benchmark-results/qwen3-0.6b-mlx-4bit-text-<date>.json`. It is intentionally separate from the ASR Compose matrix because `Qwen/Qwen3-0.6B-MLX-4bit` is a local text-generation model, not a speech-to-text model.
 
 ### Faster-Whisper Baseline
 

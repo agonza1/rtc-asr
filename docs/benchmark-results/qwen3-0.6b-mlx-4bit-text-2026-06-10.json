@@ -1,0 +1,56 @@
+{
+  "environment": {
+    "date_utc": "2026-06-10T03:26:17Z",
+    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.4",
+    "processor": "arm"
+  },
+  "benchmark": {
+    "task": "mlx-text-generation",
+    "sample_count": 3,
+    "max_tokens": 64,
+    "warmup_tokens": 8,
+    "prompt": "Return one concise sentence explaining why low-latency local inference matters for voice AI tests."
+  },
+  "model": {
+    "id": "Qwen/Qwen3-0.6B-MLX-4bit",
+    "runtime": "mlx-lm",
+    "precision": "4-bit"
+  },
+  "load": {
+    "load_ms": 506.9,
+    "rss_after_load_mb": 610.7
+  },
+  "summary": {
+    "mean_ms": 171.8,
+    "p95_ms": 172.6,
+    "min_ms": 170.5,
+    "max_ms": 172.6,
+    "output_tokens_mean": 24,
+    "tokens_per_second_overall": 139.7,
+    "rss_after_benchmark_mb": 610.7
+  },
+  "samples": [
+    {
+      "sample": 1,
+      "generation_ms": 172.6,
+      "output_tokens": 24,
+      "tokens_per_second": 139.04,
+      "text": "Low-latency local inference is crucial for voice AI tests to ensure real-time performance, enabling seamless and efficient voice processing."
+    },
+    {
+      "sample": 2,
+      "generation_ms": 170.5,
+      "output_tokens": 24,
+      "tokens_per_second": 140.77,
+      "text": "Low-latency local inference is crucial for voice AI tests to ensure real-time performance, enabling seamless and efficient voice processing."
+    },
+    {
+      "sample": 3,
+      "generation_ms": 172.3,
+      "output_tokens": 24,
+      "tokens_per_second": 139.31,
+      "text": "Low-latency local inference is crucial for voice AI tests to ensure real-time performance, enabling seamless and efficient voice processing."
+    }
+  ]
+}

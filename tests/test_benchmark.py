@@ -152,6 +152,11 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "BENCHMARK_REQUEST_RETRIES ?= 3" in makefile
     assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox" in makefile
     assert "PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8" in makefile
+    assert "QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit" in makefile
+    assert "benchmark-qwen-mlx-text:" in makefile
+    assert "MLX_VENV ?= .venv-mlx" in makefile
+    assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil" in makefile
+    assert "scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL)" in makefile
     for target in ("qwen", "parakeet", "parakeet-nemo-110m", "ultravox"):
         line = next(
             line
