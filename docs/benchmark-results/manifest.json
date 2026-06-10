@@ -1,0 +1,153 @@
+{
+  "generated_at": "2026-06-10T16:31:05Z",
+  "summary": {
+    "asr_count": 5,
+    "experiment_count": 1
+  },
+  "asr_benchmarks": [
+    {
+      "kind": "asr",
+      "backend": "parakeet-nemo",
+      "model": "nvidia/parakeet-tdt_ctc-110m",
+      "runtime": "cpu / float32",
+      "measured_at": "2026-06-10T03:11:39Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "rest": {
+        "mean_ms": 331.4,
+        "p95_ms": 511.5,
+        "rtf_mean": 0.046
+      },
+      "streaming": {
+        "partial_mean_ms": 148.5,
+        "partial_p95_ms": 245.8,
+        "final_mean_ms": 379,
+        "final_p95_ms": 633.5
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.19,
+        "character_error_rate_mean": 0
+      }
+    },
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-10T02:16:51Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 573.3,
+        "p95_ms": 741.1,
+        "rtf_mean": 0.079
+      },
+      "streaming": {
+        "partial_mean_ms": 553.0,
+        "partial_p95_ms": 2451.5,
+        "final_mean_ms": 560.2,
+        "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "small.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-10T02:23:49Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 1378.3,
+        "p95_ms": 1531.1,
+        "rtf_mean": 0.189
+      },
+      "streaming": {
+        "partial_mean_ms": 1023.2,
+        "partial_p95_ms": 1202.4,
+        "final_mean_ms": 1420.6,
+        "final_p95_ms": 1514.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "backend": "parakeet",
+      "model": "nvidia/parakeet-tdt-0.6b-v3",
+      "runtime": "cpu / float32",
+      "measured_at": "2026-06-10T01:41:11Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "rest": {
+        "mean_ms": 2388.3,
+        "p95_ms": 4098.1,
+        "rtf_mean": 0.328
+      },
+      "streaming": {
+        "partial_mean_ms": 1715.1,
+        "partial_p95_ms": 2968.7,
+        "final_mean_ms": 2215.8,
+        "final_p95_ms": 3080.4
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "runtime": "cpu / float32",
+      "measured_at": "2026-06-08T16:30:59Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
+      "rest": {
+        "mean_ms": 5482.2,
+        "p95_ms": 5904.4,
+        "rtf_mean": 0.753
+      },
+      "streaming": {
+        "partial_mean_ms": 3696.1,
+        "partial_p95_ms": 6314.4,
+        "final_mean_ms": 0.9,
+        "final_p95_ms": 0.9
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    }
+  ],
+  "experiments": [
+    {
+      "kind": "experiment",
+      "task": "mlx-text-generation",
+      "model": "Qwen/Qwen3-0.6B-MLX-4bit",
+      "runtime": "mlx-lm / 4-bit",
+      "measured_at": "2026-06-10T03:26:17Z",
+      "sample_count": 3,
+      "artifact_path": "benchmark-results/qwen3-0.6b-mlx-4bit-text-2026-06-10.json",
+      "load": {
+        "load_ms": 506.9,
+        "rss_after_load_mb": 610.7
+      },
+      "summary": {
+        "mean_ms": 171.8,
+        "p95_ms": 172.6,
+        "min_ms": 170.5,
+        "max_ms": 172.6,
+        "output_tokens_mean": 24,
+        "tokens_per_second_overall": 139.7,
+        "rss_after_benchmark_mb": 610.7
+      }
+    }
+  ]
+}

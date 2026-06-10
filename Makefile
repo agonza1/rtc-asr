@@ -38,7 +38,7 @@ FASTER_WHISPER_BASE_MODEL ?= base.en
 FASTER_WHISPER_SMALL_MODEL ?= small.en
 FASTER_WHISPER_COMPUTE_TYPE ?= int8
 
-.PHONY: help venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text clean lint docs start stop status
+.PHONY: help venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix
 
 help:
@@ -249,10 +249,15 @@ benchmark-qwen-mlx-text:
 
 lint: venv
 	@echo "Running linter..."
-	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py
+	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py
 	@echo "  ✓ Linting complete"
 
-docs:
+benchmark-site:
+	@echo "Building benchmark site manifest..."
+	@python3 scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json
+	@echo "  ✓ Benchmark site manifest built"
+
+docs: benchmark-site
 	@echo "Building documentation..."
 	@mkdir -p docs/_build
 	@cp README.md docs/_build/
