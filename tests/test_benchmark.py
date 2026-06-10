@@ -257,6 +257,25 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             assert benchmark_metadata[key] == expected
 
 
+def test_checked_in_benchmark_artifacts_include_streaming_sample_binary_frame_metadata() -> None:
+    results_dir = Path("docs") / "benchmark-results"
+    validated_artifacts = [
+        "faster-whisper-base.en-int8-2026-06-10.json",
+        "faster-whisper-small.en-int8-2026-06-10.json",
+        "parakeet-compose-2026-06-10.json",
+        "parakeet-nemo-110m-compose-2026-06-09.json",
+    ]
+
+    for artifact_name in validated_artifacts:
+        payload = json.loads((results_dir / artifact_name).read_text(encoding="utf-8"))
+        benchmark_binary_frames = payload["benchmark"]["binary_frames"]
+        streaming_samples = payload["samples"]["streaming"]
+        assert streaming_samples, f"{artifact_name} should contain streaming samples"
+        for sample in streaming_samples:
+            assert isinstance(sample["binary_frames"], bool)
+            assert sample["binary_frames"] == benchmark_binary_frames
+
+
 def test_benchmarks_doc_validated_artifact_rows_reference_checked_in_current_schema_artifacts() -> None:
     benchmarks_doc = (Path("docs") / "benchmarks.md").read_text(encoding="utf-8")
     results_dir = Path("docs") / "benchmark-results"
