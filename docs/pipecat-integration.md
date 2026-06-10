@@ -2,18 +2,14 @@
 
 This guide shows how to bridge Pipecat audio into the current `rtc-asr` streaming API.
 
-The service now uses the lightweight `faster-whisper` path in `src/model_loader.py`. Streaming partials and finals are emitted only on `ws://.../ws/stream`; do not call `POST /api/stream`, and there is no `/api/flush` route.
+The backend is configurable, but streaming partials and finals are always emitted on `ws://.../ws/stream`; do not call `POST /api/stream`, and there is no `/api/flush` route.
 
 ## Protocol Summary
 
 Open one websocket per utterance or per continuous stream and use this event order:
 
 ```json
-{ "type": "start", "language": "en", "sample_rate": 16000, "partial_interval_chunks": 1, "partial_window_seconds": 2.0 }
-```
-
-```json
-{ "type": "audio", "audio_data": "base64_encoded_pcm16_chunk" }
+{ "type": "start", "language": "en", "sample_rate": 16000, "partial_interval_chunks": 1, "partial_window_seconds": 2.0, "max_buffer_seconds": 30.0 }
 ```
 
 ```json
@@ -27,9 +23,11 @@ The server responds with:
 - `final` after `stop`
 - `error` before close if the event order or audio payload is invalid
 
+After `start`, Pipecat can send audio as JSON base64 events or raw binary websocket frames. Prefer binary frames when you already have PCM16 bytes available.
+
 ## Recommended Client Helper
 
-This repo includes a tested websocket helper in `src/rtc_client.py`. If your Pipecat app lives in another repository, copy that file or vendor the same logic.
+This repo includes tested websocket helpers in `src/rtc_client.py` and `src/streaming.py`. If your Pipecat app lives in another repository, vendor one of those helpers instead of duplicating the websocket protocol.
 
 ```python
 from src.rtc_client import AsyncASRClient
@@ -48,13 +46,14 @@ class PipecatASRBridge:
             partial_interval_chunks=1,
             partial_window_seconds=2.0,
             max_buffer_seconds=30.0,
+            send_binary_frames=True,
         )
 
     async def send_audio_chunk(self, pcm16_chunk: bytes) -> str:
         if self._client is None:
             raise RuntimeError("Call start_stream() before send_audio_chunk()")
         event = await self._client.send_audio(pcm16_chunk)
-        return event.text
+        return "" if event is None else event.text
 
     async def stop_stream(self) -> str:
         if self._client is None:
@@ -95,9 +94,10 @@ class MyPipecatProcessor:
 
 ## Audio Format Notes
 
-- Lowest-friction path: send raw mono PCM16 chunks and set `sample_rate` in the `start` event.
+- Lowest-friction path: send raw mono PCM16 chunks as binary websocket frames and set `sample_rate` in the `start` event.
 - The server can resample raw PCM16 if your Pipecat source is not already 16kHz.
 - If you send WAV or another encoded format instead of raw PCM16, each websocket `audio_data` payload still needs to be a complete decodable chunk.
+- Start with `50` to `200` ms chunks for a good latency/overhead balance.
 
 ## Local Verification
 
@@ -119,3 +119,4 @@ python3 -m compileall src tests
 - [API Reference](./api-reference.md)
 - [LiveKit Integration](./livekit-integration.md)
 - [Troubleshooting](./troubleshooting.md)
+- [README](../README.md)

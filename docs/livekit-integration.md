@@ -1,30 +1,30 @@
 # LiveKit Integration Guide
 
-This guide shows how to stream LiveKit audio into the current `rtc-asr` websocket API.
+This guide shows how to stream LiveKit audio into the current `rtc-asr` websocket API without reimplementing the wire protocol in every agent.
 
-The shipped service uses the lightweight `faster-whisper` backend. Incremental transcripts come from `ws://.../ws/stream`; the HTTP `POST /api/stream` endpoint intentionally returns `501`, and there is no `/api/flush` endpoint.
+The backend is configurable, but the transport contract is not: partials and finals come from `ws://.../ws/stream`, `POST /api/stream` intentionally returns `501`, and there is no `/api/flush` route.
 
 ## Protocol Summary
 
 Each LiveKit speech stream should follow this websocket sequence:
 
 ```json
-{ "type": "start", "language": "en", "sample_rate": 48000, "partial_interval_chunks": 1, "partial_window_seconds": 2.0 }
-```
-
-```json
-{ "type": "audio", "audio_data": "base64_encoded_audio_chunk" }
+{ "type": "start", "language": "en", "sample_rate": 48000, "partial_interval_chunks": 1, "partial_window_seconds": 2.0, "max_buffer_seconds": 30.0 }
 ```
 
 ```json
 { "type": "stop" }
 ```
 
-Set `sample_rate` to the raw PCM rate you are sending. Many LiveKit rooms deliver 48kHz audio; the server will downsample to its configured 16kHz transcription path.
+After `start`, send each PCM chunk as either a JSON `audio` event or a raw binary websocket frame. Prefer binary frames for LiveKit because the room data is already byte-oriented and avoids base64 inflation.
+
+Set `sample_rate` to the raw PCM cadence you are sending. Many LiveKit rooms deliver 48kHz mono frames; the server will resample them to its configured backend target rate.
+
+The default `STREAM_MAX_BUFFER_BYTES=1048576` still applies before `max_buffer_seconds`. At PCM16 mono 48kHz, that default cap only holds about `10.9` seconds of audio, so a `max_buffer_seconds=30.0` request is not enough by itself to guarantee a 30-second utterance. If you need longer buffers, either resample upstream to `16000` Hz or raise `STREAM_MAX_BUFFER_BYTES` to match the longer capture window.
 
 ## Recommended Client Helper
 
-Reuse `src/rtc_client.py` from this repo instead of hand-rolling websocket JSON in every agent.
+Reuse `src/rtc_client.py` or `src/streaming.py` from this repo instead of hand-rolling websocket JSON in every agent.
 
 ```python
 from livekit import rtc
@@ -42,12 +42,13 @@ class LiveKitASRStream:
             partial_interval_chunks=1,
             partial_window_seconds=2.0,
             max_buffer_seconds=30.0,
+            send_binary_frames=True,
         )
 
     async def push_frame(self, frame: rtc.AudioFrame) -> str:
         pcm16_chunk = memoryview(frame.data).tobytes()
         event = await self._client.send_audio(pcm16_chunk)
-        return event.text
+        return "" if event is None else event.text
 
     async def finish(self) -> str:
         final_event = await self._client.stop()
@@ -87,9 +88,10 @@ async def transcribe_track(audio_frames, language: str = "en") -> str:
 ## Operational Notes
 
 - Use websocket streaming for partials; do not poll HTTP for chunk results.
-- Keep the chunk cadence steady. Smaller PCM chunks reduce perceived latency but increase websocket overhead.
+- Keep the chunk cadence steady. `50` to `200` ms is a good starting range.
 - If you already resample to 16kHz mono in the client, set `sample_rate=16000` in the `start` event.
-- The server keeps a bounded rolling buffer for partials and a capped full buffer for the final transcript; tune `partial_window_seconds` and `max_buffer_seconds` in the `start` event if needed.
+- The server keeps a bounded rolling buffer for partials and a capped full buffer for the final transcript; tune `partial_window_seconds` and `max_buffer_seconds` when long utterances matter, and raise `STREAM_MAX_BUFFER_BYTES` if your 48kHz PCM path needs to exceed the default ~10.9 second ceiling.
+- Check `GET /api/models` during startup if your agent needs to branch on backend capabilities.
 
 ## Local Verification
 
@@ -110,3 +112,4 @@ curl -f http://localhost:8080/ready
 - [API Reference](./api-reference.md)
 - [Pipecat Integration](./pipecat-integration.md)
 - [Benchmarks](./benchmarks.md)
+- [README](../README.md)

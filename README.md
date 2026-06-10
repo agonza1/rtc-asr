@@ -1,144 +1,142 @@
-# Realtime ASR Service
+# rtc-asr
 
-Realtime speech recognition service with REST transcription endpoints and a buffered WebSocket streaming protocol.
+`rtc-asr` is a lightweight FastAPI service for low-latency transcription over REST and WebSockets. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
 
-![Status](https://img.shields.io/badge/status-mvp%20in%20progress-yellow)
-![Python](https://img.shields.io/badge/python-3.10+-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-nemo`, and `ultravox` backends behind the same API surface.
 
-> Benchmark status: the repository includes validated single-node CPU baselines for `faster-whisper` and Compose-backed ASR model paths. Treat broader load, GPU, and corpus-level accuracy claims as provisional until their result artifacts are checked in.
+> Benchmark status: the repo includes checked-in latency baselines for validated local and Compose-backed runs. Treat untracked GPU, load, and accuracy claims as provisional until the corresponding artifacts are committed.
 
-## Current Scope
+## What It Ships Today
 
-- `GET /health` reports liveness and active backend metadata
-- `GET /ready` reports preload readiness and startup degradation state
-- `POST /api/transcribe` accepts base64 audio payloads and routes them through the configured transcriber
-- `POST /api/transcribe/file` accepts uploaded audio files
-- `GET /api/models` reports the active backend/model configuration
-- `ws://.../ws/stream` accepts `start`, `audio`, and `stop` events, plus raw binary audio frames after `start`, and emits buffered `partial`/`final` transcript events
-- smoke tests inject a fake transcriber, so local verification does not need to download a Whisper or Qwen model
+- `GET /health` for liveness plus active backend/model metadata
+- `GET /ready` for preload status and degraded startup reporting
+- `GET /api/models` for backend/model capability metadata that RTC clients can inspect
+- `POST /api/transcribe` for one-shot base64 audio requests
+- `POST /api/transcribe/file` for uploaded file transcription
+- `ws://.../ws/stream` for buffered streaming transcription with `ready`, `partial`, `final`, `canceled`, and `error` events
+- Shared client helpers in `src/rtc_client.py` and `src/streaming.py`
 
 ## Quick Start
 
 ### Local Python
 
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -U pip
 pip install -r requirements.txt
-# default local install keeps the repo's qwen-compatible transformers pin
 uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
-If you want to run `ASR_BACKEND=parakeet` outside Docker Compose, upgrade the local Hugging Face runtime first:
+The default local dependency set is pinned for the repo's `qwen-asr` stack. If you want to run the Hugging Face Parakeet path outside Docker Compose, upgrade that local runtime first:
 
 ```bash
 pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2
 ```
 
-### Docker
+### Docker Compose
 
 ```bash
 docker compose build
 docker compose up -d
 docker compose ps
 docker compose logs -f
-# qwen-asr Compose benchmark path
-make benchmark-qwen-mps
-make benchmark-compose-qwen
-make benchmark-compose-parakeet
-make benchmark-compose-ultravox
 ```
 
-
-The Parakeet compose benchmark target overrides the container image to a known-good Hugging Face pair, `transformers==5.10.2` plus `huggingface_hub==1.18.0`, which recognizes NVIDIA's upstream `parakeet_tdt` architecture while leaving the default qwen-compatible local dependency pin untouched. Use the same override command from *Local Python* if you want to run `ASR_BACKEND=parakeet` directly on your workstation.
-
-## REST API
-
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# Readiness check
-curl http://localhost:8080/ready
-
-# List models
-curl http://localhost:8080/api/models
-
-# Transcribe audio
-curl -X POST http://localhost:8080/api/transcribe \
-  -H "Content-Type: application/json" \
-  -d '{"audio": "base64_audio_data", "language": "en", "sample_rate": 16000}'
-```
-
-## WebSocket Streaming
-
-Connect to `ws://localhost:8080/ws/stream` and send JSON events:
-
-```json
-{ "type": "start", "language": "en", "sample_rate": 16000 }
-```
-
-```json
-{ "type": "audio", "audio_data": "base64_encoded_pcm_or_audio_chunk" }
-```
-
-```json
-{ "type": "stop" }
-```
-
-The server replies with:
-
-```json
-{ "type": "ready", "stream_id": 1, "backend": "faster-whisper", "model": "small.en" }
-```
-
-```json
-{ "type": "partial", "stream_id": 1, "text": "hello", "chunks_received": 1, "is_final": false }
-```
-
-```json
-{ "type": "final", "stream_id": 1, "text": "hello world", "chunks_received": 2, "is_final": true }
-```
-
-After a `final` event, the connection stays open so the client can send another `start` event for the next utterance without reconnecting.
-
-## Configuration
-
-Preferred environment variables:
+## Operator Defaults
 
 ```env
 HOST=0.0.0.0
 PORT=8080
 SAMPLE_RATE=16000
+STREAM_MAX_BUFFER_BYTES=1048576
 ASR_BACKEND=faster-whisper
 ASR_MODEL_SIZE=small.en
 ASR_DEVICE=cpu
-ASR_COMPUTE_TYPE=int8
-ASR_VAD_FILTER=true
 ASR_PRELOAD_MODEL=true
 ASR_FAIL_FAST=false
-ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B
-ASR_QWEN_DTYPE=auto
-ASR_QWEN_MAX_NEW_TOKENS=256
-ASR_QWEN_MAX_INFERENCE_BATCH_SIZE=1
-ASR_PARAKEET_MODEL=nvidia/parakeet-tdt-0.6b-v3
-ASR_PARAKEET_DTYPE=auto
-ASR_ULTRAVOX_MODEL=fixie-ai/ultravox-v0_6-llama-3_1-8b
-ASR_ULTRAVOX_DTYPE=auto
-ASR_ULTRAVOX_MAX_NEW_TOKENS=128
-ASR_ULTRAVOX_PROMPT=Transcribe the spoken audio exactly and return only the transcript.
 ```
 
-For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; `requirements.txt` installs `torch` alongside `qwen-asr` so fresh environments can preload that backend without extra manual steps. On Apple Silicon, use `make benchmark-qwen-mps` to benchmark `Qwen/Qwen3-ASR-0.6B` through the local `mps` device instead of the Docker CPU path. Set `ASR_BACKEND=parakeet` to route the same REST and websocket contract through the Hugging Face `transformers` automatic-speech-recognition pipeline using `ASR_PARAKEET_MODEL` and `ASR_PARAKEET_DTYPE`, but upgrade the local Hugging Face runtime first or use `make benchmark-compose-parakeet`. Set `ASR_BACKEND=ultravox` to load the Ultravox speech-in/text-out pipeline with `ASR_ULTRAVOX_MODEL`, `ASR_ULTRAVOX_DTYPE`, `ASR_ULTRAVOX_MAX_NEW_TOKENS`, and `ASR_ULTRAVOX_PROMPT`.
+Backend-specific variables are available for Qwen, Parakeet, NeMo Parakeet, and Ultravox. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
+
+If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service defaults to `cuda`. Legacy aliases `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted for compatibility.
+
+## Streaming Contract
+
+The realtime path is the main integration surface.
+
+1. Open `ws://localhost:8080/ws/stream`.
+2. Send a `start` event with `language`, `sample_rate`, and optional partial/buffer controls.
+3. Send audio as either JSON `audio` events with base64 payloads or raw binary websocket frames.
+4. Receive `partial` events on the configured cadence.
+5. Send `stop` to receive the final transcript, or `cancel` to discard the buffered utterance.
+
+Example start event:
+
+```json
+{
+  "type": "start",
+  "language": "en",
+  "sample_rate": 16000,
+  "partial_interval_chunks": 1,
+  "partial_window_seconds": 2.0,
+  "max_buffer_seconds": 30.0
+}
+```
+
+Example ready event:
+
+```json
+{
+  "type": "ready",
+  "stream_id": 1,
+  "backend": "faster-whisper",
+  "model": "small.en",
+  "language": "en",
+  "sample_rate": 16000,
+  "partial_interval_chunks": 1,
+  "max_buffer_bytes": 1048576
+}
+```
+
+After a `final` event, the socket stays open so the client can start the next utterance without reconnecting.
+
+## Audio Assumptions
+
+- Preferred transport is mono PCM16 chunks over binary websocket frames.
+- JSON base64 audio events are still supported for simpler clients.
+- A `sample_rate` must be supplied in the `start` event for raw PCM streams.
+- `50` to `200` ms chunks are the best starting point for low-latency RTC clients.
+- The service decodes and resamples once through the shared audio processor before handing audio to the configured backend.
+- `partial_window_seconds` and `max_buffer_seconds` let clients cap how much buffered audio feeds partials and finals.
 
 ## Verification
 
 ```bash
 python -m compileall src tests
-pytest tests/test_model_loader.py tests/test_smoke.py -v
+pytest tests/test_client.py tests/test_model_loader.py tests/test_smoke.py -v
+curl http://localhost:8080/health
+curl -f http://localhost:8080/ready
+curl http://localhost:8080/api/models
+```
+
+## Benchmarks
+
+Use the checked-in benchmark flow when you need reproducible latency artifacts:
+
+```bash
+make benchmark-faster-whisper-matrix
+make benchmark-qwen-mps
+make benchmark-compose-qwen
+make benchmark-compose-parakeet
+make benchmark-compose-parakeet-nemo
+make benchmark-compose-ultravox
+make benchmark-site-check
 ```
 
 ## Documentation
 
+- [Docs Index](./docs/index.md)
 - [API Reference](./docs/api-reference.md)
 - [Pipecat Integration](./docs/pipecat-integration.md)
 - [LiveKit Integration](./docs/livekit-integration.md)

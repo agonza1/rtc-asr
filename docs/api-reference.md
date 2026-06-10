@@ -6,7 +6,7 @@
 http://localhost:8080
 ```
 
-Supported backends: `faster-whisper` and `qwen-asr` (also selectable via the aliases `whisper`, `qwen`, and `qwen3-asr`). The HTTP and websocket response shapes stay the same across backends, but backend-specific metadata such as `language_probability` may only be present when the provider returns it.
+Supported backends: `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-nemo`, and `ultravox`. Aliases `whisper`, `qwen`, and `qwen3-asr` resolve to the matching canonical backends. The HTTP and websocket response shapes stay stable across backends, but backend-specific metadata can vary.
 
 ## Health Check
 
@@ -73,6 +73,8 @@ Example response:
   }
 }
 ```
+
+Capability metadata changes by backend. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet and Ultravox expose their own implementation-specific fields.
 
 ## Synchronous Transcription
 
@@ -142,7 +144,7 @@ WebSocket /ws/stream
 
 Client event sequence:
 
-The client may send audio either as JSON `audio` events with base64 payloads or as raw binary websocket frames after `start`.
+The client may send audio either as JSON `audio` events with base64 payloads or as raw binary websocket frames after `start`. Binary frames are the preferred transport for RTC clients because they avoid base64 overhead.
 
 1. Start the stream:
 
@@ -232,6 +234,9 @@ Notes:
 - The current HTTP `POST /api/stream` route is still not implemented; use `/ws/stream` for streaming.
 - Sending `cancel` returns a `canceled` event and clears the active stream without running a final transcription.
 - Invalid event ordering or invalid base64 audio results in a websocket `error` event followed by connection close.
+- `sample_rate` in the `start` event should match the raw PCM cadence you are sending.
+- `partial_window_seconds` trims the audio window used for partial refreshes.
+- `max_buffer_seconds` lets the client cap final-buffer growth below the server-wide `STREAM_MAX_BUFFER_BYTES` ceiling.
 
 ## Errors
 
@@ -242,3 +247,9 @@ HTTP errors follow FastAPI's default schema:
   "detail": "audio_data must be valid base64-encoded audio bytes"
 }
 ```
+
+Common runtime errors:
+
+- `503` when the configured backend is unavailable or failed preload
+- `400` when the audio payload or stream parameters are invalid
+- websocket `error` events with close code `1003`, `1009`, or `1011` for protocol violations, buffer overflow, or backend failures
