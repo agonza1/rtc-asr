@@ -203,6 +203,7 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
 def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
+<<<<<<< HEAD
     for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo"), ("benchmark-compose-ultravox", "ultravox")):
         block = makefile.split(f"{target}: venv\n", 1)[1].split("\n\n", 1)[0]
         assert "@{ set -e; \\" in block
@@ -305,6 +306,12 @@ def test_benchmarks_doc_validated_artifact_rows_reference_checked_in_current_sch
         benchmark_metadata = json.loads(artifact_path.read_text(encoding="utf-8"))["benchmark"]
         missing_keys = required_metadata_keys.difference(benchmark_metadata)
         assert not missing_keys, f"{artifact_name} missing metadata keys: {sorted(missing_keys)}"
+=======
+    for target in ("benchmark-compose-qwen", "benchmark-compose-parakeet", "benchmark-compose-ultravox"):
+        block = makefile.split(f"{target}:\n", 1)[1].split("\n\n", 1)[0]
+        assert "trap cleanup EXIT INT TERM" in block
+        assert "cleanup() { docker compose down >/dev/null 2>&1 || true; }" in block
+>>>>>>> 6af194e (Auto-clean compose benchmark targets)
 
 
 def test_post_transcribe_with_retries_retries_transient_read_errors() -> None:

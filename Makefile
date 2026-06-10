@@ -155,8 +155,13 @@ benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benc
 benchmark-compose-qwen: venv
 	@echo "Starting docker compose stack with qwen-asr on CPU..."
 	@mkdir -p .cache/huggingface
+<<<<<<< HEAD
 	@{ set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+=======
+	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
+	@cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+>>>>>>> 6af194e (Auto-clean compose benchmark targets)
 	trap cleanup EXIT INT TERM; \
 	base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
@@ -177,8 +182,13 @@ benchmark-compose-qwen: venv
 benchmark-compose-parakeet: venv
 	@echo "Starting docker compose stack with parakeet on CPU..."
 	@mkdir -p .cache/huggingface
+<<<<<<< HEAD
 	@{ set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+=======
+	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
+	@cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+>>>>>>> 6af194e (Auto-clean compose benchmark targets)
 	trap cleanup EXIT INT TERM; \
 	base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
@@ -222,8 +232,12 @@ benchmark-compose-ultravox: venv
 	@echo "Starting docker compose stack with ultravox on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -n "$(HF_TOKEN)$(HUGGINGFACE_HUB_TOKEN)" || (echo "Ultravox default model requires Hugging Face access. Export HF_TOKEN or HUGGINGFACE_HUB_TOKEN before running this target." >&2; exit 1)
+<<<<<<< HEAD
 	@{ set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+=======
+	@cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+>>>>>>> 6af194e (Auto-clean compose benchmark targets)
 	trap cleanup EXIT INT TERM; \
 	base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
