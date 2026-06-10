@@ -515,3 +515,28 @@ def test_run_ws_benchmark_rejects_non_final_stop_event() -> None:
             )
 
     asyncio.run(scenario())
+
+
+def test_benchmarks_doc_legacy_artifact_rows_reference_checked_in_legacy_schema_artifacts() -> None:
+    benchmarks_doc = (Path("docs") / "benchmarks.md").read_text(encoding="utf-8")
+    results_dir = Path("docs") / "benchmark-results"
+
+    legacy_rows = [
+        line
+        for line in benchmarks_doc.splitlines()
+        if line.startswith("| `") and "| validated legacy artifact" in line
+    ]
+    assert legacy_rows
+
+    for row in legacy_rows:
+        artifact_name = row.split("`docs/benchmark-results/", 1)[1].split("`", 1)[0]
+        artifact_path = results_dir / artifact_name
+        assert artifact_path.exists(), f"documented legacy artifact missing: {artifact_name}"
+
+        payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+        assert payload["backend"]["name"] == "qwen-asr"
+        assert payload["rest"]["runs"] == 5
+        assert payload["streaming"]["chunk_ms"] == 250
+        assert payload["streaming"]["ready"]["partial_interval_chunks"] == 1
+        assert set(payload["service"]["capabilities"]["streaming"]["audio_frame_formats"]) == {"json-base64", "binary"}
+
