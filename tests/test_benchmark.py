@@ -128,12 +128,14 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
     assert args.output == Path("docs/benchmark-results/ultravox-compose-test.json")
 
 
-def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count() -> None:
+def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_and_serialization() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
     assert "FASTER_WHISPER_BASE_MODEL ?= base.en" in makefile
     assert "FASTER_WHISPER_SMALL_MODEL ?= small.en" in makefile
     assert "FASTER_WHISPER_COMPUTE_TYPE ?= int8" in makefile
+    assert "benchmark: venv" in makefile
+    assert ".NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix" in makefile
     assert "benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-whisper-small" in makefile
     for model_var in ("BASE", "SMALL"):
         line = next(
@@ -171,10 +173,14 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
 def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
-    for target in ("benchmark-compose-qwen", "benchmark-compose-parakeet", "benchmark-compose-parakeet-nemo", "benchmark-compose-ultravox"):
+    for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo"), ("benchmark-compose-ultravox", "ultravox")):
         block = makefile.split(f"{target}:\n", 1)[1].split("\n\n", 1)[0]
+        assert "@set -e; \\" in block
         assert "trap cleanup EXIT INT TERM" in block
         assert "cleanup() { docker compose down >/dev/null 2>&1 || true; }" in block
+        assert "docker compose up -d --build; \\" in block
+        assert "Compose stack ready: $(COMPOSE_URL)/ready" in block
+        assert f"--backend {backend}" in block
 
 
 def test_post_transcribe_with_retries_retries_transient_read_errors() -> None:
