@@ -1,0 +1,93 @@
+{
+  "sample_contract": {
+    "default_sample_count": 10,
+    "rest_runs_per_sample": 5,
+    "chunk_ms": 250,
+    "partial_window_seconds": 2.0
+  },
+  "tracks": [
+    {
+      "slug": "faster-whisper-base",
+      "label": "Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "device": "cpu",
+      "compute": "int8",
+      "lane": "Local Python CPU",
+      "status": "validated",
+      "target_sample_count": 10,
+      "artifact": "faster-whisper-base.en-int8-2026-06-10.json",
+      "status_detail": "Validated 10-sample local CPU baseline.",
+      "run_command": "make benchmark-faster-whisper-base"
+    },
+    {
+      "slug": "faster-whisper-small",
+      "label": "Faster-Whisper Small",
+      "backend": "faster-whisper",
+      "model": "small.en",
+      "device": "cpu",
+      "compute": "int8",
+      "lane": "Local Python CPU",
+      "status": "validated",
+      "target_sample_count": 10,
+      "artifact": "faster-whisper-small.en-int8-2026-06-10.json",
+      "status_detail": "Validated 10-sample local CPU baseline using the default service model.",
+      "run_command": "make benchmark-faster-whisper-small"
+    },
+    {
+      "slug": "parakeet-compose",
+      "label": "Parakeet Compose",
+      "backend": "parakeet",
+      "model": "nvidia/parakeet-tdt-0.6b-v3",
+      "device": "cpu",
+      "compute": "float32",
+      "lane": "Docker Compose CPU",
+      "status": "validated",
+      "target_sample_count": 10,
+      "artifact": "parakeet-compose-2026-06-10.json",
+      "status_detail": "Validated 10-sample Compose CPU artifact.",
+      "run_command": "make benchmark-compose-parakeet"
+    },
+    {
+      "slug": "parakeet-nemo-compose",
+      "label": "Parakeet 110M NeMo",
+      "backend": "parakeet-nemo",
+      "model": "nvidia/parakeet-tdt_ctc-110m",
+      "device": "cpu",
+      "compute": "float32",
+      "lane": "Docker Compose CPU",
+      "status": "validated",
+      "target_sample_count": 10,
+      "artifact": "parakeet-nemo-110m-compose-2026-06-09.json",
+      "status_detail": "Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.",
+      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09"
+    },
+    {
+      "slug": "qwen-compose",
+      "label": "Qwen Compose",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "device": "cpu",
+      "compute": "float32",
+      "lane": "Docker Compose CPU",
+      "status": "legacy",
+      "target_sample_count": 10,
+      "artifact": "qwen-compose-2026-06-08.json",
+      "status_detail": "Single-sample legacy artifact remains published because the 2026-06-10 refresh restarted during first generation and REST warmup failed with httpx.ReadError.",
+      "run_command": "make benchmark-compose-qwen"
+    },
+    {
+      "slug": "ultravox-compose",
+      "label": "Ultravox Compose",
+      "backend": "ultravox",
+      "model": "fixie-ai/ultravox-v0_6-llama-3_1-8b",
+      "device": "cpu",
+      "compute": "float32",
+      "lane": "Docker Compose CPU",
+      "status": "blocked",
+      "target_sample_count": 10,
+      "status_detail": "Blocked before validation because the default model loads gated meta-llama/Llama-3.1-8B-Instruct weights and Hugging Face returned 403 on 2026-06-10.",
+      "run_command": "HF_TOKEN=... make benchmark-compose-ultravox"
+    }
+  ]
+}
