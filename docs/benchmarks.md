@@ -9,44 +9,59 @@ streaming session, so published numbers are less noisy than one-off snapshots.
 
 | Backend | Model | Runtime Path | Samples | Validation Status | Result Artifact | REST Mean / P95 | Streaming Partial Mean / P95 | Final Mean | Accuracy |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
-| `faster-whisper` | `tiny.en` | local Python CPU / `int8` | 1 legacy snapshot | validated snapshot | inline below | 263.7 ms / 269.1 ms | 177.5 ms / 308.6 ms | 261.3 ms | representative transcript only |
-| `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU / `float32` | 1 legacy snapshot | validated artifact | `docs/benchmark-results/qwen-compose-2026-06-08.json` | 5482.2 ms / 5904.4 ms | 3696.1 ms / 6314.4 ms | 0.9 ms | WER 0.095 / CER 0.0 |
-| `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 planned | benchmark path ready; validated artifact pending | run `make benchmark-compose-parakeet` | pending | pending | pending | pending |
-| `ultravox` | `fixie-ai/ultravox-v0_6-llama-3_1-8b` | Docker Compose CPU / `float32` | 10 planned | benchmark path ready; validated artifact pending | run `make benchmark-compose-ultravox` | pending | pending | pending | pending |
+| `faster-whisper` | `base.en` | local Python CPU / `int8` | 10 | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` | 573.3 ms / 741.1 ms | 553.0 ms / 2451.5 ms | 560.2 ms | WER 0.095 / CER 0.0 |
+| `faster-whisper` | `small.en` | local Python CPU / `int8` | 10 | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` | 1378.3 ms / 1531.1 ms | 1023.2 ms / 1202.4 ms | 1420.6 ms | WER 0.095 / CER 0.0 |
+| `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU / `float32` | 1 legacy snapshot | validated legacy artifact; 10-sample refresh attempted on 2026-06-10 but service restarted during first generation and REST warmup failed with `httpx.ReadError` | `docs/benchmark-results/qwen-compose-2026-06-08.json` | 5482.2 ms / 5904.4 ms | 3696.1 ms / 6314.4 ms | 0.9 ms | WER 0.095 / CER 0.0 |
+| `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` | 2388.3 ms / 4098.1 ms | 1715.1 ms / 2968.7 ms | 2215.8 ms | WER 0.095 / CER 0.0 |
+| `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` | 331.4 ms / 511.5 ms | 148.5 ms / 245.8 ms | 379.0 ms | WER 0.19 / CER 0.0 |
+| `ultravox` | `fixie-ai/ultravox-v0_6-llama-3_1-8b` | Docker Compose CPU / `float32` | 10 target | blocked before validation: current token can fetch `fixie-ai/ultravox`, but the model loads gated `meta-llama/Llama-3.1-8B-Instruct` and Hugging Face returned 403 on 2026-06-10 | run `HF_TOKEN=... make benchmark-compose-ultravox` after Llama access is granted | blocked | blocked | blocked | blocked |
+| `qwen-mlx-text` | `Qwen/Qwen3-0.6B-MLX-4bit` | local Apple Silicon MLX / 4-bit | 3 | validated artifact; text-generation feasibility benchmark, not ASR | `docs/benchmark-results/qwen3-0.6b-mlx-4bit-text-2026-06-10.json` | n/a | n/a | 171.8 ms mean generation | 139.7 output tok/s; 610.7 MiB RSS |
 
-Use the matrix as the source of truth for which backends have checked-in numbers. A backend should
-move from `pending` to `validated artifact` only after its JSON output is committed under
-`docs/benchmark-results/` and the measured results section below is updated from that artifact.
+Use the matrix as the source of truth for which backends have checked-in numbers. A backend should move to `validated artifact` only after its JSON output is committed under `docs/benchmark-results/` and the measured results section below is updated from that artifact. Blocked rows should name the exact external access or runtime failure observed during the 10-sample target run.
 
 ## Latest Validated Runs
 
-### Faster-Whisper CPU Baseline
+### Faster-Whisper CPU Baselines
 
-Measured on June 3, 2026.
+Measured on June 10, 2026 with the local benchmark harness.
 
 Environment:
 
-- Host: macOS 26.5 arm64
-- Python: 3.14.4
+- Host: macOS 26.5.1 arm64
+- Python benchmark client: 3.13.12
 - Backend: `faster-whisper`
-- Model: `tiny.en`
+- Models: `base.en` and `small.en`
 - Device: CPU / `int8`
+- Samples: 10, with 5 REST runs per sample and one streaming session per sample
 - Streaming chunk size: 250 ms
 - Streaming partial window: 2.0 s
 - Audio: 7.28 s synthesized speech clip generated locally with `say`
+- Reference transcript: `The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.`
 
 Measured results:
 
-- REST `POST /api/transcribe`: 263.7 ms mean, 269.1 ms p95, 258.7 ms min, 269.1 ms max
-- REST real-time factor: 0.036
-- WebSocket partial latency: 177.5 ms mean, 308.6 ms p95, 129.1 ms first partial, 155.2 ms last partial
-- WebSocket final latency after `stop`: 261.3 ms
+| Model | REST Mean / P95 | REST RTF | Streaming Partial Mean / P95 | Streaming Final Mean / P95 | Accuracy |
+| --- | --- | ---: | --- | --- | --- |
+| `base.en` | 573.3 ms / 741.1 ms | 0.079 | 553.0 ms / 2451.5 ms | 560.2 ms / 761.2 ms | WER 0.095 / CER 0.0 |
+| `small.en` | 1378.3 ms / 1531.1 ms | 0.189 | 1023.2 ms / 1202.4 ms | 1420.6 ms / 1514.0 ms | WER 0.095 / CER 0.0 |
 
-Representative transcript:
+Representative transcripts:
 
 ```text
-the quick-brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTCSR service.
+base.en: The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.
+small.en: The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.
 ```
+
+Interpretation notes:
+
+- `base.en` is the faster local baseline while still producing the same normalized WER/CER as the larger local model on this clip.
+- `small.en` is the default local service model for more realistic scenarios, but it is about 2.4x slower than `base.en` on REST mean latency in this CPU run.
+- The accuracy miss for both models is word-boundary normalization: `realtime` became `real-time`, which increases WER while leaving normalized CER at `0.0`.
+
+Versioned artifacts:
+
+- `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json`
+- `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json`
 
 ### Qwen Compose CPU Baseline
 
@@ -76,7 +91,7 @@ Measured results:
 
 Interpretation notes:
 
-- The measured Qwen CPU path is still substantially slower than the `faster-whisper` `tiny.en` CPU baseline, but it remained below real time across a longer synthesized utterance.
+- The measured Qwen CPU path is still substantially slower than the validated `faster-whisper` `base.en` and `small.en` CPU baselines, but it remained below real time across a longer synthesized utterance.
 - The main accuracy miss is word-boundary normalization: `realtime` became `real-time`, which increases WER while leaving normalized CER at `0.0`.
 - The very small `final_ms` value reflects that most of the work already happened during the streaming partial passes.
 
@@ -84,14 +99,149 @@ Versioned artifact:
 
 - `docs/benchmark-results/qwen-compose-2026-06-08.json`
 
+Refresh note:
+
+- A 10-sample Qwen refresh was attempted on June 10, 2026 with `make benchmark-compose-qwen BENCHMARK_RESULT_DATE=2026-06-10` on port `8093`. The service reached `/ready`, then restarted during the first generation request and the benchmark client failed REST warmup after bounded retries with `httpx.ReadError`. No replacement artifact was committed from that failed run.
+
+### Parakeet Compose CPU Baseline
+
+Measured on June 10, 2026 against the Docker Compose stack.
+
+Environment:
+
+- Host: macOS 26.5.1 arm64
+- Python benchmark client: 3.13.12
+- Execution mode: `docker compose`
+- Backend: `parakeet`
+- Model: `nvidia/parakeet-tdt-0.6b-v3`
+- Device: CPU / `float32`
+- Samples: 10, with 5 REST runs per sample and one streaming session per sample
+- Audio: 7.28 s synthesized speech clip from `say`
+- Reference transcript: `The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.`
+
+Measured results:
+
+- REST `POST /api/transcribe`: 2388.3 ms mean, 4098.1 ms p95, 1696.4 ms min, 4731.3 ms max
+- REST real-time factor: 0.328
+- WebSocket partial latency: 1715.1 ms mean, 2968.7 ms p95, 899.4 ms min, 5581.7 ms max
+- WebSocket final latency after `stop`: 2215.8 ms mean, 3080.4 ms p95, 1792.3 ms min, 3080.4 ms max
+- REST transcript: `The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.`
+- Streaming final transcript: `The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.`
+- Accuracy (normalized WER mean): `0.095`
+- Accuracy (normalized CER mean): `0.0`
+
+Interpretation notes:
+
+- Parakeet was faster than the June 8 Qwen legacy snapshot on the same synthesized clip, but this is a 10-sample artifact while the checked-in Qwen result is still a legacy single-sample artifact.
+- The accuracy miss matches Qwen: `realtime` became `real-time`, increasing WER while normalized CER remained `0.0`.
+
+Versioned artifact:
+
+- `docs/benchmark-results/parakeet-compose-2026-06-10.json`
+
+
+### Parakeet 110M NeMo Compose CPU Baseline
+
+Measured on June 9, 2026 against the Docker Compose stack on macOS arm64.
+
+Environment:
+
+- Host: macOS arm64
+- Python benchmark client: 3.14.4
+- Execution mode: `docker compose`
+- Backend: `parakeet-nemo`
+- Model: `nvidia/parakeet-tdt_ctc-110m`
+- Device: CPU / `float32`
+- Samples: 10, with 5 REST runs per sample and one streaming session per sample
+- Streaming chunk size: 250 ms
+- Streaming partial cadence: every 8 chunks, or roughly 2.0 s
+- Audio: 7.28 s synthesized speech clip from `say`
+- Reference transcript: `The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.`
+
+Measured results:
+
+- REST `POST /api/transcribe`: 331.4 ms mean, 511.5 ms p95, 265.5 ms min, 716.8 ms max
+- REST real-time factor: 0.046
+- WebSocket partial latency: 148.5 ms mean, 245.8 ms p95
+- WebSocket final latency after `stop`: 379.0 ms mean, 580.4 ms p95
+- REST transcript: `The quick brown fox jumps over the lazy dog. This is a real time ASR latency benchmark for the RTCASR service.`
+- Streaming final transcript: `The quick brown fox jumps over the lazy dog. This is a real time ASR latency benchmark for the RTCASR service.`
+- Accuracy (normalized WER mean): `0.19`
+- Accuracy (normalized CER mean): `0.0`
+
+Interpretation notes:
+
+- The 110M NeMo path ran successfully on the local CPU device and loaded through the same REST/WebSocket service contract.
+- This is still rolling-window re-transcription over WebSocket, not model-native streaming. The published streaming number uses an 8 chunk partial cadence to avoid forcing a full NeMo pass every 250 ms.
+- The main accuracy misses are tokenization/word-boundary differences: `realtime` became `real time`, and `rtc asr` became `RTCASR`.
+
+Versioned artifact:
+
+- `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json`
+
+### Qwen3 0.6B MLX 4-bit Text Feasibility Baseline
+
+Measured on June 10, 2026 with `mlx-lm` on local Apple Silicon. This model is a text-generation model, not an ASR model, so it does not use the REST/WebSocket transcription harness and should not be compared directly with ASR latency or WER rows. It is tracked here as a candidate local inference building block for future agent/evaluator paths.
+
+Environment:
+
+- Host: macOS 26.5.1 arm64
+- Python benchmark client: 3.14.4
+- Runtime: `mlx-lm`
+- Model: `Qwen/Qwen3-0.6B-MLX-4bit`
+- Samples: 3 generation samples after one 8-token warmup
+- Prompt: `Return one concise sentence explaining why low-latency local inference matters for voice AI tests.`
+
+Measured results:
+
+- Model load from local cache: 506.9 ms
+- Generation latency: 171.8 ms mean, 172.6 ms p95, 170.5 ms min, 172.6 ms max
+- Output throughput: 139.7 output tokens/sec overall
+- Output tokens: 24 mean
+- Resident memory: 610.7 MiB after load, 610.7 MiB after benchmark
+
+Interpretation notes:
+
+- This confirms the MLX 4-bit Qwen3 0.6B model runs on the local Apple Silicon device with low memory and fast short-form generation. The checked-in artifact was generated from the dedicated `.venv-mlx` target with model files already cached locally.
+- The model card identifies it as `Text Generation`, `MLX`, and `4-bit precision`, with direct `mlx-lm` usage. It is not a speech recognizer and does not replace `qwen-asr`, Parakeet, or faster-whisper in the ASR benchmark matrix.
+
+Versioned artifact:
+
+- `docs/benchmark-results/qwen3-0.6b-mlx-4bit-text-2026-06-10.json`
+
 ## Reproduce
 
-All Compose benchmark targets now write a dated JSON artifact under `docs/benchmark-results/`.
-Override `BENCHMARK_RESULT_DATE` when you want a stable filename during repeated local runs.
+All benchmark targets now use `BENCHMARK_SAMPLE_COUNT=10` by default and write a dated JSON artifact under `docs/benchmark-results/`. Override `BENCHMARK_SAMPLE_COUNT` only for local smoke checks; leave it at 10 for committed matrix results. Override `BENCHMARK_RESULT_DATE` when you want a stable filename during repeated local runs.
+
+### Full Compose Matrix
+
+Run every Docker Compose backend with the same 10-sample contract:
+
+```bash
+make benchmark-compose-matrix
+```
+
+This expands to `benchmark-compose-qwen`, `benchmark-compose-parakeet`, `benchmark-compose-parakeet-nemo`, and `benchmark-compose-ultravox`. Each target emits REST mean/p95, streaming partial mean/p95, streaming final mean/p95, and WER/CER accuracy summaries in its JSON artifact. Ultravox still requires `HF_TOKEN` or `HUGGINGFACE_HUB_TOKEN` because the default weights are gated.
+
+### Qwen MLX Text Feasibility Benchmark
+
+Run the optional Apple Silicon text-generation benchmark:
+
+```bash
+make benchmark-qwen-mlx-text
+```
+
+This target prepares a dedicated `.venv-mlx` environment and writes `docs/benchmark-results/qwen3-0.6b-mlx-4bit-text-<date>.json`. It is intentionally separate from the ASR Compose matrix because `Qwen/Qwen3-0.6B-MLX-4bit` is a local text-generation model, not a speech-to-text model.
 
 ### Faster-Whisper Baseline
 
-Run the local baseline with 10 samples per model:
+Run both local faster-whisper baselines with 10 samples per model:
+
+```bash
+make benchmark-faster-whisper-matrix
+```
+
+Run only the default local service model:
 
 ```bash
 make benchmark
@@ -103,8 +253,10 @@ Or invoke the harness directly against an already-running server:
 .venv/bin/python tests/benchmark.py \
   --url http://127.0.0.1:8090 \
   --ws-url ws://127.0.0.1:8090/ws/stream \
+  --model small.en \
+  --compute-type int8 \
   --sample-count 10 \
-  --output docs/benchmark-results/faster-whisper-local-$(date -u +%Y-%m-%d).json
+  --output docs/benchmark-results/faster-whisper-small.en-int8-$(date -u +%Y-%m-%d).json
 ```
 
 ### Qwen Compose Baseline
@@ -154,6 +306,31 @@ Equivalent manual command against an already-running Parakeet service:
   --output docs/benchmark-results/parakeet-compose-$(date -u +%Y-%m-%d).json
 ```
 
+
+### Parakeet 110M NeMo Compose Baseline
+
+Use the checked-in Compose workflow. It defaults to an 8 chunk partial cadence for this NeMo path:
+
+```bash
+make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09
+```
+
+Equivalent manual command against an already-running Parakeet NeMo service:
+
+```bash
+.venv/bin/python tests/benchmark.py \
+  --url http://127.0.0.1:8081 \
+  --ws-url ws://127.0.0.1:8081/ws/stream \
+  --backend parakeet-nemo \
+  --model nvidia/parakeet-tdt_ctc-110m \
+  --parakeet-dtype float32 \
+  --sample-count 10 \
+  --chunk-ms 250 \
+  --partial-interval-chunks 8 \
+  --partial-window 2.0 \
+  --output docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json
+```
+
 ### Ultravox Compose Baseline
 
 Use the Ultravox Compose target to generate the missing validated artifact:
@@ -192,6 +369,7 @@ Equivalent manual command against an already-running Ultravox service:
 - `--spawn-server` lets the harness boot a local uvicorn server.
 - `--partial-window 1.0` compares a smaller streaming window.
 - `--max-buffer 4.0` clamps the per-stream websocket buffer budget.
+- `--request-retries 5` and `--request-retry-delay 5.0` tune bounded REST retries for cold Compose runs.
 - `--output docs/benchmark-results/<name>.json` stores the exact benchmark artifact that should be reviewed before docs are updated.
 
 ## Methodology Notes
@@ -207,7 +385,8 @@ Equivalent manual command against an already-running Ultravox service:
 
 Still not covered by this document:
 
-- checked-in validated Parakeet and Ultravox CPU result artifacts
+- checked-in validated Ultravox CPU result artifact, blocked until the benchmark token has access to `meta-llama/Llama-3.1-8B-Instruct`
+- refreshed 10-sample Qwen artifact; the June 10 refresh attempt restarted during first generation and failed REST warmup with `httpx.ReadError`
 - concurrent REST or WebSocket load
 - GPU-backed Qwen, Parakeet, or Ultravox measurements
 - memory and CPU saturation curves

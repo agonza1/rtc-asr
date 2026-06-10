@@ -2,8 +2,7 @@ ARG PYTHON_BASE_IMAGE=python:3.11-slim
 FROM ${PYTHON_BASE_IMAGE}
 
 ARG ENABLE_PARAKEET_RUNTIME=""
-
-ARG ENABLE_PARAKEET_RUNTIME=""
+ARG ENABLE_NEMO_RUNTIME=""
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -22,10 +21,12 @@ RUN python -m venv /opt/venv
 
 COPY requirements.txt ./
 RUN grep -v '^torch$' requirements.txt > requirements.docker.txt && \
+    if [ -n "$ENABLE_NEMO_RUNTIME" ]; then grep -Ev '^(torch|qwen-asr|transformers==|accelerate|peft|faster-whisper|pytest|httpx)' requirements.txt > requirements.docker.txt; fi && \
     /opt/venv/bin/pip install --upgrade pip && \
     /opt/venv/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch && \
     /opt/venv/bin/pip install -r requirements.docker.txt && \
-    if [ -n "$ENABLE_PARAKEET_RUNTIME" ]; then /opt/venv/bin/pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2; fi
+    if [ -n "$ENABLE_PARAKEET_RUNTIME" ]; then /opt/venv/bin/pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2; fi && \
+    if [ -n "$ENABLE_NEMO_RUNTIME" ]; then /opt/venv/bin/pip install 'nemo_toolkit[asr]>=2.2.0'; fi
 
 COPY src ./src
 COPY config.example ./

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from importlib import metadata
+import tempfile
 from typing import Any, Protocol
 
 from .audio_processor import AudioProcessor
@@ -269,6 +270,84 @@ class ParakeetAdapter:
 
 
 @dataclass(slots=True)
+class ParakeetNemoAdapter:
+    """NeMo wrapper for NVIDIA Parakeet CTC/TDT ASR models."""
+
+    config: AppConfig
+    audio_processor: AudioProcessor
+    backend_name: str = field(init=False, default="parakeet-nemo")
+    model_name: str = field(init=False)
+    _model: Any | None = field(init=False, default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        self.model_name = self.config.asr_parakeet_model
+
+    def is_loaded(self) -> bool:
+        return self._model is not None
+
+    def preload(self) -> None:
+        self._load_model()
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
+        decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
+        model = self._load_model()
+        try:
+            import soundfile as sf
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The parakeet-nemo backend requires soundfile. Install requirements.txt to enable ASR_BACKEND=parakeet-nemo."
+            ) from exc
+
+        with tempfile.NamedTemporaryFile(prefix="rtc_asr_parakeet_", suffix=".wav") as audio_file:
+            sf.write(audio_file.name, decoded_audio.samples, decoded_audio.sample_rate)
+            result = model.transcribe([audio_file.name], batch_size=1)
+        text = _extract_nemo_text(result)
+
+        return {
+            "text": text,
+            "language": language,
+            "duration_ms": decoded_audio.duration_ms,
+            "backend": self.backend_name,
+            "model": self.model_name,
+        }
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "device": self.config.asr_device,
+            "dtype": self.config.asr_parakeet_dtype,
+            "implementation": "nemo.collections.asr.models.ASRModel",
+            "loaded": self.is_loaded(),
+            **_shared_capabilities(self.audio_processor),
+        }
+
+    def _load_model(self) -> Any:
+        if self._model is not None:
+            return self._model
+
+        try:
+            from nemo.collections.asr.models import ASRModel
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The parakeet-nemo backend requires nemo_toolkit[asr]. Install the NeMo ASR extra to enable ASR_BACKEND=parakeet-nemo."
+            ) from exc
+
+        model = ASRModel.from_pretrained(self.model_name)
+        if hasattr(model, "to"):
+            model.to(self.config.asr_device)
+        if hasattr(model, "eval"):
+            model.eval()
+        dtype = self.config.asr_parakeet_dtype.strip().lower()
+        if dtype == "float16" and self.config.asr_device.startswith("cuda") and hasattr(model, "half"):
+            model.half()
+        elif dtype in {"float32", "auto"} and hasattr(model, "float"):
+            model.float()
+        self._model = model
+        return self._model
+
+
+@dataclass(slots=True)
 class UltravoxAdapter:
     """Transformers pipeline wrapper for Ultravox speech-in/text-out models."""
 
@@ -350,6 +429,8 @@ BACKEND_ALIASES = {
     "qwen3-asr": "qwen-asr",
     "parakeet": "parakeet",
     "parakeet-asr": "parakeet",
+    "parakeet-nemo": "parakeet-nemo",
+    "parakeet-ctc": "parakeet-nemo",
     "ultravox": "ultravox",
     "ultravox-asr": "ultravox",
 }
@@ -412,6 +493,17 @@ def _resolve_torch_dtype(torch: Any, configured_dtype: str, device: str) -> Any:
         raise ASRUnavailableError(f"Unsupported dtype: {configured_dtype}") from exc
 
 
+def _extract_nemo_text(result: Any) -> str:
+    if isinstance(result, tuple) and result:
+        return _extract_nemo_text(result[0])
+    if isinstance(result, list) and result:
+        return _extract_nemo_text(result[0])
+    text = getattr(result, "text", None)
+    if text is not None:
+        return str(text).strip()
+    return str(result).strip()
+
+
 def _extract_pipeline_text(result: Any) -> str:
     if isinstance(result, dict):
         text = result.get("text", "")
@@ -447,6 +539,8 @@ def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Tra
         return QwenASRAdapter(config=config, audio_processor=audio_processor)
     if backend == "parakeet":
         return ParakeetAdapter(config=config, audio_processor=audio_processor)
+    if backend == "parakeet-nemo":
+        return ParakeetNemoAdapter(config=config, audio_processor=audio_processor)
     if backend == "ultravox":
         return UltravoxAdapter(config=config, audio_processor=audio_processor)
     raise ASRUnavailableError(f"Unsupported ASR backend: {config.asr_backend}")

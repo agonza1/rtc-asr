@@ -31,6 +31,31 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "smoke.wav"
 
 
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("value must be greater than 0")
+    return parsed
+
+
+def non_negative_float(value: str) -> float:
+    parsed = float(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("value must be greater than or equal to 0")
+    return parsed
+
+
+class BenchmarkRequestError(RuntimeError):
+    """Wrap exhausted benchmark retries with stage-specific context."""
+
+    def __init__(self, stage: str, attempts: int, cause: Exception) -> None:
+        self.stage = stage
+        self.attempts = attempts
+        self.cause = cause
+        message = f"{stage} failed after {attempts} attempt(s): {cause.__class__.__name__}: {cause}"
+        super().__init__(message)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark the realtime ASR service")
     parser.add_argument("--url", default="http://127.0.0.1:8090", help="Base URL for the ASR service")
@@ -41,12 +66,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reference-file", type=Path, help="Path to a UTF-8 transcript file used to compute simple accuracy metrics")
     parser.add_argument("--spawn-server", action="store_true", help="Start a local uvicorn server for the benchmark run")
     parser.add_argument("--backend", default="faster-whisper", help="ASR backend to benchmark when spawning a local server")
-    parser.add_argument("--sample-count", type=int, default=10, help="Number of benchmark samples to run per model")
-    parser.add_argument("--rest-runs", type=int, default=5, help="Number of REST runs")
-    parser.add_argument("--chunk-ms", type=int, default=250, help="Streaming chunk duration in milliseconds")
-    parser.add_argument("--partial-interval-chunks", type=int, default=1, help="Streaming partial cadence in chunks")
+    parser.add_argument("--sample-count", type=positive_int, default=10, help="Number of benchmark samples to run per model")
+    parser.add_argument("--rest-runs", type=positive_int, default=5, help="Number of REST runs")
+    parser.add_argument("--chunk-ms", type=positive_int, default=250, help="Streaming chunk duration in milliseconds")
+    parser.add_argument("--partial-interval-chunks", type=positive_int, default=1, help="Streaming partial cadence in chunks")
     parser.add_argument("--binary-frames", action="store_true", help="Send raw PCM bytes over websocket instead of JSON base64 frames")
-    parser.add_argument("--model", default="tiny.en", help="Model name when spawning a local server")
+    parser.add_argument("--model", default="small.en", help="Model name when spawning a local server")
     parser.add_argument("--device", default="cpu", help="ASR device when spawning a local server")
     parser.add_argument("--compute-type", default="int8", help="Compute type for faster-whisper when spawning a local server")
     parser.add_argument("--qwen-dtype", default="auto", help="Dtype for qwen-asr when spawning a local server")
@@ -57,9 +82,11 @@ def parse_args() -> argparse.Namespace:
         default="Transcribe the spoken audio exactly and return only the transcript.",
         help="Prompt for ultravox when spawning a local server",
     )
-    parser.add_argument("--ultravox-max-new-tokens", type=int, default=128, help="Max new tokens for ultravox when spawning a local server")
-    parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
-    parser.add_argument("--max-buffer", type=float, help="Optional stream buffer cap in seconds for websocket benchmarking")
+    parser.add_argument("--ultravox-max-new-tokens", type=positive_int, default=128, help="Max new tokens for ultravox when spawning a local server")
+    parser.add_argument("--partial-window", type=non_negative_float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
+    parser.add_argument("--max-buffer", type=non_negative_float, help="Optional stream buffer cap in seconds for websocket benchmarking")
+    parser.add_argument("--request-retries", type=positive_int, default=3, help="REST request attempts before failing a sample")
+    parser.add_argument("--request-retry-delay", type=non_negative_float, default=2.0, help="Seconds to wait between REST request retries")
     parser.add_argument("--output", type=Path, help="Optional path for the benchmark JSON artifact")
     return parser.parse_args()
 
@@ -250,7 +277,7 @@ class ManagedServer:
         if self.backend == "qwen-asr":
             env.setdefault("ASR_QWEN_MODEL", self.model)
             env.setdefault("ASR_QWEN_DTYPE", self.qwen_dtype)
-        elif self.backend == "parakeet":
+        elif self.backend in {"parakeet", "parakeet-nemo"}:
             env.setdefault("ASR_PARAKEET_MODEL", self.model)
             env.setdefault("ASR_PARAKEET_DTYPE", self.parakeet_dtype)
         elif self.backend == "ultravox":
@@ -308,7 +335,40 @@ class ManagedServer:
             self.process.wait(timeout=5)
 
 
-async def run_rest_benchmark(base_url: str, wav_bytes: bytes, sample_rate: int, runs: int, duration_s: float) -> dict[str, object]:
+async def post_transcribe_with_retries(
+    client: httpx.AsyncClient,
+    payload: dict[str, object],
+    *,
+    attempts: int,
+    retry_delay: float,
+    stage: str = "transcribe request",
+) -> httpx.Response:
+    last_error: Exception | None = None
+    total_attempts = max(attempts, 1)
+    for attempt in range(1, total_attempts + 1):
+        try:
+            response = await client.post("/api/transcribe", json=payload)
+            response.raise_for_status()
+            return response
+        except httpx.HTTPError as exc:
+            last_error = exc
+            if attempt >= total_attempts:
+                break
+            await asyncio.sleep(retry_delay)
+    assert last_error is not None
+    raise BenchmarkRequestError(stage, total_attempts, last_error) from last_error
+
+
+async def run_rest_benchmark(
+    base_url: str,
+    wav_bytes: bytes,
+    sample_rate: int,
+    runs: int,
+    duration_s: float,
+    *,
+    request_retries: int = 3,
+    request_retry_delay: float = 2.0,
+) -> dict[str, object]:
     payload = {
         "audio_data": base64.b64encode(wav_bytes).decode("ascii"),
         "language": "en",
@@ -317,14 +377,24 @@ async def run_rest_benchmark(base_url: str, wav_bytes: bytes, sample_rate: int, 
     durations = []
     transcription = ""
     async with httpx.AsyncClient(base_url=base_url, timeout=120) as client:
-        warmup = await client.post("/api/transcribe", json=payload)
-        warmup.raise_for_status()
+        warmup = await post_transcribe_with_retries(
+            client,
+            payload,
+            attempts=request_retries,
+            retry_delay=request_retry_delay,
+            stage="REST warmup",
+        )
         transcription = warmup.json().get("text", "")
-        for _ in range(runs):
+        for run_index in range(runs):
             started = time.perf_counter()
-            response = await client.post("/api/transcribe", json=payload)
+            response = await post_transcribe_with_retries(
+                client,
+                payload,
+                attempts=request_retries,
+                retry_delay=request_retry_delay,
+                stage=f"REST sample {run_index + 1}/{runs}",
+            )
             elapsed_ms = (time.perf_counter() - started) * 1000
-            response.raise_for_status()
             durations.append(elapsed_ms)
             transcription = response.json().get("text", "")
     return {
@@ -451,7 +521,15 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         final_latencies_all: list[float] = []
 
         for index in range(sample_count):
-            rest = await run_rest_benchmark(args.url, wav_bytes, sample_rate, args.rest_runs, duration_s)
+            rest = await run_rest_benchmark(
+                args.url,
+                wav_bytes,
+                sample_rate,
+                args.rest_runs,
+                duration_s,
+                request_retries=args.request_retries,
+                request_retry_delay=args.request_retry_delay,
+            )
             ws = await run_ws_benchmark(
                 args.ws_url,
                 raw_pcm,
@@ -506,7 +584,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 effective_qwen_dtype = capabilities.get("dtype")
             if effective_qwen_dtype is None:
                 effective_qwen_dtype = args.qwen_dtype
-        elif effective_backend == "parakeet":
+        elif effective_backend in {"parakeet", "parakeet-nemo"}:
             if isinstance(capabilities, dict):
                 effective_parakeet_dtype = capabilities.get("dtype")
             if effective_parakeet_dtype is None:
@@ -551,6 +629,12 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "sample_count": sample_count,
                 "rest_runs_per_sample": args.rest_runs,
                 "chunk_ms": args.chunk_ms,
+                "partial_interval_chunks": args.partial_interval_chunks,
+                "binary_frames": args.binary_frames,
+                "partial_window_seconds": args.partial_window,
+                "max_buffer_seconds": args.max_buffer,
+                "request_retries": args.request_retries,
+                "request_retry_delay": args.request_retry_delay,
             },
             "audio": {
                 "path": str(audio_path),
@@ -584,6 +668,12 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             "streaming": {
                 "sample_count": sample_count,
                 "chunk_ms": args.chunk_ms,
+                "partial_interval_chunks": args.partial_interval_chunks,
+                "binary_frames": args.binary_frames,
+                "partial_window_seconds": args.partial_window,
+                "max_buffer_seconds": args.max_buffer,
+                "request_retries": args.request_retries,
+                "request_retry_delay": args.request_retry_delay,
                 "partial_latencies_ms": [round(value, 1) for value in partial_latencies_all],
                 "final_latencies_ms": [round(value, 1) for value in final_latencies_all],
                 "binary_frames": args.binary_frames,
