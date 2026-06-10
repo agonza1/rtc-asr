@@ -176,6 +176,46 @@ def test_makefile_venv_target_repairs_broken_virtualenvs_before_benchmarks() -> 
     assert '@echo "  ✓ Virtualenv ready at $(VENV)"' in venv_block
 
 
+def test_makefile_mlx_venv_target_repairs_broken_virtualenvs_before_benchmarks() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    mlx_venv_block = makefile.split("mlx-venv:\n", 1)[1].split("\n\n", 1)[0]
+    assert 'if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import sys" >/dev/null 2>&1; then \\' in mlx_venv_block
+    assert 'echo "  Rebuilding $(MLX_VENV) because the interpreter is missing or broken..."; \\' in mlx_venv_block
+    assert "rm -rf $(MLX_VENV); \\" in mlx_venv_block
+    assert "python3 -m venv $(MLX_VENV); \\" in mlx_venv_block
+    assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil; \\" in mlx_venv_block
+    assert '@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"' in mlx_venv_block
+
+def test_makefile_exposes_benchmark_site_sync_targets() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "benchmark-site:" in makefile
+    assert "benchmark-site-check:" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
+    block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
+    assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
+    assert '@echo "  ✓ Benchmark site manifest is up to date"' in block
+
+
+def test_makefile_qwen_mps_target_forces_runtime_env() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "benchmark-qwen-mps: venv" in makefile
+    assert "qwen-mps-" in makefile
+    line = next(
+        line
+        for line in makefile.splitlines()
+        if "qwen-mps-$(BENCHMARK_RESULT_DATE).json" in line
+    )
+    assert "ASR_BACKEND=qwen-asr ASR_DEVICE=mps" in line
+    assert "ASR_QWEN_MODEL=$(QWEN_MPS_MODEL)" in line
+    assert "ASR_QWEN_DTYPE=$(QWEN_MPS_DTYPE)" in line
+    assert "--backend qwen-asr" in line
+    assert "--device mps" in line
+
+
 def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
@@ -183,8 +223,11 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "BENCHMARK_REQUEST_RETRIES ?= 3" in makefile
     assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox" in makefile
     assert "PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8" in makefile
-    assert "benchmark-qwen-mps: venv" in makefile
-    assert "qwen-mps-" in makefile
+    assert "QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit" in makefile
+    assert "MLX_VENV ?= .venv-mlx" in makefile
+    assert "benchmark-qwen-mlx-text: mlx-venv" in makefile
+    assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil" in makefile
+    assert "scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL)" in makefile
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m"), ("benchmark-compose-ultravox: venv", "ultravox")):
         assert target_name in makefile
         line = next(
