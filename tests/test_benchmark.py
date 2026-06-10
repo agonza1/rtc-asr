@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 
 from tests.benchmark import compute_accuracy_metrics, normalize_text, resolve_reference_text, summarize_latencies
@@ -100,6 +101,10 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
             "3",
             "--max-buffer",
             "4.5",
+            "--request-retries",
+            "5",
+            "--request-retry-delay",
+            "0.25",
             "--output",
             "docs/benchmark-results/ultravox-compose-test.json",
         ],
@@ -114,7 +119,53 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
     assert args.binary_frames is True
     assert args.partial_interval_chunks == 3
     assert args.max_buffer == 4.5
+    assert args.request_retries == 5
+    assert args.request_retry_delay == 0.25
     assert args.output == Path("docs/benchmark-results/ultravox-compose-test.json")
+
+
+def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "BENCHMARK_SAMPLE_COUNT ?= 10" in makefile
+    assert "BENCHMARK_REQUEST_RETRIES ?= 3" in makefile
+    assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox" in makefile
+    for target in ("qwen", "parakeet", "ultravox"):
+        line = next(
+            line
+            for line in makefile.splitlines()
+            if f"/{target}-compose-$(BENCHMARK_RESULT_DATE).json" in line
+        )
+        assert "--sample-count $(BENCHMARK_SAMPLE_COUNT)" in line
+        assert "--request-retries $(BENCHMARK_REQUEST_RETRIES)" in line
+        assert "--request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY)" in line
+
+
+def test_post_transcribe_with_retries_retries_transient_read_errors() -> None:
+    class FakeClient:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def post(self, path: str, json: dict[str, object]) -> httpx.Response:
+            self.calls += 1
+            assert path == "/api/transcribe"
+            assert json["language"] == "en"
+            if self.calls == 1:
+                raise httpx.ReadError("dropped")
+            return httpx.Response(200, json={"text": "ok"}, request=httpx.Request("POST", "http://example.test/api/transcribe"))
+
+    async def scenario() -> None:
+        client = FakeClient()
+        response = await benchmark.post_transcribe_with_retries(
+            client,
+            {"language": "en"},
+            attempts=2,
+            retry_delay=0,
+        )
+        assert response.json() == {"text": "ok"}
+        assert client.calls == 2
+
+    asyncio.run(scenario())
 
 
 def test_run_ws_benchmark_supports_binary_frames_and_window_overrides() -> None:

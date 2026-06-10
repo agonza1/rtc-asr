@@ -60,6 +60,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ultravox-max-new-tokens", type=int, default=128, help="Max new tokens for ultravox when spawning a local server")
     parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
     parser.add_argument("--max-buffer", type=float, help="Optional stream buffer cap in seconds for websocket benchmarking")
+    parser.add_argument("--request-retries", type=int, default=3, help="REST request attempts before failing a sample")
+    parser.add_argument("--request-retry-delay", type=float, default=2.0, help="Seconds to wait between REST request retries")
     parser.add_argument("--output", type=Path, help="Optional path for the benchmark JSON artifact")
     return parser.parse_args()
 
@@ -308,7 +310,38 @@ class ManagedServer:
             self.process.wait(timeout=5)
 
 
-async def run_rest_benchmark(base_url: str, wav_bytes: bytes, sample_rate: int, runs: int, duration_s: float) -> dict[str, object]:
+async def post_transcribe_with_retries(
+    client: httpx.AsyncClient,
+    payload: dict[str, object],
+    *,
+    attempts: int,
+    retry_delay: float,
+) -> httpx.Response:
+    last_error: Exception | None = None
+    for attempt in range(1, max(attempts, 1) + 1):
+        try:
+            response = await client.post("/api/transcribe", json=payload)
+            response.raise_for_status()
+            return response
+        except httpx.HTTPError as exc:
+            last_error = exc
+            if attempt >= max(attempts, 1):
+                break
+            await asyncio.sleep(retry_delay)
+    assert last_error is not None
+    raise last_error
+
+
+async def run_rest_benchmark(
+    base_url: str,
+    wav_bytes: bytes,
+    sample_rate: int,
+    runs: int,
+    duration_s: float,
+    *,
+    request_retries: int = 3,
+    request_retry_delay: float = 2.0,
+) -> dict[str, object]:
     payload = {
         "audio_data": base64.b64encode(wav_bytes).decode("ascii"),
         "language": "en",
@@ -317,14 +350,22 @@ async def run_rest_benchmark(base_url: str, wav_bytes: bytes, sample_rate: int, 
     durations = []
     transcription = ""
     async with httpx.AsyncClient(base_url=base_url, timeout=120) as client:
-        warmup = await client.post("/api/transcribe", json=payload)
-        warmup.raise_for_status()
+        warmup = await post_transcribe_with_retries(
+            client,
+            payload,
+            attempts=request_retries,
+            retry_delay=request_retry_delay,
+        )
         transcription = warmup.json().get("text", "")
         for _ in range(runs):
             started = time.perf_counter()
-            response = await client.post("/api/transcribe", json=payload)
+            response = await post_transcribe_with_retries(
+                client,
+                payload,
+                attempts=request_retries,
+                retry_delay=request_retry_delay,
+            )
             elapsed_ms = (time.perf_counter() - started) * 1000
-            response.raise_for_status()
             durations.append(elapsed_ms)
             transcription = response.json().get("text", "")
     return {
@@ -451,7 +492,15 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         final_latencies_all: list[float] = []
 
         for index in range(sample_count):
-            rest = await run_rest_benchmark(args.url, wav_bytes, sample_rate, args.rest_runs, duration_s)
+            rest = await run_rest_benchmark(
+                args.url,
+                wav_bytes,
+                sample_rate,
+                args.rest_runs,
+                duration_s,
+                request_retries=args.request_retries,
+                request_retry_delay=args.request_retry_delay,
+            )
             ws = await run_ws_benchmark(
                 args.ws_url,
                 raw_pcm,
@@ -551,6 +600,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "sample_count": sample_count,
                 "rest_runs_per_sample": args.rest_runs,
                 "chunk_ms": args.chunk_ms,
+                "request_retries": args.request_retries,
+                "request_retry_delay": args.request_retry_delay,
             },
             "audio": {
                 "path": str(audio_path),
@@ -584,6 +635,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             "streaming": {
                 "sample_count": sample_count,
                 "chunk_ms": args.chunk_ms,
+                "request_retries": args.request_retries,
+                "request_retry_delay": args.request_retry_delay,
                 "partial_latencies_ms": [round(value, 1) for value in partial_latencies_all],
                 "final_latencies_ms": [round(value, 1) for value in final_latencies_all],
                 "binary_frames": args.binary_frames,

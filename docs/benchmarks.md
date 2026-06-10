@@ -9,14 +9,12 @@ streaming session, so published numbers are less noisy than one-off snapshots.
 
 | Backend | Model | Runtime Path | Samples | Validation Status | Result Artifact | REST Mean / P95 | Streaming Partial Mean / P95 | Final Mean | Accuracy |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
-| `faster-whisper` | `tiny.en` | local Python CPU / `int8` | 1 legacy snapshot | validated snapshot | inline below | 263.7 ms / 269.1 ms | 177.5 ms / 308.6 ms | 261.3 ms | representative transcript only |
-| `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU / `float32` | 1 legacy snapshot | validated artifact | `docs/benchmark-results/qwen-compose-2026-06-08.json` | 5482.2 ms / 5904.4 ms | 3696.1 ms / 6314.4 ms | 0.9 ms | WER 0.095 / CER 0.0 |
-| `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 planned | benchmark path ready; validated artifact pending | run `make benchmark-compose-parakeet` | pending | pending | pending | pending |
-| `ultravox` | `fixie-ai/ultravox-v0_6-llama-3_1-8b` | Docker Compose CPU / `float32` | 10 planned | benchmark path ready; validated artifact pending | run `make benchmark-compose-ultravox` | pending | pending | pending | pending |
+| `faster-whisper` | `tiny.en` | local Python CPU / `int8` | 1 legacy snapshot | validated snapshot; 10-sample target available | inline below | 263.7 ms / 269.1 ms | 177.5 ms / 308.6 ms | 261.3 ms | representative transcript only |
+| `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU / `float32` | 1 legacy snapshot | validated legacy artifact; 10-sample refresh attempted on 2026-06-10 but service restarted during first generation and REST warmup failed with `httpx.ReadError` | `docs/benchmark-results/qwen-compose-2026-06-08.json` | 5482.2 ms / 5904.4 ms | 3696.1 ms / 6314.4 ms | 0.9 ms | WER 0.095 / CER 0.0 |
+| `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` | 2388.3 ms / 4098.1 ms | 1715.1 ms / 2968.7 ms | 2215.8 ms | WER 0.095 / CER 0.0 |
+| `ultravox` | `fixie-ai/ultravox-v0_6-llama-3_1-8b` | Docker Compose CPU / `float32` | 10 target | blocked before validation: current token can fetch `fixie-ai/ultravox`, but the model loads gated `meta-llama/Llama-3.1-8B-Instruct` and Hugging Face returned 403 on 2026-06-10 | run `HF_TOKEN=... make benchmark-compose-ultravox` after Llama access is granted | blocked | blocked | blocked | blocked |
 
-Use the matrix as the source of truth for which backends have checked-in numbers. A backend should
-move from `pending` to `validated artifact` only after its JSON output is committed under
-`docs/benchmark-results/` and the measured results section below is updated from that artifact.
+Use the matrix as the source of truth for which backends have checked-in numbers. A backend should move to `validated artifact` only after its JSON output is committed under `docs/benchmark-results/` and the measured results section below is updated from that artifact. Blocked rows should name the exact external access or runtime failure observed during the 10-sample target run.
 
 ## Latest Validated Runs
 
@@ -84,10 +82,59 @@ Versioned artifact:
 
 - `docs/benchmark-results/qwen-compose-2026-06-08.json`
 
+Refresh note:
+
+- A 10-sample Qwen refresh was attempted on June 10, 2026 with `make benchmark-compose-qwen BENCHMARK_RESULT_DATE=2026-06-10` on port `8093`. The service reached `/ready`, then restarted during the first generation request and the benchmark client failed REST warmup after bounded retries with `httpx.ReadError`. No replacement artifact was committed from that failed run.
+
+### Parakeet Compose CPU Baseline
+
+Measured on June 10, 2026 against the Docker Compose stack.
+
+Environment:
+
+- Host: macOS 26.5.1 arm64
+- Python benchmark client: 3.13.12
+- Execution mode: `docker compose`
+- Backend: `parakeet`
+- Model: `nvidia/parakeet-tdt-0.6b-v3`
+- Device: CPU / `float32`
+- Samples: 10, with 5 REST runs per sample and one streaming session per sample
+- Audio: 7.28 s synthesized speech clip from `say`
+- Reference transcript: `The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.`
+
+Measured results:
+
+- REST `POST /api/transcribe`: 2388.3 ms mean, 4098.1 ms p95, 1696.4 ms min, 4731.3 ms max
+- REST real-time factor: 0.328
+- WebSocket partial latency: 1715.1 ms mean, 2968.7 ms p95, 899.4 ms min, 5581.7 ms max
+- WebSocket final latency after `stop`: 2215.8 ms mean, 3080.4 ms p95, 1792.3 ms min, 3080.4 ms max
+- REST transcript: `The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.`
+- Streaming final transcript: `The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.`
+- Accuracy (normalized WER mean): `0.095`
+- Accuracy (normalized CER mean): `0.0`
+
+Interpretation notes:
+
+- Parakeet was faster than the June 8 Qwen legacy snapshot on the same synthesized clip, but this is a 10-sample artifact while the checked-in Qwen result is still a legacy single-sample artifact.
+- The accuracy miss matches Qwen: `realtime` became `real-time`, increasing WER while normalized CER remained `0.0`.
+
+Versioned artifact:
+
+- `docs/benchmark-results/parakeet-compose-2026-06-10.json`
+
 ## Reproduce
 
-All Compose benchmark targets now write a dated JSON artifact under `docs/benchmark-results/`.
-Override `BENCHMARK_RESULT_DATE` when you want a stable filename during repeated local runs.
+All benchmark targets now use `BENCHMARK_SAMPLE_COUNT=10` by default and write a dated JSON artifact under `docs/benchmark-results/`. Override `BENCHMARK_SAMPLE_COUNT` only for local smoke checks; leave it at 10 for committed matrix results. Override `BENCHMARK_RESULT_DATE` when you want a stable filename during repeated local runs.
+
+### Full Compose Matrix
+
+Run every Docker Compose backend with the same 10-sample contract:
+
+```bash
+make benchmark-compose-matrix
+```
+
+This expands to `benchmark-compose-qwen`, `benchmark-compose-parakeet`, and `benchmark-compose-ultravox`. Each target emits REST mean/p95, streaming partial mean/p95, streaming final mean/p95, and WER/CER accuracy summaries in its JSON artifact. Ultravox still requires `HF_TOKEN` or `HUGGINGFACE_HUB_TOKEN` because the default weights are gated.
 
 ### Faster-Whisper Baseline
 
@@ -192,6 +239,7 @@ Equivalent manual command against an already-running Ultravox service:
 - `--spawn-server` lets the harness boot a local uvicorn server.
 - `--partial-window 1.0` compares a smaller streaming window.
 - `--max-buffer 4.0` clamps the per-stream websocket buffer budget.
+- `--request-retries 5` and `--request-retry-delay 5.0` tune bounded REST retries for cold Compose runs.
 - `--output docs/benchmark-results/<name>.json` stores the exact benchmark artifact that should be reviewed before docs are updated.
 
 ## Methodology Notes
@@ -207,7 +255,8 @@ Equivalent manual command against an already-running Ultravox service:
 
 Still not covered by this document:
 
-- checked-in validated Parakeet and Ultravox CPU result artifacts
+- checked-in validated Ultravox CPU result artifact, blocked until the benchmark token has access to `meta-llama/Llama-3.1-8B-Instruct`
+- refreshed 10-sample Qwen artifact; the June 10 refresh attempt restarted during first generation and failed REST warmup with `httpx.ReadError`
 - concurrent REST or WebSocket load
 - GPU-backed Qwen, Parakeet, or Ultravox measurements
 - memory and CPU saturation curves

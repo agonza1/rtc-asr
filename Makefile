@@ -19,8 +19,11 @@ ULTRAVOX_COMPOSE_DTYPE ?= float32
 ULTRAVOX_MAX_NEW_TOKENS ?= 128
 BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
 BENCHMARK_RESULT_DATE ?= $(shell date -u +%Y-%m-%d)
+BENCHMARK_SAMPLE_COUNT ?= 10
+BENCHMARK_REQUEST_RETRIES ?= 3
+BENCHMARK_REQUEST_RETRY_DELAY ?= 2.0
 
-.PHONY: help venv setup build run dev test benchmark benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox clean lint docs start stop status
+.PHONY: help venv setup build run dev test benchmark benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox clean lint docs start stop status
 
 help:
 	@echo "Realtime ASR Service - Available commands:"
@@ -32,6 +35,7 @@ help:
 	@echo "  make dev            - Run service locally with reload"
 	@echo "  make test           - Run the automated test suite"
 	@echo "  make benchmark      - Run the reproducible latency benchmark"
+	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
 	@echo "  make benchmark-compose-parakeet - Start compose, wait for readiness, and benchmark parakeet"
 	@echo "  make benchmark-compose-ultravox - Start compose, wait for readiness, and benchmark ultravox"
@@ -107,7 +111,10 @@ test: venv
 
 benchmark: venv
 	@echo "Running latency benchmark..."
-	@$(PYTHON) tests/benchmark.py --spawn-server
+	@$(PYTHON) tests/benchmark.py --spawn-server --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-local-$(BENCHMARK_RESULT_DATE).json
+
+benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox
+	@echo "  ✓ Compose benchmark matrix complete with $(BENCHMARK_SAMPLE_COUNT) samples per backend"
 
 benchmark-compose-qwen:
 	@echo "Starting docker compose stack with qwen-asr on CPU..."
@@ -127,7 +134,7 @@ benchmark-compose-qwen:
 	fi; \
 	ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
-	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json
+	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-compose-parakeet:
 	@echo "Starting docker compose stack with parakeet on CPU..."
@@ -147,7 +154,7 @@ benchmark-compose-parakeet:
 	fi; \
 	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
-	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --output $(BENCHMARK_RESULTS_DIR)/parakeet-compose-$(BENCHMARK_RESULT_DATE).json
+	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-compose-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-compose-ultravox:
 	@echo "Starting docker compose stack with ultravox on CPU..."
@@ -168,7 +175,7 @@ benchmark-compose-ultravox:
 	fi; \
 	ASR_BACKEND=ultravox ASR_ULTRAVOX_MODEL=$(ULTRAVOX_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_ULTRAVOX_DTYPE=$(ULTRAVOX_COMPOSE_DTYPE) ASR_ULTRAVOX_MAX_NEW_TOKENS=$(ULTRAVOX_MAX_NEW_TOKENS) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
-	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS) --output $(BENCHMARK_RESULTS_DIR)/ultravox-compose-$(BENCHMARK_RESULT_DATE).json
+	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/ultravox-compose-$(BENCHMARK_RESULT_DATE).json
 
 lint: venv
 	@echo "Running linter..."
