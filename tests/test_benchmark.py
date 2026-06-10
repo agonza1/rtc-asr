@@ -210,6 +210,7 @@ def test_makefile_qwen_mps_target_forces_runtime_env() -> None:
         if "qwen-mps-$(BENCHMARK_RESULT_DATE).json" in line
     )
     assert "ASR_BACKEND=qwen-asr ASR_DEVICE=mps" in line
+    assert "ASR_QWEN_DEVICE_MAP=" in line
     assert "ASR_QWEN_MODEL=$(QWEN_MPS_MODEL)" in line
     assert "ASR_QWEN_DTYPE=$(QWEN_MPS_DTYPE)" in line
     assert "--backend qwen-asr" in line
