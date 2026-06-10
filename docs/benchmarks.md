@@ -11,6 +11,7 @@ streaming session, so published numbers are less noisy than one-off snapshots.
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
 | `faster-whisper` | `base.en` | local Python CPU / `int8` | 10 | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` | 573.3 ms / 741.1 ms | 553.0 ms / 2451.5 ms | 560.2 ms | WER 0.095 / CER 0.0 |
 | `faster-whisper` | `small.en` | local Python CPU / `int8` | 10 | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` | 1378.3 ms / 1531.1 ms | 1023.2 ms / 1202.4 ms | 1420.6 ms | WER 0.095 / CER 0.0 |
+| `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | local Python Apple Silicon MPS / `auto` | 10 | validated artifact | `docs/benchmark-results/qwen-mps-2026-06-10.json` | 1171.9 ms / 1236.5 ms | 363.2 ms / 460.3 ms | 1181.8 ms | WER 0.095 / CER 0.0 |
 | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU / `float32` | 1 legacy snapshot | validated legacy artifact; 10-sample refresh attempted on 2026-06-10 but service restarted during first generation and REST warmup failed with `httpx.ReadError` | `docs/benchmark-results/qwen-compose-2026-06-08.json` | 5482.2 ms / 5904.4 ms | 3696.1 ms / 6314.4 ms | 0.9 ms | WER 0.095 / CER 0.0 |
 | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` | 2388.3 ms / 4098.1 ms | 1715.1 ms / 2968.7 ms | 2215.8 ms | WER 0.095 / CER 0.0 |
 | `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` | 331.4 ms / 511.5 ms | 148.5 ms / 245.8 ms | 379.0 ms | WER 0.19 / CER 0.0 |
@@ -61,6 +62,45 @@ Versioned artifacts:
 
 - `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json`
 - `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json`
+
+### Qwen MPS Baseline
+
+Measured on June 10, 2026 with the local benchmark harness on Apple Silicon.
+
+Environment:
+
+- Host: macOS 26.5.1 arm64
+- Python benchmark client: 3.14.4
+- Execution mode: local Python / spawned `uvicorn`
+- Backend: `qwen-asr`
+- Model: `Qwen/Qwen3-ASR-0.6B`
+- Device: `mps` / `auto`
+- Samples: 10, with 5 REST runs per sample and one streaming session per sample
+- Streaming chunk size: 250 ms
+- Streaming partial window: 2.0 s
+- Audio: 7.28 s synthesized speech clip from `say`
+- Reference transcript: `The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.`
+
+Measured results:
+
+- REST `POST /api/transcribe`: 1171.9 ms mean, 1236.5 ms p95, 1126.8 ms min, 1307.5 ms max
+- REST real-time factor: 0.161
+- WebSocket partial latency: 363.2 ms mean, 460.3 ms p95, 177.9 ms min, 1263.2 ms max
+- WebSocket final latency after `stop`: 1181.8 ms mean, 1282.3 ms p95, 1136.8 ms min, 1282.3 ms max
+- REST transcript: `The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.`
+- Streaming final transcript: `The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.`
+- Accuracy (normalized WER mean): `0.095`
+- Accuracy (normalized CER mean): `0.0`
+
+Interpretation notes:
+
+- This is the first validated low-latency Qwen benchmark in the repo that runs on Apple Silicon unified memory instead of the Docker CPU path.
+- The MPS run is about 4.7x faster than the checked-in June 8 Compose CPU snapshot on REST mean latency and about 10.2x faster on streaming partial mean latency.
+- Accuracy stayed aligned with the other validated ASR runs: the main miss is still `realtime` becoming `real-time`, which raises WER while leaving normalized CER at `0.0`.
+
+Versioned artifact:
+
+- `docs/benchmark-results/qwen-mps-2026-06-10.json`
 
 ### Qwen Compose CPU Baseline
 
@@ -218,9 +258,19 @@ Or invoke the harness directly against an already-running server:
   --output docs/benchmark-results/faster-whisper-small.en-int8-$(date -u +%Y-%m-%d).json
 ```
 
+### Qwen Apple Silicon Baseline
+
+Use the local Apple Silicon MPS workflow:
+
+```bash
+make benchmark-qwen-mps
+```
+
+This target spawns the local service with `ASR_BACKEND=qwen-asr`, `ASR_DEVICE=mps`, and `ASR_QWEN_MODEL=Qwen/Qwen3-ASR-0.6B`, then writes `docs/benchmark-results/qwen-mps-<date>.json`.
+
 ### Qwen Compose Baseline
 
-Use the checked-in Compose workflow:
+Use the checked-in Compose workflow when you specifically want the legacy CPU container path:
 
 ```bash
 make benchmark-compose-qwen

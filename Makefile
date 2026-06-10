@@ -10,6 +10,8 @@ COMPOSE_WS_URL ?= ws://127.0.0.1:8080/ws/stream
 QWEN_COMPOSE_MODEL ?= Qwen/Qwen3-ASR-0.6B
 QWEN_COMPOSE_DTYPE ?= float32
 QWEN_COMPOSE_MAX_NEW_TOKENS ?= 64
+QWEN_MPS_MODEL ?= Qwen/Qwen3-ASR-0.6B
+QWEN_MPS_DTYPE ?= auto
 DEFAULT_PYTHON_BASE_IMAGE := python:3.11-slim
 PYTHON_BASE_IMAGE ?= $(DEFAULT_PYTHON_BASE_IMAGE)
 PYTHON_BASE_IMAGE_FALLBACK ?= mirror.gcr.io/library/python:3.11-slim
@@ -48,6 +50,7 @@ help:
 	@echo "  make benchmark-faster-whisper-matrix - Run base.en and small.en local benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-faster-whisper-base - Run faster-whisper base.en with $(BENCHMARK_SAMPLE_COUNT) samples"
 	@echo "  make benchmark-faster-whisper-small - Run faster-whisper small.en with $(BENCHMARK_SAMPLE_COUNT) samples"
+	@echo "  make benchmark-qwen-mps - Run qwen-asr locally on Apple Silicon MPS"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
 	@echo "  make benchmark-compose-parakeet - Start compose, wait for readiness, and benchmark parakeet"
@@ -141,6 +144,13 @@ benchmark-faster-whisper-base: venv
 benchmark-faster-whisper-small: venv
 	@echo "Running faster-whisper $(FASTER_WHISPER_SMALL_MODEL) $(FASTER_WHISPER_COMPUTE_TYPE) latency benchmark..."
 	@$(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_SMALL_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_SMALL_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
+
+benchmark-qwen-mps: venv
+	@echo "Running qwen-asr $(QWEN_MPS_MODEL) latency benchmark on Apple Silicon MPS..."
+	@uname -s | grep -q '^Darwin$$' || (echo "benchmark-qwen-mps requires macOS." >&2; exit 1)
+	@$(PYTHON) -c "import torch; assert getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available(), 'benchmark-qwen-mps requires torch.backends.mps.is_available()'"
+	@mkdir -p .cache/huggingface
+	@$(PYTHON) tests/benchmark.py --spawn-server --backend qwen-asr --model $(QWEN_MPS_MODEL) --device mps --qwen-dtype $(QWEN_MPS_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-mps-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox
 	@echo "  ✓ Compose benchmark matrix complete with $(BENCHMARK_SAMPLE_COUNT) samples per backend"

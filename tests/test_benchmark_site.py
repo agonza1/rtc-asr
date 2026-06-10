@@ -16,12 +16,13 @@ build_manifest = manifest_module.build_manifest
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(Path("docs") / "benchmark-results")
 
-    assert manifest["summary"]["asr_count"] == 5
+    assert manifest["summary"]["asr_count"] == 6
     assert all(entry["backend"] != "ultravox" for entry in manifest["asr_benchmarks"])
 
     qwen_entries = [entry for entry in manifest["asr_benchmarks"] if entry["backend"] == "qwen-asr"]
-    assert len(qwen_entries) == 1
-    assert qwen_entries[0]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
+    assert len(qwen_entries) == 2
+    assert {entry["runtime"] for entry in qwen_entries} == {"cpu / float32", "mps / auto"}
+    assert any(entry["artifact_path"].endswith("qwen-mps-2026-06-10.json") for entry in qwen_entries)
 
 
 def test_checked_in_manifest_matches_generated_output() -> None:

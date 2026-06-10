@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-06-10T16:42:11Z",
+  "generated_at": "2026-06-10T17:15:13Z",
   "summary": {
-    "asr_count": 5
+    "asr_count": 6
   },
   "asr_benchmarks": [
     {
@@ -46,6 +46,30 @@
         "partial_p95_ms": 2451.5,
         "final_mean_ms": 560.2,
         "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "runtime": "mps / auto",
+      "measured_at": "2026-06-10T17:13:31Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "rest": {
+        "mean_ms": 1171.9,
+        "p95_ms": 1236.5,
+        "rtf_mean": 0.161
+      },
+      "streaming": {
+        "partial_mean_ms": 363.2,
+        "partial_p95_ms": 460.3,
+        "final_mean_ms": 1181.8,
+        "final_p95_ms": 1282.3
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,

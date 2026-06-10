@@ -183,6 +183,8 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "BENCHMARK_REQUEST_RETRIES ?= 3" in makefile
     assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox" in makefile
     assert "PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8" in makefile
+    assert "benchmark-qwen-mps: venv" in makefile
+    assert "qwen-mps-" in makefile
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m"), ("benchmark-compose-ultravox: venv", "ultravox")):
         assert target_name in makefile
         line = next(
