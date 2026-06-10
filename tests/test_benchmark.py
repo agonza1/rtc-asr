@@ -163,6 +163,19 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
         assert "--compute-type $(FASTER_WHISPER_COMPUTE_TYPE)" in line
 
 
+def test_makefile_venv_target_repairs_broken_virtualenvs_before_benchmarks() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    venv_block = makefile.split("venv:\n", 1)[1].split("\n\n", 1)[0]
+    assert 'if [ -x $(PYTHON) ] && $(PYTHON) -c "import sys" >/dev/null 2>&1; then \\' in venv_block
+    assert 'echo "  Rebuilding $(VENV) because the interpreter is missing or broken..."; \\' in venv_block
+    assert "rm -rf $(VENV); \\" in venv_block
+    assert "python3 -m venv $(VENV); \\" in venv_block
+    assert "$(PIP) install --upgrade pip; \\" in venv_block
+    assert "$(PIP) install -r requirements.txt; \\" in venv_block
+    assert '@echo "  ✓ Virtualenv ready at $(VENV)"' in venv_block
+
+
 def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
