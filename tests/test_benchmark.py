@@ -205,11 +205,12 @@ def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
 
     for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo"), ("benchmark-compose-ultravox", "ultravox")):
         block = makefile.split(f"{target}: venv\n", 1)[1].split("\n\n", 1)[0]
-        assert "@set -e; \\" in block
+        assert "@{ set -e; \\" in block
         assert "trap cleanup EXIT INT TERM" in block
         assert "cleanup() { docker compose down >/dev/null 2>&1 || true; }" in block
         assert "docker compose up -d --build; \\" in block
         assert "Compose stack ready: $(COMPOSE_URL)/ready" in block
+        assert block.rstrip().endswith("; }")
         assert f"--backend {backend}" in block
 
 

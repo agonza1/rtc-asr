@@ -155,7 +155,7 @@ benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benc
 benchmark-compose-qwen: venv
 	@echo "Starting docker compose stack with qwen-asr on CPU..."
 	@mkdir -p .cache/huggingface
-	@set -e; \
+	@{ set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
 	trap cleanup EXIT INT TERM; \
 	base_image="$(PYTHON_BASE_IMAGE)"; \
@@ -172,12 +172,12 @@ benchmark-compose-qwen: venv
 	fi; \
 	ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
-	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json
+	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-compose-parakeet: venv
 	@echo "Starting docker compose stack with parakeet on CPU..."
 	@mkdir -p .cache/huggingface
-	@set -e; \
+	@{ set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
 	trap cleanup EXIT INT TERM; \
 	base_image="$(PYTHON_BASE_IMAGE)"; \
@@ -194,12 +194,12 @@ benchmark-compose-parakeet: venv
 	fi; \
 	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
-	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-compose-$(BENCHMARK_RESULT_DATE).json
+	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-compose-parakeet-nemo: venv
 	@echo "Starting docker compose stack with Parakeet 110M through NeMo on CPU..."
 	@mkdir -p .cache/huggingface
-	@set -e; \
+	@{ set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
 	trap cleanup EXIT INT TERM; \
 	base_image="$(PYTHON_BASE_IMAGE)"; \
@@ -216,13 +216,13 @@ benchmark-compose-parakeet-nemo: venv
 	fi; \
 	ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
-	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json
+	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-compose-ultravox: venv
 	@echo "Starting docker compose stack with ultravox on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -n "$(HF_TOKEN)$(HUGGINGFACE_HUB_TOKEN)" || (echo "Ultravox default model requires Hugging Face access. Export HF_TOKEN or HUGGINGFACE_HUB_TOKEN before running this target." >&2; exit 1)
-	@set -e; \
+	@{ set -e; \
 	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
 	trap cleanup EXIT INT TERM; \
 	base_image="$(PYTHON_BASE_IMAGE)"; \
@@ -239,7 +239,7 @@ benchmark-compose-ultravox: venv
 	fi; \
 	ASR_BACKEND=ultravox ASR_ULTRAVOX_MODEL=$(ULTRAVOX_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_ULTRAVOX_DTYPE=$(ULTRAVOX_COMPOSE_DTYPE) ASR_ULTRAVOX_MAX_NEW_TOKENS=$(ULTRAVOX_MAX_NEW_TOKENS) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
-	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/ultravox-compose-$(BENCHMARK_RESULT_DATE).json
+	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/ultravox-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-qwen-mlx-text:
 	@echo "Benchmarking $(QWEN_MLX_TEXT_MODEL) with mlx-lm on Apple Silicon..."
