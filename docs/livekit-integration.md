@@ -20,6 +20,8 @@ After `start`, send each PCM chunk as either a JSON `audio` event or a raw binar
 
 Set `sample_rate` to the raw PCM cadence you are sending. Many LiveKit rooms deliver 48kHz mono frames; the server will resample them to its configured backend target rate.
 
+The default `STREAM_MAX_BUFFER_BYTES=1048576` still applies before `max_buffer_seconds`. At PCM16 mono 48kHz, that default cap only holds about `10.9` seconds of audio, so a `max_buffer_seconds=30.0` request is not enough by itself to guarantee a 30-second utterance. If you need longer buffers, either resample upstream to `16000` Hz or raise `STREAM_MAX_BUFFER_BYTES` to match the longer capture window.
+
 ## Recommended Client Helper
 
 Reuse `src/rtc_client.py` or `src/streaming.py` from this repo instead of hand-rolling websocket JSON in every agent.
@@ -88,7 +90,7 @@ async def transcribe_track(audio_frames, language: str = "en") -> str:
 - Use websocket streaming for partials; do not poll HTTP for chunk results.
 - Keep the chunk cadence steady. `50` to `200` ms is a good starting range.
 - If you already resample to 16kHz mono in the client, set `sample_rate=16000` in the `start` event.
-- The server keeps a bounded rolling buffer for partials and a capped full buffer for the final transcript; tune `partial_window_seconds` and `max_buffer_seconds` when long utterances matter.
+- The server keeps a bounded rolling buffer for partials and a capped full buffer for the final transcript; tune `partial_window_seconds` and `max_buffer_seconds` when long utterances matter, and raise `STREAM_MAX_BUFFER_BYTES` if your 48kHz PCM path needs to exceed the default ~10.9 second ceiling.
 - Check `GET /api/models` during startup if your agent needs to branch on backend capabilities.
 
 ## Local Verification
