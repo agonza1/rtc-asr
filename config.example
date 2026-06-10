@@ -27,6 +27,8 @@ ASR_QWEN_MAX_INFERENCE_BATCH_SIZE=1
 
 # Optional parakeet backend settings
 # Set ASR_BACKEND=parakeet to enable these.
+# Local Python runs also need:
+# pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2
 ASR_PARAKEET_MODEL=nvidia/parakeet-tdt-0.6b-v3
 ASR_PARAKEET_DTYPE=auto
 

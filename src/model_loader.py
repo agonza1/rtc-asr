@@ -157,8 +157,8 @@ class QwenASRAdapter:
             return self._model
 
         try:
-            from qwen_asr import Qwen3ASRModel
             import torch
+            from qwen_asr import Qwen3ASRModel
         except ImportError as exc:
             raise ASRUnavailableError(
                 "The qwen-asr backend is not installed. Install requirements.txt to enable ASR_BACKEND=qwen-asr."
@@ -172,13 +172,6 @@ class QwenASRAdapter:
                 "The qwen-asr backend is incompatible with the installed transformers "
                 f"version ({transformers_version}). Install the repo-pinned qwen stack with "
                 "`pip install -r requirements.txt` so qwen-asr can use transformers==4.57.6."
-            ) from exc
-
-        try:
-            import torch
-        except ImportError as exc:
-            raise ASRUnavailableError(
-                "The qwen-asr backend is not installed. Install requirements.txt to enable ASR_BACKEND=qwen-asr."
             ) from exc
 
         kwargs = {
@@ -255,6 +248,7 @@ class ParakeetAdapter:
                 "The parakeet backend requires transformers and torch. Install requirements.txt to enable ASR_BACKEND=parakeet."
             ) from exc
 
+        self._ensure_local_runtime_compatibility()
         self._pipeline = pipeline(
             "automatic-speech-recognition",
             model=self.model_name,
@@ -262,6 +256,16 @@ class ParakeetAdapter:
             dtype=_resolve_torch_dtype(torch, self.config.asr_parakeet_dtype, self.config.asr_device),
         )
         return self._pipeline
+
+    def _ensure_local_runtime_compatibility(self) -> None:
+        transformers_version = _installed_package_version("transformers") or "unknown"
+        if not transformers_version.startswith("4."):
+            return
+        raise ASRUnavailableError(
+            "The parakeet backend needs a newer Hugging Face runtime than the repo's default qwen-compatible "
+            f"transformers pin ({transformers_version}). For local Parakeet runs, install "
+            "`huggingface-hub==1.18.0 transformers==5.10.2` or use `make benchmark-compose-parakeet`."
+        )
 
 
 @dataclass(slots=True)

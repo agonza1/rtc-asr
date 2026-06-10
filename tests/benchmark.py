@@ -384,11 +384,15 @@ async def run_ws_benchmark(
             if chunk_index % partial_interval_chunks != 0:
                 continue
             event = json.loads(await websocket.recv())
+            if event.get("type") != "partial":
+                raise RuntimeError(f"Expected partial event, got: {event}")
             partial_latencies.append((time.perf_counter() - started) * 1000)
             partial_text = event.get("text", "")
         started = time.perf_counter()
         await websocket.send(json.dumps({"type": "stop"}))
         final_event = json.loads(await websocket.recv())
+        if final_event.get("type") != "final":
+            raise RuntimeError(f"Expected final event, got: {final_event}")
         final_ms = (time.perf_counter() - started) * 1000
     partial_summary = {
         "partial_mean_ms": round(statistics.mean(partial_latencies), 1) if partial_latencies else None,

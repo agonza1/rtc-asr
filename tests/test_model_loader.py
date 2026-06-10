@@ -127,6 +127,7 @@ def test_parakeet_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyt
 
     monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
     monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setattr("src.model_loader._installed_package_version", lambda name: "5.10.2")
 
     adapter = ParakeetAdapter(
         config=AppConfig(
@@ -271,6 +272,25 @@ def test_parakeet_adapter_raises_when_dependency_missing(monkeypatch: pytest.Mon
     )
 
     with pytest.raises(ASRUnavailableError, match="parakeet backend requires transformers and torch"):
+        adapter.preload()
+
+
+def test_parakeet_adapter_raises_actionable_error_for_qwen_pinned_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_transformers = ModuleType("transformers")
+    fake_transformers.pipeline = lambda *args, **kwargs: None
+    fake_torch = ModuleType("torch")
+    fake_torch.float32 = object()
+
+    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setattr("src.model_loader._installed_package_version", lambda name: "4.57.6")
+
+    adapter = ParakeetAdapter(
+        config=AppConfig(asr_backend="parakeet"),
+        audio_processor=AudioProcessor(),
+    )
+
+    with pytest.raises(ASRUnavailableError, match=r"huggingface-hub==1\.18\.0 transformers==5\.10\.2"):
         adapter.preload()
 
 
