@@ -31,6 +31,17 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "smoke.wav"
 
 
+class BenchmarkRequestError(RuntimeError):
+    """Wrap exhausted benchmark retries with stage-specific context."""
+
+    def __init__(self, stage: str, attempts: int, cause: Exception) -> None:
+        self.stage = stage
+        self.attempts = attempts
+        self.cause = cause
+        message = f"{stage} failed after {attempts} attempt(s): {cause.__class__.__name__}: {cause}"
+        super().__init__(message)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark the realtime ASR service")
     parser.add_argument("--url", default="http://127.0.0.1:8090", help="Base URL for the ASR service")
@@ -316,20 +327,22 @@ async def post_transcribe_with_retries(
     *,
     attempts: int,
     retry_delay: float,
+    stage: str = "transcribe request",
 ) -> httpx.Response:
     last_error: Exception | None = None
-    for attempt in range(1, max(attempts, 1) + 1):
+    total_attempts = max(attempts, 1)
+    for attempt in range(1, total_attempts + 1):
         try:
             response = await client.post("/api/transcribe", json=payload)
             response.raise_for_status()
             return response
         except httpx.HTTPError as exc:
             last_error = exc
-            if attempt >= max(attempts, 1):
+            if attempt >= total_attempts:
                 break
             await asyncio.sleep(retry_delay)
     assert last_error is not None
-    raise last_error
+    raise BenchmarkRequestError(stage, total_attempts, last_error) from last_error
 
 
 async def run_rest_benchmark(
@@ -355,15 +368,17 @@ async def run_rest_benchmark(
             payload,
             attempts=request_retries,
             retry_delay=request_retry_delay,
+            stage="REST warmup",
         )
         transcription = warmup.json().get("text", "")
-        for _ in range(runs):
+        for run_index in range(runs):
             started = time.perf_counter()
             response = await post_transcribe_with_retries(
                 client,
                 payload,
                 attempts=request_retries,
                 retry_delay=request_retry_delay,
+                stage=f"REST sample {run_index + 1}/{runs}",
             )
             elapsed_ms = (time.perf_counter() - started) * 1000
             durations.append(elapsed_ms)

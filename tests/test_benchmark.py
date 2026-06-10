@@ -187,9 +187,32 @@ def test_post_transcribe_with_retries_retries_transient_read_errors() -> None:
             {"language": "en"},
             attempts=2,
             retry_delay=0,
+            stage="REST warmup",
         )
         assert response.json() == {"text": "ok"}
         assert client.calls == 2
+
+    asyncio.run(scenario())
+
+
+def test_post_transcribe_with_retries_raises_stage_aware_error_after_exhaustion() -> None:
+    class FakeClient:
+        async def post(self, path: str, json: dict[str, object]) -> httpx.Response:
+            assert path == "/api/transcribe"
+            raise httpx.ReadError("socket closed")
+
+    async def scenario() -> None:
+        with pytest.raises(
+            benchmark.BenchmarkRequestError,
+            match=r"REST sample 2/5 failed after 2 attempt\(s\): ReadError: socket closed",
+        ):
+            await benchmark.post_transcribe_with_retries(
+                FakeClient(),
+                {"language": "en"},
+                attempts=2,
+                retry_delay=0,
+                stage="REST sample 2/5",
+            )
 
     asyncio.run(scenario())
 
