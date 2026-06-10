@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-10T18:05:42Z",
+  "generated_at": "2026-06-10T22:49:05Z",
   "summary": {
     "asr_count": 6,
     "tracked_count": 7,
@@ -13,6 +13,34 @@
       "rest_runs_per_sample": 5,
       "chunk_ms": 250,
       "partial_window_seconds": 2.0
+    },
+    "backend_count": 5,
+    "lane_count": 3,
+    "ranges": {
+      "rest_mean_ms": {
+        "min": 331.4,
+        "max": 5482.2
+      },
+      "partial_mean_ms": {
+        "min": 148.5,
+        "max": 3696.1
+      },
+      "final_mean_ms": {
+        "min": 0.9,
+        "max": 2215.8
+      },
+      "rtf_mean": {
+        "min": 0.046,
+        "max": 0.753
+      },
+      "wer": {
+        "min": 0.095,
+        "max": 0.19
+      },
+      "overall_score": {
+        "min": 43.0,
+        "max": 90.8
+      }
     },
     "highlights": {
       "fastest_rest": {
@@ -46,6 +74,22 @@
         "model": "base.en",
         "value": 0.095,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json"
+      },
+      "best_overall": {
+        "label": "Best overall benchmark balance",
+        "slug": "parakeet-nemo-compose",
+        "backend": "parakeet-nemo",
+        "model": "nvidia/parakeet-tdt_ctc-110m",
+        "value": 90.8,
+        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+      },
+      "best_live_caption": {
+        "label": "Best live caption score",
+        "slug": "parakeet-nemo-compose",
+        "backend": "parakeet-nemo",
+        "model": "nvidia/parakeet-tdt_ctc-110m",
+        "value": 98.7,
+        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
       }
     }
   },
@@ -79,37 +123,20 @@
       "accuracy": {
         "word_error_rate_mean": 0.19,
         "character_error_rate_mean": 0
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "faster-whisper-base",
-      "label": "Faster-Whisper Base",
-      "backend": "faster-whisper",
-      "model": "base.en",
-      "lane": "Local Python CPU",
-      "runtime": "cpu / int8",
-      "status": "validated",
-      "status_detail": "Validated 10-sample local CPU baseline.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-faster-whisper-base",
-      "measured_at": "2026-06-10T02:16:51Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
-      "rest": {
-        "mean_ms": 573.3,
-        "p95_ms": 741.1,
-        "rtf_mean": 0.079
       },
-      "streaming": {
-        "partial_mean_ms": 553.0,
-        "partial_p95_ms": 2451.5,
-        "final_mean_ms": 560.2,
-        "final_p95_ms": 761.2
-      },
-      "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+      "derived": {
+        "latency_score": 98.1,
+        "live_caption_score": 98.7,
+        "finalization_score": 95.7,
+        "stability_score": 85.5,
+        "efficiency_score": 98.4,
+        "accuracy_score": 45.7,
+        "overall_score": 90.8,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.543,
+        "partial_jitter_ratio": 1.655,
+        "final_jitter_ratio": 1.672
       }
     },
     {
@@ -141,6 +168,65 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 85.0,
+        "live_caption_score": 94.4,
+        "finalization_score": 82.6,
+        "stability_score": 97.3,
+        "efficiency_score": 86.3,
+        "accuracy_score": 72.9,
+        "overall_score": 87.1,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.063,
+        "partial_jitter_ratio": 1.266,
+        "final_jitter_ratio": 1.049
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "faster-whisper-base",
+      "label": "Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "lane": "Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local CPU baseline.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "measured_at": "2026-06-10T02:16:51Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 573.3,
+        "p95_ms": 741.1,
+        "rtf_mean": 0.079
+      },
+      "streaming": {
+        "partial_mean_ms": 553.0,
+        "partial_p95_ms": 2451.5,
+        "final_mean_ms": 560.2,
+        "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 94.2,
+        "live_caption_score": 76.1,
+        "finalization_score": 92.8,
+        "stability_score": 71.7,
+        "efficiency_score": 94.9,
+        "accuracy_score": 72.9,
+        "overall_score": 85.1,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.293,
+        "partial_jitter_ratio": 4.433,
+        "final_jitter_ratio": 1.359
       }
     },
     {
@@ -172,6 +258,20 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 81.3,
+        "live_caption_score": 79.8,
+        "finalization_score": 78.2,
+        "stability_score": 97.4,
+        "efficiency_score": 83.6,
+        "accuracy_score": 72.9,
+        "overall_score": 82.1,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.111,
+        "partial_jitter_ratio": 1.175,
+        "final_jitter_ratio": 1.066
       }
     },
     {
@@ -203,6 +303,20 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 53.2,
+        "live_caption_score": 57.1,
+        "finalization_score": 58.2,
+        "stability_score": 85.9,
+        "efficiency_score": 69.3,
+        "accuracy_score": 72.9,
+        "overall_score": 63.0,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.716,
+        "partial_jitter_ratio": 1.731,
+        "final_jitter_ratio": 1.39
       }
     },
     {
@@ -234,6 +348,20 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 12.8,
+        "live_caption_score": 5.3,
+        "finalization_score": 100.0,
+        "stability_score": 94.6,
+        "efficiency_score": 25.5,
+        "accuracy_score": 72.9,
+        "overall_score": 43.0,
+        "confidence_score": 40.0,
+        "sample_coverage_pct": 10.0,
+        "rest_jitter_ratio": 1.077,
+        "partial_jitter_ratio": 1.708,
+        "final_jitter_ratio": 1.0
       }
     },
     {
@@ -265,6 +393,20 @@
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": null,
+        "live_caption_score": null,
+        "finalization_score": null,
+        "stability_score": null,
+        "efficiency_score": null,
+        "accuracy_score": null,
+        "overall_score": null,
+        "confidence_score": 12.5,
+        "sample_coverage_pct": 0.0,
+        "rest_jitter_ratio": null,
+        "partial_jitter_ratio": null,
+        "final_jitter_ratio": null
       }
     }
   ],
@@ -475,37 +617,20 @@
       "accuracy": {
         "word_error_rate_mean": 0.19,
         "character_error_rate_mean": 0
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "faster-whisper-base",
-      "label": "Faster-Whisper Base",
-      "backend": "faster-whisper",
-      "model": "base.en",
-      "lane": "Local Python CPU",
-      "runtime": "cpu / int8",
-      "status": "validated",
-      "status_detail": "Validated 10-sample local CPU baseline.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-faster-whisper-base",
-      "measured_at": "2026-06-10T02:16:51Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
-      "rest": {
-        "mean_ms": 573.3,
-        "p95_ms": 741.1,
-        "rtf_mean": 0.079
       },
-      "streaming": {
-        "partial_mean_ms": 553.0,
-        "partial_p95_ms": 2451.5,
-        "final_mean_ms": 560.2,
-        "final_p95_ms": 761.2
-      },
-      "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+      "derived": {
+        "latency_score": 98.1,
+        "live_caption_score": 98.7,
+        "finalization_score": 95.7,
+        "stability_score": 85.5,
+        "efficiency_score": 98.4,
+        "accuracy_score": 45.7,
+        "overall_score": 90.8,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.543,
+        "partial_jitter_ratio": 1.655,
+        "final_jitter_ratio": 1.672
       }
     },
     {
@@ -537,6 +662,65 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 85.0,
+        "live_caption_score": 94.4,
+        "finalization_score": 82.6,
+        "stability_score": 97.3,
+        "efficiency_score": 86.3,
+        "accuracy_score": 72.9,
+        "overall_score": 87.1,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.063,
+        "partial_jitter_ratio": 1.266,
+        "final_jitter_ratio": 1.049
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "faster-whisper-base",
+      "label": "Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "lane": "Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local CPU baseline.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "measured_at": "2026-06-10T02:16:51Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 573.3,
+        "p95_ms": 741.1,
+        "rtf_mean": 0.079
+      },
+      "streaming": {
+        "partial_mean_ms": 553.0,
+        "partial_p95_ms": 2451.5,
+        "final_mean_ms": 560.2,
+        "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 94.2,
+        "live_caption_score": 76.1,
+        "finalization_score": 92.8,
+        "stability_score": 71.7,
+        "efficiency_score": 94.9,
+        "accuracy_score": 72.9,
+        "overall_score": 85.1,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.293,
+        "partial_jitter_ratio": 4.433,
+        "final_jitter_ratio": 1.359
       }
     },
     {
@@ -568,6 +752,20 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 81.3,
+        "live_caption_score": 79.8,
+        "finalization_score": 78.2,
+        "stability_score": 97.4,
+        "efficiency_score": 83.6,
+        "accuracy_score": 72.9,
+        "overall_score": 82.1,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.111,
+        "partial_jitter_ratio": 1.175,
+        "final_jitter_ratio": 1.066
       }
     },
     {
@@ -599,6 +797,20 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 53.2,
+        "live_caption_score": 57.1,
+        "finalization_score": 58.2,
+        "stability_score": 85.9,
+        "efficiency_score": 69.3,
+        "accuracy_score": 72.9,
+        "overall_score": 63.0,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.716,
+        "partial_jitter_ratio": 1.731,
+        "final_jitter_ratio": 1.39
       }
     },
     {
@@ -630,6 +842,20 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
+      },
+      "derived": {
+        "latency_score": 12.8,
+        "live_caption_score": 5.3,
+        "finalization_score": 100.0,
+        "stability_score": 94.6,
+        "efficiency_score": 25.5,
+        "accuracy_score": 72.9,
+        "overall_score": 43.0,
+        "confidence_score": 40.0,
+        "sample_coverage_pct": 10.0,
+        "rest_jitter_ratio": 1.077,
+        "partial_jitter_ratio": 1.708,
+        "final_jitter_ratio": 1.0
       }
     }
   ]

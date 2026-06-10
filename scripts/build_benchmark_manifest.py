@@ -14,6 +14,26 @@ DEFAULT_TRACKS_PATH = DEFAULT_RESULTS_DIR / "tracks.json"
 STATUS_ORDER = {"validated": 0, "legacy": 1, "blocked": 2}
 
 
+def clamp(value: float, lower: float = 0.0, upper: float = 100.0) -> float:
+    return max(lower, min(upper, value))
+
+
+def invert_score(value: float | None, floor: float, ceiling: float) -> float | None:
+    if value is None:
+        return None
+    if ceiling <= floor:
+        return 100.0
+    normalized = (value - floor) / (ceiling - floor)
+    return round(clamp((1 - normalized) * 100), 1)
+
+
+def average_scores(*values: float | None) -> float | None:
+    present = [value for value in values if value is not None]
+    if not present:
+        return None
+    return round(sum(present) / len(present), 1)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build the benchmark site manifest")
     parser.add_argument(
@@ -185,6 +205,88 @@ def build_artifact_history_entry(path: Path, payload: dict[str, Any]) -> dict[st
     return entry
 
 
+def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
+    rest = entry["rest"]
+    streaming = entry["streaming"]
+    accuracy = entry["accuracy"]
+    target_sample_count = entry.get("target_sample_count") or 0
+    actual_sample_count = entry.get("sample_count") or 0
+
+    rest_jitter_ratio = None
+    if rest.get("mean_ms") and rest.get("p95_ms"):
+        rest_jitter_ratio = round(rest["p95_ms"] / rest["mean_ms"], 3)
+
+    partial_jitter_ratio = None
+    if streaming.get("partial_mean_ms") and streaming.get("partial_p95_ms"):
+        partial_jitter_ratio = round(streaming["partial_p95_ms"] / streaming["partial_mean_ms"], 3)
+
+    final_jitter_ratio = None
+    if streaming.get("final_mean_ms") and streaming.get("final_p95_ms"):
+        final_jitter_ratio = round(streaming["final_p95_ms"] / streaming["final_mean_ms"], 3)
+
+    sample_coverage_pct = None
+    if target_sample_count:
+        sample_coverage_pct = round(clamp((actual_sample_count / target_sample_count) * 100), 1)
+
+    latency_score = average_scores(
+        invert_score(rest.get("mean_ms"), 250, 6000),
+        invert_score(rest.get("p95_ms"), 350, 7000),
+    )
+    live_caption_score = average_scores(
+        invert_score(streaming.get("partial_mean_ms"), 100, 4000),
+        invert_score(streaming.get("partial_p95_ms"), 150, 6500),
+    )
+    finalization_score = average_scores(
+        invert_score(streaming.get("final_mean_ms"), 200, 5000),
+        invert_score(streaming.get("final_p95_ms"), 300, 7000),
+    )
+    stability_score = average_scores(
+        invert_score(rest_jitter_ratio, 1.0, 5.0),
+        invert_score(partial_jitter_ratio, 1.0, 6.0),
+        invert_score(final_jitter_ratio, 1.0, 5.0),
+    )
+    efficiency_score = invert_score(rest.get("rtf_mean"), 0.03, 1.0)
+    accuracy_score = invert_score(accuracy.get("word_error_rate_mean"), 0.0, 0.35)
+
+    status_confidence = {
+        "validated": 100.0,
+        "legacy": 70.0,
+        "blocked": 25.0,
+    }.get(entry.get("status"), 50.0)
+    confidence_score = average_scores(sample_coverage_pct, status_confidence)
+
+    weighted_scores = [
+        (latency_score, 0.28),
+        (live_caption_score, 0.2),
+        (finalization_score, 0.18),
+        (stability_score, 0.14),
+        (efficiency_score, 0.1),
+        (accuracy_score, 0.1),
+    ]
+    weighted_total = sum(value * weight for value, weight in weighted_scores if value is not None)
+    applied_weight = sum(weight for value, weight in weighted_scores if value is not None)
+    overall_score = round(weighted_total / applied_weight, 1) if applied_weight else None
+    if overall_score is not None and entry.get("status") == "legacy":
+        overall_score = round(overall_score * 0.94, 1)
+    if overall_score is not None and entry.get("status") == "blocked":
+        overall_score = round(overall_score * 0.55, 1)
+
+    return {
+        "latency_score": latency_score,
+        "live_caption_score": live_caption_score,
+        "finalization_score": finalization_score,
+        "stability_score": stability_score,
+        "efficiency_score": efficiency_score,
+        "accuracy_score": accuracy_score,
+        "overall_score": overall_score,
+        "confidence_score": confidence_score,
+        "sample_coverage_pct": sample_coverage_pct,
+        "rest_jitter_ratio": rest_jitter_ratio,
+        "partial_jitter_ratio": partial_jitter_ratio,
+        "final_jitter_ratio": final_jitter_ratio,
+    }
+
+
 def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str, Any]] | None) -> dict[str, Any]:
     entry = {
         "kind": "asr",
@@ -210,21 +312,21 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
         },
         "accuracy": {"word_error_rate_mean": None, "character_error_rate_mean": None},
     }
-    if artifact is None:
-        return entry
+    if artifact is not None:
+        _, path, payload = artifact
+        measured = build_asr_entry(path, payload)
+        entry.update(
+            {
+                "measured_at": measured["measured_at"],
+                "sample_count": measured["sample_count"],
+                "artifact_path": measured["artifact_path"],
+                "rest": measured["rest"],
+                "streaming": measured["streaming"],
+                "accuracy": measured["accuracy"],
+            }
+        )
 
-    _, path, payload = artifact
-    measured = build_asr_entry(path, payload)
-    entry.update(
-        {
-            "measured_at": measured["measured_at"],
-            "sample_count": measured["sample_count"],
-            "artifact_path": measured["artifact_path"],
-            "rest": measured["rest"],
-            "streaming": measured["streaming"],
-            "accuracy": measured["accuracy"],
-        }
-    )
+    entry["derived"] = derive_track_metrics(entry)
     return entry
 
 
@@ -270,6 +372,28 @@ def build_accuracy_highlight(entries: list[dict[str, Any]]) -> dict[str, Any] | 
     }
 
 
+def build_derived_highlight(label: str, metric: str, entries: list[dict[str, Any]]) -> dict[str, Any] | None:
+    candidates = [entry for entry in entries if entry["derived"].get(metric) is not None]
+    if not candidates:
+        return None
+    best = max(candidates, key=lambda item: item["derived"][metric])
+    return {
+        "label": label,
+        "slug": best["slug"],
+        "backend": best["backend"],
+        "model": best["model"],
+        "value": best["derived"][metric],
+        "artifact_path": best["artifact_path"],
+    }
+
+
+def build_metric_range(entries: list[dict[str, Any]], getter) -> dict[str, float] | None:
+    values = [getter(entry) for entry in entries if getter(entry) is not None]
+    if not values:
+        return None
+    return {"min": round(min(values), 3), "max": round(max(values), 3)}
+
+
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
     latest: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     artifact_history: list[dict[str, Any]] = []
@@ -289,6 +413,8 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
     tracks.sort(
         key=lambda item: (
             STATUS_ORDER.get(item["status"], 99),
+            item["derived"]["overall_score"] is None,
+            -(item["derived"]["overall_score"] or -1),
             item["rest"]["mean_ms"] is None,
             item["rest"]["mean_ms"] if item["rest"]["mean_ms"] is not None else float("inf"),
             item["label"],
@@ -309,9 +435,24 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
     highlight_entries = validated_entries or artifact_backed
     asr_entries = sorted(
         artifact_backed,
-        key=lambda item: (item["rest"]["mean_ms"] is None, item["rest"]["mean_ms"] or 0),
+        key=lambda item: (
+            item["derived"]["overall_score"] is None,
+            -(item["derived"]["overall_score"] or -1),
+            item["rest"]["mean_ms"] is None,
+            item["rest"]["mean_ms"] or float("inf"),
+        ),
     )
     latest_measured_at = max((entry["measured_at"] for entry in artifact_backed), default=None)
+
+    ranges = {
+        "rest_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["rest"]["mean_ms"]),
+        "partial_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["streaming"]["partial_mean_ms"]),
+        "final_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["streaming"]["final_mean_ms"]),
+        "rtf_mean": build_metric_range(artifact_backed, lambda entry: entry["rest"]["rtf_mean"]),
+        "wer": build_metric_range(artifact_backed, lambda entry: entry["accuracy"]["word_error_rate_mean"]),
+        "overall_score": build_metric_range(artifact_backed, lambda entry: entry["derived"]["overall_score"]),
+    }
+
     summary = {
         "asr_count": len(asr_entries),
         "tracked_count": len(tracks),
@@ -321,6 +462,9 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "blocked_count": sum(1 for entry in tracks if entry["status"] == "blocked"),
         "latest_measured_at": latest_measured_at,
         "sample_contract": catalog.get("sample_contract", {}),
+        "backend_count": len({entry["backend"] for entry in tracks}),
+        "lane_count": len({entry["lane"] for entry in tracks}),
+        "ranges": ranges,
         "highlights": {
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),
             "fastest_partial": build_highlight(
@@ -330,6 +474,10 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
                 "Fastest streaming final mean", ("streaming", "final_mean_ms"), highlight_entries
             ),
             "best_accuracy": build_accuracy_highlight(highlight_entries),
+            "best_overall": build_derived_highlight("Best overall benchmark balance", "overall_score", highlight_entries),
+            "best_live_caption": build_derived_highlight(
+                "Best live caption score", "live_caption_score", highlight_entries
+            ),
         },
     }
     return {

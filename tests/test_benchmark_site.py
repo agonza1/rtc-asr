@@ -133,6 +133,25 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
     assert runtimes == {"cpu / int8", "cpu / float16"}
 
 
+def test_manifest_exposes_derived_asr_scores() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+
+    qwen_mps = next(entry for entry in manifest["tracks"] if entry["slug"] == "qwen-mps")
+    derived = qwen_mps["derived"]
+
+    assert derived["overall_score"] is not None
+    assert derived["live_caption_score"] is not None
+    assert derived["confidence_score"] == 100.0
+    assert derived["sample_coverage_pct"] == 100.0
+
+    summary = manifest["summary"]
+    assert summary["backend_count"] >= 4
+    assert summary["lane_count"] >= 3
+    assert summary["ranges"]["overall_score"] is not None
+    assert summary["highlights"]["best_overall"] is not None
+    assert summary["highlights"]["best_live_caption"] is not None
+
+
 def test_docs_and_tracks_registry_stay_aligned() -> None:
     docs_text = DOCS_PATH.read_text(encoding="utf-8")
     tracks = load_tracks()["tracks"]
@@ -247,3 +266,21 @@ def test_manifest_check_succeeds_when_checked_in_file_matches_generated_output(t
     assert result.returncode == 0
     assert result.stdout == ""
     assert result.stderr == ""
+
+
+
+def test_homepage_highlights_advanced_asr_sections() -> None:
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert "Advanced ASR comparison matrix" in html
+    assert "What matters for low-latency ASR" in html
+    assert "Visible benchmark lanes" in html
+    assert "Best operator balance" in html
+    assert "entry.derived?.overall_score" in html
+
+
+def test_homepage_filters_blocked_tracks_from_visible_results() -> None:
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert 'track.artifact_path && track.status !== "blocked"' in html
+    assert "Tracked lanes without publishable artifacts stay out of the front-end comparison flow." in html
