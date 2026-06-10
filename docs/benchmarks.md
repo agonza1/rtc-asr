@@ -1,6 +1,6 @@
 # Low-Latency ASR Benchmarks
 
-The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/manifest.json`, which is built from two checked-in sources of truth:
+The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/manifest.json` and renders a public low-latency ASR dashboard with ranking, derived operator scores, and a homepage comparison flow limited to publishable artifacts. The manifest is built from two checked-in sources of truth:
 
 - benchmark artifacts under `docs/benchmark-results/*.json`
 - the tracked benchmark registry in `docs/benchmark-results/tracks.json`
