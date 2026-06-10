@@ -3,95 +3,466 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>rtc-asr Benchmarks</title>
+    <title>rtc-asr low-latency ASR benchmarks</title>
     <style>
       :root {
         color-scheme: light;
-        --bg: #f5f7f4;
-        --panel: #ffffff;
-        --text: #182019;
-        --muted: #667164;
-        --line: #d9dfd7;
-        --accent: #1f6f4a;
+        --paper: #f6efe3;
+        --paper-2: #fbf7ef;
+        --ink: #1b1916;
+        --muted: #6e655a;
+        --line: rgba(27, 25, 22, 0.14);
+        --panel: rgba(255, 252, 245, 0.78);
+        --panel-strong: #fffdf8;
+        --olive: #2d5a43;
+        --olive-soft: #d7e5dc;
+        --gold: #b9782e;
+        --rose: #8a4134;
+        --shadow: 0 24px 60px rgba(58, 41, 20, 0.12);
       }
       * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
       body {
         margin: 0;
-        font-family: "Iowan Old Style", "Palatino Linotype", serif;
-        background: linear-gradient(180deg, #eef4ee 0%, var(--bg) 30%, #f8f9f6 100%);
-        color: var(--text);
+        min-height: 100vh;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(45, 90, 67, 0.16), transparent 28%),
+          radial-gradient(circle at top right, rgba(185, 120, 46, 0.16), transparent 32%),
+          linear-gradient(180deg, #f0e7d7 0%, var(--paper) 38%, var(--paper-2) 100%);
       }
-      main { max-width: 1100px; margin: 0 auto; padding: 48px 20px 64px; }
-      .hero { margin-bottom: 28px; }
-      .eyebrow {
-        margin: 0 0 10px;
-        color: var(--accent);
-        font: 600 13px/1.2 ui-monospace, SFMono-Regular, monospace;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 28px 28px;
+        opacity: 0.16;
+        mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
       }
-      h1 { margin: 0; font-size: clamp(2.3rem, 6vw, 4.5rem); line-height: 0.95; }
-      .lede { max-width: 720px; margin: 18px 0 0; font-size: 1.05rem; line-height: 1.6; color: var(--muted); }
-      .meta { margin: 18px 0 0; color: var(--muted); font: 500 14px/1.4 ui-monospace, SFMono-Regular, monospace; }
+      a { color: inherit; }
+      main {
+        position: relative;
+        max-width: 1220px;
+        margin: 0 auto;
+        padding: 32px 18px 72px;
+      }
+      section { margin-top: 22px; }
       .panel {
         background: var(--panel);
         border: 1px solid var(--line);
-        border-radius: 20px;
-        box-shadow: 0 14px 40px rgba(24, 32, 25, 0.06);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
       }
-      .table-wrap { overflow-x: auto; margin-bottom: 26px; }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-      th {
+      .hero {
+        overflow: hidden;
+        padding: 28px;
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+        gap: 24px;
+        align-items: end;
+      }
+      .eyebrow,
+      .section-kicker,
+      .pill,
+      .status,
+      .artifact-meta,
+      .tiny {
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+      }
+      .eyebrow {
+        display: inline-flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(45, 90, 67, 0.11);
+        color: var(--olive);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1,
+      h2,
+      h3 { margin: 0; font-family: "Iowan Old Style", "Book Antiqua", serif; }
+      h1 {
+        margin-top: 18px;
+        font-size: clamp(3rem, 8vw, 5.8rem);
+        line-height: 0.92;
+        letter-spacing: -0.05em;
+        max-width: 9ch;
+      }
+      .lede {
+        max-width: 690px;
+        margin: 18px 0 0;
+        font-size: 1.08rem;
+        line-height: 1.7;
         color: var(--muted);
-        font: 600 12px/1.2 ui-monospace, SFMono-Regular, monospace;
+      }
+      .meta-line {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .hero-stats {
+        display: grid;
+        gap: 12px;
+      }
+      .hero-card {
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.56);
+        border: 1px solid rgba(27, 25, 22, 0.1);
+        border-radius: 22px;
+      }
+      .hero-card strong,
+      .headline-value {
+        display: block;
+        font-family: "Iowan Old Style", "Book Antiqua", serif;
+        font-size: clamp(1.5rem, 4vw, 2.4rem);
+        line-height: 1;
+      }
+      .hero-card p,
+      .subcopy,
+      .track-note,
+      .artifact-list li,
+      .contract-list li,
+      .leader-sub {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      .hero-strip,
+      .highlights,
+      .track-grid,
+      .artifact-list,
+      .contract-grid {
+        display: grid;
+        gap: 16px;
+      }
+      .hero-strip,
+      .highlights,
+      .contract-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .strip-card,
+      .highlight-card,
+      .track-card,
+      .contract-card {
+        padding: 18px;
+      }
+      .section-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        align-items: end;
+        margin-bottom: 14px;
+      }
+      .section-kicker {
+        margin-bottom: 7px;
+        color: var(--olive);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.62);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .pill strong {
+        color: var(--ink);
+        font-size: 13px;
+      }
+      .highlights { margin-bottom: 16px; }
+      .highlight-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.44));
+        border: 1px solid rgba(27, 25, 22, 0.08);
+        border-radius: 22px;
+      }
+      .highlight-card h3 { font-size: 1.2rem; }
+      .highlight-card .headline-value { margin-top: 14px; }
+      .leaderboard {
+        overflow: hidden;
+        padding: 18px;
+      }
+      .leaderboard table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .leaderboard th,
+      .leaderboard td {
+        padding: 14px 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      .leaderboard th {
+        color: var(--muted);
+        font-size: 12px;
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .leaderboard tbody tr:last-child td { border-bottom: 0; }
+      .leader-name strong { display: block; }
+      .leader-name span { color: var(--muted); font-size: 0.94rem; }
+      .metric-cell strong { display: block; }
+      .metric-bar {
+        width: min(180px, 100%);
+        height: 8px;
+        margin-top: 10px;
+        border-radius: 999px;
+        background: rgba(45, 90, 67, 0.11);
+        overflow: hidden;
+      }
+      .metric-bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--olive), #8cae8d);
+      }
+      .track-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      .track-card {
+        display: grid;
+        gap: 14px;
+        background: rgba(255, 255, 255, 0.56);
+        border: 1px solid rgba(27, 25, 22, 0.1);
+        border-radius: 24px;
+      }
+      .track-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: start;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        padding: 7px 10px;
+        border-radius: 999px;
+        font-size: 12px;
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
-      tbody tr:last-child td { border-bottom: 0; }
-      .metric { font-weight: 700; white-space: nowrap; }
-      .subtle { color: var(--muted); font-size: 0.92rem; }
-      .artifact { color: var(--accent); text-decoration: none; }
-      .artifact:hover { text-decoration: underline; }
-      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-      .card { padding: 18px; }
-      .card h2 { margin: 0 0 8px; font-size: 1.15rem; }
-      .stats { display: grid; gap: 8px; margin-top: 14px; }
-      .stats div { display: flex; justify-content: space-between; gap: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
-      .empty, .error { padding: 28px; }
-      .error { color: #8b2e2e; }
-      @media (max-width: 700px) {
-        main { padding-inline: 14px; }
-        th, td { padding: 12px; }
+      .status-validated {
+        background: rgba(45, 90, 67, 0.12);
+        color: var(--olive);
+      }
+      .status-legacy {
+        background: rgba(185, 120, 46, 0.15);
+        color: var(--gold);
+      }
+      .status-blocked {
+        background: rgba(138, 65, 52, 0.14);
+        color: var(--rose);
+      }
+      .artifact-meta {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+      .metrics {
+        display: grid;
+        gap: 10px;
+      }
+      .metric-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(27, 25, 22, 0.08);
+      }
+      .metric-row span { color: var(--muted); }
+      .track-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .track-actions a,
+      .track-actions code {
+        display: inline-flex;
+        align-items: center;
+        min-height: 38px;
+        padding: 9px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.7);
+        text-decoration: none;
+      }
+      .track-actions a:hover { background: rgba(45, 90, 67, 0.08); }
+      .artifact-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      }
+      .artifact-list li {
+        padding: 18px;
+        background: rgba(255,255,255,0.52);
+        border: 1px solid rgba(27, 25, 22, 0.08);
+        border-radius: 20px;
+      }
+      .artifact-list strong { color: var(--ink); }
+      .artifact-list a { color: var(--olive); }
+      .contract-card {
+        background: rgba(255,255,255,0.52);
+        border: 1px solid rgba(27,25,22,0.08);
+        border-radius: 22px;
+      }
+      .contract-list {
+        margin: 14px 0 0;
+        padding-left: 18px;
+      }
+      .empty,
+      .error {
+        padding: 22px;
+        border-radius: 20px;
+      }
+      .error {
+        background: rgba(138, 65, 52, 0.08);
+        color: var(--rose);
+      }
+      footer {
+        margin-top: 24px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      @media (max-width: 920px) {
+        .hero-grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 720px) {
+        main { padding-inline: 12px; }
+        .hero,
+        .leaderboard,
+        .strip-card,
+        .highlight-card,
+        .track-card,
+        .contract-card { padding: 16px; }
+        h1 { max-width: 11ch; }
+        .leaderboard { padding-inline: 0; }
+        .leaderboard table,
+        .leaderboard thead,
+        .leaderboard tbody,
+        .leaderboard th,
+        .leaderboard td,
+        .leaderboard tr { display: block; }
+        .leaderboard thead { display: none; }
+        .leaderboard tr {
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--line);
+        }
+        .leaderboard tbody tr:last-child { border-bottom: 0; }
+        .leaderboard td {
+          padding: 10px 0 0;
+          border: 0;
+        }
+        .leaderboard td::before {
+          content: attr(data-label);
+          display: block;
+          margin-bottom: 4px;
+          color: var(--muted);
+          font-size: 12px;
+          font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
       }
     </style>
   </head>
   <body>
     <main>
-      <section class="hero">
-        <p class="eyebrow">rtc-asr benchmarks</p>
-        <h1>Clean benchmark snapshots, only published artifacts.</h1>
-        <p class="lede">This page only shows checked-in benchmark artifacts that can actually be opened and reviewed. If there is no committed result file yet, it stays off the page.</p>
-        <p class="meta" id="generated-at">Loading latest manifest...</p>
+      <section class="hero panel">
+        <div class="hero-grid">
+          <div>
+            <div class="eyebrow">rtc-asr benchmark deck</div>
+            <h1>Low-latency ASR, measured in public.</h1>
+            <p class="lede">This GitHub Pages snapshot only reflects checked-in ASR benchmark artifacts and the tracked benchmark lanes behind them. Validated runs stay visible, legacy holdovers stay labeled, and blocked backends keep their exact blocker on the page.</p>
+            <p class="meta-line" id="generated-at">Loading benchmark manifest...</p>
+          </div>
+          <div class="hero-stats" id="hero-stats"></div>
+        </div>
       </section>
 
-      <section class="panel table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Backend</th>
-              <th>Model</th>
-              <th>Runtime</th>
-              <th>REST</th>
-              <th>Streaming</th>
-              <th>Accuracy</th>
-              <th>Artifact</th>
-            </tr>
-          </thead>
-          <tbody id="asr-body"></tbody>
-        </table>
+      <section>
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Coverage</div>
+            <h2>Tracked low-latency ASR lanes</h2>
+          </div>
+          <div class="pill-row" id="coverage-pills"></div>
+        </div>
+        <div class="hero-strip" id="coverage-strip"></div>
       </section>
 
+      <section>
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Leaderboard</div>
+            <h2>Current artifact-backed comparison</h2>
+          </div>
+          <p class="subcopy">Sorted by REST mean latency from the current manifest, not by marketing preference.</p>
+        </div>
+        <div class="highlights" id="highlights"></div>
+        <div class="leaderboard panel">
+          <div id="leaderboard-wrap"></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Track Notes</div>
+            <h2>Validated, legacy, and blocked benchmark tracks</h2>
+          </div>
+          <p class="subcopy">The registry lives in <a href="benchmark-results/tracks.json">`benchmark-results/tracks.json`</a> and is merged with committed artifacts when the manifest is built.</p>
+        </div>
+        <div class="track-grid" id="track-grid"></div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Method</div>
+            <h2>Benchmark contract</h2>
+          </div>
+          <p class="subcopy">The benchmark harness defaults to a 10-sample contract, then writes versioned JSON under <code>docs/benchmark-results/</code>.</p>
+        </div>
+        <div class="contract-grid" id="contract-grid"></div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Archive</div>
+            <h2>Checked-in artifact log</h2>
+          </div>
+          <p class="subcopy">Use the JSON artifacts for raw numbers and the <a href="benchmarks.md">benchmarks notes</a> for reproduction details.</p>
+        </div>
+        <ul class="artifact-list" id="artifact-list"></ul>
+      </section>
+
+      <footer>
+        Built from <code>make benchmark-site</code> for the rtc-asr GitHub Pages homepage.
+      </footer>
     </main>
 
     <script>
@@ -101,10 +472,11 @@
       function formatRatio(value) {
         return value == null ? "n/a" : value.toFixed(3);
       }
-      function formatAccuracy(value) {
+      function formatWer(value) {
         return value == null ? "n/a" : value.toFixed(3);
       }
       function formatDate(value) {
+        if (!value) return "n/a";
         return new Date(value).toLocaleString(undefined, {
           year: "numeric",
           month: "short",
@@ -113,37 +485,243 @@
           minute: "2-digit"
         });
       }
-      function renderAsrRow(entry) {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td><strong>${entry.backend}</strong><div class="subtle">${formatDate(entry.measured_at)}</div></td>
-          <td>${entry.model}<div class="subtle">${entry.sample_count} samples</div></td>
-          <td>${entry.runtime}</td>
-          <td><span class="metric">${formatMs(entry.rest.mean_ms)}</span><div class="subtle">P95 ${formatMs(entry.rest.p95_ms)} · RTF ${formatRatio(entry.rest.rtf_mean)}</div></td>
-          <td><span class="metric">${formatMs(entry.streaming.partial_mean_ms)}</span><div class="subtle">Partial P95 ${formatMs(entry.streaming.partial_p95_ms)} · Final ${formatMs(entry.streaming.final_mean_ms)}</div></td>
-          <td><span class="metric">WER ${formatAccuracy(entry.accuracy.word_error_rate_mean)}</span><div class="subtle">CER ${formatAccuracy(entry.accuracy.character_error_rate_mean)}</div></td>
-          <td><a class="artifact" href="${entry.artifact_path}">open JSON</a></td>
+      function statusLabel(status) {
+        if (status === "validated") return "validated";
+        if (status === "legacy") return "legacy";
+        return "blocked";
+      }
+      function statusClass(status) {
+        return `status status-${status}`;
+      }
+      function highlightCards(summary) {
+        const cards = [];
+        const highlights = summary.highlights || {};
+        if (highlights.fastest_rest) {
+          cards.push({
+            title: "Fastest REST mean",
+            value: formatMs(highlights.fastest_rest.value),
+            detail: `${highlights.fastest_rest.backend} · ${highlights.fastest_rest.model}`
+          });
+        }
+        if (highlights.fastest_partial) {
+          cards.push({
+            title: "Fastest partial mean",
+            value: formatMs(highlights.fastest_partial.value),
+            detail: `${highlights.fastest_partial.backend} · ${highlights.fastest_partial.model}`
+          });
+        }
+        if (highlights.fastest_final) {
+          cards.push({
+            title: "Fastest final mean",
+            value: formatMs(highlights.fastest_final.value),
+            detail: `${highlights.fastest_final.backend} · ${highlights.fastest_final.model}`
+          });
+        }
+        if (highlights.best_accuracy) {
+          cards.push({
+            title: "Lowest normalized WER",
+            value: formatWer(highlights.best_accuracy.value),
+            detail: `${highlights.best_accuracy.backend} · ${highlights.best_accuracy.model}`
+          });
+        }
+        return cards;
+      }
+      function renderHeroStats(summary) {
+        const target = document.getElementById("hero-stats");
+        const contract = summary.sample_contract || {};
+        const cards = [
+          {
+            value: String(summary.tracked_count || 0),
+            title: "Tracked benchmark lanes",
+            detail: `${summary.validated_count || 0} validated, ${summary.legacy_count || 0} legacy, ${summary.blocked_count || 0} blocked`
+          },
+          {
+            value: String(summary.asr_count || 0),
+            title: "Current artifact-backed tracks",
+            detail: `${summary.artifact_file_count || 0} checked-in JSON artifacts in the log`
+          },
+          {
+            value: contract.default_sample_count ? `${contract.default_sample_count} samples` : "n/a",
+            title: "Default benchmark contract",
+            detail: `${contract.rest_runs_per_sample || "?"} REST runs per sample · ${contract.chunk_ms || "?"} ms streaming chunks`
+          }
+        ];
+        target.innerHTML = cards.map((card) => `
+          <article class="hero-card">
+            <strong>${card.value}</strong>
+            <div>${card.title}</div>
+            <p>${card.detail}</p>
+          </article>
+        `).join("");
+      }
+      function renderCoverage(summary) {
+        const pills = document.getElementById("coverage-pills");
+        pills.innerHTML = `
+          <div class="pill"><strong>${summary.validated_count || 0}</strong> validated</div>
+          <div class="pill"><strong>${summary.legacy_count || 0}</strong> legacy</div>
+          <div class="pill"><strong>${summary.blocked_count || 0}</strong> blocked</div>
+          <div class="pill"><strong>${summary.latest_measured_at ? formatDate(summary.latest_measured_at) : "n/a"}</strong> latest artifact</div>
         `;
-        return row;
+        const strip = document.getElementById("coverage-strip");
+        strip.innerHTML = `
+          <article class="strip-card panel">
+            <div class="section-kicker">Validated</div>
+            <div class="headline-value">${summary.validated_count || 0}</div>
+            <p class="leader-sub">These lanes have committed JSON artifacts and current status notes.</p>
+          </article>
+          <article class="strip-card panel">
+            <div class="section-kicker">Legacy</div>
+            <div class="headline-value">${summary.legacy_count || 0}</div>
+            <p class="leader-sub">Artifact exists, but it does not yet meet the current 10-sample target or needs a refresh.</p>
+          </article>
+          <article class="strip-card panel">
+            <div class="section-kicker">Blocked</div>
+            <div class="headline-value">${summary.blocked_count || 0}</div>
+            <p class="leader-sub">Blocked lanes keep the real access or runtime issue visible until a valid artifact lands.</p>
+          </article>
+        `;
+      }
+      function renderHighlights(summary) {
+        const target = document.getElementById("highlights");
+        const cards = highlightCards(summary);
+        target.innerHTML = cards.map((card) => `
+          <article class="highlight-card">
+            <div class="section-kicker">${card.title}</div>
+            <div class="headline-value">${card.value}</div>
+            <p class="leader-sub">${card.detail}</p>
+          </article>
+        `).join("");
+      }
+      function renderLeaderboard(entries) {
+        const wrap = document.getElementById("leaderboard-wrap");
+        if (!entries.length) {
+          wrap.innerHTML = '<div class="empty">No benchmark artifacts are published yet.</div>';
+          return;
+        }
+        const maxRest = Math.max(...entries.map((entry) => entry.rest.mean_ms || 0), 1);
+        const rows = entries.map((entry) => {
+          const width = Math.max(6, ((entry.rest.mean_ms || 0) / maxRest) * 100);
+          return `
+            <tr>
+              <td data-label="Track" class="leader-name">
+                <strong>${entry.label}</strong>
+                <span>${entry.backend} · ${entry.model}</span>
+              </td>
+              <td data-label="Status"><span class="${statusClass(entry.status)}">${statusLabel(entry.status)}</span></td>
+              <td data-label="REST" class="metric-cell">
+                <strong>${formatMs(entry.rest.mean_ms)}</strong>
+                <span class="tiny">P95 ${formatMs(entry.rest.p95_ms)} · RTF ${formatRatio(entry.rest.rtf_mean)}</span>
+                <div class="metric-bar"><span style="width:${width}%"></span></div>
+              </td>
+              <td data-label="Streaming">
+                <strong>${formatMs(entry.streaming.partial_mean_ms)}</strong>
+                <span class="tiny">Partial P95 ${formatMs(entry.streaming.partial_p95_ms)} · Final ${formatMs(entry.streaming.final_mean_ms)}</span>
+              </td>
+              <td data-label="Accuracy">
+                <strong>WER ${formatWer(entry.accuracy.word_error_rate_mean)}</strong>
+                <span class="tiny">CER ${formatWer(entry.accuracy.character_error_rate_mean)}</span>
+              </td>
+              <td data-label="Artifact"><a href="${entry.artifact_path}">open JSON</a></td>
+            </tr>
+          `;
+        }).join("");
+        wrap.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Track</th>
+                <th>Status</th>
+                <th>REST</th>
+                <th>Streaming</th>
+                <th>Accuracy</th>
+                <th>Artifact</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
+      function renderTracks(tracks) {
+        const target = document.getElementById("track-grid");
+        target.innerHTML = tracks.map((track) => `
+          <article class="track-card">
+            <div class="track-head">
+              <div>
+                <h3>${track.label}</h3>
+                <p class="leader-sub">${track.backend} · ${track.model}</p>
+              </div>
+              <span class="${statusClass(track.status)}">${statusLabel(track.status)}</span>
+            </div>
+            <div class="artifact-meta">${track.lane} · ${track.runtime} · target ${track.target_sample_count} samples</div>
+            <p class="track-note">${track.status_detail}</p>
+            <div class="metrics">
+              <div class="metric-row"><span>Measured</span><strong>${formatDate(track.measured_at)}</strong></div>
+              <div class="metric-row"><span>REST mean</span><strong>${formatMs(track.rest.mean_ms)}</strong></div>
+              <div class="metric-row"><span>Partial mean</span><strong>${formatMs(track.streaming.partial_mean_ms)}</strong></div>
+              <div class="metric-row"><span>Final mean</span><strong>${formatMs(track.streaming.final_mean_ms)}</strong></div>
+              <div class="metric-row"><span>WER</span><strong>${formatWer(track.accuracy.word_error_rate_mean)}</strong></div>
+            </div>
+            <div class="track-actions">
+              ${track.artifact_path ? `<a href="${track.artifact_path}">Open artifact</a>` : ""}
+              <code>${track.run_command}</code>
+            </div>
+          </article>
+        `).join("");
+      }
+      function renderContract(summary) {
+        const contract = summary.sample_contract || {};
+        const target = document.getElementById("contract-grid");
+        target.innerHTML = `
+          <article class="contract-card">
+            <div class="section-kicker">Harness defaults</div>
+            <h3>Artifact contract</h3>
+            <ul class="contract-list">
+              <li>${contract.default_sample_count || "n/a"} samples per committed benchmark lane.</li>
+              <li>${contract.rest_runs_per_sample || "n/a"} REST runs inside each sample.</li>
+              <li>${contract.chunk_ms || "n/a"} ms websocket chunks and ${contract.partial_window_seconds || "n/a"} s partial window.</li>
+            </ul>
+          </article>
+          <article class="contract-card">
+            <div class="section-kicker">Publishing rule</div>
+            <h3>What makes the page</h3>
+            <ul class="contract-list">
+              <li>Only checked-in JSON artifacts show measured latencies.</li>
+              <li>Legacy and blocked tracks stay visible with exact status detail.</li>
+              <li>The markdown notes and homepage both point back to the same tracked lanes and artifact files.</li>
+            </ul>
+          </article>
+        `;
+      }
+      function renderArtifacts(artifacts) {
+        const target = document.getElementById("artifact-list");
+        target.innerHTML = artifacts.map((artifact) => `
+          <li>
+            <strong>${artifact.backend}</strong><br>
+            ${artifact.model}<br>
+            <span class="artifact-meta">${formatDate(artifact.measured_at)} · ${artifact.sample_count} samples</span>
+            <p><a href="${artifact.artifact_path}">${artifact.artifact_path}</a></p>
+          </li>
+        `).join("");
       }
       async function main() {
         const meta = document.getElementById("generated-at");
-        const asrBody = document.getElementById("asr-body");
         try {
           const response = await fetch("benchmark-results/manifest.json", { cache: "no-store" });
           if (!response.ok) {
             throw new Error(`Manifest request failed: ${response.status}`);
           }
           const manifest = await response.json();
-          meta.textContent = `Published ${formatDate(manifest.generated_at)} · ${manifest.summary.asr_count} ASR snapshots`;
-          if (manifest.asr_benchmarks.length === 0) {
-            asrBody.innerHTML = '<tr><td colspan="7" class="empty">No benchmark artifacts are published yet.</td></tr>';
-          } else {
-            manifest.asr_benchmarks.forEach((entry) => asrBody.appendChild(renderAsrRow(entry)));
-          }
+          meta.textContent = `Published ${formatDate(manifest.generated_at)} · ${manifest.summary.asr_count} current artifact-backed tracks · ${manifest.summary.tracked_count} tracked benchmark lanes.`;
+          renderHeroStats(manifest.summary);
+          renderCoverage(manifest.summary);
+          renderHighlights(manifest.summary);
+          renderLeaderboard(manifest.asr_benchmarks || []);
+          renderTracks(manifest.tracks || []);
+          renderContract(manifest.summary);
+          renderArtifacts(manifest.artifacts || []);
         } catch (error) {
           meta.textContent = "Benchmark manifest unavailable.";
-          asrBody.innerHTML = `<tr><td colspan="7" class="error">${error.message}</td></tr>`;
+          document.getElementById("leaderboard-wrap").innerHTML = `<div class="error">${error.message}</div>`;
         }
       }
       main();

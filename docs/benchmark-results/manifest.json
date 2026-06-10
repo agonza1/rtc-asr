@@ -1,9 +1,243 @@
 {
-  "generated_at": "2026-06-10T16:42:11Z",
+  "generated_at": "2026-06-10T17:20:35Z",
   "summary": {
-    "asr_count": 5
+    "asr_count": 5,
+    "tracked_count": 6,
+    "artifact_file_count": 6,
+    "validated_count": 4,
+    "legacy_count": 1,
+    "blocked_count": 1,
+    "latest_measured_at": "2026-06-10T03:11:39Z",
+    "sample_contract": {
+      "default_sample_count": 10,
+      "rest_runs_per_sample": 5,
+      "chunk_ms": 250,
+      "partial_window_seconds": 2.0
+    },
+    "highlights": {
+      "fastest_rest": {
+        "label": "Fastest REST mean",
+        "slug": "parakeet-nemo-compose",
+        "backend": "parakeet-nemo",
+        "model": "nvidia/parakeet-tdt_ctc-110m",
+        "value": 331.4,
+        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+      },
+      "fastest_partial": {
+        "label": "Fastest streaming partial mean",
+        "slug": "parakeet-nemo-compose",
+        "backend": "parakeet-nemo",
+        "model": "nvidia/parakeet-tdt_ctc-110m",
+        "value": 148.5,
+        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+      },
+      "fastest_final": {
+        "label": "Fastest streaming final mean",
+        "slug": "parakeet-nemo-compose",
+        "backend": "parakeet-nemo",
+        "model": "nvidia/parakeet-tdt_ctc-110m",
+        "value": 379,
+        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+      },
+      "best_accuracy": {
+        "label": "Lowest normalized WER",
+        "slug": "faster-whisper-base",
+        "backend": "faster-whisper",
+        "model": "base.en",
+        "value": 0.095,
+        "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json"
+      }
+    }
   },
-  "asr_benchmarks": [
+  "tracks": [
+    {
+      "kind": "asr",
+      "slug": "parakeet-nemo-compose",
+      "label": "Parakeet 110M NeMo",
+      "backend": "parakeet-nemo",
+      "model": "nvidia/parakeet-tdt_ctc-110m",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "validated",
+      "status_detail": "Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09",
+      "measured_at": "2026-06-10T03:11:39Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "rest": {
+        "mean_ms": 331.4,
+        "p95_ms": 511.5,
+        "rtf_mean": 0.046
+      },
+      "streaming": {
+        "partial_mean_ms": 148.5,
+        "partial_p95_ms": 245.8,
+        "final_mean_ms": 379,
+        "final_p95_ms": 633.5
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.19,
+        "character_error_rate_mean": 0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "faster-whisper-base",
+      "label": "Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "lane": "Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local CPU baseline.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "measured_at": "2026-06-10T02:16:51Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 573.3,
+        "p95_ms": 741.1,
+        "rtf_mean": 0.079
+      },
+      "streaming": {
+        "partial_mean_ms": 553.0,
+        "partial_p95_ms": 2451.5,
+        "final_mean_ms": 560.2,
+        "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "faster-whisper-small",
+      "label": "Faster-Whisper Small",
+      "backend": "faster-whisper",
+      "model": "small.en",
+      "lane": "Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local CPU baseline using the default service model.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-small",
+      "measured_at": "2026-06-10T02:23:49Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 1378.3,
+        "p95_ms": 1531.1,
+        "rtf_mean": 0.189
+      },
+      "streaming": {
+        "partial_mean_ms": 1023.2,
+        "partial_p95_ms": 1202.4,
+        "final_mean_ms": 1420.6,
+        "final_p95_ms": 1514.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "parakeet-compose",
+      "label": "Parakeet Compose",
+      "backend": "parakeet",
+      "model": "nvidia/parakeet-tdt-0.6b-v3",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "validated",
+      "status_detail": "Validated 10-sample Compose CPU artifact.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet",
+      "measured_at": "2026-06-10T01:41:11Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "rest": {
+        "mean_ms": 2388.3,
+        "p95_ms": 4098.1,
+        "rtf_mean": 0.328
+      },
+      "streaming": {
+        "partial_mean_ms": 1715.1,
+        "partial_p95_ms": 2968.7,
+        "final_mean_ms": 2215.8,
+        "final_p95_ms": 3080.4
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "qwen-compose",
+      "label": "Qwen Compose",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "legacy",
+      "status_detail": "Single-sample legacy artifact remains published because the 2026-06-10 refresh restarted during first generation and REST warmup failed with httpx.ReadError.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-qwen",
+      "measured_at": "2026-06-08T16:30:59Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
+      "rest": {
+        "mean_ms": 5482.2,
+        "p95_ms": 5904.4,
+        "rtf_mean": 0.753
+      },
+      "streaming": {
+        "partial_mean_ms": 3696.1,
+        "partial_p95_ms": 6314.4,
+        "final_mean_ms": 0.9,
+        "final_p95_ms": 0.9
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "ultravox-compose",
+      "label": "Ultravox Compose",
+      "backend": "ultravox",
+      "model": "fixie-ai/ultravox-v0_6-llama-3_1-8b",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "blocked",
+      "status_detail": "Blocked before validation because the default model loads gated meta-llama/Llama-3.1-8B-Instruct weights and Hugging Face returned 403 on 2026-06-10.",
+      "target_sample_count": 10,
+      "run_command": "HF_TOKEN=... make benchmark-compose-ultravox",
+      "measured_at": null,
+      "sample_count": null,
+      "artifact_path": null,
+      "rest": {
+        "mean_ms": null,
+        "p95_ms": null,
+        "rtf_mean": null
+      },
+      "streaming": {
+        "partial_mean_ms": null,
+        "partial_p95_ms": null,
+        "final_mean_ms": null,
+        "final_p95_ms": null
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      }
+    }
+  ],
+  "artifacts": [
     {
       "kind": "asr",
       "backend": "parakeet-nemo",
@@ -26,31 +260,8 @@
       "accuracy": {
         "word_error_rate_mean": 0.19,
         "character_error_rate_mean": 0
-      }
-    },
-    {
-      "kind": "asr",
-      "backend": "faster-whisper",
-      "model": "base.en",
-      "runtime": "cpu / int8",
-      "measured_at": "2026-06-10T02:16:51Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
-      "rest": {
-        "mean_ms": 573.3,
-        "p95_ms": 741.1,
-        "rtf_mean": 0.079
       },
-      "streaming": {
-        "partial_mean_ms": 553.0,
-        "partial_p95_ms": 2451.5,
-        "final_mean_ms": 560.2,
-        "final_p95_ms": 761.2
-      },
-      "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
-      }
+      "label": "nvidia/parakeet-tdt_ctc-110m"
     },
     {
       "kind": "asr",
@@ -74,7 +285,33 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
-      }
+      },
+      "label": "small.en"
+    },
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-10T02:16:51Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 573.3,
+        "p95_ms": 741.1,
+        "rtf_mean": 0.079
+      },
+      "streaming": {
+        "partial_mean_ms": 553.0,
+        "partial_p95_ms": 2451.5,
+        "final_mean_ms": 560.2,
+        "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "base.en"
     },
     {
       "kind": "asr",
@@ -98,13 +335,197 @@
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
-      }
+      },
+      "label": "nvidia/parakeet-tdt-0.6b-v3"
     },
     {
       "kind": "asr",
       "backend": "qwen-asr",
       "model": "Qwen/Qwen3-ASR-0.6B",
       "runtime": "cpu / float32",
+      "measured_at": "2026-06-08T16:30:59Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
+      "rest": {
+        "mean_ms": 5482.2,
+        "p95_ms": 5904.4,
+        "rtf_mean": 0.753
+      },
+      "streaming": {
+        "partial_mean_ms": 3696.1,
+        "partial_p95_ms": 6314.4,
+        "final_mean_ms": 0.9,
+        "final_p95_ms": 0.9
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "Qwen/Qwen3-ASR-0.6B"
+    },
+    {
+      "kind": "asr",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "runtime": "cpu / float32",
+      "measured_at": "2026-06-07T23:08:10Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-07.json",
+      "rest": {
+        "mean_ms": 1691.4,
+        "p95_ms": 1692.5,
+        "rtf_mean": 0.654
+      },
+      "streaming": {
+        "partial_mean_ms": 1349.7,
+        "partial_p95_ms": 1863.0,
+        "final_mean_ms": 0.7,
+        "final_p95_ms": 0.7
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.333,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "Qwen/Qwen3-ASR-0.6B"
+    }
+  ],
+  "asr_benchmarks": [
+    {
+      "kind": "asr",
+      "slug": "parakeet-nemo-compose",
+      "label": "Parakeet 110M NeMo",
+      "backend": "parakeet-nemo",
+      "model": "nvidia/parakeet-tdt_ctc-110m",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "validated",
+      "status_detail": "Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09",
+      "measured_at": "2026-06-10T03:11:39Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "rest": {
+        "mean_ms": 331.4,
+        "p95_ms": 511.5,
+        "rtf_mean": 0.046
+      },
+      "streaming": {
+        "partial_mean_ms": 148.5,
+        "partial_p95_ms": 245.8,
+        "final_mean_ms": 379,
+        "final_p95_ms": 633.5
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.19,
+        "character_error_rate_mean": 0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "faster-whisper-base",
+      "label": "Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "lane": "Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local CPU baseline.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "measured_at": "2026-06-10T02:16:51Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 573.3,
+        "p95_ms": 741.1,
+        "rtf_mean": 0.079
+      },
+      "streaming": {
+        "partial_mean_ms": 553.0,
+        "partial_p95_ms": 2451.5,
+        "final_mean_ms": 560.2,
+        "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "faster-whisper-small",
+      "label": "Faster-Whisper Small",
+      "backend": "faster-whisper",
+      "model": "small.en",
+      "lane": "Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local CPU baseline using the default service model.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-small",
+      "measured_at": "2026-06-10T02:23:49Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "rest": {
+        "mean_ms": 1378.3,
+        "p95_ms": 1531.1,
+        "rtf_mean": 0.189
+      },
+      "streaming": {
+        "partial_mean_ms": 1023.2,
+        "partial_p95_ms": 1202.4,
+        "final_mean_ms": 1420.6,
+        "final_p95_ms": 1514.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "parakeet-compose",
+      "label": "Parakeet Compose",
+      "backend": "parakeet",
+      "model": "nvidia/parakeet-tdt-0.6b-v3",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "validated",
+      "status_detail": "Validated 10-sample Compose CPU artifact.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet",
+      "measured_at": "2026-06-10T01:41:11Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "rest": {
+        "mean_ms": 2388.3,
+        "p95_ms": 4098.1,
+        "rtf_mean": 0.328
+      },
+      "streaming": {
+        "partial_mean_ms": 1715.1,
+        "partial_p95_ms": 2968.7,
+        "final_mean_ms": 2215.8,
+        "final_p95_ms": 3080.4
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "qwen-compose",
+      "label": "Qwen Compose",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "legacy",
+      "status_detail": "Single-sample legacy artifact remains published because the 2026-06-10 refresh restarted during first generation and REST warmup failed with httpx.ReadError.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-qwen",
       "measured_at": "2026-06-08T16:30:59Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
