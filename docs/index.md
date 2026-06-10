@@ -1,6 +1,6 @@
 # Documentation Index
 
-Welcome to the Realtime ASR Service documentation.
+`rtc-asr` is a modular transcription service for RTC and voice-agent workloads. These docs focus on how to run the service, integrate it over the websocket contract, and reproduce the current benchmark story.
 
 ## Quick Links
 
@@ -11,148 +11,60 @@ Welcome to the Realtime ASR Service documentation.
 - [Benchmarks](./benchmarks.md)
 - [Troubleshooting](./troubleshooting.md)
 
-## Documentation Structure
+## Recommended Reading Order
 
-```
-docs/
-├── index.md                    # This file
-├── api-reference.md           # API endpoints and examples
-├── benchmarks.md              # Performance benchmarks
-├── integrations/
-│   ├── pipecat-integration.md # Pipecat voice AI framework
-│   └── livekit-integration.md # LiveKit WebRTC SDK
-└── troubleshooting.md         # Common issues and solutions
-```
+- Start with the [README](../../README.md) for local setup and operator defaults.
+- Use the [API Reference](./api-reference.md) when you need exact request and event shapes.
+- Use the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide when wiring a client.
+- Use [Benchmarks](./benchmarks.md) when you need current latency artifacts or reproduction commands.
+- Use [Troubleshooting](./troubleshooting.md) for preload, backend runtime, and streaming failure modes.
 
-## Getting Started
+## Architecture Snapshot
 
-1. **Read the README** - Overview and quick start
-2. **Review API Reference** - Understand available endpoints
-3. **Choose Integration** - Pipecat or LiveKit
-4. **Check Benchmarks** - Review the latest measured latency baseline and reproduction steps
-5. **Follow Troubleshooting** - Common issues to watch for
+- FastAPI exposes health, readiness, model metadata, file/REST transcription, and websocket streaming routes.
+- `AudioProcessor` normalizes uploaded files and streaming PCM into the service target sample rate.
+- `build_transcriber()` selects a backend adapter from environment configuration.
+- Client helpers in `src/rtc_client.py` and `src/streaming.py` keep the websocket protocol reusable across RTC integrations.
 
-## Architecture Overview
+## Operator Checklist
 
-### Components
+Before shipping a backend configuration, verify:
 
-```
-┌─────────────────────────────────────────┐
-│         Realtime ASR Service              │
-├─────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────────┐ │
-│  │  Model Layer  │  │  Inference API   │ │
-│  │ Qwen3-ASR    │  │    FastAPI       │ │
-│  │   1.7B       │  │  (Uvicorn)      │ │
-│  └──────────────┘  └──────────────────┘ │
-│  ┌──────────────┐  ┌──────────────────┐ │
-│  │   WebSocket  │  │   Streaming      │ │
-│  │   Server     │  │   Handler        │ │
-│  └──────────────┘  └──────────────────┘ │
-└─────────────────────────────────────────┘
-```
+- `GET /health` returns the expected backend and model.
+- `GET /ready` returns `200` and `status=ready` for the target runtime.
+- `GET /api/models` advertises the expected streaming capabilities.
+- A websocket client can send `start`, binary audio frames, and `stop` and receive a final transcript.
+- Focused tests pass for the touched area.
 
-### Data Flow
-
-```
-Audio Input → Preprocessing → Model Inference → Postprocessing → Output
-   │              │                 │                  │
-   │            AudioProcessor    Qwen3-ASR        TextFrame
-   │              │                 │                  │
-   └──────────────┼─────────────────┼──────────────────┘
-                  │
-        Buffer Management
-```
-
-## Development Workflow
-
-1. **Clone Repository**
-   ```bash
-   git clone https://github.com/qwen/realtime-asr.git
-   cd realtime-asr
-   ```
-
-2. **Setup Environment**
-   ```bash
-   make setup
-   make dev
-   ```
-
-3. **Create Application**
-   ```python
-   # Using Pipecat
-   from pipecat.stt import STT
-   stt = STT(language="en", model="qwen")
-   ```
-
-4. **Deploy to Production**
-   ```bash
-   make build
-   docker compose up -d
-   ```
-
-## Production Checklist
-
-- [ ] Health check passes
-- [ ] Model loaded successfully
-- [ ] WebSocket endpoint responds
-- [ ] Error handling tested
-- [ ] Metrics endpoint accessible
-- [ ] Logging configured
-- [ ] Rate limiting enabled
-- [ ] CORS configured
-
-## Testing
-
-### Unit Tests
+## Common Entry Points
 
 ```bash
-make test
-```
-
-### Integration Tests
-
-```bash
-# Test API
+uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload
 curl http://localhost:8080/health
-
-# Test transcription
-curl -X POST http://localhost:8080/api/transcribe \
-  -H "Content-Type: application/json" \
-  -d '{"audio": "base64_data"}'
+curl -f http://localhost:8080/ready
+curl http://localhost:8080/api/models
+pytest tests/test_client.py tests/test_smoke.py -v
 ```
 
-### Performance Tests
+## Source Map
 
-```bash
-# Run benchmark
-make benchmark
-```
+- `src/main.py`: FastAPI routes and websocket session lifecycle
+- `src/model_loader.py`: backend adapters and capability metadata
+- `src/audio_processor.py`: decode and resample logic
+- `src/rtc_client.py`: async websocket helper for integrations
+- `src/streaming.py`: reusable higher-level streaming helpers
+- `docs/benchmarks.md`: checked-in latency artifacts and reproduction flow
 
-## Resources
+## External References
 
-### External Resources
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [Pipecat](https://pipecat.ai/)
+- [LiveKit Docs](https://docs.livekit.io/)
+- [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+- [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)
+- [NVIDIA Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)
+- [Ultravox](https://huggingface.co/fixie-ai/ultravox-v0_6-llama-3_1-8b)
 
-- [Qwen Model Documentation](https://github.com/QwenLM/Qwen3-ASR-1.7B)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Pipecat Documentation](https://pipecat.dev/)
-- [LiveKit Documentation](https://livekit.io/docs/)
-- [PyTorch Documentation](https://pytorch.org/docs/)
+## Repo
 
-### Community
-
-- GitHub: [qwen/realtime-asr](https://github.com/qwen/realtime-asr)
-- Issues: [Open an issue](https://github.com/qwen/realtime-asr/issues)
-- Slack: [qwen.ai/slack](https://qwen.ai/slack)
-
-## License
-
-MIT License
-
-## Contributing
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md)
-
-## Version
-
-v1.0.0 - Initial Release
+- GitHub: [agonza1/rtc-asr](https://github.com/agonza1/rtc-asr)
