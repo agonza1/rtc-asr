@@ -86,6 +86,20 @@ def test_summarize_latencies_reports_mean_and_p90() -> None:
     assert summary["rtf_mean"] == 0.01
 
 
+def test_parse_args_rejects_zero_or_negative_runtime_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--partial-interval-chunks", "0"])
+    with pytest.raises(SystemExit):
+        benchmark.parse_args()
+
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--rest-runs", "0"])
+    with pytest.raises(SystemExit):
+        benchmark.parse_args()
+
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--request-retry-delay", "-0.5"])
+    with pytest.raises(SystemExit):
+        benchmark.parse_args()
+
+
 def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         sys,

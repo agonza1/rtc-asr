@@ -31,6 +31,20 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "smoke.wav"
 
 
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("value must be greater than 0")
+    return parsed
+
+
+def non_negative_float(value: str) -> float:
+    parsed = float(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("value must be greater than or equal to 0")
+    return parsed
+
+
 class BenchmarkRequestError(RuntimeError):
     """Wrap exhausted benchmark retries with stage-specific context."""
 
@@ -52,10 +66,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reference-file", type=Path, help="Path to a UTF-8 transcript file used to compute simple accuracy metrics")
     parser.add_argument("--spawn-server", action="store_true", help="Start a local uvicorn server for the benchmark run")
     parser.add_argument("--backend", default="faster-whisper", help="ASR backend to benchmark when spawning a local server")
-    parser.add_argument("--sample-count", type=int, default=10, help="Number of benchmark samples to run per model")
-    parser.add_argument("--rest-runs", type=int, default=5, help="Number of REST runs")
-    parser.add_argument("--chunk-ms", type=int, default=250, help="Streaming chunk duration in milliseconds")
-    parser.add_argument("--partial-interval-chunks", type=int, default=1, help="Streaming partial cadence in chunks")
+    parser.add_argument("--sample-count", type=positive_int, default=10, help="Number of benchmark samples to run per model")
+    parser.add_argument("--rest-runs", type=positive_int, default=5, help="Number of REST runs")
+    parser.add_argument("--chunk-ms", type=positive_int, default=250, help="Streaming chunk duration in milliseconds")
+    parser.add_argument("--partial-interval-chunks", type=positive_int, default=1, help="Streaming partial cadence in chunks")
     parser.add_argument("--binary-frames", action="store_true", help="Send raw PCM bytes over websocket instead of JSON base64 frames")
     parser.add_argument("--model", default="small.en", help="Model name when spawning a local server")
     parser.add_argument("--device", default="cpu", help="ASR device when spawning a local server")
@@ -68,11 +82,11 @@ def parse_args() -> argparse.Namespace:
         default="Transcribe the spoken audio exactly and return only the transcript.",
         help="Prompt for ultravox when spawning a local server",
     )
-    parser.add_argument("--ultravox-max-new-tokens", type=int, default=128, help="Max new tokens for ultravox when spawning a local server")
-    parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
-    parser.add_argument("--max-buffer", type=float, help="Optional stream buffer cap in seconds for websocket benchmarking")
-    parser.add_argument("--request-retries", type=int, default=3, help="REST request attempts before failing a sample")
-    parser.add_argument("--request-retry-delay", type=float, default=2.0, help="Seconds to wait between REST request retries")
+    parser.add_argument("--ultravox-max-new-tokens", type=positive_int, default=128, help="Max new tokens for ultravox when spawning a local server")
+    parser.add_argument("--partial-window", type=non_negative_float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
+    parser.add_argument("--max-buffer", type=non_negative_float, help="Optional stream buffer cap in seconds for websocket benchmarking")
+    parser.add_argument("--request-retries", type=positive_int, default=3, help="REST request attempts before failing a sample")
+    parser.add_argument("--request-retry-delay", type=non_negative_float, default=2.0, help="Seconds to wait between REST request retries")
     parser.add_argument("--output", type=Path, help="Optional path for the benchmark JSON artifact")
     return parser.parse_args()
 
