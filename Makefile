@@ -4,8 +4,6 @@
 VENV := .venv
 PYTHON := $(VENV)/bin/python
 PIP := $(PYTHON) -m pip
-MLX_VENV ?= .venv-mlx
-MLX_PYTHON := $(MLX_VENV)/bin/python
 UVICORN := $(VENV)/bin/uvicorn
 COMPOSE_URL ?= http://127.0.0.1:8080
 COMPOSE_WS_URL ?= ws://127.0.0.1:8080/ws/stream
@@ -21,9 +19,6 @@ PARAKEET_COMPOSE_DTYPE ?= float32
 ULTRAVOX_COMPOSE_MODEL ?= fixie-ai/ultravox-v0_6-llama-3_1-8b
 ULTRAVOX_COMPOSE_DTYPE ?= float32
 ULTRAVOX_MAX_NEW_TOKENS ?= 128
-QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit
-QWEN_MLX_TEXT_MAX_TOKENS ?= 64
-QWEN_MLX_TEXT_SAMPLE_COUNT ?= 3
 BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
 BENCHMARK_RESULT_DATE ?= $(shell date -u +%Y-%m-%d)
 BENCHMARK_SAMPLE_COUNT ?= 10
@@ -38,7 +33,6 @@ FASTER_WHISPER_BASE_MODEL ?= base.en
 FASTER_WHISPER_SMALL_MODEL ?= small.en
 FASTER_WHISPER_COMPUTE_TYPE ?= int8
 
-.PHONY: help venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix
 
 help:
@@ -59,7 +53,6 @@ help:
 	@echo "  make benchmark-compose-parakeet - Start compose, wait for readiness, and benchmark parakeet"
 	@echo "  make benchmark-compose-parakeet-nemo - Start compose and benchmark Parakeet 110M through NeMo"
 	@echo "  make benchmark-compose-ultravox - Start compose, wait for readiness, and benchmark ultravox"
-	@echo "  make benchmark-qwen-mlx-text - Benchmark Qwen3 0.6B MLX 4-bit text generation on Apple Silicon"
 	@echo "  make lint           - Run linter"
 	@echo "  make docs           - Build documentation snapshot"
 	@echo "  make start          - Start docker compose stack"
@@ -241,11 +234,7 @@ benchmark-compose-ultravox: venv
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/ultravox-compose-$(BENCHMARK_RESULT_DATE).json; }
 
-benchmark-qwen-mlx-text:
-	@echo "Benchmarking $(QWEN_MLX_TEXT_MODEL) with mlx-lm on Apple Silicon..."
 	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
-	@test -x $(MLX_PYTHON) || (echo "Preparing $(MLX_VENV) for MLX benchmark..."; python3 -m venv $(MLX_VENV); $(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil)
-	@$(MLX_PYTHON) scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL) --sample-count $(QWEN_MLX_TEXT_SAMPLE_COUNT) --max-tokens $(QWEN_MLX_TEXT_MAX_TOKENS) --output $(BENCHMARK_RESULTS_DIR)/qwen3-0.6b-mlx-4bit-text-$(BENCHMARK_RESULT_DATE).json
 
 lint: venv
 	@echo "Running linter..."

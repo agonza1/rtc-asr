@@ -92,9 +92,6 @@
         </table>
       </section>
 
-      <section id="experiment-shell">
-        <div class="cards" id="experiment-cards"></div>
-      </section>
     </main>
 
     <script>
@@ -129,39 +126,21 @@
         `;
         return row;
       }
-      function renderExperiment(entry) {
-        const card = document.createElement("article");
-        card.className = "panel card";
-        card.innerHTML = `
-          <p class="eyebrow">Experiment</p>
-          <h2>${entry.model}</h2>
-          <p class="subtle">${entry.runtime} · ${formatDate(entry.measured_at)}</p>
-          <div class="stats">
-            <div><span>Load</span><strong>${formatMs(entry.load.load_ms)}</strong></div>
-            <div><span>Generation mean</span><strong>${formatMs(entry.summary.mean_ms)}</strong></div>
-            <div><span>Throughput</span><strong>${entry.summary.tokens_per_second_overall.toFixed(1)} tok/s</strong></div>
-            <div><span>Artifact</span><a class="artifact" href="${entry.artifact_path}">open JSON</a></div>
-          </div>
-        `;
-        return card;
-      }
       async function main() {
         const meta = document.getElementById("generated-at");
         const asrBody = document.getElementById("asr-body");
-        const experimentCards = document.getElementById("experiment-cards");
         try {
           const response = await fetch("benchmark-results/manifest.json", { cache: "no-store" });
           if (!response.ok) {
             throw new Error(`Manifest request failed: ${response.status}`);
           }
           const manifest = await response.json();
-          meta.textContent = `Published ${formatDate(manifest.generated_at)} · ${manifest.summary.asr_count} ASR snapshots · ${manifest.summary.experiment_count} experiments`;
+          meta.textContent = `Published ${formatDate(manifest.generated_at)} · ${manifest.summary.asr_count} ASR snapshots`;
           if (manifest.asr_benchmarks.length === 0) {
             asrBody.innerHTML = '<tr><td colspan="7" class="empty">No benchmark artifacts are published yet.</td></tr>';
           } else {
             manifest.asr_benchmarks.forEach((entry) => asrBody.appendChild(renderAsrRow(entry)));
           }
-          manifest.experiments.forEach((entry) => experimentCards.appendChild(renderExperiment(entry)));
         } catch (error) {
           meta.textContent = "Benchmark manifest unavailable.";
           asrBody.innerHTML = `<tr><td colspan="7" class="error">${error.message}</td></tr>`;

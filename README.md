@@ -6,7 +6,7 @@ Realtime speech recognition service with REST transcription endpoints and a buff
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> Benchmark status: the repository includes validated single-node CPU baselines for `faster-whisper`, Compose-backed ASR model paths, and an optional Apple Silicon MLX text-generation feasibility benchmark for `Qwen/Qwen3-0.6B-MLX-4bit`. Treat broader load, GPU, and corpus-level accuracy claims as provisional until their result artifacts are checked in.
+> Benchmark status: the repository includes validated single-node CPU baselines for `faster-whisper` and Compose-backed ASR model paths. Treat broader load, GPU, and corpus-level accuracy claims as provisional until their result artifacts are checked in.
 
 ## Current Scope
 
@@ -45,11 +45,8 @@ docker compose logs -f
 make benchmark-compose-qwen
 make benchmark-compose-parakeet
 make benchmark-compose-ultravox
-# optional Apple Silicon text-generation feasibility benchmark
-make benchmark-qwen-mlx-text
 ```
 
-The Qwen MLX text benchmark target prepares a dedicated `.venv-mlx` with `mlx-lm` and is intentionally separate from the ASR service benchmark path because `Qwen/Qwen3-0.6B-MLX-4bit` is a text-generation model, not a speech recognizer.
 
 The Parakeet compose benchmark target overrides the container image to a known-good Hugging Face pair, `transformers==5.10.2` plus `huggingface_hub==1.18.0`, which recognizes NVIDIA's upstream `parakeet_tdt` architecture while leaving the default qwen-compatible local dependency pin untouched. Use the same override command from *Local Python* if you want to run `ASR_BACKEND=parakeet` directly on your workstation.
 
