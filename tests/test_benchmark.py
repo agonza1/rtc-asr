@@ -192,11 +192,29 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
     assert '@echo "  ✓ Benchmark site manifest is up to date"' in block
+
+
+def test_makefile_qwen_mps_target_forces_runtime_env() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "benchmark-qwen-mps: venv" in makefile
+    assert "qwen-mps-" in makefile
+    line = next(
+        line
+        for line in makefile.splitlines()
+        if "qwen-mps-$(BENCHMARK_RESULT_DATE).json" in line
+    )
+    assert "ASR_BACKEND=qwen-asr ASR_DEVICE=mps" in line
+    assert "ASR_QWEN_DEVICE_MAP=" in line
+    assert "ASR_QWEN_MODEL=$(QWEN_MPS_MODEL)" in line
+    assert "ASR_QWEN_DTYPE=$(QWEN_MPS_DTYPE)" in line
+    assert "--backend qwen-asr" in line
+    assert "--device mps" in line
 
 
 def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> None:

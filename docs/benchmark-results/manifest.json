@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-10T17:20:35Z",
+  "generated_at": "2026-06-10T18:05:42Z",
   "summary": {
-    "asr_count": 5,
-    "tracked_count": 6,
-    "artifact_file_count": 6,
-    "validated_count": 4,
+    "asr_count": 6,
+    "tracked_count": 7,
+    "artifact_file_count": 7,
+    "validated_count": 5,
     "legacy_count": 1,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-10T03:11:39Z",
+    "latest_measured_at": "2026-06-10T17:19:07Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -106,6 +106,37 @@
         "partial_p95_ms": 2451.5,
         "final_mean_ms": 560.2,
         "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "qwen-mps",
+      "label": "Qwen MPS",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "lane": "Local Python Apple Silicon",
+      "runtime": "mps / auto",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-qwen-mps",
+      "measured_at": "2026-06-10T17:19:07Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "rest": {
+        "mean_ms": 1186.2,
+        "p95_ms": 1261.2,
+        "rtf_mean": 0.163
+      },
+      "streaming": {
+        "partial_mean_ms": 352.0,
+        "partial_p95_ms": 445.5,
+        "final_mean_ms": 1189.6,
+        "final_p95_ms": 1248.2
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
@@ -238,6 +269,31 @@
     }
   ],
   "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "runtime": "mps / auto",
+      "measured_at": "2026-06-10T17:19:07Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "rest": {
+        "mean_ms": 1186.2,
+        "p95_ms": 1261.2,
+        "rtf_mean": 0.163
+      },
+      "streaming": {
+        "partial_mean_ms": 352.0,
+        "partial_p95_ms": 445.5,
+        "final_mean_ms": 1189.6,
+        "final_p95_ms": 1248.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "Qwen/Qwen3-ASR-0.6B"
+    },
     {
       "kind": "asr",
       "backend": "parakeet-nemo",
@@ -446,6 +502,37 @@
         "partial_p95_ms": 2451.5,
         "final_mean_ms": 560.2,
         "final_p95_ms": 761.2
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "qwen-mps",
+      "label": "Qwen MPS",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "lane": "Local Python Apple Silicon",
+      "runtime": "mps / auto",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-qwen-mps",
+      "measured_at": "2026-06-10T17:19:07Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "rest": {
+        "mean_ms": 1186.2,
+        "p95_ms": 1261.2,
+        "rtf_mean": 0.163
+      },
+      "streaming": {
+        "partial_mean_ms": 352.0,
+        "partial_p95_ms": 445.5,
+        "final_mean_ms": 1189.6,
+        "final_p95_ms": 1248.2
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,

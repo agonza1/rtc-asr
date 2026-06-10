@@ -42,6 +42,7 @@ docker compose up -d
 docker compose ps
 docker compose logs -f
 # qwen-asr Compose benchmark path
+make benchmark-qwen-mps
 make benchmark-compose-qwen
 make benchmark-compose-parakeet
 make benchmark-compose-ultravox
@@ -127,7 +128,7 @@ ASR_ULTRAVOX_MAX_NEW_TOKENS=128
 ASR_ULTRAVOX_PROMPT=Transcribe the spoken audio exactly and return only the transcript.
 ```
 
-For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; `requirements.txt` installs `torch` alongside `qwen-asr` so fresh environments can preload that backend without extra manual steps. Set `ASR_BACKEND=parakeet` to route the same REST and websocket contract through the Hugging Face `transformers` automatic-speech-recognition pipeline using `ASR_PARAKEET_MODEL` and `ASR_PARAKEET_DTYPE`, but upgrade the local Hugging Face runtime first or use `make benchmark-compose-parakeet`. Set `ASR_BACKEND=ultravox` to load the Ultravox speech-in/text-out pipeline with `ASR_ULTRAVOX_MODEL`, `ASR_ULTRAVOX_DTYPE`, `ASR_ULTRAVOX_MAX_NEW_TOKENS`, and `ASR_ULTRAVOX_PROMPT`.
+For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; `requirements.txt` installs `torch` alongside `qwen-asr` so fresh environments can preload that backend without extra manual steps. On Apple Silicon, use `make benchmark-qwen-mps` to benchmark `Qwen/Qwen3-ASR-0.6B` through the local `mps` device instead of the Docker CPU path. Set `ASR_BACKEND=parakeet` to route the same REST and websocket contract through the Hugging Face `transformers` automatic-speech-recognition pipeline using `ASR_PARAKEET_MODEL` and `ASR_PARAKEET_DTYPE`, but upgrade the local Hugging Face runtime first or use `make benchmark-compose-parakeet`. Set `ASR_BACKEND=ultravox` to load the Ultravox speech-in/text-out pipeline with `ASR_ULTRAVOX_MODEL`, `ASR_ULTRAVOX_DTYPE`, `ASR_ULTRAVOX_MAX_NEW_TOKENS`, and `ASR_ULTRAVOX_PROMPT`.
 
 ## Verification
 
