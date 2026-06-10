@@ -24,8 +24,14 @@ Realtime speech recognition service with REST transcription endpoints and a buff
 
 ```bash
 pip install -r requirements.txt
-# requirements.txt now includes torch for the qwen-asr backend
+# default local install keeps the repo's qwen-compatible transformers pin
 uvicorn src.main:app --host 0.0.0.0 --port 8080 --reload
+```
+
+If you want to run `ASR_BACKEND=parakeet` outside Docker Compose, upgrade the local Hugging Face runtime first:
+
+```bash
+pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2
 ```
 
 ### Docker
@@ -38,9 +44,10 @@ docker compose logs -f
 # qwen-asr Compose benchmark path
 make benchmark-compose-qwen
 make benchmark-compose-parakeet
+make benchmark-compose-ultravox
 ```
 
-The Parakeet compose benchmark target overrides the container image to a known-good Hugging Face pair, `transformers==5.10.2` plus `huggingface_hub==1.18.0`, which recognizes NVIDIA's upstream `parakeet_tdt` architecture while leaving the default `qwen-asr` dependency pin untouched.
+The Parakeet compose benchmark target overrides the container image to a known-good Hugging Face pair, `transformers==5.10.2` plus `huggingface_hub==1.18.0`, which recognizes NVIDIA's upstream `parakeet_tdt` architecture while leaving the default qwen-compatible local dependency pin untouched. Use the same override command from *Local Python* if you want to run `ASR_BACKEND=parakeet` directly on your workstation.
 
 ## REST API
 
@@ -113,9 +120,13 @@ ASR_QWEN_MAX_NEW_TOKENS=256
 ASR_QWEN_MAX_INFERENCE_BATCH_SIZE=1
 ASR_PARAKEET_MODEL=nvidia/parakeet-tdt-0.6b-v3
 ASR_PARAKEET_DTYPE=auto
+ASR_ULTRAVOX_MODEL=fixie-ai/ultravox-v0_6-llama-3_1-8b
+ASR_ULTRAVOX_DTYPE=auto
+ASR_ULTRAVOX_MAX_NEW_TOKENS=128
+ASR_ULTRAVOX_PROMPT=Transcribe the spoken audio exactly and return only the transcript.
 ```
 
-For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; `requirements.txt` installs `torch` alongside `qwen-asr` so fresh environments can preload that backend without extra manual steps. Set `ASR_BACKEND=parakeet` to route the same REST and websocket contract through the Hugging Face `transformers` automatic-speech-recognition pipeline using `ASR_PARAKEET_MODEL` and `ASR_PARAKEET_DTYPE`. The service keeps the same REST and websocket contract while swapping providers underneath.
+For compatibility with the recovered scaffold, `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted as aliases for `ASR_MODEL_SIZE` and `SAMPLE_RATE`. If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service now defaults the backend device to `cuda`. Set `ASR_BACKEND=qwen-asr` (or `qwen`) to load the official `qwen-asr` package with `ASR_QWEN_MODEL` such as `Qwen/Qwen3-ASR-1.7B`; `requirements.txt` installs `torch` alongside `qwen-asr` so fresh environments can preload that backend without extra manual steps. Set `ASR_BACKEND=parakeet` to route the same REST and websocket contract through the Hugging Face `transformers` automatic-speech-recognition pipeline using `ASR_PARAKEET_MODEL` and `ASR_PARAKEET_DTYPE`, but upgrade the local Hugging Face runtime first or use `make benchmark-compose-parakeet`. Set `ASR_BACKEND=ultravox` to load the Ultravox speech-in/text-out pipeline with `ASR_ULTRAVOX_MODEL`, `ASR_ULTRAVOX_DTYPE`, `ASR_ULTRAVOX_MAX_NEW_TOKENS`, and `ASR_ULTRAVOX_PROMPT`.
 
 ## Verification
 

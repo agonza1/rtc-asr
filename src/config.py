@@ -41,6 +41,13 @@ def _default_asr_device(default: str) -> str:
     return default
 
 
+def _positive_int_env(name: str, default: int) -> int:
+    value = int(os.getenv(name, str(default)))
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
 @dataclass(slots=True)
 class AppConfig:
     """Runtime configuration loaded from environment variables."""
@@ -66,6 +73,10 @@ class AppConfig:
     asr_qwen_max_inference_batch_size: int = 1
     asr_parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
     asr_parakeet_dtype: str = "auto"
+    asr_ultravox_model: str = "fixie-ai/ultravox-v0_6-llama-3_1-8b"
+    asr_ultravox_dtype: str = "auto"
+    asr_ultravox_max_new_tokens: int = 128
+    asr_ultravox_prompt: str = "Transcribe the spoken audio exactly and return only the transcript."
 
     @classmethod
     def from_env(cls) -> "AppConfig":
@@ -94,15 +105,21 @@ class AppConfig:
             asr_qwen_model=os.getenv("ASR_QWEN_MODEL", defaults.asr_qwen_model),
             asr_qwen_dtype=os.getenv("ASR_QWEN_DTYPE", defaults.asr_qwen_dtype),
             asr_qwen_device_map=os.getenv("ASR_QWEN_DEVICE_MAP", defaults.asr_qwen_device_map),
-            asr_qwen_max_new_tokens=int(
-                os.getenv("ASR_QWEN_MAX_NEW_TOKENS", str(defaults.asr_qwen_max_new_tokens))
+            asr_qwen_max_new_tokens=_positive_int_env(
+                "ASR_QWEN_MAX_NEW_TOKENS",
+                defaults.asr_qwen_max_new_tokens,
             ),
-            asr_qwen_max_inference_batch_size=int(
-                os.getenv(
-                    "ASR_QWEN_MAX_INFERENCE_BATCH_SIZE",
-                    str(defaults.asr_qwen_max_inference_batch_size),
-                )
+            asr_qwen_max_inference_batch_size=_positive_int_env(
+                "ASR_QWEN_MAX_INFERENCE_BATCH_SIZE",
+                defaults.asr_qwen_max_inference_batch_size,
             ),
             asr_parakeet_model=os.getenv("ASR_PARAKEET_MODEL", defaults.asr_parakeet_model),
             asr_parakeet_dtype=os.getenv("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype),
+            asr_ultravox_model=os.getenv("ASR_ULTRAVOX_MODEL", defaults.asr_ultravox_model),
+            asr_ultravox_dtype=os.getenv("ASR_ULTRAVOX_DTYPE", defaults.asr_ultravox_dtype),
+            asr_ultravox_max_new_tokens=_positive_int_env(
+                "ASR_ULTRAVOX_MAX_NEW_TOKENS",
+                defaults.asr_ultravox_max_new_tokens,
+            ),
+            asr_ultravox_prompt=os.getenv("ASR_ULTRAVOX_PROMPT", defaults.asr_ultravox_prompt),
         )

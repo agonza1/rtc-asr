@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
         ENABLE_PARAKEET_RUNTIME: ${ENABLE_PARAKEET_RUNTIME:-}
     env_file:
       - path: .env
@@ -27,8 +28,14 @@ services:
       ASR_QWEN_MAX_INFERENCE_BATCH_SIZE: ${ASR_QWEN_MAX_INFERENCE_BATCH_SIZE:-1}
       ASR_PARAKEET_MODEL: ${ASR_PARAKEET_MODEL:-nvidia/parakeet-tdt-0.6b-v3}
       ASR_PARAKEET_DTYPE: ${ASR_PARAKEET_DTYPE:-auto}
+      ASR_ULTRAVOX_MODEL: ${ASR_ULTRAVOX_MODEL:-fixie-ai/ultravox-v0_6-llama-3_1-8b}
+      ASR_ULTRAVOX_DTYPE: ${ASR_ULTRAVOX_DTYPE:-auto}
+      ASR_ULTRAVOX_MAX_NEW_TOKENS: ${ASR_ULTRAVOX_MAX_NEW_TOKENS:-128}
+      ASR_ULTRAVOX_PROMPT: ${ASR_ULTRAVOX_PROMPT:-Transcribe the spoken audio exactly and return only the transcript.}
       HF_HOME: /app/.cache/huggingface
       HUGGINGFACE_HUB_CACHE: /app/.cache/huggingface/hub
+      HF_TOKEN: ${HF_TOKEN:-}
+      HUGGINGFACE_HUB_TOKEN: ${HUGGINGFACE_HUB_TOKEN:-}
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-}
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/ready"]

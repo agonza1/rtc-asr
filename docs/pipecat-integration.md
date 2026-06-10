@@ -104,7 +104,7 @@ class MyPipecatProcessor:
 Start the service:
 
 ```bash
-docker compose up -d --build
+PYTHON_BASE_IMAGE=python:3.11-slim docker compose up -d --build
 ```
 
 Then run the repo tests that cover the helper and websocket protocol:

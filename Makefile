@@ -9,10 +9,16 @@ COMPOSE_URL ?= http://127.0.0.1:8080
 COMPOSE_WS_URL ?= ws://127.0.0.1:8080/ws/stream
 QWEN_COMPOSE_MODEL ?= Qwen/Qwen3-ASR-0.6B
 QWEN_COMPOSE_DTYPE ?= float32
+DEFAULT_PYTHON_BASE_IMAGE := python:3.11-slim
+PYTHON_BASE_IMAGE ?= $(DEFAULT_PYTHON_BASE_IMAGE)
+PYTHON_BASE_IMAGE_FALLBACK ?= mirror.gcr.io/library/python:3.11-slim
 PARAKEET_COMPOSE_MODEL ?= nvidia/parakeet-tdt-0.6b-v3
 PARAKEET_COMPOSE_DTYPE ?= float32
+ULTRAVOX_COMPOSE_MODEL ?= fixie-ai/ultravox-v0_6-llama-3_1-8b
+ULTRAVOX_COMPOSE_DTYPE ?= float32
+ULTRAVOX_MAX_NEW_TOKENS ?= 128
 
-.PHONY: help venv setup build run dev test benchmark benchmark-compose-qwen benchmark-compose-parakeet clean lint docs start stop status
+.PHONY: help venv setup build run dev test benchmark benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox clean lint docs start stop status
 
 help:
 	@echo "Realtime ASR Service - Available commands:"
@@ -25,6 +31,7 @@ help:
 	@echo "  make test           - Run the automated test suite"
 	@echo "  make benchmark      - Run the reproducible latency benchmark"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
+	@echo "  make benchmark-compose-ultravox - Start compose, wait for readiness, and benchmark ultravox"
 	@echo "  make lint           - Run linter"
 	@echo "  make docs           - Build documentation snapshot"
 	@echo "  make start          - Start docker compose stack"
@@ -47,7 +54,19 @@ setup: venv
 
 build:
 	@echo "Building Docker image..."
-	docker build -t realtime-asr:latest .
+	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
+		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			echo "Using cached default base image $${base_image}"; \
+		elif ! docker pull "$${base_image}"; then \
+			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			docker pull "$${base_image}"; \
+		fi; \
+	else \
+		echo "Using configured base image override $${base_image} without registry preflight"; \
+	fi; \
+	docker build --build-arg PYTHON_BASE_IMAGE="$${base_image}" -t realtime-asr:latest .
 	@echo "  ✓ Image built: realtime-asr:latest"
 
 run: venv
@@ -91,7 +110,19 @@ benchmark-compose-qwen:
 	@echo "Starting docker compose stack with qwen-asr on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
-	@ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) docker compose up -d --build
+	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
+		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			echo "Using cached default base image $${base_image}"; \
+		elif ! docker pull "$${base_image}"; then \
+			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			docker pull "$${base_image}"; \
+		fi; \
+	else \
+		echo "Using configured base image override $${base_image} without registry preflight"; \
+	fi; \
+	ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
 	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL)
 
@@ -99,9 +130,42 @@ benchmark-compose-parakeet:
 	@echo "Starting docker compose stack with parakeet on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
-	@ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) docker compose up -d --build
+	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
+		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			echo "Using cached default base image $${base_image}"; \
+		elif ! docker pull "$${base_image}"; then \
+			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			docker pull "$${base_image}"; \
+		fi; \
+	else \
+		echo "Using configured base image override $${base_image} without registry preflight"; \
+	fi; \
+	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build
 	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
 	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE)
+
+benchmark-compose-ultravox:
+	@echo "Starting docker compose stack with ultravox on CPU..."
+	@mkdir -p .cache/huggingface
+	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
+	@test -n "$(HF_TOKEN)$(HUGGINGFACE_HUB_TOKEN)" || (echo "Ultravox default model requires Hugging Face access. Export HF_TOKEN or HUGGINGFACE_HUB_TOKEN before running this target." >&2; exit 1)
+	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
+		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			echo "Using cached default base image $${base_image}"; \
+		elif ! docker pull "$${base_image}"; then \
+			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			docker pull "$${base_image}"; \
+		fi; \
+	else \
+		echo "Using configured base image override $${base_image} without registry preflight"; \
+	fi; \
+	ASR_BACKEND=ultravox ASR_ULTRAVOX_MODEL=$(ULTRAVOX_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_ULTRAVOX_DTYPE=$(ULTRAVOX_COMPOSE_DTYPE) ASR_ULTRAVOX_MAX_NEW_TOKENS=$(ULTRAVOX_MAX_NEW_TOKENS) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build
+	@attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"
+	@$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS)
 
 lint: venv
 	@echo "Running linter..."
