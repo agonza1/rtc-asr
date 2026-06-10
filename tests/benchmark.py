@@ -263,7 +263,7 @@ class ManagedServer:
         if self.backend == "qwen-asr":
             env.setdefault("ASR_QWEN_MODEL", self.model)
             env.setdefault("ASR_QWEN_DTYPE", self.qwen_dtype)
-        elif self.backend == "parakeet":
+        elif self.backend in {"parakeet", "parakeet-nemo"}:
             env.setdefault("ASR_PARAKEET_MODEL", self.model)
             env.setdefault("ASR_PARAKEET_DTYPE", self.parakeet_dtype)
         elif self.backend == "ultravox":
@@ -570,7 +570,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 effective_qwen_dtype = capabilities.get("dtype")
             if effective_qwen_dtype is None:
                 effective_qwen_dtype = args.qwen_dtype
-        elif effective_backend == "parakeet":
+        elif effective_backend in {"parakeet", "parakeet-nemo"}:
             if isinstance(capabilities, dict):
                 effective_parakeet_dtype = capabilities.get("dtype")
             if effective_parakeet_dtype is None:
@@ -615,6 +615,10 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "sample_count": sample_count,
                 "rest_runs_per_sample": args.rest_runs,
                 "chunk_ms": args.chunk_ms,
+                "partial_interval_chunks": args.partial_interval_chunks,
+                "binary_frames": args.binary_frames,
+                "partial_window_seconds": args.partial_window,
+                "max_buffer_seconds": args.max_buffer,
                 "request_retries": args.request_retries,
                 "request_retry_delay": args.request_retry_delay,
             },
@@ -650,6 +654,10 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             "streaming": {
                 "sample_count": sample_count,
                 "chunk_ms": args.chunk_ms,
+                "partial_interval_chunks": args.partial_interval_chunks,
+                "binary_frames": args.binary_frames,
+                "partial_window_seconds": args.partial_window,
+                "max_buffer_seconds": args.max_buffer,
                 "request_retries": args.request_retries,
                 "request_retry_delay": args.request_retry_delay,
                 "partial_latencies_ms": [round(value, 1) for value in partial_latencies_all],

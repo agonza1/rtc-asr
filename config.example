@@ -26,8 +26,9 @@ ASR_QWEN_MAX_NEW_TOKENS=256
 ASR_QWEN_MAX_INFERENCE_BATCH_SIZE=1
 
 # Optional parakeet backend settings
-# Set ASR_BACKEND=parakeet to enable these.
-# Local Python runs also need:
+# Set ASR_BACKEND=parakeet for the Transformers Parakeet path.
+# Set ASR_BACKEND=parakeet-nemo for NeMo-only models such as nvidia/parakeet-tdt_ctc-110m.
+# Local Python parakeet runs also need:
 # pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2
 ASR_PARAKEET_MODEL=nvidia/parakeet-tdt-0.6b-v3
 ASR_PARAKEET_DTYPE=auto

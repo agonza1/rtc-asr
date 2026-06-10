@@ -13,6 +13,7 @@ streaming session, so published numbers are less noisy than one-off snapshots.
 | `faster-whisper` | `small.en` | local Python CPU / `int8` | 10 | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` | 1378.3 ms / 1531.1 ms | 1023.2 ms / 1202.4 ms | 1420.6 ms | WER 0.095 / CER 0.0 |
 | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU / `float32` | 1 legacy snapshot | validated legacy artifact; 10-sample refresh attempted on 2026-06-10 but service restarted during first generation and REST warmup failed with `httpx.ReadError` | `docs/benchmark-results/qwen-compose-2026-06-08.json` | 5482.2 ms / 5904.4 ms | 3696.1 ms / 6314.4 ms | 0.9 ms | WER 0.095 / CER 0.0 |
 | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` | 2388.3 ms / 4098.1 ms | 1715.1 ms / 2968.7 ms | 2215.8 ms | WER 0.095 / CER 0.0 |
+| `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` | 331.4 ms / 511.5 ms | 148.5 ms / 245.8 ms | 379.0 ms | WER 0.19 / CER 0.0 |
 | `ultravox` | `fixie-ai/ultravox-v0_6-llama-3_1-8b` | Docker Compose CPU / `float32` | 10 target | blocked before validation: current token can fetch `fixie-ai/ultravox`, but the model loads gated `meta-llama/Llama-3.1-8B-Instruct` and Hugging Face returned 403 on 2026-06-10 | run `HF_TOKEN=... make benchmark-compose-ultravox` after Llama access is granted | blocked | blocked | blocked | blocked |
 
 Use the matrix as the source of truth for which backends have checked-in numbers. A backend should move to `validated artifact` only after its JSON output is committed under `docs/benchmark-results/` and the measured results section below is updated from that artifact. Blocked rows should name the exact external access or runtime failure observed during the 10-sample target run.
@@ -137,6 +138,46 @@ Versioned artifact:
 
 - `docs/benchmark-results/parakeet-compose-2026-06-10.json`
 
+
+### Parakeet 110M NeMo Compose CPU Baseline
+
+Measured on June 9, 2026 against the Docker Compose stack on macOS arm64.
+
+Environment:
+
+- Host: macOS arm64
+- Python benchmark client: 3.14.4
+- Execution mode: `docker compose`
+- Backend: `parakeet-nemo`
+- Model: `nvidia/parakeet-tdt_ctc-110m`
+- Device: CPU / `float32`
+- Samples: 10, with 5 REST runs per sample and one streaming session per sample
+- Streaming chunk size: 250 ms
+- Streaming partial cadence: every 8 chunks, or roughly 2.0 s
+- Audio: 7.28 s synthesized speech clip from `say`
+- Reference transcript: `The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.`
+
+Measured results:
+
+- REST `POST /api/transcribe`: 331.4 ms mean, 511.5 ms p95, 265.5 ms min, 716.8 ms max
+- REST real-time factor: 0.046
+- WebSocket partial latency: 148.5 ms mean, 245.8 ms p95
+- WebSocket final latency after `stop`: 379.0 ms mean, 580.4 ms p95
+- REST transcript: `The quick brown fox jumps over the lazy dog. This is a real time ASR latency benchmark for the RTCASR service.`
+- Streaming final transcript: `The quick brown fox jumps over the lazy dog. This is a real time ASR latency benchmark for the RTCASR service.`
+- Accuracy (normalized WER mean): `0.19`
+- Accuracy (normalized CER mean): `0.0`
+
+Interpretation notes:
+
+- The 110M NeMo path ran successfully on the local CPU device and loaded through the same REST/WebSocket service contract.
+- This is still rolling-window re-transcription over WebSocket, not model-native streaming. The published streaming number uses an 8 chunk partial cadence to avoid forcing a full NeMo pass every 250 ms.
+- The main accuracy misses are tokenization/word-boundary differences: `realtime` became `real time`, and `rtc asr` became `RTCASR`.
+
+Versioned artifact:
+
+- `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json`
+
 ## Reproduce
 
 All benchmark targets now use `BENCHMARK_SAMPLE_COUNT=10` by default and write a dated JSON artifact under `docs/benchmark-results/`. Override `BENCHMARK_SAMPLE_COUNT` only for local smoke checks; leave it at 10 for committed matrix results. Override `BENCHMARK_RESULT_DATE` when you want a stable filename during repeated local runs.
@@ -149,7 +190,7 @@ Run every Docker Compose backend with the same 10-sample contract:
 make benchmark-compose-matrix
 ```
 
-This expands to `benchmark-compose-qwen`, `benchmark-compose-parakeet`, and `benchmark-compose-ultravox`. Each target emits REST mean/p95, streaming partial mean/p95, streaming final mean/p95, and WER/CER accuracy summaries in its JSON artifact. Ultravox still requires `HF_TOKEN` or `HUGGINGFACE_HUB_TOKEN` because the default weights are gated.
+This expands to `benchmark-compose-qwen`, `benchmark-compose-parakeet`, `benchmark-compose-parakeet-nemo`, and `benchmark-compose-ultravox`. Each target emits REST mean/p95, streaming partial mean/p95, streaming final mean/p95, and WER/CER accuracy summaries in its JSON artifact. Ultravox still requires `HF_TOKEN` or `HUGGINGFACE_HUB_TOKEN` because the default weights are gated.
 
 ### Faster-Whisper Baseline
 
@@ -222,6 +263,31 @@ Equivalent manual command against an already-running Parakeet service:
   --parakeet-dtype float32 \
   --sample-count 10 \
   --output docs/benchmark-results/parakeet-compose-$(date -u +%Y-%m-%d).json
+```
+
+
+### Parakeet 110M NeMo Compose Baseline
+
+Use the checked-in Compose workflow. It defaults to an 8 chunk partial cadence for this NeMo path:
+
+```bash
+make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09
+```
+
+Equivalent manual command against an already-running Parakeet NeMo service:
+
+```bash
+.venv/bin/python tests/benchmark.py \
+  --url http://127.0.0.1:8081 \
+  --ws-url ws://127.0.0.1:8081/ws/stream \
+  --backend parakeet-nemo \
+  --model nvidia/parakeet-tdt_ctc-110m \
+  --parakeet-dtype float32 \
+  --sample-count 10 \
+  --chunk-ms 250 \
+  --partial-interval-chunks 8 \
+  --partial-window 2.0 \
+  --output docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json
 ```
 
 ### Ultravox Compose Baseline

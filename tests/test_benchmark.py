@@ -10,7 +10,6 @@ from pathlib import Path
 import httpx
 import pytest
 
-from tests.benchmark import compute_accuracy_metrics, normalize_text, resolve_reference_text, summarize_latencies
 
 MODULE_PATH = Path(__file__).with_name("benchmark.py")
 SPEC = importlib.util.spec_from_file_location("rtc_asr_benchmark", MODULE_PATH)
@@ -18,6 +17,11 @@ assert SPEC is not None and SPEC.loader is not None
 benchmark = importlib.util.module_from_spec(SPEC)
 sys.modules.setdefault("rtc_asr_benchmark", benchmark)
 SPEC.loader.exec_module(benchmark)
+
+compute_accuracy_metrics = benchmark.compute_accuracy_metrics
+normalize_text = benchmark.normalize_text
+resolve_reference_text = benchmark.resolve_reference_text
+summarize_latencies = benchmark.summarize_latencies
 
 
 class FakeBenchmarkWebSocket:
@@ -146,8 +150,9 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
 
     assert "BENCHMARK_SAMPLE_COUNT ?= 10" in makefile
     assert "BENCHMARK_REQUEST_RETRIES ?= 3" in makefile
-    assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox" in makefile
-    for target in ("qwen", "parakeet", "ultravox"):
+    assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox" in makefile
+    assert "PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8" in makefile
+    for target in ("qwen", "parakeet", "parakeet-nemo-110m", "ultravox"):
         line = next(
             line
             for line in makefile.splitlines()
@@ -161,7 +166,7 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
 def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
-    for target in ("benchmark-compose-qwen", "benchmark-compose-parakeet", "benchmark-compose-ultravox"):
+    for target in ("benchmark-compose-qwen", "benchmark-compose-parakeet", "benchmark-compose-parakeet-nemo", "benchmark-compose-ultravox"):
         block = makefile.split(f"{target}:\n", 1)[1].split("\n\n", 1)[0]
         assert "trap cleanup EXIT INT TERM" in block
         assert "cleanup() { docker compose down >/dev/null 2>&1 || true; }" in block

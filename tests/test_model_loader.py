@@ -9,7 +9,7 @@ import pytest
 
 from src.audio_processor import AudioProcessor
 from src.config import AppConfig
-from src.model_loader import ASRUnavailableError, ParakeetAdapter, QwenASRAdapter, UltravoxAdapter, build_transcriber
+from src.model_loader import ASRUnavailableError, ParakeetAdapter, ParakeetNemoAdapter, QwenASRAdapter, UltravoxAdapter, build_transcriber
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 
@@ -34,6 +34,17 @@ def test_build_transcriber_accepts_parakeet_aliases(backend: str) -> None:
 
     assert isinstance(transcriber, ParakeetAdapter)
     assert transcriber.model_name == "nvidia/parakeet-tdt-0.6b-v3"
+
+
+@pytest.mark.parametrize("backend", ["parakeet-nemo", "parakeet-ctc"])
+def test_build_transcriber_accepts_parakeet_nemo_aliases(backend: str) -> None:
+    transcriber = build_transcriber(
+        AppConfig(asr_backend=backend, asr_parakeet_model="nvidia/parakeet-tdt_ctc-110m"),
+        AudioProcessor(),
+    )
+
+    assert isinstance(transcriber, ParakeetNemoAdapter)
+    assert transcriber.model_name == "nvidia/parakeet-tdt_ctc-110m"
 
 
 @pytest.mark.parametrize("backend", ["ultravox", "ultravox-asr"])
@@ -157,6 +168,65 @@ def test_parakeet_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyt
     audio = calls["audio"]
     assert audio["sampling_rate"] == 16000
     assert getattr(audio["array"], "shape", (0,))[0] > 0
+
+
+def test_parakeet_nemo_adapter_transcribe_uses_nemo_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    class FakeNemoModel:
+        def to(self, device: str) -> None:
+            calls["device"] = device
+
+        def eval(self) -> None:
+            calls["eval"] = True
+
+        def float(self) -> None:
+            calls["float"] = True
+
+        def transcribe(self, paths: list[str], *, batch_size: int) -> list[str]:
+            calls["paths"] = paths
+            calls["batch_size"] = batch_size
+            return [" Yesterday it worked. "]
+
+    class FakeASRModel:
+        @staticmethod
+        def from_pretrained(model_name: str) -> FakeNemoModel:
+            calls["model_name"] = model_name
+            return FakeNemoModel()
+
+    fake_models = ModuleType("nemo.collections.asr.models")
+    fake_models.ASRModel = FakeASRModel
+
+    monkeypatch.setitem(sys.modules, "nemo", ModuleType("nemo"))
+    monkeypatch.setitem(sys.modules, "nemo.collections", ModuleType("nemo.collections"))
+    monkeypatch.setitem(sys.modules, "nemo.collections.asr", ModuleType("nemo.collections.asr"))
+    monkeypatch.setitem(sys.modules, "nemo.collections.asr.models", fake_models)
+
+    adapter = ParakeetNemoAdapter(
+        config=AppConfig(
+            asr_backend="parakeet-nemo",
+            asr_device="cpu",
+            asr_parakeet_model="nvidia/parakeet-tdt_ctc-110m",
+            asr_parakeet_dtype="auto",
+        ),
+        audio_processor=AudioProcessor(),
+    )
+
+    result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
+
+    assert result == {
+        "text": "Yesterday it worked.",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "parakeet-nemo",
+        "model": "nvidia/parakeet-tdt_ctc-110m",
+    }
+    assert calls["model_name"] == "nvidia/parakeet-tdt_ctc-110m"
+    assert calls["device"] == "cpu"
+    assert calls["eval"] is True
+    assert calls["float"] is True
+    assert calls["batch_size"] == 1
+    assert str(calls["paths"][0]).endswith(".wav")
 
 
 def test_ultravox_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -291,6 +361,25 @@ def test_parakeet_adapter_raises_actionable_error_for_qwen_pinned_runtime(monkey
     )
 
     with pytest.raises(ASRUnavailableError, match=r"huggingface-hub==1\.18\.0 transformers==5\.10\.2"):
+        adapter.preload()
+
+
+def test_parakeet_nemo_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    real_import = builtins.__import__
+
+    def fake_import(name: str, globals: object = None, locals: object = None, fromlist: tuple[str, ...] = (), level: int = 0):
+        if name == "nemo.collections.asr.models":
+            raise ImportError(name)
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    adapter = ParakeetNemoAdapter(
+        config=AppConfig(asr_backend="parakeet-nemo"),
+        audio_processor=AudioProcessor(),
+    )
+
+    with pytest.raises(ASRUnavailableError, match="parakeet-nemo backend requires nemo_toolkit"):
         adapter.preload()
 
 
