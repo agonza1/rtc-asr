@@ -74,9 +74,22 @@ def benchmark_key(payload: dict[str, Any]) -> str:
     benchmark = payload.get("benchmark") or {}
     if benchmark.get("task") == "mlx-text-generation":
         model = payload.get("model") or {}
-        return f"mlx-text::{model.get('id', 'unknown')}"
+        runtime = model.get("runtime") or "mlx-lm"
+        precision = model.get("precision") or "unknown"
+        return f"mlx-text::{model.get('id', 'unknown')}::{runtime}::{precision}"
     backend = payload.get("backend") or {}
-    return f"asr::{backend.get('name', 'unknown')}::{backend.get('model', 'unknown')}"
+    compute = (
+        backend.get("compute_type")
+        or backend.get("qwen_dtype")
+        or backend.get("parakeet_dtype")
+        or backend.get("ultravox_dtype")
+        or "default"
+    )
+    device = backend.get("device") or "unknown"
+    return (
+        f"asr::{backend.get('name', 'unknown')}::{backend.get('model', 'unknown')}"
+        f"::{device}::{compute}"
+    )
 
 
 
