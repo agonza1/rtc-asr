@@ -22,8 +22,11 @@ BENCHMARK_RESULT_DATE ?= $(shell date -u +%Y-%m-%d)
 BENCHMARK_SAMPLE_COUNT ?= 10
 BENCHMARK_REQUEST_RETRIES ?= 3
 BENCHMARK_REQUEST_RETRY_DELAY ?= 2.0
+FASTER_WHISPER_BASE_MODEL ?= base.en
+FASTER_WHISPER_SMALL_MODEL ?= small.en
+FASTER_WHISPER_COMPUTE_TYPE ?= int8
 
-.PHONY: help venv setup build run dev test benchmark benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox clean lint docs start stop status
+.PHONY: help venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox clean lint docs start stop status
 
 help:
 	@echo "Realtime ASR Service - Available commands:"
@@ -34,7 +37,10 @@ help:
 	@echo "  make run            - Run service locally"
 	@echo "  make dev            - Run service locally with reload"
 	@echo "  make test           - Run the automated test suite"
-	@echo "  make benchmark      - Run the reproducible latency benchmark"
+	@echo "  make benchmark      - Run the default faster-whisper small.en latency benchmark"
+	@echo "  make benchmark-faster-whisper-matrix - Run base.en and small.en local benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
+	@echo "  make benchmark-faster-whisper-base - Run faster-whisper base.en with $(BENCHMARK_SAMPLE_COUNT) samples"
+	@echo "  make benchmark-faster-whisper-small - Run faster-whisper small.en with $(BENCHMARK_SAMPLE_COUNT) samples"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
 	@echo "  make benchmark-compose-parakeet - Start compose, wait for readiness, and benchmark parakeet"
@@ -109,9 +115,21 @@ test: venv
 	@echo "Running test suite..."
 	@$(PYTHON) -m pytest tests/test_smoke.py tests/test_client.py -v
 
-benchmark: venv
-	@echo "Running latency benchmark..."
-	@$(PYTHON) tests/benchmark.py --spawn-server --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-local-$(BENCHMARK_RESULT_DATE).json
+benchmark:
+	@$(MAKE) benchmark-faster-whisper-small
+
+benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-whisper-small
+	@echo "  ✓ faster-whisper benchmark matrix complete with $(BENCHMARK_SAMPLE_COUNT) samples per model"
+
+benchmark-faster-whisper-base:
+	@test -x $(PYTHON) || (echo "Missing $(PYTHON); run make venv before benchmarking." >&2; exit 1)
+	@echo "Running faster-whisper $(FASTER_WHISPER_BASE_MODEL) $(FASTER_WHISPER_COMPUTE_TYPE) latency benchmark..."
+	@$(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_BASE_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_BASE_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
+
+benchmark-faster-whisper-small:
+	@test -x $(PYTHON) || (echo "Missing $(PYTHON); run make venv before benchmarking." >&2; exit 1)
+	@echo "Running faster-whisper $(FASTER_WHISPER_SMALL_MODEL) $(FASTER_WHISPER_COMPUTE_TYPE) latency benchmark..."
+	@$(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_SMALL_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_SMALL_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-ultravox
 	@echo "  ✓ Compose benchmark matrix complete with $(BENCHMARK_SAMPLE_COUNT) samples per backend"

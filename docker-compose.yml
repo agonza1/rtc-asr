@@ -16,7 +16,7 @@ services:
       PORT: ${PORT:-8080}
       SAMPLE_RATE: ${SAMPLE_RATE:-16000}
       ASR_BACKEND: ${ASR_BACKEND:-faster-whisper}
-      ASR_MODEL_SIZE: ${ASR_MODEL_SIZE:-tiny.en}
+      ASR_MODEL_SIZE: ${ASR_MODEL_SIZE:-small.en}
       ASR_DEVICE: ${ASR_DEVICE:-cpu}
       ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE:-int8}
       ASR_VAD_FILTER: ${ASR_VAD_FILTER:-true}

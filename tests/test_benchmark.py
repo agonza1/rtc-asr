@@ -124,6 +124,23 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
     assert args.output == Path("docs/benchmark-results/ultravox-compose-test.json")
 
 
+def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "FASTER_WHISPER_BASE_MODEL ?= base.en" in makefile
+    assert "FASTER_WHISPER_SMALL_MODEL ?= small.en" in makefile
+    assert "FASTER_WHISPER_COMPUTE_TYPE ?= int8" in makefile
+    assert "benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-whisper-small" in makefile
+    for model_var in ("BASE", "SMALL"):
+        line = next(
+            line
+            for line in makefile.splitlines()
+            if f"faster-whisper-$(FASTER_WHISPER_{model_var}_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json" in line
+        )
+        assert "--sample-count $(BENCHMARK_SAMPLE_COUNT)" in line
+        assert "--compute-type $(FASTER_WHISPER_COMPUTE_TYPE)" in line
+
+
 def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 

@@ -9,7 +9,8 @@ streaming session, so published numbers are less noisy than one-off snapshots.
 
 | Backend | Model | Runtime Path | Samples | Validation Status | Result Artifact | REST Mean / P95 | Streaming Partial Mean / P95 | Final Mean | Accuracy |
 | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
-| `faster-whisper` | `tiny.en` | local Python CPU / `int8` | 1 legacy snapshot | validated snapshot; 10-sample target available | inline below | 263.7 ms / 269.1 ms | 177.5 ms / 308.6 ms | 261.3 ms | representative transcript only |
+| `faster-whisper` | `base.en` | local Python CPU / `int8` | 10 | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` | 573.3 ms / 741.1 ms | 553.0 ms / 2451.5 ms | 560.2 ms | WER 0.095 / CER 0.0 |
+| `faster-whisper` | `small.en` | local Python CPU / `int8` | 10 | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` | 1378.3 ms / 1531.1 ms | 1023.2 ms / 1202.4 ms | 1420.6 ms | WER 0.095 / CER 0.0 |
 | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU / `float32` | 1 legacy snapshot | validated legacy artifact; 10-sample refresh attempted on 2026-06-10 but service restarted during first generation and REST warmup failed with `httpx.ReadError` | `docs/benchmark-results/qwen-compose-2026-06-08.json` | 5482.2 ms / 5904.4 ms | 3696.1 ms / 6314.4 ms | 0.9 ms | WER 0.095 / CER 0.0 |
 | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU / `float32` | 10 | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` | 2388.3 ms / 4098.1 ms | 1715.1 ms / 2968.7 ms | 2215.8 ms | WER 0.095 / CER 0.0 |
 | `ultravox` | `fixie-ai/ultravox-v0_6-llama-3_1-8b` | Docker Compose CPU / `float32` | 10 target | blocked before validation: current token can fetch `fixie-ai/ultravox`, but the model loads gated `meta-llama/Llama-3.1-8B-Instruct` and Hugging Face returned 403 on 2026-06-10 | run `HF_TOKEN=... make benchmark-compose-ultravox` after Llama access is granted | blocked | blocked | blocked | blocked |
@@ -18,33 +19,47 @@ Use the matrix as the source of truth for which backends have checked-in numbers
 
 ## Latest Validated Runs
 
-### Faster-Whisper CPU Baseline
+### Faster-Whisper CPU Baselines
 
-Measured on June 3, 2026.
+Measured on June 10, 2026 with the local benchmark harness.
 
 Environment:
 
-- Host: macOS 26.5 arm64
-- Python: 3.14.4
+- Host: macOS 26.5.1 arm64
+- Python benchmark client: 3.13.12
 - Backend: `faster-whisper`
-- Model: `tiny.en`
+- Models: `base.en` and `small.en`
 - Device: CPU / `int8`
+- Samples: 10, with 5 REST runs per sample and one streaming session per sample
 - Streaming chunk size: 250 ms
 - Streaming partial window: 2.0 s
 - Audio: 7.28 s synthesized speech clip generated locally with `say`
+- Reference transcript: `The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.`
 
 Measured results:
 
-- REST `POST /api/transcribe`: 263.7 ms mean, 269.1 ms p95, 258.7 ms min, 269.1 ms max
-- REST real-time factor: 0.036
-- WebSocket partial latency: 177.5 ms mean, 308.6 ms p95, 129.1 ms first partial, 155.2 ms last partial
-- WebSocket final latency after `stop`: 261.3 ms
+| Model | REST Mean / P95 | REST RTF | Streaming Partial Mean / P95 | Streaming Final Mean / P95 | Accuracy |
+| --- | --- | ---: | --- | --- | --- |
+| `base.en` | 573.3 ms / 741.1 ms | 0.079 | 553.0 ms / 2451.5 ms | 560.2 ms / 761.2 ms | WER 0.095 / CER 0.0 |
+| `small.en` | 1378.3 ms / 1531.1 ms | 0.189 | 1023.2 ms / 1202.4 ms | 1420.6 ms / 1514.0 ms | WER 0.095 / CER 0.0 |
 
-Representative transcript:
+Representative transcripts:
 
 ```text
-the quick-brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTCSR service.
+base.en: The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.
+small.en: The quick brown fox jumps over the lazy dog. This is a real-time ASR latency benchmark for the RTC ASR service.
 ```
+
+Interpretation notes:
+
+- `base.en` is the faster local baseline while still producing the same normalized WER/CER as the larger local model on this clip.
+- `small.en` is the default local service model for more realistic scenarios, but it is about 2.4x slower than `base.en` on REST mean latency in this CPU run.
+- The accuracy miss for both models is word-boundary normalization: `realtime` became `real-time`, which increases WER while leaving normalized CER at `0.0`.
+
+Versioned artifacts:
+
+- `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json`
+- `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json`
 
 ### Qwen Compose CPU Baseline
 
@@ -74,7 +89,7 @@ Measured results:
 
 Interpretation notes:
 
-- The measured Qwen CPU path is still substantially slower than the `faster-whisper` `tiny.en` CPU baseline, but it remained below real time across a longer synthesized utterance.
+- The measured Qwen CPU path is still substantially slower than the validated `faster-whisper` `base.en` and `small.en` CPU baselines, but it remained below real time across a longer synthesized utterance.
 - The main accuracy miss is word-boundary normalization: `realtime` became `real-time`, which increases WER while leaving normalized CER at `0.0`.
 - The very small `final_ms` value reflects that most of the work already happened during the streaming partial passes.
 
@@ -138,7 +153,13 @@ This expands to `benchmark-compose-qwen`, `benchmark-compose-parakeet`, and `ben
 
 ### Faster-Whisper Baseline
 
-Run the local baseline with 10 samples per model:
+Run both local faster-whisper baselines with 10 samples per model:
+
+```bash
+make benchmark-faster-whisper-matrix
+```
+
+Run only the default local service model:
 
 ```bash
 make benchmark
@@ -150,8 +171,10 @@ Or invoke the harness directly against an already-running server:
 .venv/bin/python tests/benchmark.py \
   --url http://127.0.0.1:8090 \
   --ws-url ws://127.0.0.1:8090/ws/stream \
+  --model small.en \
+  --compute-type int8 \
   --sample-count 10 \
-  --output docs/benchmark-results/faster-whisper-local-$(date -u +%Y-%m-%d).json
+  --output docs/benchmark-results/faster-whisper-small.en-int8-$(date -u +%Y-%m-%d).json
 ```
 
 ### Qwen Compose Baseline

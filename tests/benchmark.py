@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--chunk-ms", type=int, default=250, help="Streaming chunk duration in milliseconds")
     parser.add_argument("--partial-interval-chunks", type=int, default=1, help="Streaming partial cadence in chunks")
     parser.add_argument("--binary-frames", action="store_true", help="Send raw PCM bytes over websocket instead of JSON base64 frames")
-    parser.add_argument("--model", default="tiny.en", help="Model name when spawning a local server")
+    parser.add_argument("--model", default="small.en", help="Model name when spawning a local server")
     parser.add_argument("--device", default="cpu", help="ASR device when spawning a local server")
     parser.add_argument("--compute-type", default="int8", help="Compute type for faster-whisper when spawning a local server")
     parser.add_argument("--qwen-dtype", default="auto", help="Dtype for qwen-asr when spawning a local server")
