@@ -256,6 +256,37 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             assert benchmark_metadata[key] == expected
 
 
+def test_benchmarks_doc_validated_artifact_rows_reference_checked_in_current_schema_artifacts() -> None:
+    benchmarks_doc = (Path("docs") / "benchmarks.md").read_text(encoding="utf-8")
+    results_dir = Path("docs") / "benchmark-results"
+    required_metadata_keys = {
+        "partial_interval_chunks",
+        "binary_frames",
+        "partial_window_seconds",
+        "max_buffer_seconds",
+        "request_retries",
+        "request_retry_delay",
+    }
+
+    validated_rows = [
+        line
+        for line in benchmarks_doc.splitlines()
+        if line.startswith("| `")
+        and "| validated artifact" in line
+        and "text-generation feasibility benchmark" not in line
+    ]
+    assert validated_rows
+
+    for row in validated_rows:
+        artifact_name = row.split("`docs/benchmark-results/", 1)[1].split("`", 1)[0]
+        artifact_path = results_dir / artifact_name
+        assert artifact_path.exists(), f"documented artifact missing: {artifact_name}"
+
+        benchmark_metadata = json.loads(artifact_path.read_text(encoding="utf-8"))["benchmark"]
+        missing_keys = required_metadata_keys.difference(benchmark_metadata)
+        assert not missing_keys, f"{artifact_name} missing metadata keys: {sorted(missing_keys)}"
+
+
 def test_post_transcribe_with_retries_retries_transient_read_errors() -> None:
     class FakeClient:
         def __init__(self) -> None:
