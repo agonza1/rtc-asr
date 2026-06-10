@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-10T22:49:05Z",
+  "generated_at": "2026-06-10T23:42:06Z",
   "summary": {
     "asr_count": 6,
     "tracked_count": 7,
@@ -12,7 +12,9 @@
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
       "chunk_ms": 250,
-      "partial_window_seconds": 2.0
+      "partial_window_seconds": 2.0,
+      "partial_interval_chunks": 1,
+      "binary_frames": false
     },
     "backend_count": 5,
     "lane_count": 3,
@@ -25,6 +27,8 @@
         "min": 148.5,
         "max": 3696.1
       },
+      "first_partial_end_to_end_mean_ms": null,
+      "partial_gap_mean_ms": null,
       "final_mean_ms": {
         "min": 0.9,
         "max": 2215.8
@@ -59,6 +63,8 @@
         "value": 148.5,
         "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
       },
+      "fastest_first_partial": null,
+      "tightest_partial_cadence": null,
       "fastest_final": {
         "label": "Fastest streaming final mean",
         "slug": "parakeet-nemo-compose",
@@ -109,6 +115,12 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 8,
+        "partial_window_seconds": 2,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 331.4,
         "p95_ms": 511.5,
@@ -117,6 +129,10 @@
       "streaming": {
         "partial_mean_ms": 148.5,
         "partial_p95_ms": 245.8,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 379,
         "final_p95_ms": 633.5
       },
@@ -154,6 +170,12 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 1186.2,
         "p95_ms": 1261.2,
@@ -162,6 +184,10 @@
       "streaming": {
         "partial_mean_ms": 352.0,
         "partial_p95_ms": 445.5,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 1189.6,
         "final_p95_ms": 1248.2
       },
@@ -199,6 +225,12 @@
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 573.3,
         "p95_ms": 741.1,
@@ -207,6 +239,10 @@
       "streaming": {
         "partial_mean_ms": 553.0,
         "partial_p95_ms": 2451.5,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 560.2,
         "final_p95_ms": 761.2
       },
@@ -244,6 +280,12 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 1378.3,
         "p95_ms": 1531.1,
@@ -252,6 +294,10 @@
       "streaming": {
         "partial_mean_ms": 1023.2,
         "partial_p95_ms": 1202.4,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 1420.6,
         "final_p95_ms": 1514.0
       },
@@ -289,6 +335,12 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 2388.3,
         "p95_ms": 4098.1,
@@ -297,6 +349,10 @@
       "streaming": {
         "partial_mean_ms": 1715.1,
         "partial_p95_ms": 2968.7,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 2215.8,
         "final_p95_ms": 3080.4
       },
@@ -334,6 +390,12 @@
       "measured_at": "2026-06-08T16:30:59Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": null,
+        "binary_frames": null
+      },
       "rest": {
         "mean_ms": 5482.2,
         "p95_ms": 5904.4,
@@ -342,6 +404,10 @@
       "streaming": {
         "partial_mean_ms": 3696.1,
         "partial_p95_ms": 6314.4,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 0.9,
         "final_p95_ms": 0.9
       },
@@ -379,6 +445,12 @@
       "measured_at": null,
       "sample_count": null,
       "artifact_path": null,
+      "contract": {
+        "chunk_ms": null,
+        "partial_interval_chunks": null,
+        "partial_window_seconds": null,
+        "binary_frames": null
+      },
       "rest": {
         "mean_ms": null,
         "p95_ms": null,
@@ -387,6 +459,10 @@
       "streaming": {
         "partial_mean_ms": null,
         "partial_p95_ms": null,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": null,
         "final_p95_ms": null
       },
@@ -419,6 +495,12 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 1186.2,
         "p95_ms": 1261.2,
@@ -427,6 +509,10 @@
       "streaming": {
         "partial_mean_ms": 352.0,
         "partial_p95_ms": 445.5,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 1189.6,
         "final_p95_ms": 1248.2
       },
@@ -444,6 +530,12 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 8,
+        "partial_window_seconds": 2,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 331.4,
         "p95_ms": 511.5,
@@ -452,6 +544,10 @@
       "streaming": {
         "partial_mean_ms": 148.5,
         "partial_p95_ms": 245.8,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 379,
         "final_p95_ms": 633.5
       },
@@ -469,6 +565,12 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 1378.3,
         "p95_ms": 1531.1,
@@ -477,6 +579,10 @@
       "streaming": {
         "partial_mean_ms": 1023.2,
         "partial_p95_ms": 1202.4,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 1420.6,
         "final_p95_ms": 1514.0
       },
@@ -494,6 +600,12 @@
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 573.3,
         "p95_ms": 741.1,
@@ -502,6 +614,10 @@
       "streaming": {
         "partial_mean_ms": 553.0,
         "partial_p95_ms": 2451.5,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 560.2,
         "final_p95_ms": 761.2
       },
@@ -519,6 +635,12 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 2388.3,
         "p95_ms": 4098.1,
@@ -527,6 +649,10 @@
       "streaming": {
         "partial_mean_ms": 1715.1,
         "partial_p95_ms": 2968.7,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 2215.8,
         "final_p95_ms": 3080.4
       },
@@ -544,6 +670,12 @@
       "measured_at": "2026-06-08T16:30:59Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": null,
+        "binary_frames": null
+      },
       "rest": {
         "mean_ms": 5482.2,
         "p95_ms": 5904.4,
@@ -552,6 +684,10 @@
       "streaming": {
         "partial_mean_ms": 3696.1,
         "partial_p95_ms": 6314.4,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 0.9,
         "final_p95_ms": 0.9
       },
@@ -569,6 +705,12 @@
       "measured_at": "2026-06-07T23:08:10Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-07.json",
+      "contract": {
+        "chunk_ms": 1000,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": null,
+        "binary_frames": null
+      },
       "rest": {
         "mean_ms": 1691.4,
         "p95_ms": 1692.5,
@@ -577,6 +719,10 @@
       "streaming": {
         "partial_mean_ms": 1349.7,
         "partial_p95_ms": 1863.0,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 0.7,
         "final_p95_ms": 0.7
       },
@@ -603,6 +749,12 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 8,
+        "partial_window_seconds": 2,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 331.4,
         "p95_ms": 511.5,
@@ -611,6 +763,10 @@
       "streaming": {
         "partial_mean_ms": 148.5,
         "partial_p95_ms": 245.8,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 379,
         "final_p95_ms": 633.5
       },
@@ -648,6 +804,12 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 1186.2,
         "p95_ms": 1261.2,
@@ -656,6 +818,10 @@
       "streaming": {
         "partial_mean_ms": 352.0,
         "partial_p95_ms": 445.5,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 1189.6,
         "final_p95_ms": 1248.2
       },
@@ -693,6 +859,12 @@
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 573.3,
         "p95_ms": 741.1,
@@ -701,6 +873,10 @@
       "streaming": {
         "partial_mean_ms": 553.0,
         "partial_p95_ms": 2451.5,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 560.2,
         "final_p95_ms": 761.2
       },
@@ -738,6 +914,12 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 1378.3,
         "p95_ms": 1531.1,
@@ -746,6 +928,10 @@
       "streaming": {
         "partial_mean_ms": 1023.2,
         "partial_p95_ms": 1202.4,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 1420.6,
         "final_p95_ms": 1514.0
       },
@@ -783,6 +969,12 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false
+      },
       "rest": {
         "mean_ms": 2388.3,
         "p95_ms": 4098.1,
@@ -791,6 +983,10 @@
       "streaming": {
         "partial_mean_ms": 1715.1,
         "partial_p95_ms": 2968.7,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 2215.8,
         "final_p95_ms": 3080.4
       },
@@ -828,6 +1024,12 @@
       "measured_at": "2026-06-08T16:30:59Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": null,
+        "binary_frames": null
+      },
       "rest": {
         "mean_ms": 5482.2,
         "p95_ms": 5904.4,
@@ -836,6 +1038,10 @@
       "streaming": {
         "partial_mean_ms": 3696.1,
         "partial_p95_ms": 6314.4,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "final_mean_ms": 0.9,
         "final_p95_ms": 0.9
       },

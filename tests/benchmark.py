@@ -425,7 +425,10 @@ async def run_ws_benchmark(
     if chunk_size % 2:
         chunk_size += 1
     chunks = [raw_pcm[index:index + chunk_size] for index in range(0, len(raw_pcm), chunk_size)]
+    total_audio_ms = round((len(raw_pcm) / max(sample_rate * 2, 1)) * 1000, 1)
     partial_latencies = []
+    partial_audio_offsets_ms = []
+    partial_end_to_end_ms = []
     partial_text = ""
     connect = connect_fn or _connect_websocket
     async with connect(ws_url) as websocket:
@@ -457,7 +460,11 @@ async def run_ws_benchmark(
             event = json.loads(await websocket.recv())
             if event.get("type") != "partial":
                 raise RuntimeError(f"Expected partial event, got: {event}")
-            partial_latencies.append((time.perf_counter() - started) * 1000)
+            response_latency_ms = (time.perf_counter() - started) * 1000
+            partial_latencies.append(response_latency_ms)
+            audio_offset_ms = min(round(chunk_index * chunk_ms, 1), total_audio_ms)
+            partial_audio_offsets_ms.append(audio_offset_ms)
+            partial_end_to_end_ms.append(round(audio_offset_ms + response_latency_ms, 1))
             partial_text = event.get("text", "")
         started = time.perf_counter()
         await websocket.send(json.dumps({"type": "stop"}))
@@ -465,20 +472,32 @@ async def run_ws_benchmark(
         if final_event.get("type") != "final":
             raise RuntimeError(f"Expected final event, got: {final_event}")
         final_ms = (time.perf_counter() - started) * 1000
+    partial_gap_ms = [
+        round(current - previous, 1)
+        for previous, current in zip(partial_end_to_end_ms, partial_end_to_end_ms[1:])
+    ]
     partial_summary = {
         "partial_mean_ms": round(statistics.mean(partial_latencies), 1) if partial_latencies else None,
         "partial_p95_ms": round(percentile(partial_latencies, 0.95), 1) if partial_latencies else None,
         "partial_first_ms": round(partial_latencies[0], 1) if partial_latencies else None,
         "partial_last_ms": round(partial_latencies[-1], 1) if partial_latencies else None,
+        "first_partial_audio_ms": partial_audio_offsets_ms[0] if partial_audio_offsets_ms else None,
+        "first_partial_end_to_end_ms": partial_end_to_end_ms[0] if partial_end_to_end_ms else None,
+        "partial_gap_mean_ms": round(statistics.mean(partial_gap_ms), 1) if partial_gap_ms else None,
+        "partial_gap_p95_ms": round(percentile(partial_gap_ms, 0.95), 1) if partial_gap_ms else None,
     }
     return {
         "chunks": len(chunks),
         "chunk_ms": chunk_ms,
         "binary_frames": send_binary_frames,
         "partial_latencies_ms": [round(value, 1) for value in partial_latencies],
+        "partial_audio_offsets_ms": partial_audio_offsets_ms,
+        "partial_end_to_end_ms": partial_end_to_end_ms,
+        "partial_gap_ms": partial_gap_ms,
         "partial_p90_ms": round(percentile(partial_latencies, 0.90), 1) if partial_latencies else None,
         **partial_summary,
         "final_ms": round(final_ms, 1),
+        "time_to_final_from_audio_end_ms": round(final_ms, 1),
         "ready": ready_event,
         "last_partial": partial_text,
         "final_transcript": final_event.get("text", ""),
@@ -518,6 +537,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         streaming_samples: list[dict[str, object]] = []
         rest_durations_all: list[float] = []
         partial_latencies_all: list[float] = []
+        first_partial_end_to_end_all: list[float] = []
+        partial_gap_all: list[float] = []
         final_latencies_all: list[float] = []
 
         for index in range(sample_count):
@@ -544,6 +565,10 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             ws["accuracy"] = compute_accuracy_metrics(reference_text, str(ws.get("final_transcript", "")))
             rest_durations_all.extend(float(value) for value in rest.get("durations_ms", []))
             partial_latencies_all.extend(float(value) for value in ws.get("partial_latencies_ms", []))
+            first_partial_end_to_end = ws.get("first_partial_end_to_end_ms")
+            if first_partial_end_to_end is not None:
+                first_partial_end_to_end_all.append(float(first_partial_end_to_end))
+            partial_gap_all.extend(float(value) for value in ws.get("partial_gap_ms", []))
             final_latencies_all.append(float(ws.get("final_ms", 0.0)))
             rest_samples.append({
                 "sample": index + 1,
@@ -564,6 +589,11 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "partial_p95_ms": ws["partial_p95_ms"],
                 "partial_first_ms": ws["partial_first_ms"],
                 "partial_last_ms": ws["partial_last_ms"],
+                "first_partial_audio_ms": ws["first_partial_audio_ms"],
+                "first_partial_end_to_end_ms": ws["first_partial_end_to_end_ms"],
+                "partial_gap_mean_ms": ws["partial_gap_mean_ms"],
+                "partial_gap_p95_ms": ws["partial_gap_p95_ms"],
+                "time_to_final_from_audio_end_ms": ws["time_to_final_from_audio_end_ms"],
                 "final_ms": ws["final_ms"],
                 "ready": ws["ready"],
                 "last_partial": ws["last_partial"],
@@ -621,6 +651,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
 
         rest_summary = summarize_latencies(rest_durations_all, duration_s=duration_s)
         streaming_summary = summarize_latencies(partial_latencies_all) if partial_latencies_all else None
+        first_partial_summary = summarize_latencies(first_partial_end_to_end_all) if first_partial_end_to_end_all else None
+        partial_gap_summary = summarize_latencies(partial_gap_all) if partial_gap_all else None
         final_summary = summarize_latencies(final_latencies_all)
 
         return {
@@ -675,6 +707,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "request_retries": args.request_retries,
                 "request_retry_delay": args.request_retry_delay,
                 "partial_latencies_ms": [round(value, 1) for value in partial_latencies_all],
+                "first_partial_end_to_end_latencies_ms": [round(value, 1) for value in first_partial_end_to_end_all],
+                "partial_gap_latencies_ms": [round(value, 1) for value in partial_gap_all],
                 "final_latencies_ms": [round(value, 1) for value in final_latencies_all],
                 "binary_frames": args.binary_frames,
                 "partial_mean_ms": streaming_summary["mean_ms"] if streaming_summary else None,
@@ -682,6 +716,12 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "partial_p95_ms": streaming_summary["p95_ms"] if streaming_summary else None,
                 "partial_min_ms": streaming_summary["min_ms"] if streaming_summary else None,
                 "partial_max_ms": streaming_summary["max_ms"] if streaming_summary else None,
+                "first_partial_end_to_end_mean_ms": first_partial_summary["mean_ms"] if first_partial_summary else None,
+                "first_partial_end_to_end_p90_ms": first_partial_summary["p90_ms"] if first_partial_summary else None,
+                "first_partial_end_to_end_p95_ms": first_partial_summary["p95_ms"] if first_partial_summary else None,
+                "partial_gap_mean_ms": partial_gap_summary["mean_ms"] if partial_gap_summary else None,
+                "partial_gap_p90_ms": partial_gap_summary["p90_ms"] if partial_gap_summary else None,
+                "partial_gap_p95_ms": partial_gap_summary["p95_ms"] if partial_gap_summary else None,
                 "final_mean_ms": final_summary["mean_ms"],
                 "final_p90_ms": final_summary["p90_ms"],
                 "final_p95_ms": final_summary["p95_ms"],

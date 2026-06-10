@@ -446,6 +446,44 @@ def test_run_ws_benchmark_supports_binary_frames_and_window_overrides() -> None:
     asyncio.run(scenario())
 
 
+def test_run_ws_benchmark_reports_first_partial_and_gap_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "partial", "text": "chunk one"},
+            {"type": "partial", "text": "chunk two"},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    perf_values = iter([1.0, 1.05, 2.0, 2.08, 3.0, 3.12])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcdefgh",
+            8,
+            250,
+            partial_interval_chunks=1,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [250, 500]
+        assert result["partial_end_to_end_ms"] == [300.0, 580.0]
+        assert result["first_partial_audio_ms"] == 250
+        assert result["first_partial_end_to_end_ms"] == 300.0
+        assert result["partial_gap_ms"] == [280.0]
+        assert result["partial_gap_mean_ms"] == 280.0
+        assert result["partial_gap_p95_ms"] == 280.0
+        assert result["time_to_final_from_audio_end_ms"] == 120.0
+
+    asyncio.run(scenario())
+
+
 def test_run_ws_benchmark_allows_sparse_partial_cadence() -> None:
     websocket = FakeBenchmarkWebSocket(
         [

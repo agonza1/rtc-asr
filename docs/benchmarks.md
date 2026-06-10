@@ -48,9 +48,17 @@ Default artifact contract:
 
 - `BENCHMARK_SAMPLE_COUNT=10`
 - 5 REST runs per sample
-- 250 ms streaming chunks
-- 2.0 s partial window
+- `250 ms` streaming chunks
+- `partial_interval_chunks=1`
+- `partial_window_seconds=2.0`
+- JSON/base64 websocket framing by default (`BENCHMARK_BINARY_FRAMES` disabled)
 - JSON output checked into `docs/benchmark-results/`
+
+The tracked registry in `docs/benchmark-results/tracks.json` now also records the recommended low-latency sweep matrix:
+
+- `chunk_ms`: `40`, `60`, `80`, `100`, `160`, `250`
+- `partial_window_seconds`: `0.5`, `0.75`, `1.0`, `2.0`
+- `binary_frames`: `false`, `true`
 
 Run the local baseline benchmarks:
 
@@ -72,6 +80,12 @@ Attempt the blocked Ultravox lane once access is available:
 ```bash
 HF_TOKEN=... make benchmark-compose-ultravox
 ```
+
+Benchmark artifacts now include extra streaming responsiveness metrics for low-latency analysis:
+
+- `first_partial_end_to_end_*`: when a caller could first see a useful partial in real time
+- `partial_gap_*`: cadence between visible partial updates
+- `time_to_final_from_audio_end_ms`: finalization delay after audio stops
 
 Rebuild the homepage manifest after artifact or track changes:
 

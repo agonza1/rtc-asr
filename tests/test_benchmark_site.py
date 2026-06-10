@@ -152,6 +152,75 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     assert summary["highlights"]["best_live_caption"] is not None
 
 
+def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "demo-2026-06-10.json"
+    artifact_path.write_text(
+        json.dumps(
+            {
+                "benchmark": {
+                    "sample_count": 4,
+                    "chunk_ms": 80,
+                    "partial_interval_chunks": 2,
+                    "partial_window_seconds": 0.75,
+                    "binary_frames": True,
+                },
+                "backend": {"name": "demo", "model": "demo-v1", "device": "cpu", "compute_type": "int8"},
+                "rest": {"mean_ms": 42, "p95_ms": 64, "rtf_mean": 0.2},
+                "streaming": {
+                    "partial_mean_ms": 21,
+                    "partial_p95_ms": 32,
+                    "first_partial_end_to_end_mean_ms": 185,
+                    "first_partial_end_to_end_p95_ms": 220,
+                    "partial_gap_mean_ms": 95,
+                    "partial_gap_p95_ms": 110,
+                    "final_mean_ms": 30,
+                    "final_p95_ms": 45,
+                },
+                "environment": {"date_utc": "2026-06-10T00:00:00Z"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    tracks_path = tmp_path / "tracks.json"
+    tracks_path.write_text(
+        json.dumps(
+            {
+                "sample_contract": {"default_sample_count": 4},
+                "tracks": [
+                    {
+                        "slug": "demo-track",
+                        "label": "demo-track",
+                        "backend": "demo",
+                        "model": "demo-v1",
+                        "device": "cpu",
+                        "compute": "int8",
+                        "lane": "local",
+                        "status": "validated",
+                        "status_detail": "demo artifact",
+                        "target_sample_count": 4,
+                        "run_command": "make benchmark",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifest = build_manifest(tmp_path, tracks_path)
+
+    track = manifest["tracks"][0]
+    assert track["contract"] == {
+        "chunk_ms": 80,
+        "partial_interval_chunks": 2,
+        "partial_window_seconds": 0.75,
+        "binary_frames": True,
+    }
+    assert track["streaming"]["first_partial_end_to_end_mean_ms"] == 185
+    assert track["streaming"]["partial_gap_mean_ms"] == 95
+    assert manifest["summary"]["highlights"]["fastest_first_partial"]["slug"] == "demo-track"
+    assert manifest["summary"]["highlights"]["tightest_partial_cadence"]["slug"] == "demo-track"
+
+
 def test_docs_and_tracks_registry_stay_aligned() -> None:
     docs_text = DOCS_PATH.read_text(encoding="utf-8")
     tracks = load_tracks()["tracks"]
