@@ -225,3 +225,50 @@ def test_run_ws_benchmark_rejects_non_ready_handshake() -> None:
             )
 
     asyncio.run(scenario())
+
+def test_run_ws_benchmark_rejects_unexpected_partial_event() -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "final", "text": "too early"},
+        ]
+    )
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        with pytest.raises(RuntimeError, match="Expected partial event"):
+            await benchmark.run_ws_benchmark(
+                "ws://example.test/ws/stream",
+                b"abcd",
+                4,
+                250,
+                connect_fn=fake_connect,
+            )
+
+    asyncio.run(scenario())
+
+def test_run_ws_benchmark_rejects_non_final_stop_event() -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "partial", "text": "chunk"},
+            {"type": "partial", "text": "still partial"},
+        ]
+    )
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        with pytest.raises(RuntimeError, match="Expected final event"):
+            await benchmark.run_ws_benchmark(
+                "ws://example.test/ws/stream",
+                b"ab",
+                4,
+                250,
+                connect_fn=fake_connect,
+            )
+
+    asyncio.run(scenario())
