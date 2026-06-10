@@ -12,7 +12,9 @@
     "partial_interval_chunks": 8,
     "binary_frames": false,
     "partial_window_seconds": 2.0,
-    "max_buffer_seconds": null
+    "max_buffer_seconds": null,
+    "request_retries": 3,
+    "request_retry_delay": 2.0
   },
   "audio": {
     "path": "/Users/alberto/.openclaw/tmp/rtc_asr_bench_x8_ii0z7.aiff",

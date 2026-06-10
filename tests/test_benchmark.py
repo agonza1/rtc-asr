@@ -183,6 +183,49 @@ def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
         assert f"--backend {backend}" in block
 
 
+def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> None:
+    artifact_expectations = {
+        "faster-whisper-base.en-int8-2026-06-10.json": {
+            "partial_interval_chunks": 1,
+            "binary_frames": False,
+            "partial_window_seconds": 2.0,
+            "max_buffer_seconds": None,
+            "request_retries": 3,
+            "request_retry_delay": 2.0,
+        },
+        "faster-whisper-small.en-int8-2026-06-10.json": {
+            "partial_interval_chunks": 1,
+            "binary_frames": False,
+            "partial_window_seconds": 2.0,
+            "max_buffer_seconds": None,
+            "request_retries": 3,
+            "request_retry_delay": 2.0,
+        },
+        "parakeet-compose-2026-06-10.json": {
+            "partial_interval_chunks": 1,
+            "binary_frames": False,
+            "partial_window_seconds": 2.0,
+            "max_buffer_seconds": None,
+            "request_retries": 3,
+            "request_retry_delay": 2.0,
+        },
+        "parakeet-nemo-110m-compose-2026-06-09.json": {
+            "partial_interval_chunks": 8,
+            "binary_frames": False,
+            "partial_window_seconds": 2.0,
+            "max_buffer_seconds": None,
+            "request_retries": 3,
+            "request_retry_delay": 2.0,
+        },
+    }
+
+    results_dir = Path("docs") / "benchmark-results"
+    for artifact_name, expected_values in artifact_expectations.items():
+        benchmark_metadata = json.loads((results_dir / artifact_name).read_text(encoding="utf-8"))["benchmark"]
+        for key, expected in expected_values.items():
+            assert benchmark_metadata[key] == expected
+
+
 def test_post_transcribe_with_retries_retries_transient_read_errors() -> None:
     class FakeClient:
         def __init__(self) -> None:

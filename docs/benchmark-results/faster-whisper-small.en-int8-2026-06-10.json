@@ -9,6 +9,10 @@
     "sample_count": 10,
     "rest_runs_per_sample": 5,
     "chunk_ms": 250,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
     "request_retries": 3,
     "request_retry_delay": 2.0
   },
