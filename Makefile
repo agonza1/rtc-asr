@@ -120,7 +120,9 @@ benchmark-compose-qwen:
 	@echo "Starting docker compose stack with qwen-asr on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
-	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	@cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+	trap cleanup EXIT INT TERM; \
+	base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
 		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
 			echo "Using cached default base image $${base_image}"; \
@@ -140,7 +142,9 @@ benchmark-compose-parakeet:
 	@echo "Starting docker compose stack with parakeet on CPU..."
 	@mkdir -p .cache/huggingface
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
-	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	@cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+	trap cleanup EXIT INT TERM; \
+	base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
 		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
 			echo "Using cached default base image $${base_image}"; \
@@ -161,7 +165,9 @@ benchmark-compose-ultravox:
 	@mkdir -p .cache/huggingface
 	@test -x $(PYTHON) || (echo "Missing $(PYTHON); create a local client venv before running this target." >&2; exit 1)
 	@test -n "$(HF_TOKEN)$(HUGGINGFACE_HUB_TOKEN)" || (echo "Ultravox default model requires Hugging Face access. Export HF_TOKEN or HUGGINGFACE_HUB_TOKEN before running this target." >&2; exit 1)
-	@base_image="$(PYTHON_BASE_IMAGE)"; \
+	@cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+	trap cleanup EXIT INT TERM; \
+	base_image="$(PYTHON_BASE_IMAGE)"; \
 	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
 		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
 			echo "Using cached default base image $${base_image}"; \

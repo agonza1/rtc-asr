@@ -141,6 +141,15 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
         assert "--request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY)" in line
 
 
+def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    for target in ("benchmark-compose-qwen", "benchmark-compose-parakeet", "benchmark-compose-ultravox"):
+        block = makefile.split(f"{target}:\n", 1)[1].split("\n\n", 1)[0]
+        assert "trap cleanup EXIT INT TERM" in block
+        assert "cleanup() { docker compose down >/dev/null 2>&1 || true; }" in block
+
+
 def test_post_transcribe_with_retries_retries_transient_read_errors() -> None:
     class FakeClient:
         def __init__(self) -> None:
