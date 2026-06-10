@@ -66,8 +66,9 @@ Example response:
       "transport": "websocket",
       "path": "/ws/stream",
       "reusable_connection": true,
-      "message_types": ["start", "audio", "stop"],
-      "audio_frame_formats": ["json-base64", "binary"]
+      "message_types": ["start", "audio", "stop", "cancel"],
+      "audio_frame_formats": ["json-base64", "binary"],
+      "event_types": ["ready", "partial", "final", "canceled", "error"]
     }
   }
 }
@@ -141,6 +142,8 @@ WebSocket /ws/stream
 
 Client event sequence:
 
+The client may send audio either as JSON `audio` events with base64 payloads or as raw binary websocket frames after `start`.
+
 1. Start the stream:
 
 ```json
@@ -163,7 +166,15 @@ Client event sequence:
 
 Or send the chunk bytes directly as a binary websocket frame once the stream is ready.
 
-3. Finish the stream:
+3. Cancel the stream early if needed:
+
+```json
+{
+  "type": "cancel"
+}
+```
+
+4. Finish the stream when you want a final transcript:
 
 ```json
 {
@@ -219,6 +230,7 @@ Notes:
 - Partial events are emitted against the buffered audio accumulated for the active stream on that connection.
 - After a `final` event, the websocket remains open and can accept a new `start` event for the next stream.
 - The current HTTP `POST /api/stream` route is still not implemented; use `/ws/stream` for streaming.
+- Sending `cancel` returns a `canceled` event and clears the active stream without running a final transcription.
 - Invalid event ordering or invalid base64 audio results in a websocket `error` event followed by connection close.
 
 ## Errors

@@ -323,6 +323,17 @@ def test_app_config_reads_parakeet_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.asr_parakeet_dtype == "float32"
 
 
+@pytest.mark.parametrize("env_name", ["ASR_QWEN_MAX_NEW_TOKENS", "ASR_QWEN_MAX_INFERENCE_BATCH_SIZE"])
+def test_app_config_rejects_non_positive_qwen_limits(
+    monkeypatch: pytest.MonkeyPatch,
+    env_name: str,
+) -> None:
+    monkeypatch.setenv(env_name, "0")
+
+    with pytest.raises(ValueError, match=rf"{env_name} must be a positive integer"):
+        AppConfig.from_env()
+
+
 def test_app_config_reads_ultravox_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ASR_BACKEND", "ultravox")
     monkeypatch.setenv("ASR_ULTRAVOX_MODEL", "fixie-ai/ultravox-v0_6-llama-3_1-8b")
@@ -337,3 +348,10 @@ def test_app_config_reads_ultravox_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.asr_ultravox_dtype == "float32"
     assert config.asr_ultravox_max_new_tokens == 96
     assert config.asr_ultravox_prompt == "Return only the transcript."
+
+
+def test_app_config_rejects_non_positive_ultravox_max_new_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASR_ULTRAVOX_MAX_NEW_TOKENS", "0")
+
+    with pytest.raises(ValueError, match=r"ASR_ULTRAVOX_MAX_NEW_TOKENS must be a positive integer"):
+        AppConfig.from_env()

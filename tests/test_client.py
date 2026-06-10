@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import importlib
 import json
+import sys
 
 import pytest
 
@@ -12,10 +14,13 @@ from src.rtc_client import AsyncASRClient
 class FakeWebSocket:
     def __init__(self, responses: list[dict[str, object]]) -> None:
         self.responses = [json.dumps(response) for response in responses]
-        self.sent: list[dict[str, object]] = []
+        self.sent: list[object] = []
         self.closed_with: int | None = None
 
-    async def send(self, data: str) -> None:
+    async def send(self, data: str | bytes) -> None:
+        if isinstance(data, bytes):
+            self.sent.append(data)
+            return
         self.sent.append(json.loads(data))
 
     async def recv(self) -> str:
@@ -25,6 +30,17 @@ class FakeWebSocket:
 
     async def close(self, code: int = 1000) -> None:
         self.closed_with = code
+
+
+def test_importing_rtc_client_does_not_load_main_module() -> None:
+    sys.modules.pop("src", None)
+    sys.modules.pop("src.main", None)
+    sys.modules.pop("src.rtc_client", None)
+
+    rtc_client = importlib.import_module("src.rtc_client")
+
+    assert rtc_client.AsyncASRClient is not None
+    assert "src.main" not in sys.modules
 
 
 def test_async_asr_client_stream_flow() -> None:
@@ -99,6 +115,73 @@ def test_async_asr_client_stream_flow() -> None:
             {'type': 'stop'},
         ]
         assert websocket.closed_with == 1000
+
+    asyncio.run(scenario())
+
+
+def test_async_asr_client_can_send_binary_audio_frames() -> None:
+    websocket = FakeWebSocket([
+        {
+            'type': 'ready',
+            'backend': 'fake-whisper',
+            'model': 'fixture-adapter',
+            'language': 'en',
+            'sample_rate': 16000,
+            'partial_interval_chunks': 1,
+        },
+        {
+            'type': 'partial',
+            'is_final': False,
+            'chunks_received': 1,
+            'buffered_bytes': 3,
+            'text': 'hel',
+        },
+        {
+            'type': 'final',
+            'is_final': True,
+            'chunks_received': 1,
+            'buffered_bytes': 3,
+            'text': 'hello',
+        },
+    ])
+
+    async def fake_connect(_: str) -> FakeWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        client = AsyncASRClient('ws://example.test/ws/stream', connect_fn=fake_connect)
+        await client.start(send_binary_frames=True)
+        partial_event = await client.send_audio(b'hel')
+        final_event = await client.stop()
+        await client.close()
+
+        assert partial_event is not None
+        assert partial_event.text == 'hel'
+        assert final_event.text == 'hello'
+        assert websocket.sent == [
+            {
+                'type': 'start',
+                'language': 'en',
+                'sample_rate': 16000,
+                'partial_interval_chunks': 1,
+            },
+            b'hel',
+            {'type': 'stop'},
+        ]
+        assert websocket.closed_with == 1000
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("param_name", "param_value"),
+    [("partial_window_seconds", 0), ("max_buffer_seconds", -1), ("partial_window_seconds", True)],
+)
+def test_async_asr_client_rejects_invalid_optional_window_settings(param_name: str, param_value: object) -> None:
+    async def scenario() -> None:
+        client = AsyncASRClient("ws://example.test/ws/stream")
+        with pytest.raises(ValueError, match=rf"{param_name} must be a positive number"):
+            await client.start(**{param_name: param_value})
 
     asyncio.run(scenario())
 
@@ -276,6 +359,7 @@ def test_async_asr_client_returns_cancel_error_events() -> None:
         },
         {
             'type': 'error',
+            'stream_id': 7,
             'message': 'Send a start event before canceling the stream',
             'code': 1003,
         },
@@ -291,6 +375,7 @@ def test_async_asr_client_returns_cancel_error_events() -> None:
         await client.close()
 
         assert cancel_event.type == 'error'
+        assert cancel_event.stream_id == 7
         assert cancel_event.text == 'Send a start event before canceling the stream'
         assert cancel_event.raw['code'] == 1003
         assert websocket.sent == [

@@ -174,6 +174,13 @@ class QwenASRAdapter:
                 "`pip install -r requirements.txt` so qwen-asr can use transformers==4.57.6."
             ) from exc
 
+        try:
+            import torch
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The qwen-asr backend is not installed. Install requirements.txt to enable ASR_BACKEND=qwen-asr."
+            ) from exc
+
         kwargs = {
             "dtype": _resolve_torch_dtype(torch, self.config.asr_qwen_dtype, self.config.asr_device),
             "device_map": self._device_map(),

@@ -44,14 +44,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sample-count", type=int, default=10, help="Number of benchmark samples to run per model")
     parser.add_argument("--rest-runs", type=int, default=5, help="Number of REST runs")
     parser.add_argument("--chunk-ms", type=int, default=250, help="Streaming chunk duration in milliseconds")
+    parser.add_argument("--partial-interval-chunks", type=int, default=1, help="Streaming partial cadence in chunks")
+    parser.add_argument("--binary-frames", action="store_true", help="Send raw PCM bytes over websocket instead of JSON base64 frames")
     parser.add_argument("--model", default="tiny.en", help="Model name when spawning a local server")
     parser.add_argument("--device", default="cpu", help="ASR device when spawning a local server")
     parser.add_argument("--compute-type", default="int8", help="Compute type for faster-whisper when spawning a local server")
     parser.add_argument("--qwen-dtype", default="auto", help="Dtype for qwen-asr when spawning a local server")
     parser.add_argument("--parakeet-dtype", default="auto", help="Dtype for parakeet when spawning a local server")
     parser.add_argument("--ultravox-dtype", default="auto", help="Dtype for ultravox when spawning a local server")
+    parser.add_argument(
+        "--ultravox-prompt",
+        default="Transcribe the spoken audio exactly and return only the transcript.",
+        help="Prompt for ultravox when spawning a local server",
+    )
     parser.add_argument("--ultravox-max-new-tokens", type=int, default=128, help="Max new tokens for ultravox when spawning a local server")
     parser.add_argument("--partial-window", type=float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
+    parser.add_argument("--max-buffer", type=float, help="Optional stream buffer cap in seconds for websocket benchmarking")
     return parser.parse_args()
 
 
@@ -217,6 +225,7 @@ class ManagedServer:
         parakeet_dtype: str,
         ultravox_dtype: str,
         ultravox_max_new_tokens: int,
+        ultravox_prompt: str,
     ) -> None:
         self.url = url
         self.model = model
@@ -228,6 +237,7 @@ class ManagedServer:
         self.parakeet_dtype = parakeet_dtype
         self.ultravox_dtype = ultravox_dtype
         self.ultravox_max_new_tokens = ultravox_max_new_tokens
+        self.ultravox_prompt = ultravox_prompt
         self.process: subprocess.Popen[str] | None = None
 
     def start(self) -> None:
@@ -246,6 +256,7 @@ class ManagedServer:
             env.setdefault("ASR_ULTRAVOX_MODEL", self.model)
             env.setdefault("ASR_ULTRAVOX_DTYPE", self.ultravox_dtype)
             env.setdefault("ASR_ULTRAVOX_MAX_NEW_TOKENS", str(self.ultravox_max_new_tokens))
+            env.setdefault("ASR_ULTRAVOX_PROMPT", self.ultravox_prompt)
         else:
             env.setdefault("ASR_MODEL_SIZE", self.model)
             env.setdefault("ASR_COMPUTE_TYPE", self.compute_type)
@@ -323,27 +334,55 @@ async def run_rest_benchmark(base_url: str, wav_bytes: bytes, sample_rate: int, 
     }
 
 
-async def run_ws_benchmark(ws_url: str, raw_pcm: bytes, sample_rate: int, chunk_ms: int) -> dict[str, object]:
+def _connect_websocket(ws_url: str):
+    return websockets.connect(ws_url, max_size=2**23)
+
+
+async def run_ws_benchmark(
+    ws_url: str,
+    raw_pcm: bytes,
+    sample_rate: int,
+    chunk_ms: int,
+    *,
+    partial_interval_chunks: int = 1,
+    send_binary_frames: bool = False,
+    partial_window_seconds: float | None = None,
+    max_buffer_seconds: float | None = None,
+    connect_fn=None,
+) -> dict[str, object]:
     chunk_size = max(int(sample_rate * 2 * chunk_ms / 1000), 2)
     if chunk_size % 2:
         chunk_size += 1
     chunks = [raw_pcm[index:index + chunk_size] for index in range(0, len(raw_pcm), chunk_size)]
     partial_latencies = []
     partial_text = ""
-    async with websockets.connect(ws_url, max_size=2**23) as websocket:
-        await websocket.send(json.dumps({
+    connect = connect_fn or _connect_websocket
+    async with connect(ws_url) as websocket:
+        start_payload: dict[str, object] = {
             "type": "start",
             "language": "en",
             "sample_rate": sample_rate,
-            "partial_interval_chunks": 1,
-        }))
+            "partial_interval_chunks": partial_interval_chunks,
+        }
+        if partial_window_seconds is not None:
+            start_payload["partial_window_seconds"] = partial_window_seconds
+        if max_buffer_seconds is not None:
+            start_payload["max_buffer_seconds"] = max_buffer_seconds
+        await websocket.send(json.dumps(start_payload))
         ready_event = json.loads(await websocket.recv())
-        for chunk in chunks:
+        if ready_event.get("type") != "ready":
+            raise RuntimeError(f"Expected ready event, got: {ready_event}")
+        for chunk_index, chunk in enumerate(chunks, start=1):
             started = time.perf_counter()
-            await websocket.send(json.dumps({
-                "type": "audio",
-                "audio_data": base64.b64encode(chunk).decode("ascii"),
-            }))
+            if send_binary_frames:
+                await websocket.send(chunk)
+            else:
+                await websocket.send(json.dumps({
+                    "type": "audio",
+                    "audio_data": base64.b64encode(chunk).decode("ascii"),
+                }))
+            if chunk_index % partial_interval_chunks != 0:
+                continue
             event = json.loads(await websocket.recv())
             partial_latencies.append((time.perf_counter() - started) * 1000)
             partial_text = event.get("text", "")
@@ -351,15 +390,19 @@ async def run_ws_benchmark(ws_url: str, raw_pcm: bytes, sample_rate: int, chunk_
         await websocket.send(json.dumps({"type": "stop"}))
         final_event = json.loads(await websocket.recv())
         final_ms = (time.perf_counter() - started) * 1000
+    partial_summary = {
+        "partial_mean_ms": round(statistics.mean(partial_latencies), 1) if partial_latencies else None,
+        "partial_p95_ms": round(percentile(partial_latencies, 0.95), 1) if partial_latencies else None,
+        "partial_first_ms": round(partial_latencies[0], 1) if partial_latencies else None,
+        "partial_last_ms": round(partial_latencies[-1], 1) if partial_latencies else None,
+    }
     return {
         "chunks": len(chunks),
         "chunk_ms": chunk_ms,
+        "binary_frames": send_binary_frames,
         "partial_latencies_ms": [round(value, 1) for value in partial_latencies],
-        "partial_mean_ms": round(statistics.mean(partial_latencies), 1),
-        "partial_p90_ms": round(percentile(partial_latencies, 0.90), 1),
-        "partial_p95_ms": round(percentile(partial_latencies, 0.95), 1),
-        "partial_first_ms": round(partial_latencies[0], 1),
-        "partial_last_ms": round(partial_latencies[-1], 1),
+        "partial_p90_ms": round(percentile(partial_latencies, 0.90), 1) if partial_latencies else None,
+        **partial_summary,
         "final_ms": round(final_ms, 1),
         "ready": ready_event,
         "last_partial": partial_text,
@@ -386,6 +429,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         parakeet_dtype=args.parakeet_dtype,
         ultravox_dtype=args.ultravox_dtype,
         ultravox_max_new_tokens=args.ultravox_max_new_tokens,
+        ultravox_prompt=args.ultravox_prompt,
     ) if args.spawn_server else None
 
     try:
@@ -403,7 +447,16 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
 
         for index in range(sample_count):
             rest = await run_rest_benchmark(args.url, wav_bytes, sample_rate, args.rest_runs, duration_s)
-            ws = await run_ws_benchmark(args.ws_url, raw_pcm, sample_rate, args.chunk_ms)
+            ws = await run_ws_benchmark(
+                args.ws_url,
+                raw_pcm,
+                sample_rate,
+                args.chunk_ms,
+                partial_interval_chunks=args.partial_interval_chunks,
+                send_binary_frames=args.binary_frames,
+                partial_window_seconds=args.partial_window,
+                max_buffer_seconds=args.max_buffer,
+            )
             rest["accuracy"] = compute_accuracy_metrics(reference_text, str(rest.get("transcript", "")))
             ws["accuracy"] = compute_accuracy_metrics(reference_text, str(ws.get("final_transcript", "")))
             rest_durations_all.extend(float(value) for value in rest.get("durations_ms", []))
@@ -422,6 +475,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             })
             streaming_samples.append({
                 "sample": index + 1,
+                "binary_frames": ws["binary_frames"],
                 "partial_mean_ms": ws["partial_mean_ms"],
                 "partial_p90_ms": ws["partial_p90_ms"],
                 "partial_p95_ms": ws["partial_p95_ms"],
@@ -433,7 +487,6 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "final_transcript": ws["final_transcript"],
                 "accuracy": ws["accuracy"],
             })
-
         capabilities = service.get("capabilities") if isinstance(service, dict) else None
         service_models = service.get("models") if isinstance(service, dict) else None
         effective_backend = service.get("backend", args.backend) if isinstance(service, dict) else args.backend
@@ -484,7 +537,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             return summary
 
         rest_summary = summarize_latencies(rest_durations_all, duration_s=duration_s)
-        streaming_summary = summarize_latencies(partial_latencies_all)
+        streaming_summary = summarize_latencies(partial_latencies_all) if partial_latencies_all else None
         final_summary = summarize_latencies(final_latencies_all)
 
         return {
@@ -528,11 +581,12 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "chunk_ms": args.chunk_ms,
                 "partial_latencies_ms": [round(value, 1) for value in partial_latencies_all],
                 "final_latencies_ms": [round(value, 1) for value in final_latencies_all],
-                "partial_mean_ms": streaming_summary["mean_ms"],
-                "partial_p90_ms": streaming_summary["p90_ms"],
-                "partial_p95_ms": streaming_summary["p95_ms"],
-                "partial_min_ms": streaming_summary["min_ms"],
-                "partial_max_ms": streaming_summary["max_ms"],
+                "binary_frames": args.binary_frames,
+                "partial_mean_ms": streaming_summary["mean_ms"] if streaming_summary else None,
+                "partial_p90_ms": streaming_summary["p90_ms"] if streaming_summary else None,
+                "partial_p95_ms": streaming_summary["p95_ms"] if streaming_summary else None,
+                "partial_min_ms": streaming_summary["min_ms"] if streaming_summary else None,
+                "partial_max_ms": streaming_summary["max_ms"] if streaming_summary else None,
                 "final_mean_ms": final_summary["mean_ms"],
                 "final_p90_ms": final_summary["p90_ms"],
                 "final_p95_ms": final_summary["p95_ms"],
