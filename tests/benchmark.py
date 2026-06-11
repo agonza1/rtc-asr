@@ -85,6 +85,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ultravox-max-new-tokens", type=positive_int, default=128, help="Max new tokens for ultravox when spawning a local server")
     parser.add_argument("--partial-window", type=non_negative_float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
     parser.add_argument("--max-buffer", type=non_negative_float, help="Optional stream buffer cap in seconds for websocket benchmarking")
+    parser.add_argument(
+        "--partial-event-timeout",
+        type=non_negative_float,
+        default=0.1,
+        help="Seconds to wait for an eligible streaming partial before moving on",
+    )
     parser.add_argument("--request-retries", type=positive_int, default=3, help="REST request attempts before failing a sample")
     parser.add_argument("--request-retry-delay", type=non_negative_float, default=2.0, help="Seconds to wait between REST request retries")
     parser.add_argument("--output", type=Path, help="Optional path for the benchmark JSON artifact")
@@ -406,7 +412,7 @@ async def run_rest_benchmark(
 
 
 def _connect_websocket(ws_url: str):
-    return websockets.connect(ws_url, max_size=2**23)
+    return websockets.connect(ws_url, max_size=2**23, ping_timeout=None)
 
 
 async def run_ws_benchmark(
@@ -419,6 +425,7 @@ async def run_ws_benchmark(
     send_binary_frames: bool = False,
     partial_window_seconds: float | None = None,
     max_buffer_seconds: float | None = None,
+    partial_event_timeout_seconds: float = 0.1,
     connect_fn=None,
 ) -> dict[str, object]:
     chunk_size = max(int(sample_rate * 2 * chunk_ms / 1000), 2)
@@ -457,7 +464,10 @@ async def run_ws_benchmark(
                 }))
             if chunk_index % partial_interval_chunks != 0:
                 continue
-            event = json.loads(await websocket.recv())
+            try:
+                event = json.loads(await asyncio.wait_for(websocket.recv(), timeout=partial_event_timeout_seconds))
+            except TimeoutError:
+                continue
             if event.get("type") != "partial":
                 raise RuntimeError(f"Expected partial event, got: {event}")
             response_latency_ms = (time.perf_counter() - started) * 1000
@@ -468,9 +478,13 @@ async def run_ws_benchmark(
             partial_text = event.get("text", "")
         started = time.perf_counter()
         await websocket.send(json.dumps({"type": "stop"}))
-        final_event = json.loads(await websocket.recv())
-        if final_event.get("type") != "final":
-            raise RuntimeError(f"Expected final event, got: {final_event}")
+        while True:
+            final_event = json.loads(await websocket.recv())
+            if final_event.get("type") == "partial":
+                continue
+            if final_event.get("type") != "final":
+                raise RuntimeError(f"Expected final event, got: {final_event}")
+            break
         final_ms = (time.perf_counter() - started) * 1000
     partial_gap_ms = [
         round(current - previous, 1)
@@ -560,6 +574,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 send_binary_frames=args.binary_frames,
                 partial_window_seconds=args.partial_window,
                 max_buffer_seconds=args.max_buffer,
+                partial_event_timeout_seconds=args.partial_event_timeout,
             )
             rest["accuracy"] = compute_accuracy_metrics(reference_text, str(rest.get("transcript", "")))
             ws["accuracy"] = compute_accuracy_metrics(reference_text, str(ws.get("final_transcript", "")))

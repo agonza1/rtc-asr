@@ -137,6 +137,7 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
     assert args.binary_frames is True
     assert args.partial_interval_chunks == 3
     assert args.max_buffer == 4.5
+    assert args.partial_event_timeout == 0.1
     assert args.request_retries == 5
     assert args.request_retry_delay == 0.25
     assert args.output == Path("docs/benchmark-results/ultravox-compose-test.json")
@@ -151,7 +152,8 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
     assert "benchmark: venv" in makefile
     assert "benchmark-faster-whisper-base: venv" in makefile
     assert "benchmark-faster-whisper-small: venv" in makefile
-    assert ".NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix" in makefile
+    assert "benchmark-faster-whisper-base-low-latency-sweep: venv" in makefile
+    assert ".NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-compose-matrix" in makefile
     assert "benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-whisper-small" in makefile
     for model_var in ("BASE", "SMALL"):
         line = next(
@@ -161,6 +163,18 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
         )
         assert "--sample-count $(BENCHMARK_SAMPLE_COUNT)" in line
         assert "--compute-type $(FASTER_WHISPER_COMPUTE_TYPE)" in line
+
+    sweep_block = makefile.split("benchmark-faster-whisper-base-low-latency-sweep: venv\n", 1)[1].split("\n\n", 1)[0]
+    assert "LOW_LATENCY_SWEEP_SAMPLE_COUNT ?= 5" in makefile
+    assert "LOW_LATENCY_SWEEP_REST_RUNS ?= 3" in makefile
+    assert "LOW_LATENCY_SWEEP_CHUNK_MS ?= 60 80 100" in makefile
+    assert "LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 0.5 0.75 1.0" in makefile
+    assert "LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false true" in makefile
+    assert "--sample-count $(LOW_LATENCY_SWEEP_SAMPLE_COUNT)" in sweep_block
+    assert "--rest-runs $(LOW_LATENCY_SWEEP_REST_RUNS)" in sweep_block
+    assert "--chunk-ms $$chunk" in sweep_block
+    assert "--partial-window $$window" in sweep_block
+    assert "$$frame_flag" in sweep_block
 
 
 def test_makefile_venv_target_repairs_broken_virtualenvs_before_benchmarks() -> None:
@@ -192,7 +206,7 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
@@ -571,12 +585,46 @@ def test_run_ws_benchmark_rejects_unexpected_partial_event() -> None:
 
     asyncio.run(scenario())
 
-def test_run_ws_benchmark_rejects_non_final_stop_event() -> None:
+
+def test_run_ws_benchmark_tolerates_missing_partial_for_eligible_chunk() -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    async def fake_wait_for(awaitable, timeout: float):
+        awaitable.close()
+        raise TimeoutError
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"ab",
+            4,
+            250,
+            partial_event_timeout_seconds=0.01,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_mean_ms"] is None
+        assert result["final_transcript"] == "done"
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(benchmark.asyncio, "wait_for", fake_wait_for)
+        asyncio.run(scenario())
+
+def test_run_ws_benchmark_drains_stale_partial_before_final() -> None:
     websocket = FakeBenchmarkWebSocket(
         [
             {"type": "ready", "stream_id": 11},
             {"type": "partial", "text": "chunk"},
             {"type": "partial", "text": "still partial"},
+            {"type": "final", "text": "done"},
         ]
     )
 
@@ -584,14 +632,15 @@ def test_run_ws_benchmark_rejects_non_final_stop_event() -> None:
         return websocket
 
     async def scenario() -> None:
-        with pytest.raises(RuntimeError, match="Expected final event"):
-            await benchmark.run_ws_benchmark(
-                "ws://example.test/ws/stream",
-                b"ab",
-                4,
-                250,
-                connect_fn=fake_connect,
-            )
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"ab",
+            4,
+            250,
+            connect_fn=fake_connect,
+        )
+
+        assert result["final_transcript"] == "done"
 
     asyncio.run(scenario())
 

@@ -39,9 +39,14 @@ BENCHMARK_REQUEST_RETRY_DELAY ?= 2.0
 FASTER_WHISPER_BASE_MODEL ?= base.en
 FASTER_WHISPER_SMALL_MODEL ?= small.en
 FASTER_WHISPER_COMPUTE_TYPE ?= int8
+LOW_LATENCY_SWEEP_SAMPLE_COUNT ?= 5
+LOW_LATENCY_SWEEP_REST_RUNS ?= 3
+LOW_LATENCY_SWEEP_CHUNK_MS ?= 60 80 100
+LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 0.5 0.75 1.0
+LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false true
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status
-.NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status
+.NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-compose-matrix
 
 help:
 	@echo "Realtime ASR Service - Available commands:"
@@ -163,6 +168,10 @@ benchmark-faster-whisper-base: venv
 benchmark-faster-whisper-small: venv
 	@echo "Running faster-whisper $(FASTER_WHISPER_SMALL_MODEL) $(FASTER_WHISPER_COMPUTE_TYPE) latency benchmark..."
 	@$(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_SMALL_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_SMALL_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
+
+benchmark-faster-whisper-base-low-latency-sweep: venv
+	@echo "Running faster-whisper $(FASTER_WHISPER_BASE_MODEL) low-latency sweep..."
+	@for chunk in $(LOW_LATENCY_SWEEP_CHUNK_MS); do 		for window in $(LOW_LATENCY_SWEEP_PARTIAL_WINDOWS); do 			for frame in $(LOW_LATENCY_SWEEP_BINARY_FRAMES); do 				if [ "$$frame" = "true" ]; then frame_flag="--binary-frames"; frame_label="binary"; else frame_flag=""; frame_label="json"; fi; 				window_slug=$$(printf '%s' "$$window" | tr '.' '_'); 				output="$(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_BASE_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-c$${chunk}-w$${window_slug}-$${frame_label}-$(BENCHMARK_RESULT_DATE).json"; 				echo "  -> $$output"; 				$(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_BASE_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(LOW_LATENCY_SWEEP_SAMPLE_COUNT) --rest-runs $(LOW_LATENCY_SWEEP_REST_RUNS) --chunk-ms $$chunk --partial-window $$window $$frame_flag --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output "$$output"; 			done; 		done; 	done
 
 benchmark-qwen-mps: venv
 	@echo "Running qwen-asr $(QWEN_MPS_MODEL) latency benchmark on Apple Silicon MPS..."

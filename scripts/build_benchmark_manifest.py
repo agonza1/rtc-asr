@@ -426,6 +426,7 @@ def build_metric_range(entries: list[dict[str, Any]], getter) -> dict[str, float
 
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
     latest: dict[str, tuple[str, Path, dict[str, Any]]] = {}
+    artifacts_by_name: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     artifact_history: list[dict[str, Any]] = []
     for path in sorted(results_dir.glob("*.json")):
         if path.name in {"manifest.json", tracks_path.name}:
@@ -434,12 +435,19 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         key = benchmark_key(payload)
         stamp = artifact_timestamp(path, payload)
         artifact_history.append(build_artifact_history_entry(path, payload))
+        artifacts_by_name[path.name] = (stamp, path, payload)
         previous = latest.get(key)
         if previous is None or stamp > previous[0]:
             latest[key] = (stamp, path, payload)
 
     catalog = load_catalog(tracks_path)
-    tracks = [build_track_entry(track, latest.get(track_key(track))) for track in catalog.get("tracks", [])]
+    tracks = [
+        build_track_entry(
+            track,
+            artifacts_by_name.get(track.get("artifact")) if track.get("artifact") else latest.get(track_key(track)),
+        )
+        for track in catalog.get("tracks", [])
+    ]
     tracks.sort(
         key=lambda item: (
             STATUS_ORDER.get(item["status"], 99),

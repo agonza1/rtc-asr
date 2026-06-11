@@ -29,15 +29,17 @@ def load_tracks() -> dict[str, object]:
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
-    assert manifest["summary"]["asr_count"] == 6
-    assert manifest["summary"]["tracked_count"] == 7
+    assert manifest["summary"]["asr_count"] == 7
+    assert manifest["summary"]["tracked_count"] == 8
     assert manifest["summary"]["validated_count"] == 5
-    assert manifest["summary"]["legacy_count"] == 1
+    assert manifest["summary"]["legacy_count"] == 2
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
+    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
+    assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
     assert tracks["ultravox-compose"]["artifact_path"] is None
     assert tracks["ultravox-compose"]["status"] == "blocked"
@@ -52,6 +54,14 @@ def test_checked_in_manifest_matches_generated_output() -> None:
     assert checked_in["tracks"] == generated["tracks"]
     assert checked_in["artifacts"] == generated["artifacts"]
     assert checked_in["asr_benchmarks"] == generated["asr_benchmarks"]
+
+
+def test_manifest_prefers_explicit_track_artifact_for_same_runtime_family() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
+
+    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
+    assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
 
 
 def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
