@@ -20,6 +20,7 @@ render_manifest = manifest_module.render_manifest
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
 DOCS_PATH = Path("docs") / "benchmarks.md"
+DOCS_INDEX_PATH = Path("docs") / "index.md"
 HOMEPAGE_PATH = Path("docs") / "index.html"
 
 
@@ -276,6 +277,16 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
             assert track["artifact"] in docs_text
         else:
             assert "no committed artifact" in docs_text
+
+
+def test_docs_index_surfaces_official_wer_references() -> None:
+    docs_index_text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+
+    assert "## Official WER References" in docs_index_text
+    assert "same official WER references shown in the benchmark notes" in docs_index_text
+    assert "upstream Hugging Face benchmark or model-card values" in docs_index_text
+    assert "openai/whisper-base.en" in docs_index_text
+    assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 
 
 def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
