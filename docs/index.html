@@ -877,6 +877,10 @@
                 <div class="tiny">P95 ${formatMs(entry.rest.p95_ms)} · RTF ${formatRatio(entry.rest.rtf_mean)}</div>
                 <div class="metric-bar"><span style="width:${restWidth}%"></span></div>
               </td>
+              <td data-label="Official WER">
+                <strong>${entry.official_wer_reference || "see notes"}</strong>
+                <div class="tiny">Upstream model-card / benchmark reference</div>
+              </td>
               <td data-label="Config">
                 <strong>${entry.contract?.chunk_ms == null ? "n/a" : `${entry.contract.chunk_ms} ms`}</strong>
                 <div class="tiny">window ${entry.contract?.partial_window_seconds ?? "n/a"} s · cadence ${entry.contract?.partial_interval_chunks ?? "?"}</div>
@@ -901,6 +905,7 @@
                 <th>Partial</th>
                 <th>Final</th>
                 <th>REST</th>
+                <th>Official WER</th>
                 <th>Config</th>
                 <th>Samples</th>
                 <th>Artifact</th>
@@ -982,7 +987,7 @@
             <div class="section-kicker">Publishing rule</div>
             <h3>What reaches the homepage</h3>
             <ul class="contract-list">
-              <li>Only checked-in JSON artifacts produce visible latency comparisons, and WER/CER only returns once a named annotated benchmark dataset and methodology are published for issue #46.</li>
+              <li>Only checked-in JSON artifacts produce visible latency comparisons. The homepage can show official upstream WER references today, while repo-measured WER/CER only returns once a named annotated benchmark dataset and methodology are published for issue #46.</li>
               <li>Legacy runs stay labeled so stale-but-inspectable baselines remain usable.</li>
               <li>Tracked lanes without publishable artifacts stay out of the front-end comparison flow.</li>
             </ul>

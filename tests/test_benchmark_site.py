@@ -46,6 +46,7 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["faster-whisper-base-c80-w075-json-preview"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
+    assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
 
 
 def test_checked_in_manifest_matches_generated_output() -> None:
@@ -246,6 +247,7 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
     assert "safest latency bet" in html
     assert "sample coverage" in html
+    assert "official upstream WER references today" in html
     assert "named annotated benchmark dataset and methodology" in html
 
 
@@ -303,6 +305,8 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Published benchmark snapshot" in homepage
     assert "Checked-in artifact log" in homepage
     assert "benchmark-results/manifest.json" in homepage
+    assert "Official WER" in homepage
+    assert 'entry.official_wer_reference || "see notes"' in homepage
 
 
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
