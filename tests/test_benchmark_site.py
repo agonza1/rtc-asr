@@ -236,8 +236,16 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
-    assert "const baselineFirstPartial = minDefined(ranked.map((entry) => firstVisiblePartial(entry)));" in html
+    assert "const baselineEntries = comparableEntries(ranked);" in html
+    assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
+
+
+def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert 'if (entry.status === "validated") return 0;' in html
+    assert 'const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);' in html
 
 
 def test_docs_and_tracks_registry_stay_aligned() -> None:

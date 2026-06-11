@@ -495,6 +495,7 @@ async def run_ws_benchmark(
                 return
             record_partial_event(event, received_at, fallback_chunk_index=expected_chunk_index)
 
+    audio_finished_at: float | None = None
     connect = connect_fn or _connect_websocket
     async with connect(ws_url) as websocket:
         start_payload: dict[str, object] = {
@@ -520,11 +521,13 @@ async def run_ws_benchmark(
                     "type": "audio",
                     "audio_data": base64.b64encode(chunk).decode("ascii"),
                 }))
+            if chunk_index == len(chunks):
+                audio_finished_at = time.perf_counter()
             if chunk_index % partial_interval_chunks != 0:
                 continue
             pending_partial_started_at[chunk_index] = started
             await collect_partial_events(chunk_index)
-        started = time.perf_counter()
+        stop_started_at = time.perf_counter()
         await websocket.send(json.dumps({"type": "stop"}))
         while True:
             if pending_partial_event is not None:
@@ -538,8 +541,10 @@ async def run_ws_benchmark(
                 continue
             if final_event.get("type") != "final":
                 raise RuntimeError(f"Expected final event, got: {final_event}")
+            final_received_at = received_at
             break
-        final_ms = (time.perf_counter() - started) * 1000
+        final_ms = (final_received_at - stop_started_at) * 1000
+        time_to_final_from_audio_end_ms = (final_received_at - (audio_finished_at or stop_started_at)) * 1000
     partial_gap_ms = [
         round(current - previous, 1)
         for previous, current in zip(partial_end_to_end_ms, partial_end_to_end_ms[1:])
@@ -565,7 +570,7 @@ async def run_ws_benchmark(
         "partial_p90_ms": round(percentile(partial_latencies, 0.90), 1) if partial_latencies else None,
         **partial_summary,
         "final_ms": round(final_ms, 1),
-        "time_to_final_from_audio_end_ms": round(final_ms, 1),
+        "time_to_final_from_audio_end_ms": round(time_to_final_from_audio_end_ms, 1),
         "ready": ready_event,
         "last_partial": partial_text,
         "final_transcript": final_event.get("text", ""),

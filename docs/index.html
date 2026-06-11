@@ -575,8 +575,19 @@
       function publishedTracks(manifest) {
         return (manifest.tracks || []).filter((track) => track.artifact_path && track.status !== "blocked");
       }
+      function statusRank(entry) {
+        if (entry.status === "validated") return 0;
+        if (entry.status === "legacy") return 1;
+        return 2;
+      }
+      function comparableEntries(entries) {
+        const validated = entries.filter((entry) => entry.status === "validated");
+        return validated.length ? validated : entries;
+      }
       function sortEntries(entries) {
         return [...entries].sort((left, right) => {
+          const statusDelta = statusRank(left) - statusRank(right);
+          if (statusDelta !== 0) return statusDelta;
           const firstPartial = numeric(firstVisiblePartial(left)) - numeric(firstVisiblePartial(right));
           if (firstPartial !== 0) return firstPartial;
           const partial = numeric(left.streaming.partial_mean_ms) - numeric(right.streaming.partial_mean_ms);
@@ -773,7 +784,7 @@
       }
       function renderStories(entries) {
         const target = document.getElementById("story-grid");
-        const ranked = sortEntries(entries).slice(0, 3);
+        const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);
         target.innerHTML = ranked.map((entry, index) => `
           <article class="story-card panel">
             <div class="section-kicker">Rank ${index + 1}</div>
@@ -793,7 +804,9 @@
           return;
         }
         const ranked = sortEntries(entries);
-        const baselineFirstPartial = minDefined(ranked.map((entry) => firstVisiblePartial(entry)));
+        const baselineEntries = comparableEntries(ranked);
+        const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";
+        const baselineFirstPartial = minDefined(baselineEntries.map((entry) => firstVisiblePartial(entry)));
         const baselinePartial = minDefined(ranked.map((entry) => entry.streaming.partial_mean_ms));
         const baselineFinal = minDefined(ranked.map((entry) => entry.streaming.final_mean_ms));
         const maxRest = Math.max(...ranked.map((entry) => entry.rest.mean_ms || 0), 1);
@@ -818,7 +831,7 @@
               <td data-label="First partial">
                 <strong>${formatMs(firstPartialValue)}</strong>
                 <div class="tiny">P95 ${formatMs(entry.streaming.first_partial_end_to_end_p95_ms)}</div>
-                <div class="tiny ${deltaClass(firstPartialDelta)}">${signedDelta(firstPartialDelta)} vs fastest</div>
+                <div class="tiny ${deltaClass(firstPartialDelta)}">${signedDelta(firstPartialDelta)} ${firstPartialBaselineLabel}</div>
               </td>
               <td data-label="Partial">
                 <strong>${formatMs(entry.streaming.partial_mean_ms)}</strong>

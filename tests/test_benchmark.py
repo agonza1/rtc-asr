@@ -471,7 +471,7 @@ def test_run_ws_benchmark_reports_first_partial_and_gap_metrics(monkeypatch: pyt
         ]
     )
 
-    perf_values = iter([1.0, 1.0, 1.0, 1.05, 2.0, 2.0, 2.0, 2.08, 3.0, 3.1, 3.12])
+    perf_values = iter([1.0, 1.0, 1.0, 1.05, 2.0, 2.0, 2.0, 2.0, 2.08, 3.0, 3.1])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
@@ -494,7 +494,7 @@ def test_run_ws_benchmark_reports_first_partial_and_gap_metrics(monkeypatch: pyt
         assert result["partial_gap_ms"] == [280.0]
         assert result["partial_gap_mean_ms"] == 280.0
         assert result["partial_gap_p95_ms"] == 280.0
-        assert result["time_to_final_from_audio_end_ms"] == 120.0
+        assert result["time_to_final_from_audio_end_ms"] == 1100.0
 
     asyncio.run(scenario())
 
@@ -509,7 +509,7 @@ def test_run_ws_benchmark_keeps_partial_end_to_end_monotonic_under_backlog(monke
         ]
     )
 
-    perf_values = iter([1.0, 1.0, 1.0, 3.5, 4.0, 4.0, 4.0, 4.02, 5.0, 5.1, 5.12])
+    perf_values = iter([1.0, 1.0, 1.0, 3.5, 4.0, 4.0, 4.0, 4.0, 4.02, 5.0, 5.1])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
@@ -674,7 +674,7 @@ def test_run_ws_benchmark_counts_late_partial_against_original_chunk(monkeypatch
             raise TimeoutError
         return await awaitable
 
-    perf_values = iter([1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.15, 2.15, 2.24, 3.0, 3.1, 3.12])
+    perf_values = iter([1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.15, 2.15, 2.24, 3.0, 3.1])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
@@ -712,7 +712,7 @@ def test_run_ws_benchmark_records_late_partial_before_final(monkeypatch: pytest.
         ]
     )
 
-    perf_values = iter([1.0, 1.0, 1.0, 1.05, 2.0, 2.1, 2.12, 2.15])
+    perf_values = iter([1.0, 1.0, 1.0, 1.0, 1.05, 2.0, 2.1, 2.12])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
