@@ -560,6 +560,11 @@
         if (sorted.length % 2) return sorted[middle];
         return (sorted[middle - 1] + sorted[middle]) / 2;
       }
+      function minDefined(values) {
+        const defined = values.filter((value) => value != null);
+        if (!defined.length) return null;
+        return Math.min(...defined);
+      }
       function findBest(entries, getter) {
         const candidates = entries
           .map((entry) => ({ entry, value: getter(entry) }))
@@ -788,15 +793,15 @@
           return;
         }
         const ranked = sortEntries(entries);
-        const baselineFirstPartial = Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)));
-        const baselinePartial = Math.min(...ranked.map((entry) => numeric(entry.streaming.partial_mean_ms, 0)));
-        const baselineFinal = Math.min(...ranked.map((entry) => numeric(entry.streaming.final_mean_ms, 0)));
+        const baselineFirstPartial = minDefined(ranked.map((entry) => firstVisiblePartial(entry)));
+        const baselinePartial = minDefined(ranked.map((entry) => entry.streaming.partial_mean_ms));
+        const baselineFinal = minDefined(ranked.map((entry) => entry.streaming.final_mean_ms));
         const maxRest = Math.max(...ranked.map((entry) => entry.rest.mean_ms || 0), 1);
         const rows = ranked.map((entry) => {
           const firstPartialValue = firstVisiblePartial(entry);
-          const firstPartialDelta = firstPartialValue == null ? null : firstPartialValue - baselineFirstPartial;
-          const partialDelta = entry.streaming.partial_mean_ms == null ? null : entry.streaming.partial_mean_ms - baselinePartial;
-          const finalDelta = entry.streaming.final_mean_ms == null ? null : entry.streaming.final_mean_ms - baselineFinal;
+          const firstPartialDelta = firstPartialValue == null || baselineFirstPartial == null ? null : firstPartialValue - baselineFirstPartial;
+          const partialDelta = entry.streaming.partial_mean_ms == null || baselinePartial == null ? null : entry.streaming.partial_mean_ms - baselinePartial;
+          const finalDelta = entry.streaming.final_mean_ms == null || baselineFinal == null ? null : entry.streaming.final_mean_ms - baselineFinal;
           const restWidth = Math.max(6, ((entry.rest.mean_ms || 0) / maxRest) * 100);
           return `
             <tr>

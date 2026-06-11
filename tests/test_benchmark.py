@@ -471,7 +471,7 @@ def test_run_ws_benchmark_reports_first_partial_and_gap_metrics(monkeypatch: pyt
         ]
     )
 
-    perf_values = iter([1.0, 1.05, 2.0, 2.08, 3.0, 3.12])
+    perf_values = iter([1.0, 1.0, 1.0, 1.05, 2.0, 2.0, 2.0, 2.08, 3.0, 3.12])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
@@ -509,7 +509,7 @@ def test_run_ws_benchmark_keeps_partial_end_to_end_monotonic_under_backlog(monke
         ]
     )
 
-    perf_values = iter([1.0, 3.5, 4.0, 4.02, 5.0, 5.12])
+    perf_values = iter([1.0, 1.0, 1.0, 3.5, 4.0, 4.0, 4.0, 4.02, 5.0, 5.12])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
@@ -651,6 +651,54 @@ def test_run_ws_benchmark_tolerates_missing_partial_for_eligible_chunk() -> None
 
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(benchmark.asyncio, "wait_for", fake_wait_for)
+        asyncio.run(scenario())
+
+
+def test_run_ws_benchmark_skips_stale_partial_after_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "partial", "text": "stale", "chunks_received": 1},
+            {"type": "partial", "text": "fresh", "chunks_received": 2},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    call_count = 0
+
+    async def fake_wait_for(awaitable, timeout: float):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            awaitable.close()
+            raise TimeoutError
+        return await awaitable
+
+    perf_values = iter([1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.05, 3.0, 3.12])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcd",
+            4,
+            250,
+            partial_interval_chunks=1,
+            partial_event_timeout_seconds=0.01,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [500]
+        assert result["partial_end_to_end_ms"] == [550.0]
+        assert result["first_partial_end_to_end_ms"] == 550.0
+        assert result["last_partial"] == "fresh"
+        assert result["final_transcript"] == "done"
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(benchmark.asyncio, "wait_for", fake_wait_for)
         asyncio.run(scenario())
 
 def test_run_ws_benchmark_drains_stale_partial_before_final() -> None:

@@ -236,6 +236,8 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
+    assert "const baselineFirstPartial = minDefined(ranked.map((entry) => firstVisiblePartial(entry)));" in html
+    assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
 
 
 def test_docs_and_tracks_registry_stay_aligned() -> None:

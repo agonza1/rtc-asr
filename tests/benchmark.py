@@ -438,6 +438,35 @@ async def run_ws_benchmark(
     partial_end_to_end_ms = []
     last_partial_visible_ms = 0.0
     partial_text = ""
+    pending_partial_event: dict[str, object] | None = None
+
+    async def recv_matching_partial(expected_chunk_index: int) -> dict[str, object] | None:
+        nonlocal pending_partial_event
+
+        deadline = time.perf_counter() + partial_event_timeout_seconds
+        while True:
+            if pending_partial_event is not None:
+                event = pending_partial_event
+                pending_partial_event = None
+            else:
+                remaining = deadline - time.perf_counter()
+                if remaining <= 0:
+                    return None
+                try:
+                    event = json.loads(await asyncio.wait_for(websocket.recv(), timeout=remaining))
+                except TimeoutError:
+                    return None
+            if event.get("type") != "partial":
+                raise RuntimeError(f"Expected partial event, got: {event}")
+            chunks_received = event.get("chunks_received")
+            if isinstance(chunks_received, int) and not isinstance(chunks_received, bool):
+                if chunks_received < expected_chunk_index:
+                    continue
+                if chunks_received > expected_chunk_index:
+                    pending_partial_event = event
+                    return None
+            return event
+
     connect = connect_fn or _connect_websocket
     async with connect(ws_url) as websocket:
         start_payload: dict[str, object] = {
@@ -465,12 +494,9 @@ async def run_ws_benchmark(
                 }))
             if chunk_index % partial_interval_chunks != 0:
                 continue
-            try:
-                event = json.loads(await asyncio.wait_for(websocket.recv(), timeout=partial_event_timeout_seconds))
-            except TimeoutError:
+            event = await recv_matching_partial(chunk_index)
+            if event is None:
                 continue
-            if event.get("type") != "partial":
-                raise RuntimeError(f"Expected partial event, got: {event}")
             response_latency_ms = (time.perf_counter() - started) * 1000
             partial_latencies.append(response_latency_ms)
             audio_offset_ms = min(round(chunk_index * chunk_ms, 1), total_audio_ms)
@@ -483,7 +509,11 @@ async def run_ws_benchmark(
         started = time.perf_counter()
         await websocket.send(json.dumps({"type": "stop"}))
         while True:
-            final_event = json.loads(await websocket.recv())
+            if pending_partial_event is not None:
+                final_event = pending_partial_event
+                pending_partial_event = None
+            else:
+                final_event = json.loads(await websocket.recv())
             if final_event.get("type") == "partial":
                 continue
             if final_event.get("type") != "final":
