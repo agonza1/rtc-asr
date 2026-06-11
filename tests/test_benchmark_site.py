@@ -20,6 +20,7 @@ render_manifest = manifest_module.render_manifest
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
 DOCS_PATH = Path("docs") / "benchmarks.md"
+DOCS_INDEX_PATH = Path("docs") / "index.md"
 HOMEPAGE_PATH = Path("docs") / "index.html"
 
 
@@ -45,6 +46,7 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["faster-whisper-base-c80-w075-json-preview"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
+    assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
 
 
 def test_checked_in_manifest_matches_generated_output() -> None:
@@ -245,6 +247,7 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
     assert "safest latency bet" in html
     assert "sample coverage" in html
+    assert "official upstream WER references today" in html
     assert "named annotated benchmark dataset and methodology" in html
 
 
@@ -278,6 +281,33 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
             assert "no committed artifact" in docs_text
 
 
+def test_docs_index_surfaces_official_wer_references() -> None:
+    docs_index_text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+
+    assert "## Official WER References" in docs_index_text
+    assert "same official WER references shown in the benchmark notes" in docs_index_text
+    assert "upstream Hugging Face benchmark or model-card values" in docs_index_text
+    assert "openai/whisper-base.en" in docs_index_text
+    assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
+
+
+def test_homepage_head_includes_launch_seo_metadata() -> None:
+    homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
+
+    assert "<title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>" in homepage
+    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology."' in homepage
+    assert 'meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
+    assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
+    assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
+    assert 'meta name="twitter:card" content="summary_large_image"' in homepage
+    assert '"@type": "WebPage"' in homepage
+    assert '"@type": "Dataset"' in homepage
+    assert '"@type": "Organization"' in homepage
+    assert '"@type": "FAQPage"' in homepage
+    assert '"What does this benchmark actually measure?"' in homepage
+    assert '"contentUrl": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json"' in homepage
+
+
 def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
@@ -288,10 +318,21 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert 'id="comparison-wrap"' in homepage
     assert 'id="lane-grid"' in homepage
     assert 'id="contract-grid"' in homepage
+    assert 'id="faq"' in homepage
+    assert 'class="cta-grid"' in homepage
+    assert 'class="faq-grid"' in homepage
     assert 'id="archive-grid"' in homepage
     assert "Published benchmark snapshot" in homepage
+    assert "Choose the next decision path" in homepage
+    assert "Launch FAQ for benchmark readers" in homepage
+    assert "Turn the benchmark into a launch decision" in homepage
+    assert "What does this benchmark actually measure?" in homepage
     assert "Checked-in artifact log" in homepage
     assert "benchmark-results/manifest.json" in homepage
+    assert "WebRTC.ventures benchmarks" in homepage
+    assert "Built for WebRTC.ventures launch conversations" in homepage
+    assert "Official WER" in homepage
+    assert 'entry.official_wer_reference || "see notes"' in homepage
 
 
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:

@@ -325,6 +325,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
         "status_detail": track["status_detail"],
         "target_sample_count": track["target_sample_count"],
         "run_command": track["run_command"],
+        "official_wer_reference": track.get("official_wer_reference"),
         "measured_at": None,
         "sample_count": None,
         "artifact_path": None,
