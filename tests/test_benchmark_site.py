@@ -29,15 +29,17 @@ def load_tracks() -> dict[str, object]:
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
-    assert manifest["summary"]["asr_count"] == 6
-    assert manifest["summary"]["tracked_count"] == 7
+    assert manifest["summary"]["asr_count"] == 7
+    assert manifest["summary"]["tracked_count"] == 8
     assert manifest["summary"]["validated_count"] == 5
-    assert manifest["summary"]["legacy_count"] == 1
+    assert manifest["summary"]["legacy_count"] == 2
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
+    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
+    assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
     assert tracks["ultravox-compose"]["artifact_path"] is None
     assert tracks["ultravox-compose"]["status"] == "blocked"
@@ -52,6 +54,14 @@ def test_checked_in_manifest_matches_generated_output() -> None:
     assert checked_in["tracks"] == generated["tracks"]
     assert checked_in["artifacts"] == generated["artifacts"]
     assert checked_in["asr_benchmarks"] == generated["asr_benchmarks"]
+
+
+def test_manifest_prefers_explicit_track_artifact_for_same_runtime_family() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
+
+    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
+    assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
 
 
 def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
@@ -150,6 +160,94 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     assert summary["ranges"]["overall_score"] is not None
     assert summary["highlights"]["best_overall"] is not None
     assert summary["highlights"]["best_live_caption"] is not None
+
+
+def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "demo-2026-06-10.json"
+    artifact_path.write_text(
+        json.dumps(
+            {
+                "benchmark": {
+                    "sample_count": 4,
+                    "chunk_ms": 80,
+                    "partial_interval_chunks": 2,
+                    "partial_window_seconds": 0.75,
+                    "binary_frames": True,
+                    "partial_event_timeout_seconds": 0.25,
+                },
+                "backend": {"name": "demo", "model": "demo-v1", "device": "cpu", "compute_type": "int8"},
+                "rest": {"mean_ms": 42, "p95_ms": 64, "rtf_mean": 0.2},
+                "streaming": {
+                    "partial_mean_ms": 21,
+                    "partial_p95_ms": 32,
+                    "first_partial_end_to_end_mean_ms": 185,
+                    "first_partial_end_to_end_p95_ms": 220,
+                    "partial_gap_mean_ms": 95,
+                    "partial_gap_p95_ms": 110,
+                    "final_mean_ms": 30,
+                    "final_p95_ms": 45,
+                },
+                "environment": {"date_utc": "2026-06-10T00:00:00Z"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    tracks_path = tmp_path / "tracks.json"
+    tracks_path.write_text(
+        json.dumps(
+            {
+                "sample_contract": {"default_sample_count": 4},
+                "tracks": [
+                    {
+                        "slug": "demo-track",
+                        "label": "demo-track",
+                        "backend": "demo",
+                        "model": "demo-v1",
+                        "device": "cpu",
+                        "compute": "int8",
+                        "lane": "local",
+                        "status": "validated",
+                        "status_detail": "demo artifact",
+                        "target_sample_count": 4,
+                        "run_command": "make benchmark",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifest = build_manifest(tmp_path, tracks_path)
+
+    track = manifest["tracks"][0]
+    assert track["contract"] == {
+        "chunk_ms": 80,
+        "partial_interval_chunks": 2,
+        "partial_window_seconds": 0.75,
+        "binary_frames": True,
+        "partial_event_timeout_seconds": 0.25,
+    }
+    assert track["streaming"]["first_partial_end_to_end_mean_ms"] == 185
+    assert track["streaming"]["partial_gap_mean_ms"] == 95
+    assert manifest["summary"]["highlights"]["fastest_first_partial"]["slug"] == "demo-track"
+    assert manifest["summary"]["highlights"]["tightest_partial_cadence"]["slug"] == "demo-track"
+
+
+def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
+    assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
+    assert "const baselineEntries = comparableEntries(ranked);" in html
+    assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
+    assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
+
+
+def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert 'if (entry.status === "validated") return 0;' in html
+    assert 'const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);' in html
 
 
 def test_docs_and_tracks_registry_stay_aligned() -> None:

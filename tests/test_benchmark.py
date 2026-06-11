@@ -137,6 +137,7 @@ def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: 
     assert args.binary_frames is True
     assert args.partial_interval_chunks == 3
     assert args.max_buffer == 4.5
+    assert args.partial_event_timeout == 0.1
     assert args.request_retries == 5
     assert args.request_retry_delay == 0.25
     assert args.output == Path("docs/benchmark-results/ultravox-compose-test.json")
@@ -151,7 +152,8 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
     assert "benchmark: venv" in makefile
     assert "benchmark-faster-whisper-base: venv" in makefile
     assert "benchmark-faster-whisper-small: venv" in makefile
-    assert ".NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-compose-matrix" in makefile
+    assert "benchmark-faster-whisper-base-low-latency-sweep: venv" in makefile
+    assert ".NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-compose-matrix" in makefile
     assert "benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-whisper-small" in makefile
     for model_var in ("BASE", "SMALL"):
         line = next(
@@ -161,6 +163,19 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
         )
         assert "--sample-count $(BENCHMARK_SAMPLE_COUNT)" in line
         assert "--compute-type $(FASTER_WHISPER_COMPUTE_TYPE)" in line
+
+    sweep_block = makefile.split("benchmark-faster-whisper-base-low-latency-sweep: venv\n", 1)[1].split("\n\n", 1)[0]
+    assert "LOW_LATENCY_SWEEP_SAMPLE_COUNT ?= 5" in makefile
+    assert "LOW_LATENCY_SWEEP_REST_RUNS ?= 3" in makefile
+    assert "LOW_LATENCY_SWEEP_CHUNK_MS ?= 60 80 100" in makefile
+    assert "LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 0.5 0.75 1.0" in makefile
+    assert "LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false true" in makefile
+    assert "set -e;" in sweep_block
+    assert "--sample-count $(LOW_LATENCY_SWEEP_SAMPLE_COUNT)" in sweep_block
+    assert "--rest-runs $(LOW_LATENCY_SWEEP_REST_RUNS)" in sweep_block
+    assert "--chunk-ms $$chunk" in sweep_block
+    assert "--partial-window $$window" in sweep_block
+    assert "$$frame_flag" in sweep_block
 
 
 def test_makefile_venv_target_repairs_broken_virtualenvs_before_benchmarks() -> None:
@@ -192,7 +207,7 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
@@ -283,6 +298,14 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
         },
         "parakeet-nemo-110m-compose-2026-06-09.json": {
             "partial_interval_chunks": 8,
+            "binary_frames": False,
+            "partial_window_seconds": 2.0,
+            "max_buffer_seconds": None,
+            "request_retries": 3,
+            "request_retry_delay": 2.0,
+        },
+        "qwen-mps-2026-06-10.json": {
+            "partial_interval_chunks": 1,
             "binary_frames": False,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
@@ -446,6 +469,78 @@ def test_run_ws_benchmark_supports_binary_frames_and_window_overrides() -> None:
     asyncio.run(scenario())
 
 
+def test_run_ws_benchmark_reports_first_partial_and_gap_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "partial", "text": "chunk one"},
+            {"type": "partial", "text": "chunk two"},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    perf_values = iter([1.0, 1.0, 1.0, 1.05, 2.0, 2.0, 2.0, 2.0, 2.08, 3.0, 3.1])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcdefgh",
+            8,
+            250,
+            partial_interval_chunks=1,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [250, 500]
+        assert result["partial_end_to_end_ms"] == [300.0, 580.0]
+        assert result["first_partial_audio_ms"] == 250
+        assert result["first_partial_end_to_end_ms"] == 300.0
+        assert result["partial_gap_ms"] == [280.0]
+        assert result["partial_gap_mean_ms"] == 280.0
+        assert result["partial_gap_p95_ms"] == 280.0
+        assert result["time_to_final_from_audio_end_ms"] == 1100.0
+
+    asyncio.run(scenario())
+
+
+def test_run_ws_benchmark_keeps_partial_end_to_end_monotonic_under_backlog(monkeypatch: pytest.MonkeyPatch) -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "partial", "text": "chunk one"},
+            {"type": "partial", "text": "chunk two"},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    perf_values = iter([1.0, 1.0, 1.0, 3.5, 4.0, 4.0, 4.0, 4.0, 4.02, 5.0, 5.1])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcdefgh",
+            8,
+            250,
+            partial_interval_chunks=1,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [250, 500]
+        assert result["partial_end_to_end_ms"] == [2750.0, 2770.0]
+        assert result["partial_gap_ms"] == [20.0]
+        assert result["first_partial_end_to_end_ms"] == 2750.0
+
+    asyncio.run(scenario())
+
+
 def test_run_ws_benchmark_allows_sparse_partial_cadence() -> None:
     websocket = FakeBenchmarkWebSocket(
         [
@@ -533,27 +628,118 @@ def test_run_ws_benchmark_rejects_unexpected_partial_event() -> None:
 
     asyncio.run(scenario())
 
-def test_run_ws_benchmark_rejects_non_final_stop_event() -> None:
+
+def test_run_ws_benchmark_tolerates_missing_partial_for_eligible_chunk() -> None:
     websocket = FakeBenchmarkWebSocket(
         [
             {"type": "ready", "stream_id": 11},
-            {"type": "partial", "text": "chunk"},
-            {"type": "partial", "text": "still partial"},
+            {"type": "final", "text": "done"},
         ]
     )
+
+    async def fake_wait_for(awaitable, timeout: float):
+        awaitable.close()
+        raise TimeoutError
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
         return websocket
 
     async def scenario() -> None:
-        with pytest.raises(RuntimeError, match="Expected final event"):
-            await benchmark.run_ws_benchmark(
-                "ws://example.test/ws/stream",
-                b"ab",
-                4,
-                250,
-                connect_fn=fake_connect,
-            )
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"ab",
+            4,
+            250,
+            partial_event_timeout_seconds=0.01,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_mean_ms"] is None
+        assert result["final_transcript"] == "done"
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(benchmark.asyncio, "wait_for", fake_wait_for)
+        asyncio.run(scenario())
+
+
+def test_run_ws_benchmark_counts_late_partial_against_original_chunk(monkeypatch: pytest.MonkeyPatch) -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "partial", "text": "stale", "chunks_received": 1},
+            {"type": "partial", "text": "fresh", "chunks_received": 2},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    call_count = 0
+
+    async def fake_wait_for(awaitable, timeout: float):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            awaitable.close()
+            raise TimeoutError
+        return await awaitable
+
+    perf_values = iter([1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.15, 2.15, 2.24, 3.0, 3.1])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcd",
+            4,
+            250,
+            partial_interval_chunks=1,
+            partial_event_timeout_seconds=0.5,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [250, 500]
+        assert result["partial_end_to_end_ms"] == [1400.0, 1640.0]
+        assert result["first_partial_audio_ms"] == 250
+        assert result["first_partial_end_to_end_ms"] == 1400.0
+        assert result["last_partial"] == "fresh"
+        assert result["final_transcript"] == "done"
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(benchmark.asyncio, "wait_for", fake_wait_for)
+        asyncio.run(scenario())
+
+def test_run_ws_benchmark_records_late_partial_before_final(monkeypatch: pytest.MonkeyPatch) -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "partial", "text": "chunk", "chunks_received": 1},
+            {"type": "partial", "text": "still partial", "chunks_received": 1},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    perf_values = iter([1.0, 1.0, 1.0, 1.0, 1.05, 2.0, 2.1, 2.12])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"ab",
+            4,
+            250,
+            partial_event_timeout_seconds=0.01,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [250]
+        assert result["partial_end_to_end_ms"] == [300.0]
+        assert result["last_partial"] == "chunk"
+        assert result["final_transcript"] == "done"
 
     asyncio.run(scenario())
 

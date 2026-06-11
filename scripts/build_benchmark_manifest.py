@@ -156,6 +156,25 @@ def sample_count(payload: dict[str, Any]) -> int:
     return 1
 
 
+def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
+    benchmark = payload.get("benchmark") or {}
+    streaming = payload.get("streaming") or {}
+    ready = streaming.get("ready") or {}
+    contract = {
+        "chunk_ms": benchmark.get("chunk_ms", streaming.get("chunk_ms")),
+        "partial_interval_chunks": benchmark.get("partial_interval_chunks", ready.get("partial_interval_chunks")),
+        "partial_window_seconds": benchmark.get("partial_window_seconds", ready.get("partial_window_seconds")),
+        "binary_frames": benchmark.get("binary_frames", streaming.get("binary_frames")),
+    }
+    partial_event_timeout_seconds = benchmark.get(
+        "partial_event_timeout_seconds",
+        streaming.get("partial_event_timeout_seconds"),
+    )
+    if partial_event_timeout_seconds is not None:
+        contract["partial_event_timeout_seconds"] = partial_event_timeout_seconds
+    return contract
+
+
 def summarize_accuracy(rest: dict[str, Any], streaming: dict[str, Any]) -> dict[str, Any]:
     accuracy = rest.get("accuracy") or streaming.get("accuracy") or {}
     return {
@@ -170,6 +189,7 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     backend = payload["backend"]
     rest = payload["rest"]
     streaming = payload["streaming"]
+    contract = extract_benchmark_contract(payload)
     return {
         "kind": "asr",
         "backend": backend["name"],
@@ -178,6 +198,7 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
         "measured_at": artifact_timestamp(path, payload),
         "sample_count": sample_count(payload),
         "artifact_path": f"benchmark-results/{path.name}",
+        "contract": contract,
         "rest": {
             "mean_ms": rest.get("mean_ms"),
             "p95_ms": rest.get("p95_ms"),
@@ -186,6 +207,10 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
         "streaming": {
             "partial_mean_ms": streaming.get("partial_mean_ms"),
             "partial_p95_ms": streaming.get("partial_p95_ms"),
+            "first_partial_end_to_end_mean_ms": streaming.get("first_partial_end_to_end_mean_ms", streaming.get("first_partial_end_to_end_ms")),
+            "first_partial_end_to_end_p95_ms": streaming.get("first_partial_end_to_end_p95_ms", streaming.get("first_partial_end_to_end_ms")),
+            "partial_gap_mean_ms": streaming.get("partial_gap_mean_ms"),
+            "partial_gap_p95_ms": streaming.get("partial_gap_p95_ms"),
             "final_mean_ms": streaming.get("final_mean_ms", streaming.get("final_ms")),
             "final_p95_ms": streaming.get("final_p95_ms", streaming.get("final_ms")),
         },
@@ -233,6 +258,7 @@ def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
         invert_score(rest.get("p95_ms"), 350, 7000),
     )
     live_caption_score = average_scores(
+        invert_score(streaming.get("first_partial_end_to_end_mean_ms"), 250, 5000),
         invert_score(streaming.get("partial_mean_ms"), 100, 4000),
         invert_score(streaming.get("partial_p95_ms"), 150, 6500),
     )
@@ -303,10 +329,20 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
         "measured_at": None,
         "sample_count": None,
         "artifact_path": None,
+        "contract": {
+            "chunk_ms": None,
+            "partial_interval_chunks": None,
+            "partial_window_seconds": None,
+            "binary_frames": None,
+        },
         "rest": {"mean_ms": None, "p95_ms": None, "rtf_mean": None},
         "streaming": {
             "partial_mean_ms": None,
             "partial_p95_ms": None,
+            "first_partial_end_to_end_mean_ms": None,
+            "first_partial_end_to_end_p95_ms": None,
+            "partial_gap_mean_ms": None,
+            "partial_gap_p95_ms": None,
             "final_mean_ms": None,
             "final_p95_ms": None,
         },
@@ -320,6 +356,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
                 "measured_at": measured["measured_at"],
                 "sample_count": measured["sample_count"],
                 "artifact_path": measured["artifact_path"],
+                "contract": measured["contract"],
                 "rest": measured["rest"],
                 "streaming": measured["streaming"],
                 "accuracy": measured["accuracy"],
@@ -396,6 +433,7 @@ def build_metric_range(entries: list[dict[str, Any]], getter) -> dict[str, float
 
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
     latest: dict[str, tuple[str, Path, dict[str, Any]]] = {}
+    artifacts_by_name: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     artifact_history: list[dict[str, Any]] = []
     for path in sorted(results_dir.glob("*.json")):
         if path.name in {"manifest.json", tracks_path.name}:
@@ -404,12 +442,19 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         key = benchmark_key(payload)
         stamp = artifact_timestamp(path, payload)
         artifact_history.append(build_artifact_history_entry(path, payload))
+        artifacts_by_name[path.name] = (stamp, path, payload)
         previous = latest.get(key)
         if previous is None or stamp > previous[0]:
             latest[key] = (stamp, path, payload)
 
     catalog = load_catalog(tracks_path)
-    tracks = [build_track_entry(track, latest.get(track_key(track))) for track in catalog.get("tracks", [])]
+    tracks = [
+        build_track_entry(
+            track,
+            artifacts_by_name.get(track.get("artifact")) if track.get("artifact") else latest.get(track_key(track)),
+        )
+        for track in catalog.get("tracks", [])
+    ]
     tracks.sort(
         key=lambda item: (
             STATUS_ORDER.get(item["status"], 99),
@@ -447,6 +492,8 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
     ranges = {
         "rest_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["rest"]["mean_ms"]),
         "partial_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["streaming"]["partial_mean_ms"]),
+        "first_partial_end_to_end_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["streaming"]["first_partial_end_to_end_mean_ms"]),
+        "partial_gap_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["streaming"]["partial_gap_mean_ms"]),
         "final_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["streaming"]["final_mean_ms"]),
         "rtf_mean": build_metric_range(artifact_backed, lambda entry: entry["rest"]["rtf_mean"]),
         "wer": build_metric_range(artifact_backed, lambda entry: entry["accuracy"]["word_error_rate_mean"]),
@@ -469,6 +516,12 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),
             "fastest_partial": build_highlight(
                 "Fastest streaming partial mean", ("streaming", "partial_mean_ms"), highlight_entries
+            ),
+            "fastest_first_partial": build_highlight(
+                "Fastest first visible partial", ("streaming", "first_partial_end_to_end_mean_ms"), highlight_entries
+            ),
+            "tightest_partial_cadence": build_highlight(
+                "Tightest partial cadence", ("streaming", "partial_gap_mean_ms"), highlight_entries
             ),
             "fastest_final": build_highlight(
                 "Fastest streaming final mean", ("streaming", "final_mean_ms"), highlight_entries

@@ -560,6 +560,11 @@
         if (sorted.length % 2) return sorted[middle];
         return (sorted[middle - 1] + sorted[middle]) / 2;
       }
+      function minDefined(values) {
+        const defined = values.filter((value) => value != null);
+        if (!defined.length) return null;
+        return Math.min(...defined);
+      }
       function findBest(entries, getter) {
         const candidates = entries
           .map((entry) => ({ entry, value: getter(entry) }))
@@ -570,8 +575,21 @@
       function publishedTracks(manifest) {
         return (manifest.tracks || []).filter((track) => track.artifact_path && track.status !== "blocked");
       }
+      function statusRank(entry) {
+        if (entry.status === "validated") return 0;
+        if (entry.status === "legacy") return 1;
+        return 2;
+      }
+      function comparableEntries(entries) {
+        const validated = entries.filter((entry) => entry.status === "validated");
+        return validated.length ? validated : entries;
+      }
       function sortEntries(entries) {
         return [...entries].sort((left, right) => {
+          const statusDelta = statusRank(left) - statusRank(right);
+          if (statusDelta !== 0) return statusDelta;
+          const firstPartial = numeric(firstVisiblePartial(left)) - numeric(firstVisiblePartial(right));
+          if (firstPartial !== 0) return firstPartial;
           const partial = numeric(left.streaming.partial_mean_ms) - numeric(right.streaming.partial_mean_ms);
           if (partial !== 0) return partial;
           const final = numeric(left.streaming.final_mean_ms) - numeric(right.streaming.final_mean_ms);
@@ -581,11 +599,24 @@
           return numeric(left.accuracy.word_error_rate_mean) - numeric(right.accuracy.word_error_rate_mean);
         });
       }
+      function firstVisiblePartial(entry) {
+        return entry.streaming.first_partial_end_to_end_mean_ms ?? null;
+      }
+      function configLabel(entry) {
+        const contract = entry.contract || {};
+        const chunk = contract.chunk_ms == null ? "n/a" : `${contract.chunk_ms} ms`;
+        const cadence = contract.partial_interval_chunks == null ? "?" : `${contract.partial_interval_chunks}x`;
+        const windowSeconds = contract.partial_window_seconds == null ? "n/a" : `${contract.partial_window_seconds}s`;
+        const frameMode = contract.binary_frames == null ? "unknown frames" : (contract.binary_frames ? "binary frames" : "json/base64");
+        return `${chunk} · cadence ${cadence} · window ${windowSeconds} · ${frameMode}`;
+      }
       function summarizeEntries(entries) {
+        const firstPartials = entries.map((entry) => firstVisiblePartial(entry)).filter((value) => value != null);
         const partials = entries.map((entry) => entry.streaming.partial_mean_ms).filter((value) => value != null);
         const finals = entries.map((entry) => entry.streaming.final_mean_ms).filter((value) => value != null);
         const rests = entries.map((entry) => entry.rest.mean_ms).filter((value) => value != null);
         return {
+          medianFirstPartial: median(firstPartials),
           medianPartial: median(partials),
           medianFinal: median(finals),
           medianRest: median(rests),
@@ -610,7 +641,7 @@
           {
             value: contract.default_sample_count ? `${contract.default_sample_count} samples` : "n/a",
             title: "Default contract",
-            detail: `${contract.rest_runs_per_sample || "?"} REST runs per sample and ${contract.chunk_ms || "?"} ms chunks`
+            detail: `${contract.rest_runs_per_sample || "?"} REST runs, ${contract.chunk_ms || "?"} ms chunks, cadence ${contract.partial_interval_chunks || "?"}, ${contract.binary_frames ? "binary" : "json/base64"}`
           },
           {
             value: unpublishedCount ? String(unpublishedCount) : "0",
@@ -640,9 +671,14 @@
         const medians = summarizeEntries(entries);
         document.getElementById("snapshot-grid").innerHTML = `
           <article class="snapshot-card">
-            <div class="section-kicker">Median partial</div>
+            <div class="section-kicker">Median first partial</div>
+            <div class="headline-value">${formatMs(medians.medianFirstPartial)}</div>
+            <p>Time until a caller could first see a useful partial in a real-time stream.</p>
+          </article>
+          <article class="snapshot-card">
+            <div class="section-kicker">Median partial response</div>
             <div class="headline-value">${formatMs(medians.medianPartial)}</div>
-            <p>Middle-of-pack websocket responsiveness across the currently published lanes.</p>
+            <p>Server response time after a partial trigger, separated from chunk/window cadence.</p>
           </article>
           <article class="snapshot-card">
             <div class="section-kicker">Median final</div>
@@ -653,11 +689,6 @@
             <div class="section-kicker">Median REST</div>
             <div class="headline-value">${formatMs(medians.medianRest)}</div>
             <p>Batch-style request latency for the same published benchmark set.</p>
-          </article>
-          <article class="snapshot-card">
-            <div class="section-kicker">Publishing rule</div>
-            <div class="headline-value">artifact first</div>
-            <p>The homepage compares measured artifacts only, so this frontend stays clean even when a tracked backend is blocked.</p>
           </article>
         `;
       }
@@ -677,6 +708,14 @@
             title: "Best live caption score",
             value: `${bestLiveCaption.value.toFixed(1)} / 100`,
             detail: `${bestLiveCaption.backend} · ${bestLiveCaption.model}`
+          });
+        }
+        const fastestFirstPartial = summary.highlights?.fastest_first_partial;
+        if (fastestFirstPartial) {
+          signalCards.push({
+            title: "First visible partial leader",
+            value: formatMs(fastestFirstPartial.value),
+            detail: `${fastestFirstPartial.backend} · ${fastestFirstPartial.model}`
           });
         }
         const fastestPartial = summary.highlights?.fastest_partial;
@@ -711,6 +750,14 @@
             detail: `${bestAccuracy.backend} · ${bestAccuracy.model}`
           });
         }
+        const tightestCadence = summary.highlights?.tightest_partial_cadence;
+        if (tightestCadence) {
+          signalCards.push({
+            title: "Tightest partial cadence",
+            value: formatMs(tightestCadence.value),
+            detail: `${tightestCadence.backend} · ${tightestCadence.model}`
+          });
+        }
         const bestTail = findBest(entries, (entry) => tailSpread(entry.streaming.partial_mean_ms, entry.streaming.partial_p95_ms));
         if (bestTail) {
           signalCards.push({
@@ -737,7 +784,7 @@
       }
       function renderStories(entries) {
         const target = document.getElementById("story-grid");
-        const ranked = sortEntries(entries).slice(0, 3);
+        const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);
         target.innerHTML = ranked.map((entry, index) => `
           <article class="story-card panel">
             <div class="section-kicker">Rank ${index + 1}</div>
@@ -757,12 +804,17 @@
           return;
         }
         const ranked = sortEntries(entries);
-        const baselinePartial = Math.min(...ranked.map((entry) => numeric(entry.streaming.partial_mean_ms, 0)));
-        const baselineFinal = Math.min(...ranked.map((entry) => numeric(entry.streaming.final_mean_ms, 0)));
+        const baselineEntries = comparableEntries(ranked);
+        const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";
+        const baselineFirstPartial = minDefined(baselineEntries.map((entry) => firstVisiblePartial(entry)));
+        const baselinePartial = minDefined(ranked.map((entry) => entry.streaming.partial_mean_ms));
+        const baselineFinal = minDefined(ranked.map((entry) => entry.streaming.final_mean_ms));
         const maxRest = Math.max(...ranked.map((entry) => entry.rest.mean_ms || 0), 1);
         const rows = ranked.map((entry) => {
-          const partialDelta = entry.streaming.partial_mean_ms == null ? null : entry.streaming.partial_mean_ms - baselinePartial;
-          const finalDelta = entry.streaming.final_mean_ms == null ? null : entry.streaming.final_mean_ms - baselineFinal;
+          const firstPartialValue = firstVisiblePartial(entry);
+          const firstPartialDelta = firstPartialValue == null || baselineFirstPartial == null ? null : firstPartialValue - baselineFirstPartial;
+          const partialDelta = entry.streaming.partial_mean_ms == null || baselinePartial == null ? null : entry.streaming.partial_mean_ms - baselinePartial;
+          const finalDelta = entry.streaming.final_mean_ms == null || baselineFinal == null ? null : entry.streaming.final_mean_ms - baselineFinal;
           const restWidth = Math.max(6, ((entry.rest.mean_ms || 0) / maxRest) * 100);
           return `
             <tr>
@@ -775,6 +827,11 @@
               <td data-label="Score">
                 <strong>${entry.derived?.overall_score == null ? "n/a" : `${entry.derived.overall_score.toFixed(1)} / 100`}</strong>
                 <div class="tiny">Confidence ${entry.derived?.confidence_score == null ? "n/a" : `${entry.derived.confidence_score.toFixed(1)} / 100`}</div>
+              </td>
+              <td data-label="First partial">
+                <strong>${formatMs(firstPartialValue)}</strong>
+                <div class="tiny">P95 ${formatMs(entry.streaming.first_partial_end_to_end_p95_ms)}</div>
+                <div class="tiny ${deltaClass(firstPartialDelta)}">${signedDelta(firstPartialDelta)} ${firstPartialBaselineLabel}</div>
               </td>
               <td data-label="Partial">
                 <strong>${formatMs(entry.streaming.partial_mean_ms)}</strong>
@@ -795,6 +852,11 @@
                 <strong>WER ${formatWer(entry.accuracy.word_error_rate_mean)}</strong>
                 <div class="tiny">CER ${formatWer(entry.accuracy.character_error_rate_mean)}</div>
               </td>
+              <td data-label="Config">
+                <strong>${entry.contract?.chunk_ms == null ? "n/a" : `${entry.contract.chunk_ms} ms`}</strong>
+                <div class="tiny">window ${entry.contract?.partial_window_seconds ?? "n/a"} s · cadence ${entry.contract?.partial_interval_chunks ?? "?"}</div>
+                <div class="tiny">${entry.contract?.binary_frames ? "binary frames" : "json/base64"}</div>
+              </td>
               <td data-label="Samples">
                 <strong>${entry.sample_count ?? "n/a"}</strong>
                 <div class="tiny">Measured ${formatDate(entry.measured_at)}</div>
@@ -810,10 +872,12 @@
                 <th>Lane</th>
                 <th>State</th>
                 <th>Score</th>
+                <th>First partial</th>
                 <th>Partial</th>
                 <th>Final</th>
                 <th>REST</th>
                 <th>Accuracy</th>
+                <th>Config</th>
                 <th>Samples</th>
                 <th>Artifact</th>
               </tr>
@@ -837,13 +901,16 @@
               <div class="chip"><strong>${track.lane}</strong> lane</div>
               <div class="chip"><strong>${track.runtime}</strong> runtime</div>
               <div class="chip"><strong>${track.sample_count ?? "n/a"}</strong> samples</div>
+              <div class="chip"><strong>${configLabel(track)}</strong></div>
             </div>
             <p class="lane-note">${track.status_detail}</p>
             <div class="lane-metrics">
               <div class="metric-row"><span>Measured</span><strong>${formatDate(track.measured_at)}</strong></div>
               <div class="metric-row"><span>Overall score</span><strong>${track.derived?.overall_score == null ? "n/a" : `${track.derived.overall_score.toFixed(1)} / 100`}</strong></div>
               <div class="metric-row"><span>Confidence</span><strong>${track.derived?.confidence_score == null ? "n/a" : `${track.derived.confidence_score.toFixed(1)} / 100`}</strong></div>
+              <div class="metric-row"><span>First visible partial</span><strong>${formatMs(firstVisiblePartial(track))}</strong></div>
               <div class="metric-row"><span>Partial mean</span><strong>${formatMs(track.streaming.partial_mean_ms)}</strong></div>
+              <div class="metric-row"><span>Partial cadence</span><strong>${formatMs(track.streaming.partial_gap_mean_ms)}</strong></div>
               <div class="metric-row"><span>Final mean</span><strong>${formatMs(track.streaming.final_mean_ms)}</strong></div>
               <div class="metric-row"><span>REST mean</span><strong>${formatMs(track.rest.mean_ms)}</strong></div>
               <div class="metric-row"><span>WER</span><strong>${formatWer(track.accuracy.word_error_rate_mean)}</strong></div>

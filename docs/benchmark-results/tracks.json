@@ -3,7 +3,10 @@
     "default_sample_count": 10,
     "rest_runs_per_sample": 5,
     "chunk_ms": 250,
-    "partial_window_seconds": 2.0
+    "partial_window_seconds": 2.0,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "partial_event_timeout_seconds": 0.1
   },
   "tracks": [
     {
@@ -19,6 +22,20 @@
       "artifact": "faster-whisper-base.en-int8-2026-06-10.json",
       "status_detail": "Validated 10-sample local CPU baseline.",
       "run_command": "make benchmark-faster-whisper-base"
+    },
+    {
+      "slug": "faster-whisper-base-c80-w075-json-preview",
+      "label": "Faster-Whisper Base 80ms Preview",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "device": "cpu",
+      "compute": "int8",
+      "lane": "Local Python CPU",
+      "status": "legacy",
+      "target_sample_count": 1,
+      "artifact": "faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json",
+      "status_detail": "Exploratory 1-sample low-latency preview at 80 ms chunks and a 0.75 s partial window. First visible partial arrived at 1.7 s, while finalization remained extremely slow (~46.9 s), and the binary-frame companion still hit a websocket keepalive close during stop/final.",
+      "run_command": "make benchmark-faster-whisper-base-low-latency-sweep LOW_LATENCY_SWEEP_CHUNK_MS=\"80\" LOW_LATENCY_SWEEP_PARTIAL_WINDOWS=\"0.75\" LOW_LATENCY_SWEEP_BINARY_FRAMES=\"false\""
     },
     {
       "slug": "faster-whisper-small",
@@ -103,5 +120,25 @@
       "status_detail": "Blocked before validation because the default model loads gated meta-llama/Llama-3.1-8B-Instruct weights and Hugging Face returned 403 on 2026-06-10.",
       "run_command": "HF_TOKEN=... make benchmark-compose-ultravox"
     }
-  ]
+  ],
+  "low_latency_matrix": {
+    "chunk_ms": [
+      40,
+      60,
+      80,
+      100,
+      160,
+      250
+    ],
+    "partial_window_seconds": [
+      0.5,
+      0.75,
+      1.0,
+      2.0
+    ],
+    "binary_frames": [
+      false,
+      true
+    ]
+  }
 }
