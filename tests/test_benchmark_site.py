@@ -42,6 +42,7 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
     assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
     assert "accuracy_score" not in tracks["faster-whisper-base-c80-w075-json-preview"]["derived"]
+    assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["faster-whisper-base-c80-w075-json-preview"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
 
@@ -242,6 +243,9 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "const baselineEntries = comparableEntries(ranked);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
+    assert "safest latency bet" in html
+    assert "sample coverage" in html
+    assert "named annotated benchmark dataset and methodology" in html
 
 
 def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
@@ -257,7 +261,10 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
 
     assert "docs/benchmark-results/tracks.json" in docs_text
     assert "docs/benchmark-results/manifest.json" in docs_text
+    assert "## Accuracy Publishing Policy" in docs_text
+    assert "Common Voice or FLEURS" in docs_text
     assert "qwen-compose-2026-06-07.json" not in docs_text
+    assert "official annotated benchmark runs only" in docs_text
 
     for track in tracks:
         assert track["slug"] in docs_text
