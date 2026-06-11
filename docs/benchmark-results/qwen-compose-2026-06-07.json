@@ -79,7 +79,7 @@
       "normalized_hypothesis": "quick benchmark phrase for rtcasr",
       "exact_match": false,
       "word_error_rate": 0.333,
-      "character_error_rate": 0.0,
+      "character_error_rate": 0,
       "reference_word_count": 6,
       "hypothesis_word_count": 5
     }
@@ -88,9 +88,9 @@
     "chunks": 3,
     "chunk_ms": 1000,
     "partial_mean_ms": 1349.7,
-    "partial_p95_ms": 1863.0,
+    "partial_p95_ms": 1863,
     "partial_first_ms": 749.9,
-    "partial_last_ms": 1863.0,
+    "partial_last_ms": 1863,
     "final_ms": 0.7,
     "ready": {
       "type": "ready",
@@ -110,7 +110,7 @@
       "normalized_hypothesis": "quick benchmark phrase for rtcasr",
       "exact_match": false,
       "word_error_rate": 0.333,
-      "character_error_rate": 0.0,
+      "character_error_rate": 0,
       "reference_word_count": 6,
       "hypothesis_word_count": 5
     }

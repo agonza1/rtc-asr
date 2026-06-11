@@ -596,7 +596,6 @@
           if (final !== 0) return final;
           const rest = numeric(left.rest.mean_ms) - numeric(right.rest.mean_ms);
           if (rest !== 0) return rest;
-          return numeric(left.accuracy.word_error_rate_mean) - numeric(right.accuracy.word_error_rate_mean);
         });
       }
       function firstVisiblePartial(entry) {
@@ -742,14 +741,6 @@
             detail: `${fastestRest.backend} · ${fastestRest.model}`
           });
         }
-        const bestAccuracy = summary.highlights?.best_accuracy;
-        if (bestAccuracy) {
-          signalCards.push({
-            title: "Cleanest recognition",
-            value: `WER ${formatWer(bestAccuracy.value)}`,
-            detail: `${bestAccuracy.backend} · ${bestAccuracy.model}`
-          });
-        }
         const tightestCadence = summary.highlights?.tightest_partial_cadence;
         if (tightestCadence) {
           signalCards.push({
@@ -848,10 +839,6 @@
                 <div class="tiny">P95 ${formatMs(entry.rest.p95_ms)} · RTF ${formatRatio(entry.rest.rtf_mean)}</div>
                 <div class="metric-bar"><span style="width:${restWidth}%"></span></div>
               </td>
-              <td data-label="Accuracy">
-                <strong>WER ${formatWer(entry.accuracy.word_error_rate_mean)}</strong>
-                <div class="tiny">CER ${formatWer(entry.accuracy.character_error_rate_mean)}</div>
-              </td>
               <td data-label="Config">
                 <strong>${entry.contract?.chunk_ms == null ? "n/a" : `${entry.contract.chunk_ms} ms`}</strong>
                 <div class="tiny">window ${entry.contract?.partial_window_seconds ?? "n/a"} s · cadence ${entry.contract?.partial_interval_chunks ?? "?"}</div>
@@ -876,7 +863,6 @@
                 <th>Partial</th>
                 <th>Final</th>
                 <th>REST</th>
-                <th>Accuracy</th>
                 <th>Config</th>
                 <th>Samples</th>
                 <th>Artifact</th>
@@ -913,7 +899,6 @@
               <div class="metric-row"><span>Partial cadence</span><strong>${formatMs(track.streaming.partial_gap_mean_ms)}</strong></div>
               <div class="metric-row"><span>Final mean</span><strong>${formatMs(track.streaming.final_mean_ms)}</strong></div>
               <div class="metric-row"><span>REST mean</span><strong>${formatMs(track.rest.mean_ms)}</strong></div>
-              <div class="metric-row"><span>WER</span><strong>${formatWer(track.accuracy.word_error_rate_mean)}</strong></div>
               <div class="metric-row"><span>RTF</span><strong>${formatRatio(track.rest.rtf_mean)}</strong></div>
             </div>
             <div class="lane-actions">
@@ -942,7 +927,7 @@
             <div class="section-kicker">Publishing rule</div>
             <h3>What reaches the homepage</h3>
             <ul class="contract-list">
-              <li>Only checked-in JSON artifacts produce visible latency comparisons.</li>
+              <li>Only checked-in JSON artifacts produce visible latency comparisons, and ad-hoc WER/CER stays out of the public dashboard until issue #46 has official benchmark coverage.</li>
               <li>Legacy runs stay labeled so stale-but-inspectable baselines remain usable.</li>
               <li>Tracked lanes without publishable artifacts stay out of the front-end comparison flow.</li>
             </ul>

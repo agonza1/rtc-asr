@@ -14,7 +14,7 @@
     "partial_window_seconds": 0.75,
     "max_buffer_seconds": null,
     "request_retries": 3,
-    "request_retry_delay": 2.0
+    "request_retry_delay": 2
   },
   "audio": {
     "path": "/Users/alberto/.openclaw/tmp/rtc_asr_bench_rvio_kbo.aiff",
@@ -29,8 +29,7 @@
     "device": "cpu",
     "compute_type": "int8",
     "qwen_dtype": null,
-    "parakeet_dtype": null,
-    "ultravox_dtype": null
+    "parakeet_dtype": null
   },
   "service": {
     "models": [
@@ -94,7 +93,7 @@
           "normalized_hypothesis": "the quick brown fox jumps over the lazy dog this is a real time asr latency benchmark for the rtc asr service",
           "exact_match": false,
           "word_error_rate": 0.095,
-          "character_error_rate": 0.0,
+          "character_error_rate": 0,
           "reference_word_count": 21,
           "hypothesis_word_count": 22
         }
@@ -113,8 +112,8 @@
         "first_partial_end_to_end_ms": 1695.4,
         "partial_gap_mean_ms": null,
         "partial_gap_p95_ms": null,
-        "time_to_final_from_audio_end_ms": 46867.0,
-        "final_ms": 46867.0,
+        "time_to_final_from_audio_end_ms": 46867,
+        "final_ms": 46867,
         "ready": {
           "type": "ready",
           "stream_id": 1,
@@ -134,7 +133,7 @@
           "normalized_hypothesis": "the quick brown fox jumps over the lazy dog this is a real time asr latency benchmark for the rtc asr service",
           "exact_match": false,
           "word_error_rate": 0.095,
-          "character_error_rate": 0.0,
+          "character_error_rate": 0,
           "reference_word_count": 21,
           "hypothesis_word_count": 22
         }
@@ -155,11 +154,11 @@
     "rtf_mean": 0.074,
     "accuracy": {
       "sample_count": 1,
-      "exact_match_rate": 0.0,
+      "exact_match_rate": 0,
       "word_error_rate_mean": 0.095,
       "word_error_rate_p90": 0.095,
-      "character_error_rate_mean": 0.0,
-      "character_error_rate_p90": 0.0
+      "character_error_rate_mean": 0,
+      "character_error_rate_p90": 0
     },
     "transcript": "The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service."
   },
@@ -171,7 +170,7 @@
     "partial_window_seconds": 0.75,
     "max_buffer_seconds": null,
     "request_retries": 3,
-    "request_retry_delay": 2.0,
+    "request_retry_delay": 2,
     "partial_latencies_ms": [
       15.4
     ],
@@ -180,7 +179,7 @@
     ],
     "partial_gap_latencies_ms": [],
     "final_latencies_ms": [
-      46867.0
+      46867
     ],
     "partial_mean_ms": 15.4,
     "partial_p90_ms": 15.4,
@@ -193,11 +192,11 @@
     "partial_gap_mean_ms": null,
     "partial_gap_p90_ms": null,
     "partial_gap_p95_ms": null,
-    "final_mean_ms": 46867.0,
-    "final_p90_ms": 46867.0,
-    "final_p95_ms": 46867.0,
-    "final_min_ms": 46867.0,
-    "final_max_ms": 46867.0,
+    "final_mean_ms": 46867,
+    "final_p90_ms": 46867,
+    "final_p95_ms": 46867,
+    "final_min_ms": 46867,
+    "final_max_ms": 46867,
     "ready": {
       "type": "ready",
       "stream_id": 1,
@@ -213,11 +212,11 @@
     "final_transcript": "The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.",
     "accuracy": {
       "sample_count": 1,
-      "exact_match_rate": 0.0,
+      "exact_match_rate": 0,
       "word_error_rate_mean": 0.095,
       "word_error_rate_p90": 0.095,
-      "character_error_rate_mean": 0.0,
-      "character_error_rate_p90": 0.0
+      "character_error_rate_mean": 0,
+      "character_error_rate_p90": 0
     }
   }
 }

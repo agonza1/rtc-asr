@@ -63,7 +63,6 @@ pytest tests/test_client.py tests/test_smoke.py -v
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
 - [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)
 - [NVIDIA Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)
-- [Ultravox](https://huggingface.co/fixie-ai/ultravox-v0_6-llama-3_1-8b)
 
 ## Repo
 

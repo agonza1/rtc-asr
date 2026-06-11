@@ -3,7 +3,7 @@
     "default_sample_count": 10,
     "rest_runs_per_sample": 5,
     "chunk_ms": 250,
-    "partial_window_seconds": 2.0,
+    "partial_window_seconds": 2,
     "partial_interval_chunks": 1,
     "binary_frames": false,
     "partial_event_timeout_seconds": 0.1
@@ -106,19 +106,6 @@
       "artifact": "qwen-compose-2026-06-08.json",
       "status_detail": "Single-sample legacy artifact remains published because the 2026-06-10 refresh restarted during first generation and REST warmup failed with httpx.ReadError.",
       "run_command": "make benchmark-compose-qwen"
-    },
-    {
-      "slug": "ultravox-compose",
-      "label": "Ultravox Compose",
-      "backend": "ultravox",
-      "model": "fixie-ai/ultravox-v0_6-llama-3_1-8b",
-      "device": "cpu",
-      "compute": "float32",
-      "lane": "Docker Compose CPU",
-      "status": "blocked",
-      "target_sample_count": 10,
-      "status_detail": "Blocked before validation because the default model loads gated meta-llama/Llama-3.1-8B-Instruct weights and Hugging Face returned 403 on 2026-06-10.",
-      "run_command": "HF_TOKEN=... make benchmark-compose-ultravox"
     }
   ],
   "low_latency_matrix": {
@@ -133,8 +120,8 @@
     "partial_window_seconds": [
       0.5,
       0.75,
-      1.0,
-      2.0
+      1,
+      2
     ],
     "binary_frames": [
       false,
