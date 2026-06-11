@@ -584,7 +584,7 @@
         });
       }
       function firstVisiblePartial(entry) {
-        return entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms;
+        return entry.streaming.first_partial_end_to_end_mean_ms ?? null;
       }
       function configLabel(entry) {
         const contract = entry.contract || {};

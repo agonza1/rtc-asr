@@ -436,6 +436,7 @@ async def run_ws_benchmark(
     partial_latencies = []
     partial_audio_offsets_ms = []
     partial_end_to_end_ms = []
+    last_partial_visible_ms = 0.0
     partial_text = ""
     connect = connect_fn or _connect_websocket
     async with connect(ws_url) as websocket:
@@ -474,7 +475,10 @@ async def run_ws_benchmark(
             partial_latencies.append(response_latency_ms)
             audio_offset_ms = min(round(chunk_index * chunk_ms, 1), total_audio_ms)
             partial_audio_offsets_ms.append(audio_offset_ms)
-            partial_end_to_end_ms.append(round(audio_offset_ms + response_latency_ms, 1))
+            visible_elapsed_ms = max(audio_offset_ms, last_partial_visible_ms) + response_latency_ms
+            visible_elapsed_ms = round(visible_elapsed_ms, 1)
+            partial_end_to_end_ms.append(visible_elapsed_ms)
+            last_partial_visible_ms = visible_elapsed_ms
             partial_text = event.get("text", "")
         started = time.perf_counter()
         await websocket.send(json.dumps({"type": "stop"}))

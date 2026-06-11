@@ -170,6 +170,7 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
     assert "LOW_LATENCY_SWEEP_CHUNK_MS ?= 60 80 100" in makefile
     assert "LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 0.5 0.75 1.0" in makefile
     assert "LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false true" in makefile
+    assert "set -e;" in sweep_block
     assert "--sample-count $(LOW_LATENCY_SWEEP_SAMPLE_COUNT)" in sweep_block
     assert "--rest-runs $(LOW_LATENCY_SWEEP_REST_RUNS)" in sweep_block
     assert "--chunk-ms $$chunk" in sweep_block
@@ -494,6 +495,40 @@ def test_run_ws_benchmark_reports_first_partial_and_gap_metrics(monkeypatch: pyt
         assert result["partial_gap_mean_ms"] == 280.0
         assert result["partial_gap_p95_ms"] == 280.0
         assert result["time_to_final_from_audio_end_ms"] == 120.0
+
+    asyncio.run(scenario())
+
+
+def test_run_ws_benchmark_keeps_partial_end_to_end_monotonic_under_backlog(monkeypatch: pytest.MonkeyPatch) -> None:
+    websocket = FakeBenchmarkWebSocket(
+        [
+            {"type": "ready", "stream_id": 11},
+            {"type": "partial", "text": "chunk one"},
+            {"type": "partial", "text": "chunk two"},
+            {"type": "final", "text": "done"},
+        ]
+    )
+
+    perf_values = iter([1.0, 3.5, 4.0, 4.02, 5.0, 5.12])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    def fake_connect(_: str) -> FakeBenchmarkWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        result = await benchmark.run_ws_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcdefgh",
+            8,
+            250,
+            partial_interval_chunks=1,
+            connect_fn=fake_connect,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [250, 500]
+        assert result["partial_end_to_end_ms"] == [2750.0, 2770.0]
+        assert result["partial_gap_ms"] == [20.0]
+        assert result["first_partial_end_to_end_ms"] == 2750.0
 
     asyncio.run(scenario())
 

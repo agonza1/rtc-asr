@@ -231,6 +231,13 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
     assert manifest["summary"]["highlights"]["tightest_partial_cadence"]["slug"] == "demo-track"
 
 
+def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
+    assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
+
+
 def test_docs_and_tracks_registry_stay_aligned() -> None:
     docs_text = DOCS_PATH.read_text(encoding="utf-8")
     tracks = load_tracks()["tracks"]
