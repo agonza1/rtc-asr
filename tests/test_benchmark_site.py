@@ -264,7 +264,9 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
     assert "## Accuracy Publishing Policy" in docs_text
     assert "Common Voice or FLEURS" in docs_text
     assert "qwen-compose-2026-06-07.json" not in docs_text
-    assert "official annotated benchmark runs only" in docs_text
+    assert "Official WER reference" in docs_text
+    assert "upstream Hugging Face benchmark/model-card numbers" in docs_text
+    assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
 
     for track in tracks:
         assert track["slug"] in docs_text
