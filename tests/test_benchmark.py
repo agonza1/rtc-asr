@@ -279,7 +279,6 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "max_buffer_seconds": None,
             "request_retries": 3,
             "request_retry_delay": 2.0,
-            "partial_event_timeout_seconds": 0.1,
         },
         "faster-whisper-small.en-int8-2026-06-10.json": {
             "partial_interval_chunks": 1,
@@ -288,7 +287,6 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "max_buffer_seconds": None,
             "request_retries": 3,
             "request_retry_delay": 2.0,
-            "partial_event_timeout_seconds": 0.1,
         },
         "parakeet-compose-2026-06-10.json": {
             "partial_interval_chunks": 1,
@@ -297,7 +295,6 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "max_buffer_seconds": None,
             "request_retries": 3,
             "request_retry_delay": 2.0,
-            "partial_event_timeout_seconds": 0.1,
         },
         "parakeet-nemo-110m-compose-2026-06-09.json": {
             "partial_interval_chunks": 8,
@@ -306,7 +303,6 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "max_buffer_seconds": None,
             "request_retries": 3,
             "request_retry_delay": 2.0,
-            "partial_event_timeout_seconds": 0.1,
         },
         "qwen-mps-2026-06-10.json": {
             "partial_interval_chunks": 1,
@@ -315,7 +311,6 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "max_buffer_seconds": None,
             "request_retries": 3,
             "request_retry_delay": 2.0,
-            "partial_event_timeout_seconds": 0.1,
         },
     }
 
@@ -355,7 +350,6 @@ def test_benchmarks_doc_validated_artifact_rows_reference_checked_in_current_sch
         "max_buffer_seconds",
         "request_retries",
         "request_retry_delay",
-        "partial_event_timeout_seconds",
     }
 
     validated_rows = [
