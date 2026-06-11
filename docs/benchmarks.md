@@ -7,6 +7,20 @@ The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/man
 
 Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. Public benchmark surfaces intentionally omit WER/CER until issue #46 lands official benchmark coverage.
 
+## Accuracy Publishing Policy
+
+Issue #46 resolves to a simple public-facing rule:
+
+- The homepage comparison stays latency-first. It should rank and compare only streaming/REST responsiveness, stability, and sample coverage from checked-in artifacts.
+- WER/CER should appear only when backed by an annotated, reproducible benchmark dataset. Local smoke clips and exploratory sweeps are useful for latency debugging, but they are not a publishable source of truth for accuracy.
+- When official accuracy coverage lands, keep it on a methodology/details surface first, with the homepage linking out rather than mixing unofficial and official quality numbers in the same primary table.
+
+Recommended source-of-truth path for this repo:
+
+- Start with reproducible clean/reference corpora such as Common Voice or FLEURS so runs can be repeated and labeled ground truth is explicit.
+- Treat telephony/noisy evaluation as a second methodology track. If we add codec/noise degradation, publish it as a separate benchmark lane with its own notes instead of blending it into the clean/reference leaderboard.
+- Keep every published accuracy result tied to a named dataset, a checked-in run artifact, and documented preprocessing so readers can tell official benchmark runs apart from local preview experiments.
+
 ## Benchmark Lane Registry
 
 | Track | Backend | Model | Lane | Runtime | Status | Source |
@@ -31,7 +45,7 @@ Status details from the track registry:
 
 ## Current Artifact-Backed Comparison
 
-These rows match the current manifest entries used on the homepage. The checked-in artifacts still contain local diagnostic accuracy fields, but the public docs and site do not present them because issue #46 tracks the switch to official benchmark WER.
+These rows match the current manifest entries used on the homepage. The checked-in artifacts still contain local diagnostic accuracy fields, but the public docs and site do not present them because issue #46 restricts public WER/CER to official annotated benchmark runs only.
 
 | Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Final Mean / P95 | Artifact |
 | --- | ---: | --- | ---: | --- | --- | --- |
