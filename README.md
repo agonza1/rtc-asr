@@ -2,7 +2,7 @@
 
 `rtc-asr` is a lightweight FastAPI service for low-latency transcription over REST and WebSockets. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
 
-The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-nemo`, and `ultravox` backends behind the same API surface.
+The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, and `parakeet-nemo` backends behind the same API surface.
 
 > Benchmark status: the repo includes checked-in latency baselines for validated local and Compose-backed runs. Treat untracked GPU, load, and accuracy claims as provisional until the corresponding artifacts are committed.
 
@@ -57,7 +57,7 @@ ASR_PRELOAD_MODEL=true
 ASR_FAIL_FAST=false
 ```
 
-Backend-specific variables are available for Qwen, Parakeet, NeMo Parakeet, and Ultravox. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
+Backend-specific variables are available for Qwen, Parakeet, and NeMo Parakeet. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
 
 If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service defaults to `cuda`. Legacy aliases `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted for compatibility.
 
@@ -130,7 +130,6 @@ make benchmark-qwen-mps
 make benchmark-compose-qwen
 make benchmark-compose-parakeet
 make benchmark-compose-parakeet-nemo
-make benchmark-compose-ultravox
 make benchmark-site-check
 ```
 

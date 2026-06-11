@@ -347,79 +347,6 @@ class ParakeetNemoAdapter:
         return self._model
 
 
-@dataclass(slots=True)
-class UltravoxAdapter:
-    """Transformers pipeline wrapper for Ultravox speech-in/text-out models."""
-
-    config: AppConfig
-    audio_processor: AudioProcessor
-    backend_name: str = field(init=False, default="ultravox")
-    model_name: str = field(init=False)
-    _pipeline: Any | None = field(init=False, default=None, repr=False)
-
-    def __post_init__(self) -> None:
-        self.model_name = self.config.asr_ultravox_model
-
-    def is_loaded(self) -> bool:
-        return self._pipeline is not None
-
-    def preload(self) -> None:
-        self._load_pipeline()
-
-    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
-        decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
-        pipeline = self._load_pipeline()
-        result = pipeline(
-            {
-                "audio": decoded_audio.samples,
-                "turns": [{"role": "system", "content": self.config.asr_ultravox_prompt}],
-                "sampling_rate": decoded_audio.sample_rate,
-            },
-            max_new_tokens=self.config.asr_ultravox_max_new_tokens,
-        )
-        text = _extract_pipeline_text(result)
-
-        return {
-            "text": text,
-            "language": language,
-            "duration_ms": decoded_audio.duration_ms,
-            "backend": self.backend_name,
-            "model": self.model_name,
-        }
-
-    def describe(self) -> dict[str, Any]:
-        return {
-            "backend": self.backend_name,
-            "model": self.model_name,
-            "device": self.config.asr_device,
-            "dtype": self.config.asr_ultravox_dtype,
-            "max_new_tokens": self.config.asr_ultravox_max_new_tokens,
-            "prompt": self.config.asr_ultravox_prompt,
-            "implementation": "transformers.pipeline",
-            "loaded": self.is_loaded(),
-            **_shared_capabilities(self.audio_processor),
-        }
-
-    def _load_pipeline(self) -> Any:
-        if self._pipeline is not None:
-            return self._pipeline
-
-        try:
-            import torch
-            from transformers import pipeline
-        except ImportError as exc:
-            raise ASRUnavailableError(
-                "The ultravox backend requires transformers, torch, accelerate, and peft. Install requirements.txt to enable ASR_BACKEND=ultravox."
-            ) from exc
-
-        self._pipeline = pipeline(
-            model=self.model_name,
-            device=self.config.asr_device,
-            dtype=_resolve_torch_dtype(torch, self.config.asr_ultravox_dtype, self.config.asr_device),
-            trust_remote_code=True,
-        )
-        return self._pipeline
-
 
 BACKEND_ALIASES = {
     "faster-whisper": "faster-whisper",
@@ -431,8 +358,6 @@ BACKEND_ALIASES = {
     "parakeet-asr": "parakeet",
     "parakeet-nemo": "parakeet-nemo",
     "parakeet-ctc": "parakeet-nemo",
-    "ultravox": "ultravox",
-    "ultravox-asr": "ultravox",
 }
 
 
@@ -493,6 +418,15 @@ def _resolve_torch_dtype(torch: Any, configured_dtype: str, device: str) -> Any:
         raise ASRUnavailableError(f"Unsupported dtype: {configured_dtype}") from exc
 
 
+def _extract_pipeline_text(result: Any) -> str:
+    if isinstance(result, dict):
+        text = result.get("text", "")
+        return str(text).strip()
+    if isinstance(result, list) and result:
+        return _extract_pipeline_text(result[0])
+    return str(result).strip()
+
+
 def _extract_nemo_text(result: Any) -> str:
     if isinstance(result, tuple) and result:
         return _extract_nemo_text(result[0])
@@ -541,6 +475,4 @@ def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Tra
         return ParakeetAdapter(config=config, audio_processor=audio_processor)
     if backend == "parakeet-nemo":
         return ParakeetNemoAdapter(config=config, audio_processor=audio_processor)
-    if backend == "ultravox":
-        return UltravoxAdapter(config=config, audio_processor=audio_processor)
     raise ASRUnavailableError(f"Unsupported ASR backend: {config.asr_backend}")

@@ -30,19 +30,19 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
     assert manifest["summary"]["asr_count"] == 7
-    assert manifest["summary"]["tracked_count"] == 8
+    assert manifest["summary"]["tracked_count"] == 7
     assert manifest["summary"]["validated_count"] == 5
     assert manifest["summary"]["legacy_count"] == 2
-    assert manifest["summary"]["blocked_count"] == 1
+    assert manifest["summary"]["blocked_count"] == 0
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
     assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
+    assert "accuracy_score" not in tracks["faster-whisper-base-c80-w075-json-preview"]["derived"]
+    assert tracks["faster-whisper-base-c80-w075-json-preview"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
-    assert tracks["ultravox-compose"]["artifact_path"] is None
-    assert tracks["ultravox-compose"]["status"] == "blocked"
 
 
 def test_checked_in_manifest_matches_generated_output() -> None:
@@ -155,7 +155,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     assert derived["sample_coverage_pct"] == 100.0
 
     summary = manifest["summary"]
-    assert summary["backend_count"] >= 4
+    assert summary["backend_count"] >= 3
     assert summary["lane_count"] >= 3
     assert summary["ranges"]["overall_score"] is not None
     assert summary["highlights"]["best_overall"] is not None
