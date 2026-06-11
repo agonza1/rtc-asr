@@ -3,7 +3,74 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>rtc-asr low-latency ASR benchmarks</title>
+    <title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>
+    <meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI">
+    <meta name="twitter:description" content="A reproducible benchmark comparing streaming ASR latency for real-time WebRTC and Voice AI applications.">
+    <meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI">
+    <meta property="og:description" content="A reproducible benchmark comparing streaming ASR latency for real-time WebRTC and Voice AI applications.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="WebRTC.ventures Benchmarks">
+    <meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/">
+    <link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebPage",
+            "@id": "https://benchmarks.webrtc.ventures/asr-latency/#webpage",
+            "url": "https://benchmarks.webrtc.ventures/asr-latency/",
+            "name": "Real-Time ASR Latency Benchmarks for WebRTC Voice AI",
+            "description": "Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology.",
+            "isPartOf": {
+              "@id": "https://benchmarks.webrtc.ventures/#website"
+            },
+            "about": {
+              "@id": "https://webrtc.ventures/#organization"
+            },
+            "mainEntity": {
+              "@id": "https://benchmarks.webrtc.ventures/asr-latency/#dataset"
+            }
+          },
+          {
+            "@type": "Dataset",
+            "@id": "https://benchmarks.webrtc.ventures/asr-latency/#dataset",
+            "name": "Real-Time ASR Latency Benchmarks for WebRTC Voice AI",
+            "description": "A reproducible benchmark comparing low-latency ASR backends for real-time WebRTC and Voice AI applications across first partial, final transcript, REST latency, streaming responsiveness, and sample coverage.",
+            "url": "https://benchmarks.webrtc.ventures/asr-latency/",
+            "creator": {
+              "@id": "https://webrtc.ventures/#organization"
+            },
+            "publisher": {
+              "@id": "https://webrtc.ventures/#organization"
+            },
+            "distribution": {
+              "@type": "DataDownload",
+              "name": "Benchmark manifest JSON",
+              "encodingFormat": "application/json",
+              "contentUrl": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json"
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://webrtc.ventures/#organization",
+            "name": "WebRTC.ventures",
+            "url": "https://webrtc.ventures/"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://benchmarks.webrtc.ventures/#website",
+            "name": "WebRTC.ventures Benchmarks",
+            "url": "https://benchmarks.webrtc.ventures/",
+            "publisher": {
+              "@id": "https://webrtc.ventures/#organization"
+            }
+          }
+        ]
+      }
+    </script>
     <style>
       :root {
         color-scheme: light;
@@ -452,9 +519,9 @@
       <section class="hero panel">
         <div class="hero-grid">
           <div>
-            <div class="eyebrow">rtc-asr benchmark deck</div>
-            <h1>Low-latency ASR, built for turn-taking.</h1>
-            <p class="lede">This GitHub Pages front end turns checked-in benchmark artifacts into a benchmark product page: who answers fastest, who closes fastest, who keeps tails tight, and which lane is the safest latency bet without pretending blocked runs are shippable results.</p>
+            <div class="eyebrow">WebRTC.ventures benchmarks</div>
+            <h1>Real-time ASR latency benchmarks for WebRTC voice AI.</h1>
+            <p class="lede">Compare low-latency ASR backends where turn-taking, barge-in, and transcript closeout matter most. This benchmark highlights first partial responsiveness, final transcript latency, REST latency, runtime profile, sample coverage, and which lane is the safest latency bet from checked-in artifacts.</p>
             <p class="hero-copy">The comparison view stays focused on measured ASR lanes with committed JSON artifacts. That means operators can compare low-latency behavior directly across REST, websocket partials, websocket finals, runtime profile, and sample coverage without mixing in unpublished blockers.</p>
             <div class="hero-actions">
               <a class="action-link primary" href="#comparison">Open comparison matrix</a>

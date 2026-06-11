@@ -291,6 +291,21 @@ def test_docs_index_surfaces_official_wer_references() -> None:
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 
 
+def test_homepage_head_includes_launch_seo_metadata() -> None:
+    homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
+
+    assert "<title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>" in homepage
+    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology."' in homepage
+    assert 'meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
+    assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
+    assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
+    assert 'meta name="twitter:card" content="summary_large_image"' in homepage
+    assert '"@type": "WebPage"' in homepage
+    assert '"@type": "Dataset"' in homepage
+    assert '"@type": "Organization"' in homepage
+    assert '"contentUrl": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json"' in homepage
+
+
 def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
@@ -305,6 +320,8 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Published benchmark snapshot" in homepage
     assert "Checked-in artifact log" in homepage
     assert "benchmark-results/manifest.json" in homepage
+    assert "WebRTC.ventures benchmarks" in homepage
+    assert "Real-time ASR latency benchmarks for WebRTC voice AI." in homepage
     assert "Official WER" in homepage
     assert 'entry.official_wer_reference || "see notes"' in homepage
 
