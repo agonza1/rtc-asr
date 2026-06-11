@@ -160,12 +160,19 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     benchmark = payload.get("benchmark") or {}
     streaming = payload.get("streaming") or {}
     ready = streaming.get("ready") or {}
-    return {
+    contract = {
         "chunk_ms": benchmark.get("chunk_ms", streaming.get("chunk_ms")),
         "partial_interval_chunks": benchmark.get("partial_interval_chunks", ready.get("partial_interval_chunks")),
         "partial_window_seconds": benchmark.get("partial_window_seconds", ready.get("partial_window_seconds")),
         "binary_frames": benchmark.get("binary_frames", streaming.get("binary_frames")),
     }
+    partial_event_timeout_seconds = benchmark.get(
+        "partial_event_timeout_seconds",
+        streaming.get("partial_event_timeout_seconds"),
+    )
+    if partial_event_timeout_seconds is not None:
+        contract["partial_event_timeout_seconds"] = partial_event_timeout_seconds
+    return contract
 
 
 def summarize_accuracy(rest: dict[str, Any], streaming: dict[str, Any]) -> dict[str, Any]:

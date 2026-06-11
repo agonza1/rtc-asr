@@ -173,6 +173,7 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
                     "partial_interval_chunks": 2,
                     "partial_window_seconds": 0.75,
                     "binary_frames": True,
+                    "partial_event_timeout_seconds": 0.25,
                 },
                 "backend": {"name": "demo", "model": "demo-v1", "device": "cpu", "compute_type": "int8"},
                 "rest": {"mean_ms": 42, "p95_ms": 64, "rtf_mean": 0.2},
@@ -224,6 +225,7 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
         "partial_interval_chunks": 2,
         "partial_window_seconds": 0.75,
         "binary_frames": True,
+        "partial_event_timeout_seconds": 0.25,
     }
     assert track["streaming"]["first_partial_end_to_end_mean_ms"] == 185
     assert track["streaming"]["partial_gap_mean_ms"] == 95

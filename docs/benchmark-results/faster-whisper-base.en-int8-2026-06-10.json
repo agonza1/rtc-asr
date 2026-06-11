@@ -14,7 +14,8 @@
     "partial_window_seconds": 2.0,
     "max_buffer_seconds": null,
     "request_retries": 3,
-    "request_retry_delay": 2.0
+    "request_retry_delay": 2.0,
+    "partial_event_timeout_seconds": 0.1
   },
   "audio": {
     "path": "/Users/alberto/.openclaw/tmp/rtc_asr_bench_jzj1h7z0.aiff",
@@ -1034,6 +1035,7 @@
       "word_error_rate_p90": 0.095,
       "character_error_rate_mean": 0.0,
       "character_error_rate_p90": 0.0
-    }
+    },
+    "partial_event_timeout_seconds": 0.1
   }
 }

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-11T00:11:51Z",
+  "generated_at": "2026-06-11T01:51:18Z",
   "summary": {
     "asr_count": 7,
     "tracked_count": 8,
@@ -14,7 +14,8 @@
       "chunk_ms": 250,
       "partial_window_seconds": 2.0,
       "partial_interval_chunks": 1,
-      "binary_frames": false
+      "binary_frames": false,
+      "partial_event_timeout_seconds": 0.1
     },
     "backend_count": 5,
     "lane_count": 3,
@@ -122,7 +123,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 331.4,
@@ -177,7 +179,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 1186.2,
@@ -232,7 +235,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 573.3,
@@ -287,7 +291,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 1378.3,
@@ -342,7 +347,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 2388.3,
@@ -397,7 +403,8 @@
         "chunk_ms": 80,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 0.75,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 537.4,
@@ -557,7 +564,8 @@
         "chunk_ms": 80,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 0.75,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 537.4,
@@ -592,7 +600,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 1186.2,
@@ -627,7 +636,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 331.4,
@@ -662,7 +672,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 1378.3,
@@ -697,7 +708,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 573.3,
@@ -732,7 +744,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 2388.3,
@@ -846,7 +859,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 331.4,
@@ -901,7 +915,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 1186.2,
@@ -956,7 +971,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 573.3,
@@ -1011,7 +1027,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 1378.3,
@@ -1066,7 +1083,8 @@
         "chunk_ms": 80,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 0.75,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 537.4,
@@ -1121,7 +1139,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false
+        "binary_frames": false,
+        "partial_event_timeout_seconds": 0.1
       },
       "rest": {
         "mean_ms": 2388.3,

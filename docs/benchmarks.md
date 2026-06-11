@@ -54,6 +54,7 @@ Default artifact contract:
 - `250 ms` streaming chunks
 - `partial_interval_chunks=1`
 - `partial_window_seconds=2.0`
+- `partial_event_timeout_seconds=0.1`
 - JSON/base64 websocket framing by default (`BENCHMARK_BINARY_FRAMES` disabled)
 - JSON output checked into `docs/benchmark-results/`
 
