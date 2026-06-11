@@ -397,6 +397,10 @@ def test_homepage_highlights_advanced_asr_sections() -> None:
     assert "Advanced ASR comparison matrix" in html
     assert "What matters for low-latency ASR" in html
     assert "Visible benchmark lanes" in html
+    assert 'id="lane-toggle"' in html
+    assert 'id="lane-panel" hidden' in html
+    assert 'aria-expanded="false"' in html
+    assert "Benchmark lanes" in html
     assert "Best operator balance" in html
     assert "entry.derived?.overall_score" in html
 
