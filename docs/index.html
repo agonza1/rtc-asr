@@ -60,6 +60,36 @@
             "url": "https://webrtc.ventures/"
           },
           {
+            "@type": "FAQPage",
+            "@id": "https://benchmarks.webrtc.ventures/asr-latency/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What does this benchmark actually measure?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The homepage compares checked-in ASR artifacts across first partial responsiveness, partial cadence, final transcript latency, REST latency, sample coverage, and runtime profile so teams can evaluate turn-taking readiness before voice AI launches."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Why are some tracked lanes missing from the comparison table?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Only tracked lanes with committed publishable JSON artifacts are rendered on the homepage. Registry-only or blocked lanes stay documented in the track registry without being mixed into the public ranking."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does this page compare recognition accuracy too?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The homepage is latency-first. It can link to clearly labeled upstream model-card WER references today, while repo-measured WER or CER stays off the primary comparison until a named annotated dataset and reproducible methodology are published."
+                }
+              }
+            ]
+          },
+          {
             "@type": "WebSite",
             "@id": "https://benchmarks.webrtc.ventures/#website",
             "name": "WebRTC.ventures Benchmarks",
@@ -239,7 +269,9 @@
       .story-grid,
       .lane-grid,
       .archive-grid,
-      .contract-grid {
+      .contract-grid,
+      .cta-grid,
+      .faq-grid {
         display: grid;
         gap: 16px;
       }
@@ -247,7 +279,9 @@
       .signal-grid,
       .story-grid,
       .contract-grid,
-      .archive-grid {
+      .archive-grid,
+      .cta-grid,
+      .faq-grid {
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       }
       .hero-card,
@@ -256,7 +290,9 @@
       .story-card,
       .lane-card,
       .archive-card,
-      .contract-card {
+      .contract-card,
+      .cta-card,
+      .faq-card {
         padding: 18px;
         border-radius: 22px;
         border: 1px solid rgba(25, 22, 18, 0.08);
@@ -444,9 +480,25 @@
       .metric-row span { color: var(--muted); }
       .archive-card a,
       .contract-card a,
-      .lane-actions a { color: var(--forest); }
+      .lane-actions a,
+      .cta-card a { color: var(--forest); }
       .archive-grid {
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+      .cta-grid,
+      .faq-grid {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .cta-card,
+      .faq-card {
+        display: grid;
+        gap: 12px;
+      }
+      .faq-card p,
+      .cta-card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
       }
       .contract-list {
         margin: 14px 0 0;
@@ -522,11 +574,12 @@
             <div class="eyebrow">WebRTC.ventures benchmarks</div>
             <h1>Real-time ASR latency benchmarks for WebRTC voice AI.</h1>
             <p class="lede">Compare low-latency ASR backends where turn-taking, barge-in, and transcript closeout matter most. This benchmark highlights first partial responsiveness, final transcript latency, REST latency, runtime profile, sample coverage, and which lane is the safest latency bet from checked-in artifacts.</p>
-            <p class="hero-copy">The comparison view stays focused on measured ASR lanes with committed JSON artifacts. That means operators can compare low-latency behavior directly across REST, websocket partials, websocket finals, runtime profile, and sample coverage without mixing in unpublished blockers.</p>
+            <p class="hero-copy">Built for WebRTC.ventures launch conversations, the comparison view stays focused on measured ASR lanes with committed JSON artifacts. Teams can use it to pressure-test barge-in feel, transcript closeout speed, and deployment tradeoffs without mixing in unpublished blockers or hand-wavy latency claims.</p>
             <div class="hero-actions">
               <a class="action-link primary" href="#comparison">Open comparison matrix</a>
               <a class="action-link" href="benchmarks.md">Benchmark notes</a>
               <a class="action-link" href="benchmark-results/manifest.json">Manifest JSON</a>
+              <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
             <p class="meta-line" id="generated-at">Loading benchmark manifest...</p>
           </div>
@@ -596,6 +649,60 @@
           <p class="subcopy">The harness writes versioned JSON under <code>docs/benchmark-results/</code>, and the same manifest powers both this page and the markdown notes.</p>
         </div>
         <div class="contract-grid" id="contract-grid"></div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Act on it</div>
+            <h2>Choose the next decision path</h2>
+          </div>
+          <p class="subcopy">This page is meant to support both search discovery and operator follow-through, so each CTA points to a concrete next step instead of a dead-end marketing page.</p>
+        </div>
+        <div class="cta-grid">
+          <article class="cta-card">
+            <div class="section-kicker">For evaluators</div>
+            <h3>Read the benchmark notes</h3>
+            <p>Use the methodology page when you need run commands, artifact lineage, official WER reference sources, and the publishing rules behind what appears on the homepage.</p>
+            <div class="contract-actions">
+              <a href="benchmarks.md">Open benchmark notes</a>
+            </div>
+          </article>
+          <article class="cta-card">
+            <div class="section-kicker">For engineers</div>
+            <h3>Inspect the raw manifest</h3>
+            <p>Pull the generated manifest or track registry when you want the artifact-backed numbers directly for dashboards, downstream analysis, or release checklists.</p>
+            <div class="contract-actions">
+              <a href="benchmark-results/manifest.json">Open manifest JSON</a>
+              <a href="benchmark-results/tracks.json">Open track registry</a>
+            </div>
+          </article>
+          <article class="cta-card">
+            <div class="section-kicker">For teams shipping voice AI</div>
+            <h3>Turn the benchmark into a launch decision</h3>
+            <p>Use the live comparison to narrow candidate ASR lanes, then bring the short list into a WebRTC.ventures architecture or QA review before changing production defaults.</p>
+            <div class="contract-actions">
+              <a href="https://webrtc.ventures/">Visit WebRTC.ventures</a>
+              <a href="https://github.com/agonza1/rtc-asr">View the repo</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="faq">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">FAQ</div>
+            <h2>Launch FAQ for benchmark readers</h2>
+          </div>
+          <p class="subcopy">Short answers for people arriving from search, GitHub, or a shared benchmark link who need to understand what this page says before they trust the ranking.</p>
+        </div>
+        <div class="faq-grid">
+          <article class="faq-card"><div class="section-kicker">Question 1</div><h3>What does this benchmark actually measure?</h3><p>It compares first visible partial timing, partial cadence, final transcript latency, REST latency, runtime profile, and sample coverage from checked-in artifacts so voice AI teams can judge turn-taking readiness instead of relying on anecdotal latency claims.</p></article>
+          <article class="faq-card"><div class="section-kicker">Question 2</div><h3>Why are some tracked lanes missing from the comparison table?</h3><p>Only lanes with committed publishable JSON artifacts appear in the public ranking. Registry-only, blocked, or unpublished lanes stay documented in the track registry without polluting the homepage comparison flow.</p></article>
+          <article class="faq-card"><div class="section-kicker">Question 3</div><h3>Does this page compare recognition accuracy too?</h3><p>Not as a repo-measured leaderboard yet. The homepage can point to clearly labeled upstream model-card WER references today, while local WER or CER stays off the main table until a named annotated dataset and reproducible methodology are published.</p></article>
+          <article class="faq-card"><div class="section-kicker">Question 4</div><h3>How should a WebRTC or voice AI team use this before launch?</h3><p>Use the homepage to shortlist realistic ASR lanes, check the benchmark notes for reproduction details, and then validate the finalists against your own codec, interruption, and domain-specific traffic before changing production defaults.</p></article>
+        </div>
       </section>
 
       <section>

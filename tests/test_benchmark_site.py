@@ -303,6 +303,8 @@ def test_homepage_head_includes_launch_seo_metadata() -> None:
     assert '"@type": "WebPage"' in homepage
     assert '"@type": "Dataset"' in homepage
     assert '"@type": "Organization"' in homepage
+    assert '"@type": "FAQPage"' in homepage
+    assert '"What does this benchmark actually measure?"' in homepage
     assert '"contentUrl": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json"' in homepage
 
 
@@ -316,12 +318,19 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert 'id="comparison-wrap"' in homepage
     assert 'id="lane-grid"' in homepage
     assert 'id="contract-grid"' in homepage
+    assert 'id="faq"' in homepage
+    assert 'class="cta-grid"' in homepage
+    assert 'class="faq-grid"' in homepage
     assert 'id="archive-grid"' in homepage
     assert "Published benchmark snapshot" in homepage
+    assert "Choose the next decision path" in homepage
+    assert "Launch FAQ for benchmark readers" in homepage
+    assert "Turn the benchmark into a launch decision" in homepage
+    assert "What does this benchmark actually measure?" in homepage
     assert "Checked-in artifact log" in homepage
     assert "benchmark-results/manifest.json" in homepage
     assert "WebRTC.ventures benchmarks" in homepage
-    assert "Real-time ASR latency benchmarks for WebRTC voice AI." in homepage
+    assert "Built for WebRTC.ventures launch conversations" in homepage
     assert "Official WER" in homepage
     assert 'entry.official_wer_reference || "see notes"' in homepage
 
