@@ -20,6 +20,7 @@ render_manifest = manifest_module.render_manifest
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
 DOCS_PATH = Path("docs") / "benchmarks.md"
+HOMEPAGE_PATH = Path("docs") / "index.html"
 
 
 def load_tracks() -> dict[str, object]:
@@ -266,6 +267,22 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
             assert track["artifact"] in docs_text
         else:
             assert "no committed artifact" in docs_text
+
+
+def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
+    homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
+
+    assert 'id="generated-at"' in homepage
+    assert 'id="hero-side"' in homepage
+    assert 'id="snapshot-grid"' in homepage
+    assert 'id="story-grid"' in homepage
+    assert 'id="comparison-wrap"' in homepage
+    assert 'id="lane-grid"' in homepage
+    assert 'id="contract-grid"' in homepage
+    assert 'id="archive-grid"' in homepage
+    assert "Published benchmark snapshot" in homepage
+    assert "Checked-in artifact log" in homepage
+    assert "benchmark-results/manifest.json" in homepage
 
 
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
