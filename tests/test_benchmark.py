@@ -471,7 +471,7 @@ def test_run_ws_benchmark_reports_first_partial_and_gap_metrics(monkeypatch: pyt
         ]
     )
 
-    perf_values = iter([1.0, 1.0, 1.0, 1.05, 2.0, 2.0, 2.0, 2.08, 3.0, 3.12])
+    perf_values = iter([1.0, 1.0, 1.0, 1.05, 2.0, 2.0, 2.0, 2.08, 3.0, 3.1, 3.12])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
@@ -509,7 +509,7 @@ def test_run_ws_benchmark_keeps_partial_end_to_end_monotonic_under_backlog(monke
         ]
     )
 
-    perf_values = iter([1.0, 1.0, 1.0, 3.5, 4.0, 4.0, 4.0, 4.02, 5.0, 5.12])
+    perf_values = iter([1.0, 1.0, 1.0, 3.5, 4.0, 4.0, 4.0, 4.02, 5.0, 5.1, 5.12])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
@@ -654,7 +654,7 @@ def test_run_ws_benchmark_tolerates_missing_partial_for_eligible_chunk() -> None
         asyncio.run(scenario())
 
 
-def test_run_ws_benchmark_skips_stale_partial_after_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_ws_benchmark_counts_late_partial_against_original_chunk(monkeypatch: pytest.MonkeyPatch) -> None:
     websocket = FakeBenchmarkWebSocket(
         [
             {"type": "ready", "stream_id": 11},
@@ -674,7 +674,7 @@ def test_run_ws_benchmark_skips_stale_partial_after_timeout(monkeypatch: pytest.
             raise TimeoutError
         return await awaitable
 
-    perf_values = iter([1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.05, 3.0, 3.12])
+    perf_values = iter([1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.15, 2.15, 2.24, 3.0, 3.1, 3.12])
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
@@ -687,13 +687,14 @@ def test_run_ws_benchmark_skips_stale_partial_after_timeout(monkeypatch: pytest.
             4,
             250,
             partial_interval_chunks=1,
-            partial_event_timeout_seconds=0.01,
+            partial_event_timeout_seconds=0.5,
             connect_fn=fake_connect,
         )
 
-        assert result["partial_audio_offsets_ms"] == [500]
-        assert result["partial_end_to_end_ms"] == [550.0]
-        assert result["first_partial_end_to_end_ms"] == 550.0
+        assert result["partial_audio_offsets_ms"] == [250, 500]
+        assert result["partial_end_to_end_ms"] == [1400.0, 1640.0]
+        assert result["first_partial_audio_ms"] == 250
+        assert result["first_partial_end_to_end_ms"] == 1400.0
         assert result["last_partial"] == "fresh"
         assert result["final_transcript"] == "done"
 
@@ -701,15 +702,18 @@ def test_run_ws_benchmark_skips_stale_partial_after_timeout(monkeypatch: pytest.
         patch.setattr(benchmark.asyncio, "wait_for", fake_wait_for)
         asyncio.run(scenario())
 
-def test_run_ws_benchmark_drains_stale_partial_before_final() -> None:
+def test_run_ws_benchmark_records_late_partial_before_final(monkeypatch: pytest.MonkeyPatch) -> None:
     websocket = FakeBenchmarkWebSocket(
         [
             {"type": "ready", "stream_id": 11},
-            {"type": "partial", "text": "chunk"},
-            {"type": "partial", "text": "still partial"},
+            {"type": "partial", "text": "chunk", "chunks_received": 1},
+            {"type": "partial", "text": "still partial", "chunks_received": 1},
             {"type": "final", "text": "done"},
         ]
     )
+
+    perf_values = iter([1.0, 1.0, 1.0, 1.05, 2.0, 2.1, 2.12, 2.15])
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
     def fake_connect(_: str) -> FakeBenchmarkWebSocket:
         return websocket
@@ -720,9 +724,13 @@ def test_run_ws_benchmark_drains_stale_partial_before_final() -> None:
             b"ab",
             4,
             250,
+            partial_event_timeout_seconds=0.01,
             connect_fn=fake_connect,
         )
 
+        assert result["partial_audio_offsets_ms"] == [250]
+        assert result["partial_end_to_end_ms"] == [300.0]
+        assert result["last_partial"] == "chunk"
         assert result["final_transcript"] == "done"
 
     asyncio.run(scenario())

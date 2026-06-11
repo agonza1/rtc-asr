@@ -438,34 +438,62 @@ async def run_ws_benchmark(
     partial_end_to_end_ms = []
     last_partial_visible_ms = 0.0
     partial_text = ""
-    pending_partial_event: dict[str, object] | None = None
+    pending_partial_event: tuple[dict[str, object], float] | None = None
+    pending_partial_started_at: dict[int, float] = {}
+    recorded_partial_chunks: set[int] = set()
 
-    async def recv_matching_partial(expected_chunk_index: int) -> dict[str, object] | None:
+    def record_partial_event(
+        event: dict[str, object],
+        received_at: float,
+        *,
+        fallback_chunk_index: int,
+    ) -> int | None:
+        nonlocal last_partial_visible_ms, partial_text
+
+        chunk_index = event.get("chunks_received")
+        if not isinstance(chunk_index, int) or isinstance(chunk_index, bool) or chunk_index < 1:
+            chunk_index = fallback_chunk_index
+        started_at = pending_partial_started_at.get(chunk_index)
+        if started_at is None or chunk_index in recorded_partial_chunks:
+            return None
+
+        response_latency_ms = (received_at - started_at) * 1000
+        partial_latencies.append(response_latency_ms)
+        audio_offset_ms = min(round(chunk_index * chunk_ms, 1), total_audio_ms)
+        partial_audio_offsets_ms.append(audio_offset_ms)
+        visible_elapsed_ms = max(audio_offset_ms, last_partial_visible_ms) + response_latency_ms
+        visible_elapsed_ms = round(visible_elapsed_ms, 1)
+        partial_end_to_end_ms.append(visible_elapsed_ms)
+        last_partial_visible_ms = visible_elapsed_ms
+        partial_text = event.get("text", "")
+        recorded_partial_chunks.add(chunk_index)
+        pending_partial_started_at.pop(chunk_index, None)
+        return chunk_index
+
+    async def collect_partial_events(expected_chunk_index: int) -> None:
         nonlocal pending_partial_event
 
         deadline = time.perf_counter() + partial_event_timeout_seconds
-        while True:
+        while expected_chunk_index not in recorded_partial_chunks:
             if pending_partial_event is not None:
-                event = pending_partial_event
+                event, received_at = pending_partial_event
                 pending_partial_event = None
             else:
                 remaining = deadline - time.perf_counter()
                 if remaining <= 0:
-                    return None
+                    return
                 try:
                     event = json.loads(await asyncio.wait_for(websocket.recv(), timeout=remaining))
                 except TimeoutError:
-                    return None
+                    return
+                received_at = time.perf_counter()
             if event.get("type") != "partial":
                 raise RuntimeError(f"Expected partial event, got: {event}")
-            chunks_received = event.get("chunks_received")
-            if isinstance(chunks_received, int) and not isinstance(chunks_received, bool):
-                if chunks_received < expected_chunk_index:
-                    continue
-                if chunks_received > expected_chunk_index:
-                    pending_partial_event = event
-                    return None
-            return event
+            chunk_index = event.get("chunks_received")
+            if isinstance(chunk_index, int) and not isinstance(chunk_index, bool) and chunk_index > expected_chunk_index:
+                pending_partial_event = (event, received_at)
+                return
+            record_partial_event(event, received_at, fallback_chunk_index=expected_chunk_index)
 
     connect = connect_fn or _connect_websocket
     async with connect(ws_url) as websocket:
@@ -494,27 +522,19 @@ async def run_ws_benchmark(
                 }))
             if chunk_index % partial_interval_chunks != 0:
                 continue
-            event = await recv_matching_partial(chunk_index)
-            if event is None:
-                continue
-            response_latency_ms = (time.perf_counter() - started) * 1000
-            partial_latencies.append(response_latency_ms)
-            audio_offset_ms = min(round(chunk_index * chunk_ms, 1), total_audio_ms)
-            partial_audio_offsets_ms.append(audio_offset_ms)
-            visible_elapsed_ms = max(audio_offset_ms, last_partial_visible_ms) + response_latency_ms
-            visible_elapsed_ms = round(visible_elapsed_ms, 1)
-            partial_end_to_end_ms.append(visible_elapsed_ms)
-            last_partial_visible_ms = visible_elapsed_ms
-            partial_text = event.get("text", "")
+            pending_partial_started_at[chunk_index] = started
+            await collect_partial_events(chunk_index)
         started = time.perf_counter()
         await websocket.send(json.dumps({"type": "stop"}))
         while True:
             if pending_partial_event is not None:
-                final_event = pending_partial_event
+                final_event, received_at = pending_partial_event
                 pending_partial_event = None
             else:
                 final_event = json.loads(await websocket.recv())
+                received_at = time.perf_counter()
             if final_event.get("type") == "partial":
+                record_partial_event(final_event, received_at, fallback_chunk_index=len(chunks))
                 continue
             if final_event.get("type") != "final":
                 raise RuntimeError(f"Expected final event, got: {final_event}")
