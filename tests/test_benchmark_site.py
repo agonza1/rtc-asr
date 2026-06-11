@@ -273,15 +273,15 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
     assert 'id="generated-at"' in homepage
-    assert 'id="hero-stats"' in homepage
+    assert 'id="hero-side"' in homepage
     assert 'id="snapshot-grid"' in homepage
-    assert 'id="leaderboard-wrap"' in homepage
-    assert 'id="track-grid"' in homepage
-    assert 'id="blocker-grid"' in homepage
+    assert 'id="story-grid"' in homepage
+    assert 'id="comparison-wrap"' in homepage
+    assert 'id="lane-grid"' in homepage
     assert 'id="contract-grid"' in homepage
-    assert 'id="artifact-list"' in homepage
-    assert "Known gaps outside the leaderboard" in homepage
-    assert "ASR model comparisons with the receipts left in." in homepage
+    assert 'id="archive-grid"' in homepage
+    assert "Published benchmark snapshot" in homepage
+    assert "Checked-in artifact log" in homepage
     assert "benchmark-results/manifest.json" in homepage
 
 
