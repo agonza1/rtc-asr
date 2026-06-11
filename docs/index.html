@@ -254,6 +254,38 @@
         overflow: hidden;
         padding: 18px;
       }
+      .section-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        padding: 9px 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.76);
+        color: var(--ink);
+        font: inherit;
+        cursor: pointer;
+        transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+      }
+      .section-toggle:hover {
+        background: rgba(255, 255, 255, 0.94);
+        border-color: rgba(25, 22, 18, 0.2);
+        transform: translateY(-1px);
+      }
+      .section-toggle-indicator {
+        color: var(--forest);
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .lane-panel[hidden] {
+        display: none;
+      }
+      .lane-panel {
+        margin-top: 14px;
+      }
       .comparison-scroll {
         overflow-x: auto;
       }
@@ -477,9 +509,15 @@
             <div class="section-kicker">Lanes</div>
             <h2>Visible benchmark lanes</h2>
           </div>
-          <p class="subcopy">Only measured lanes with checked-in artifacts are rendered on the homepage. That keeps the front end aligned with what can actually be inspected and reproduced.</p>
+          <button class="section-toggle" id="lane-toggle" type="button" aria-expanded="false" aria-controls="lane-panel">
+            <span>Benchmark lanes</span>
+            <span class="section-toggle-indicator" id="lane-toggle-label">show</span>
+          </button>
         </div>
-        <div class="lane-grid" id="lane-grid"></div>
+        <p class="subcopy">Only measured lanes with checked-in artifacts are rendered on the homepage. That keeps the front end aligned with what can actually be inspected and reproduced.</p>
+        <div class="lane-panel" id="lane-panel" hidden>
+          <div class="lane-grid" id="lane-grid"></div>
+        </div>
       </section>
 
       <section>
@@ -908,6 +946,23 @@
           </article>
         `).join("");
       }
+      function setupLaneToggle() {
+        const button = document.getElementById("lane-toggle");
+        const panel = document.getElementById("lane-panel");
+        const label = document.getElementById("lane-toggle-label");
+        if (!button || !panel || !label) return;
+
+        const sync = (expanded) => {
+          button.setAttribute("aria-expanded", expanded ? "true" : "false");
+          panel.hidden = !expanded;
+          label.textContent = expanded ? "hide" : "show";
+        };
+
+        sync(false);
+        button.addEventListener("click", () => {
+          sync(button.getAttribute("aria-expanded") !== "true");
+        });
+      }
       function renderContract(summary) {
         const contract = summary.sample_contract || {};
         document.getElementById("contract-grid").innerHTML = `
@@ -973,6 +1028,7 @@
           document.getElementById("comparison-wrap").innerHTML = `<div class="error">${error.message}</div>`;
         }
       }
+      setupLaneToggle();
       main();
     </script>
   </body>

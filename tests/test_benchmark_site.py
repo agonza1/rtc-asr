@@ -264,7 +264,9 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
     assert "## Accuracy Publishing Policy" in docs_text
     assert "Common Voice or FLEURS" in docs_text
     assert "qwen-compose-2026-06-07.json" not in docs_text
-    assert "official annotated benchmark runs only" in docs_text
+    assert "Official WER reference" in docs_text
+    assert "upstream Hugging Face benchmark/model-card numbers" in docs_text
+    assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
 
     for track in tracks:
         assert track["slug"] in docs_text
@@ -397,6 +399,10 @@ def test_homepage_highlights_advanced_asr_sections() -> None:
     assert "Advanced ASR comparison matrix" in html
     assert "What matters for low-latency ASR" in html
     assert "Visible benchmark lanes" in html
+    assert 'id="lane-toggle"' in html
+    assert 'id="lane-panel" hidden' in html
+    assert 'aria-expanded="false"' in html
+    assert "Benchmark lanes" in html
     assert "Best operator balance" in html
     assert "entry.derived?.overall_score" in html
 
