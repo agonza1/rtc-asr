@@ -29,8 +29,7 @@
     "device": "cpu",
     "compute_type": null,
     "qwen_dtype": null,
-    "parakeet_dtype": "float32",
-    "ultravox_dtype": null
+    "parakeet_dtype": "float32"
   },
   "service": {
     "models": [

@@ -20,9 +20,6 @@ PYTHON_BASE_IMAGE_FALLBACK ?= mirror.gcr.io/library/python:3.11-slim
 PARAKEET_COMPOSE_MODEL ?= nvidia/parakeet-tdt-0.6b-v3
 PARAKEET_NEMO_COMPOSE_MODEL ?= nvidia/parakeet-tdt_ctc-110m
 PARAKEET_COMPOSE_DTYPE ?= float32
-ULTRAVOX_COMPOSE_MODEL ?= fixie-ai/ultravox-v0_6-llama-3_1-8b
-ULTRAVOX_COMPOSE_DTYPE ?= float32
-ULTRAVOX_MAX_NEW_TOKENS ?= 128
 QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit
 QWEN_MLX_TEXT_MAX_TOKENS ?= 64
 QWEN_MLX_TEXT_SAMPLE_COUNT ?= 3
@@ -45,7 +42,7 @@ LOW_LATENCY_SWEEP_CHUNK_MS ?= 60 80 100
 LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 0.5 0.75 1.0
 LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false true
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -66,7 +63,6 @@ help:
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
 	@echo "  make benchmark-compose-parakeet - Start compose, wait for readiness, and benchmark parakeet"
 	@echo "  make benchmark-compose-parakeet-nemo - Start compose and benchmark Parakeet 110M through NeMo"
-	@echo "  make benchmark-compose-ultravox - Start compose, wait for readiness, and benchmark ultravox"
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
 	@echo "  make docs           - Build documentation snapshot"
@@ -180,7 +176,7 @@ benchmark-qwen-mps: venv
 	@mkdir -p .cache/huggingface
 	@ASR_BACKEND=qwen-asr ASR_DEVICE=mps ASR_QWEN_DEVICE_MAP= ASR_QWEN_MODEL=$(QWEN_MPS_MODEL) ASR_QWEN_DTYPE=$(QWEN_MPS_DTYPE) $(PYTHON) tests/benchmark.py --spawn-server --backend qwen-asr --model $(QWEN_MPS_MODEL) --device mps --qwen-dtype $(QWEN_MPS_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-mps-$(BENCHMARK_RESULT_DATE).json
 
-benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox
+benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo
 	@echo "  ✓ Compose benchmark matrix complete with $(BENCHMARK_SAMPLE_COUNT) samples per backend"
 
 benchmark-compose-qwen: venv
@@ -249,28 +245,6 @@ benchmark-compose-parakeet-nemo: venv
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json; }
 
-benchmark-compose-ultravox: venv
-	@echo "Starting docker compose stack with ultravox on CPU..."
-	@mkdir -p .cache/huggingface
-	@test -n "$(HF_TOKEN)$(HUGGINGFACE_HUB_TOKEN)" || (echo "Ultravox default model requires Hugging Face access. Export HF_TOKEN or HUGGINGFACE_HUB_TOKEN before running this target." >&2; exit 1)
-	@{ set -e; \
-	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
-	trap cleanup EXIT INT TERM; \
-	base_image="$(PYTHON_BASE_IMAGE)"; \
-	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
-		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
-			echo "Using cached default base image $${base_image}"; \
-		elif ! docker pull "$${base_image}"; then \
-			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
-			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
-			docker pull "$${base_image}"; \
-		fi; \
-	else \
-		echo "Using configured base image override $${base_image} without registry preflight"; \
-	fi; \
-	ASR_BACKEND=ultravox ASR_ULTRAVOX_MODEL=$(ULTRAVOX_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_ULTRAVOX_DTYPE=$(ULTRAVOX_COMPOSE_DTYPE) ASR_ULTRAVOX_MAX_NEW_TOKENS=$(ULTRAVOX_MAX_NEW_TOKENS) PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
-	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
-	$(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend ultravox --model $(ULTRAVOX_COMPOSE_MODEL) --ultravox-dtype $(ULTRAVOX_COMPOSE_DTYPE) --ultravox-max-new-tokens $(ULTRAVOX_MAX_NEW_TOKENS) --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/ultravox-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-qwen-mlx-text: mlx-venv
 	@echo "Benchmarking $(QWEN_MLX_TEXT_MODEL) with mlx-lm on Apple Silicon..."
@@ -279,16 +253,18 @@ benchmark-qwen-mlx-text: mlx-venv
 
 lint: venv
 	@echo "Running linter..."
-	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py
+	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py scripts/prerender_benchmark_homepage.py
 	@echo "  ✓ Linting complete"
 
 benchmark-site:
 	@echo "Building benchmark site manifest..."
 	@python3 scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json
+	@python3 scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html
 	@echo "  ✓ Benchmark site manifest built"
 
 benchmark-site-check:
 	@python3 scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check
+	@python3 scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --check
 	@echo "  ✓ Benchmark site manifest is up to date"
 
 docs: benchmark-site

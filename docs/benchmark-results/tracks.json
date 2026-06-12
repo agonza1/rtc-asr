@@ -3,7 +3,7 @@
     "default_sample_count": 10,
     "rest_runs_per_sample": 5,
     "chunk_ms": 250,
-    "partial_window_seconds": 2.0,
+    "partial_window_seconds": 2,
     "partial_interval_chunks": 1,
     "binary_frames": false,
     "partial_event_timeout_seconds": 0.1
@@ -21,7 +21,8 @@
       "target_sample_count": 10,
       "artifact": "faster-whisper-base.en-int8-2026-06-10.json",
       "status_detail": "Validated 10-sample local CPU baseline.",
-      "run_command": "make benchmark-faster-whisper-base"
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
     },
     {
       "slug": "faster-whisper-base-c80-w075-json-preview",
@@ -35,7 +36,8 @@
       "target_sample_count": 1,
       "artifact": "faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json",
       "status_detail": "Exploratory 1-sample low-latency preview at 80 ms chunks and a 0.75 s partial window. First visible partial arrived at 1.7 s, while finalization remained extremely slow (~46.9 s), and the binary-frame companion still hit a websocket keepalive close during stop/final.",
-      "run_command": "make benchmark-faster-whisper-base-low-latency-sweep LOW_LATENCY_SWEEP_CHUNK_MS=\"80\" LOW_LATENCY_SWEEP_PARTIAL_WINDOWS=\"0.75\" LOW_LATENCY_SWEEP_BINARY_FRAMES=\"false\""
+      "run_command": "make benchmark-faster-whisper-base-low-latency-sweep LOW_LATENCY_SWEEP_CHUNK_MS=\"80\" LOW_LATENCY_SWEEP_PARTIAL_WINDOWS=\"0.75\" LOW_LATENCY_SWEEP_BINARY_FRAMES=\"false\"",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
     },
     {
       "slug": "faster-whisper-small",
@@ -49,7 +51,8 @@
       "target_sample_count": 10,
       "artifact": "faster-whisper-small.en-int8-2026-06-10.json",
       "status_detail": "Validated 10-sample local CPU baseline using the default service model.",
-      "run_command": "make benchmark-faster-whisper-small"
+      "run_command": "make benchmark-faster-whisper-small",
+      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)"
     },
     {
       "slug": "parakeet-compose",
@@ -63,7 +66,8 @@
       "target_sample_count": 10,
       "artifact": "parakeet-compose-2026-06-10.json",
       "status_detail": "Validated 10-sample Compose CPU artifact.",
-      "run_command": "make benchmark-compose-parakeet"
+      "run_command": "make benchmark-compose-parakeet",
+      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)"
     },
     {
       "slug": "parakeet-nemo-compose",
@@ -77,7 +81,8 @@
       "target_sample_count": 10,
       "artifact": "parakeet-nemo-110m-compose-2026-06-09.json",
       "status_detail": "Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.",
-      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09"
+      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
     },
     {
       "slug": "qwen-mps",
@@ -91,7 +96,8 @@
       "target_sample_count": 10,
       "artifact": "qwen-mps-2026-06-10.json",
       "status_detail": "Validated 10-sample local Apple Silicon MPS artifact.",
-      "run_command": "make benchmark-qwen-mps"
+      "run_command": "make benchmark-qwen-mps",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     },
     {
       "slug": "qwen-compose",
@@ -105,20 +111,8 @@
       "target_sample_count": 10,
       "artifact": "qwen-compose-2026-06-08.json",
       "status_detail": "Single-sample legacy artifact remains published because the 2026-06-10 refresh restarted during first generation and REST warmup failed with httpx.ReadError.",
-      "run_command": "make benchmark-compose-qwen"
-    },
-    {
-      "slug": "ultravox-compose",
-      "label": "Ultravox Compose",
-      "backend": "ultravox",
-      "model": "fixie-ai/ultravox-v0_6-llama-3_1-8b",
-      "device": "cpu",
-      "compute": "float32",
-      "lane": "Docker Compose CPU",
-      "status": "blocked",
-      "target_sample_count": 10,
-      "status_detail": "Blocked before validation because the default model loads gated meta-llama/Llama-3.1-8B-Instruct weights and Hugging Face returned 403 on 2026-06-10.",
-      "run_command": "HF_TOKEN=... make benchmark-compose-ultravox"
+      "run_command": "make benchmark-compose-qwen",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     }
   ],
   "low_latency_matrix": {
@@ -133,8 +127,8 @@
     "partial_window_seconds": [
       0.5,
       0.75,
-      1.0,
-      2.0
+      1,
+      2
     ],
     "binary_frames": [
       false,

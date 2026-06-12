@@ -6,7 +6,7 @@
 http://localhost:8080
 ```
 
-Supported backends: `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-nemo`, and `ultravox`. Aliases `whisper`, `qwen`, and `qwen3-asr` resolve to the matching canonical backends. The HTTP and websocket response shapes stay stable across backends, but backend-specific metadata can vary.
+Supported backends: `faster-whisper`, `qwen-asr`, `parakeet`, and `parakeet-nemo`. Aliases `whisper`, `qwen`, and `qwen3-asr` resolve to the matching canonical backends. The HTTP and websocket response shapes stay stable across backends, but backend-specific metadata can vary.
 
 ## Health Check
 
@@ -74,7 +74,7 @@ Example response:
 }
 ```
 
-Capability metadata changes by backend. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet and Ultravox expose their own implementation-specific fields.
+Capability metadata changes by backend. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields.
 
 ## Synchronous Transcription
 

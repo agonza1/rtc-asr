@@ -21,7 +21,7 @@ RUN python -m venv /opt/venv
 
 COPY requirements.txt ./
 RUN grep -v '^torch$' requirements.txt > requirements.docker.txt && \
-    if [ -n "$ENABLE_NEMO_RUNTIME" ]; then grep -Ev '^(torch|qwen-asr|transformers==|accelerate|peft|faster-whisper|pytest|httpx)' requirements.txt > requirements.docker.txt; fi && \
+    if [ -n "$ENABLE_NEMO_RUNTIME" ]; then grep -Ev '^(torch|qwen-asr|transformers==|accelerate|faster-whisper|pytest|httpx)' requirements.txt > requirements.docker.txt; fi && \
     /opt/venv/bin/pip install --upgrade pip && \
     /opt/venv/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch && \
     /opt/venv/bin/pip install -r requirements.docker.txt && \

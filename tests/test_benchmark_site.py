@@ -20,6 +20,8 @@ render_manifest = manifest_module.render_manifest
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
 DOCS_PATH = Path("docs") / "benchmarks.md"
+DOCS_INDEX_PATH = Path("docs") / "index.md"
+HOMEPAGE_PATH = Path("docs") / "index.html"
 
 
 def load_tracks() -> dict[str, object]:
@@ -30,19 +32,21 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
     assert manifest["summary"]["asr_count"] == 7
-    assert manifest["summary"]["tracked_count"] == 8
+    assert manifest["summary"]["tracked_count"] == 7
     assert manifest["summary"]["validated_count"] == 5
     assert manifest["summary"]["legacy_count"] == 2
-    assert manifest["summary"]["blocked_count"] == 1
+    assert manifest["summary"]["blocked_count"] == 0
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
     assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
+    assert "accuracy_score" not in tracks["faster-whisper-base-c80-w075-json-preview"]["derived"]
+    assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
+    assert tracks["faster-whisper-base-c80-w075-json-preview"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
-    assert tracks["ultravox-compose"]["artifact_path"] is None
-    assert tracks["ultravox-compose"]["status"] == "blocked"
+    assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
 
 
 def test_checked_in_manifest_matches_generated_output() -> None:
@@ -155,7 +159,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     assert derived["sample_coverage_pct"] == 100.0
 
     summary = manifest["summary"]
-    assert summary["backend_count"] >= 4
+    assert summary["backend_count"] >= 3
     assert summary["lane_count"] >= 3
     assert summary["ranges"]["overall_score"] is not None
     assert summary["highlights"]["best_overall"] is not None
@@ -241,6 +245,10 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "const baselineEntries = comparableEntries(ranked);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
+    assert "safest latency bet" in html
+    assert "sample coverage" in html
+    assert "official upstream WER references today" in html
+    assert "named annotated benchmark dataset and methodology" in html
 
 
 def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
@@ -256,7 +264,12 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
 
     assert "docs/benchmark-results/tracks.json" in docs_text
     assert "docs/benchmark-results/manifest.json" in docs_text
+    assert "## Accuracy Publishing Policy" in docs_text
+    assert "Common Voice or FLEURS" in docs_text
     assert "qwen-compose-2026-06-07.json" not in docs_text
+    assert "Official WER reference" in docs_text
+    assert "upstream Hugging Face benchmark/model-card numbers" in docs_text
+    assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
 
     for track in tracks:
         assert track["slug"] in docs_text
@@ -266,6 +279,63 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
             assert track["artifact"] in docs_text
         else:
             assert "no committed artifact" in docs_text
+
+
+def test_docs_index_surfaces_official_wer_references() -> None:
+    docs_index_text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+
+    assert "## Official WER References" in docs_index_text
+    assert "same official WER references shown in the benchmark notes" in docs_index_text
+    assert "upstream Hugging Face benchmark or model-card values" in docs_index_text
+    assert "openai/whisper-base.en" in docs_index_text
+    assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
+
+
+def test_homepage_head_includes_launch_seo_metadata() -> None:
+    homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
+
+    assert "<title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>" in homepage
+    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology."' in homepage
+    assert 'meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
+    assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
+    assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
+    assert 'meta name="twitter:card" content="summary_large_image"' in homepage
+    assert '"@type": "WebPage"' in homepage
+    assert '"@type": "Dataset"' in homepage
+    assert '"@type": "Organization"' in homepage
+    assert '"@type": "FAQPage"' in homepage
+    assert '"What does this benchmark actually measure?"' in homepage
+    assert '"contentUrl": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json"' in homepage
+
+
+def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
+    homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
+
+    assert 'id="generated-at"' in homepage
+    assert 'id="static-summary"' in homepage
+    assert 'BEGIN GENERATED:generated-at' in homepage
+    assert 'BEGIN GENERATED:static-summary' in homepage
+    assert 'id="hero-side"' in homepage
+    assert 'id="snapshot-grid"' in homepage
+    assert 'id="story-grid"' in homepage
+    assert 'id="comparison-wrap"' in homepage
+    assert 'id="lane-grid"' in homepage
+    assert 'id="contract-grid"' in homepage
+    assert 'id="faq"' in homepage
+    assert 'class="cta-grid"' in homepage
+    assert 'class="faq-grid"' in homepage
+    assert 'id="archive-grid"' in homepage
+    assert "Published benchmark snapshot" in homepage
+    assert "Choose the next decision path" in homepage
+    assert "Launch FAQ for benchmark readers" in homepage
+    assert "Turn the benchmark into a launch decision" in homepage
+    assert "What does this benchmark actually measure?" in homepage
+    assert "Checked-in artifact log" in homepage
+    assert "benchmark-results/manifest.json" in homepage
+    assert "WebRTC.ventures benchmarks" in homepage
+    assert "Built for WebRTC.ventures launch conversations" in homepage
+    assert "Official WER" in homepage
+    assert 'entry.official_wer_reference || "see notes"' in homepage
 
 
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
@@ -373,6 +443,10 @@ def test_homepage_highlights_advanced_asr_sections() -> None:
     assert "Advanced ASR comparison matrix" in html
     assert "What matters for low-latency ASR" in html
     assert "Visible benchmark lanes" in html
+    assert 'id="lane-toggle"' in html
+    assert 'id="lane-panel" hidden' in html
+    assert 'aria-expanded="false"' in html
+    assert "Benchmark lanes" in html
     assert "Best operator balance" in html
     assert "entry.derived?.overall_score" in html
 
@@ -382,3 +456,14 @@ def test_homepage_filters_blocked_tracks_from_visible_results() -> None:
 
     assert 'track.artifact_path && track.status !== "blocked"' in html
     assert "Tracked lanes without publishable artifacts stay out of the front-end comparison flow." in html
+
+
+def test_homepage_initial_html_contains_prerendered_summary() -> None:
+    homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
+
+    assert "Benchmark content rendered into initial HTML" in homepage
+    assert "This prerender keeps the key comparison crawlable before JavaScript enhances the page." in homepage
+    assert "Median first partial" in homepage
+    assert "Official WER" in homepage
+    assert "open JSON" in homepage
+    assert "Loading benchmark manifest..." not in homepage

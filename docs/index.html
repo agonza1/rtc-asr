@@ -3,7 +3,104 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>rtc-asr low-latency ASR benchmarks</title>
+    <title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>
+    <meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI">
+    <meta name="twitter:description" content="A reproducible benchmark comparing streaming ASR latency for real-time WebRTC and Voice AI applications.">
+    <meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI">
+    <meta property="og:description" content="A reproducible benchmark comparing streaming ASR latency for real-time WebRTC and Voice AI applications.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="WebRTC.ventures Benchmarks">
+    <meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/">
+    <link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebPage",
+            "@id": "https://benchmarks.webrtc.ventures/asr-latency/#webpage",
+            "url": "https://benchmarks.webrtc.ventures/asr-latency/",
+            "name": "Real-Time ASR Latency Benchmarks for WebRTC Voice AI",
+            "description": "Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology.",
+            "isPartOf": {
+              "@id": "https://benchmarks.webrtc.ventures/#website"
+            },
+            "about": {
+              "@id": "https://webrtc.ventures/#organization"
+            },
+            "mainEntity": {
+              "@id": "https://benchmarks.webrtc.ventures/asr-latency/#dataset"
+            }
+          },
+          {
+            "@type": "Dataset",
+            "@id": "https://benchmarks.webrtc.ventures/asr-latency/#dataset",
+            "name": "Real-Time ASR Latency Benchmarks for WebRTC Voice AI",
+            "description": "A reproducible benchmark comparing low-latency ASR backends for real-time WebRTC and Voice AI applications across first partial, final transcript, REST latency, streaming responsiveness, and sample coverage.",
+            "url": "https://benchmarks.webrtc.ventures/asr-latency/",
+            "creator": {
+              "@id": "https://webrtc.ventures/#organization"
+            },
+            "publisher": {
+              "@id": "https://webrtc.ventures/#organization"
+            },
+            "distribution": {
+              "@type": "DataDownload",
+              "name": "Benchmark manifest JSON",
+              "encodingFormat": "application/json",
+              "contentUrl": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json"
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://webrtc.ventures/#organization",
+            "name": "WebRTC.ventures",
+            "url": "https://webrtc.ventures/"
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://benchmarks.webrtc.ventures/asr-latency/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What does this benchmark actually measure?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The homepage compares checked-in ASR artifacts across first partial responsiveness, partial cadence, final transcript latency, REST latency, sample coverage, and runtime profile so teams can evaluate turn-taking readiness before voice AI launches."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Why are some tracked lanes missing from the comparison table?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Only tracked lanes with committed publishable JSON artifacts are rendered on the homepage. Registry-only or blocked lanes stay documented in the track registry without being mixed into the public ranking."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does this page compare recognition accuracy too?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The homepage is latency-first. It can link to clearly labeled upstream model-card WER references today, while repo-measured WER or CER stays off the primary comparison until a named annotated dataset and reproducible methodology are published."
+                }
+              }
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://benchmarks.webrtc.ventures/#website",
+            "name": "WebRTC.ventures Benchmarks",
+            "url": "https://benchmarks.webrtc.ventures/",
+            "publisher": {
+              "@id": "https://webrtc.ventures/#organization"
+            }
+          }
+        ]
+      }
+    </script>
     <style>
       :root {
         color-scheme: light;
@@ -172,7 +269,9 @@
       .story-grid,
       .lane-grid,
       .archive-grid,
-      .contract-grid {
+      .contract-grid,
+      .cta-grid,
+      .faq-grid {
         display: grid;
         gap: 16px;
       }
@@ -180,7 +279,9 @@
       .signal-grid,
       .story-grid,
       .contract-grid,
-      .archive-grid {
+      .archive-grid,
+      .cta-grid,
+      .faq-grid {
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       }
       .hero-card,
@@ -189,7 +290,9 @@
       .story-card,
       .lane-card,
       .archive-card,
-      .contract-card {
+      .contract-card,
+      .cta-card,
+      .faq-card {
         padding: 18px;
         border-radius: 22px;
         border: 1px solid rgba(25, 22, 18, 0.08);
@@ -253,6 +356,38 @@
       .comparison-wrap {
         overflow: hidden;
         padding: 18px;
+      }
+      .section-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 42px;
+        padding: 9px 16px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.76);
+        color: var(--ink);
+        font: inherit;
+        cursor: pointer;
+        transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+      }
+      .section-toggle:hover {
+        background: rgba(255, 255, 255, 0.94);
+        border-color: rgba(25, 22, 18, 0.2);
+        transform: translateY(-1px);
+      }
+      .section-toggle-indicator {
+        color: var(--forest);
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .lane-panel[hidden] {
+        display: none;
+      }
+      .lane-panel {
+        margin-top: 14px;
       }
       .comparison-scroll {
         overflow-x: auto;
@@ -345,9 +480,25 @@
       .metric-row span { color: var(--muted); }
       .archive-card a,
       .contract-card a,
-      .lane-actions a { color: var(--forest); }
+      .lane-actions a,
+      .cta-card a { color: var(--forest); }
       .archive-grid {
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+      .cta-grid,
+      .faq-grid {
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .cta-card,
+      .faq-card {
+        display: grid;
+        gap: 12px;
+      }
+      .faq-card p,
+      .cta-card p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.65;
       }
       .contract-list {
         margin: 14px 0 0;
@@ -420,19 +571,71 @@
       <section class="hero panel">
         <div class="hero-grid">
           <div>
-            <div class="eyebrow">rtc-asr benchmark deck</div>
-            <h1>Low-latency ASR, built for turn-taking.</h1>
-            <p class="lede">This GitHub Pages front end turns checked-in benchmark artifacts into a benchmark product page: who answers fastest, who closes fastest, who keeps tails tight, and which lane gives the cleanest accuracy without pretending blocked runs are shippable results.</p>
-            <p class="hero-copy">The comparison view stays focused on measured ASR lanes with committed JSON artifacts. That means operators can compare low-latency behavior directly across REST, websocket partials, websocket finals, runtime profile, and error rates without mixing in unpublished blockers.</p>
+            <div class="eyebrow">WebRTC.ventures benchmarks</div>
+            <h1>Real-time ASR latency benchmarks for WebRTC voice AI.</h1>
+            <p class="lede">Compare low-latency ASR backends where turn-taking, barge-in, and transcript closeout matter most. This benchmark highlights first partial responsiveness, final transcript latency, REST latency, runtime profile, sample coverage, and which lane is the safest latency bet from checked-in artifacts.</p>
+            <p class="hero-copy">Built for WebRTC.ventures launch conversations, the comparison view stays focused on measured ASR lanes with committed JSON artifacts. Teams can use it to pressure-test barge-in feel, transcript closeout speed, and deployment tradeoffs without mixing in unpublished blockers or hand-wavy latency claims.</p>
             <div class="hero-actions">
               <a class="action-link primary" href="#comparison">Open comparison matrix</a>
               <a class="action-link" href="benchmarks.md">Benchmark notes</a>
               <a class="action-link" href="benchmark-results/manifest.json">Manifest JSON</a>
+              <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
-            <p class="meta-line" id="generated-at">Loading benchmark manifest...</p>
+            <p class="meta-line" id="generated-at"><!-- BEGIN GENERATED:generated-at -->
+Published Jun 11, 2026, 07:12 PM UTC . 7 visible ASR lanes . 7 tracked lanes in the registry.
+<!-- END GENERATED:generated-at --></p>
           </div>
           <div class="hero-side" id="hero-side"></div>
         </div>
+      </section>
+
+      <section id="static-summary">
+        <!-- BEGIN GENERATED:static-summary -->
+<section class="section-head">
+  <div>
+    <div class="section-kicker">Static summary</div>
+    <h2>Benchmark content rendered into initial HTML</h2>
+  </div>
+  <p class="subcopy">Published 7 visible ASR lanes from 7 tracked runtime lanes. This prerender keeps the key comparison crawlable before JavaScript enhances the page.</p>
+</section>
+<div class="snapshot-grid">
+  <article class="snapshot-card">
+    <div class="section-kicker">Median first partial</div>
+    <div class="headline-value">1695.4 ms</div>
+    <p>Time until a caller could first see a useful partial in a real-time stream.</p>
+  </article>
+  <article class="snapshot-card">
+    <div class="section-kicker">Median partial response</div>
+    <div class="headline-value">553.0 ms</div>
+    <p>Server response time after a partial trigger, separated from chunk and window cadence.</p>
+  </article>
+  <article class="snapshot-card">
+    <div class="section-kicker">Median final</div>
+    <div class="headline-value">1189.6 ms</div>
+    <p>How long a caller waits for completed transcript closure after speech ends.</p>
+  </article>
+  <article class="snapshot-card">
+    <div class="section-kicker">Median REST</div>
+    <div class="headline-value">1186.2 ms</div>
+    <p>Batch-style request latency for the same published benchmark set.</p>
+  </article>
+</div>
+<div class="story-grid">
+<article class="story-card panel"><div class="section-kicker">Rank 1</div><div class="story-rank">Parakeet 110M NeMo</div><div class="chip-row"><div class="chip"><strong>cpu / float32</strong> runtime</div><div class="chip"><strong>Docker Compose CPU</strong> lane</div></div><p>Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.</p></article><article class="story-card panel"><div class="section-kicker">Rank 2</div><div class="story-rank">Qwen MPS</div><div class="chip-row"><div class="chip"><strong>mps / auto</strong> runtime</div><div class="chip"><strong>Local Python Apple Silicon</strong> lane</div></div><p>Validated 10-sample local Apple Silicon MPS artifact.</p></article><article class="story-card panel"><div class="section-kicker">Rank 3</div><div class="story-rank">Faster-Whisper Base</div><div class="chip-row"><div class="chip"><strong>cpu / int8</strong> runtime</div><div class="chip"><strong>Local Python CPU</strong> lane</div></div><p>Validated 10-sample local CPU baseline.</p></article>
+</div>
+<div class="comparison-wrap panel">
+  <div class="comparison-scroll">
+    <table>
+      <thead>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th>First partial</th><th>Partial</th><th>Final</th><th>REST</th><th>Official WER</th><th>Samples</th><th>Artifact</th></tr>
+      </thead>
+      <tbody>
+<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo</strong><span>parakeet-nemo . nvidia/parakeet-tdt_ctc-110m</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>95.8 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs validated fastest</div></td><td data-label="Partial"><strong>148.5 ms</strong><div class="tiny">P95 245.8 ms</div><div class="tiny">+133.1 ms vs fastest</div></td><td data-label="Final"><strong>379.0 ms</strong><div class="tiny">P95 633.5 ms</div><div class="tiny">+378.1 ms vs fastest</div></td><td data-label="REST"><strong>331.4 ms</strong><div class="tiny">P95 511.5 ms . RTF 0.046</div><div class="metric-bar"><span style="width:6.045018423260735%"></span></div></td><td data-label="Official WER"><strong>2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)</strong><div class="tiny">Upstream model-card / benchmark reference</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 03:11 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json">open JSON</a></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen MPS</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Local Python Apple Silicon . mps / auto</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>88.7 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs validated fastest</div></td><td data-label="Partial"><strong>352.0 ms</strong><div class="tiny">P95 445.5 ms</div><div class="tiny">+336.6 ms vs fastest</div></td><td data-label="Final"><strong>1189.6 ms</strong><div class="tiny">P95 1248.2 ms</div><div class="tiny">+1188.7 ms vs fastest</div></td><td data-label="REST"><strong>1186.2 ms</strong><div class="tiny">P95 1261.2 ms . RTF 0.163</div><div class="metric-bar"><span style="width:21.637298894604356%"></span></div></td><td data-label="Official WER"><strong>2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)</strong><div class="tiny">Upstream model-card / benchmark reference</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 05:19 PM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/qwen-mps-2026-06-10.json">open JSON</a></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Base</strong><span>faster-whisper . base.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>86.5 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs validated fastest</div></td><td data-label="Partial"><strong>553.0 ms</strong><div class="tiny">P95 2451.5 ms</div><div class="tiny">+537.6 ms vs fastest</div></td><td data-label="Final"><strong>560.2 ms</strong><div class="tiny">P95 761.2 ms</div><div class="tiny">+559.3 ms vs fastest</div></td><td data-label="REST"><strong>573.3 ms</strong><div class="tiny">P95 741.1 ms . RTF 0.079</div><div class="metric-bar"><span style="width:10.457480573492393%"></span></div></td><td data-label="Official WER"><strong>4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)</strong><div class="tiny">Upstream model-card / benchmark reference</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 02:16 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/faster-whisper-base.en-int8-2026-06-10.json">open JSON</a></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Small</strong><span>faster-whisper . small.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>83.1 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs validated fastest</div></td><td data-label="Partial"><strong>1023.2 ms</strong><div class="tiny">P95 1202.4 ms</div><div class="tiny">+1007.8 ms vs fastest</div></td><td data-label="Final"><strong>1420.6 ms</strong><div class="tiny">P95 1514.0 ms</div><div class="tiny">+1419.7 ms vs fastest</div></td><td data-label="REST"><strong>1378.3 ms</strong><div class="tiny">P95 1531.1 ms . RTF 0.189</div><div class="metric-bar"><span style="width:25.141366604647768%"></span></div></td><td data-label="Official WER"><strong>3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)</strong><div class="tiny">Upstream model-card / benchmark reference</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 02:23 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/faster-whisper-small.en-int8-2026-06-10.json">open JSON</a></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet Compose</strong><span>parakeet . nvidia/parakeet-tdt-0.6b-v3</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>61.9 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs validated fastest</div></td><td data-label="Partial"><strong>1715.1 ms</strong><div class="tiny">P95 2968.7 ms</div><div class="tiny">+1699.7 ms vs fastest</div></td><td data-label="Final"><strong>2215.8 ms</strong><div class="tiny">P95 3080.4 ms</div><div class="tiny">+2214.9 ms vs fastest</div></td><td data-label="REST"><strong>2388.3 ms</strong><div class="tiny">P95 4098.1 ms . RTF 0.328</div><div class="metric-bar"><span style="width:43.5646273393893%"></span></div></td><td data-label="Official WER"><strong>1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)</strong><div class="tiny">Upstream model-card / benchmark reference</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 01:41 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/parakeet-compose-2026-06-10.json">open JSON</a></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Base 80ms Preview</strong><span>faster-whisper . base.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="State"><span class="status status-legacy">legacy</span></td><td data-label="Score"><strong>71.4 / 100</strong><div class="tiny">Confidence 85.0 / 100</div></td><td data-label="First partial"><strong>1695.4 ms</strong><div class="tiny">P95 1695.4 ms</div><div class="tiny">n/a vs validated fastest</div></td><td data-label="Partial"><strong>15.4 ms</strong><div class="tiny">P95 15.4 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Final"><strong>46867.0 ms</strong><div class="tiny">P95 46867.0 ms</div><div class="tiny">+46866.1 ms vs fastest</div></td><td data-label="REST"><strong>537.4 ms</strong><div class="tiny">P95 537.4 ms . RTF 0.074</div><div class="metric-bar"><span style="width:9.8026339790595%"></span></div></td><td data-label="Official WER"><strong>4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)</strong><div class="tiny">Upstream model-card / benchmark reference</div></td><td data-label="Samples"><strong>1</strong><div class="tiny">Measured Jun 11, 2026, 12:08 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json">open JSON</a></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen Compose</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="State"><span class="status status-legacy">legacy</span></td><td data-label="Score"><strong>40.1 / 100</strong><div class="tiny">Confidence 40.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs validated fastest</div></td><td data-label="Partial"><strong>3696.1 ms</strong><div class="tiny">P95 6314.4 ms</div><div class="tiny">+3680.7 ms vs fastest</div></td><td data-label="Final"><strong>0.9 ms</strong><div class="tiny">P95 0.9 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="REST"><strong>5482.2 ms</strong><div class="tiny">P95 5904.4 ms . RTF 0.753</div><div class="metric-bar"><span style="width:100.0%"></span></div></td><td data-label="Official WER"><strong>2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)</strong><div class="tiny">Upstream model-card / benchmark reference</div></td><td data-label="Samples"><strong>1</strong><div class="tiny">Measured Jun 08, 2026, 04:30 PM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/qwen-compose-2026-06-08.json">open JSON</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<!-- END GENERATED:static-summary -->
       </section>
 
       <section>
@@ -477,9 +680,15 @@
             <div class="section-kicker">Lanes</div>
             <h2>Visible benchmark lanes</h2>
           </div>
-          <p class="subcopy">Only measured lanes with checked-in artifacts are rendered on the homepage. That keeps the front end aligned with what can actually be inspected and reproduced.</p>
+          <button class="section-toggle" id="lane-toggle" type="button" aria-expanded="false" aria-controls="lane-panel">
+            <span>Benchmark lanes</span>
+            <span class="section-toggle-indicator" id="lane-toggle-label">show</span>
+          </button>
         </div>
-        <div class="lane-grid" id="lane-grid"></div>
+        <p class="subcopy">Only measured lanes with checked-in artifacts are rendered on the homepage. That keeps the front end aligned with what can actually be inspected and reproduced.</p>
+        <div class="lane-panel" id="lane-panel" hidden>
+          <div class="lane-grid" id="lane-grid"></div>
+        </div>
       </section>
 
       <section>
@@ -491,6 +700,60 @@
           <p class="subcopy">The harness writes versioned JSON under <code>docs/benchmark-results/</code>, and the same manifest powers both this page and the markdown notes.</p>
         </div>
         <div class="contract-grid" id="contract-grid"></div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Act on it</div>
+            <h2>Choose the next decision path</h2>
+          </div>
+          <p class="subcopy">This page is meant to support both search discovery and operator follow-through, so each CTA points to a concrete next step instead of a dead-end marketing page.</p>
+        </div>
+        <div class="cta-grid">
+          <article class="cta-card">
+            <div class="section-kicker">For evaluators</div>
+            <h3>Read the benchmark notes</h3>
+            <p>Use the methodology page when you need run commands, artifact lineage, official WER reference sources, and the publishing rules behind what appears on the homepage.</p>
+            <div class="contract-actions">
+              <a href="benchmarks.md">Open benchmark notes</a>
+            </div>
+          </article>
+          <article class="cta-card">
+            <div class="section-kicker">For engineers</div>
+            <h3>Inspect the raw manifest</h3>
+            <p>Pull the generated manifest or track registry when you want the artifact-backed numbers directly for dashboards, downstream analysis, or release checklists.</p>
+            <div class="contract-actions">
+              <a href="benchmark-results/manifest.json">Open manifest JSON</a>
+              <a href="benchmark-results/tracks.json">Open track registry</a>
+            </div>
+          </article>
+          <article class="cta-card">
+            <div class="section-kicker">For teams shipping voice AI</div>
+            <h3>Turn the benchmark into a launch decision</h3>
+            <p>Use the live comparison to narrow candidate ASR lanes, then bring the short list into a WebRTC.ventures architecture or QA review before changing production defaults.</p>
+            <div class="contract-actions">
+              <a href="https://webrtc.ventures/">Visit WebRTC.ventures</a>
+              <a href="https://github.com/agonza1/rtc-asr">View the repo</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="faq">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">FAQ</div>
+            <h2>Launch FAQ for benchmark readers</h2>
+          </div>
+          <p class="subcopy">Short answers for people arriving from search, GitHub, or a shared benchmark link who need to understand what this page says before they trust the ranking.</p>
+        </div>
+        <div class="faq-grid">
+          <article class="faq-card"><div class="section-kicker">Question 1</div><h3>What does this benchmark actually measure?</h3><p>It compares first visible partial timing, partial cadence, final transcript latency, REST latency, runtime profile, and sample coverage from checked-in artifacts so voice AI teams can judge turn-taking readiness instead of relying on anecdotal latency claims.</p></article>
+          <article class="faq-card"><div class="section-kicker">Question 2</div><h3>Why are some tracked lanes missing from the comparison table?</h3><p>Only lanes with committed publishable JSON artifacts appear in the public ranking. Registry-only, blocked, or unpublished lanes stay documented in the track registry without polluting the homepage comparison flow.</p></article>
+          <article class="faq-card"><div class="section-kicker">Question 3</div><h3>Does this page compare recognition accuracy too?</h3><p>Not as a repo-measured leaderboard yet. The homepage can point to clearly labeled upstream model-card WER references today, while local WER or CER stays off the main table until a named annotated dataset and reproducible methodology are published.</p></article>
+          <article class="faq-card"><div class="section-kicker">Question 4</div><h3>How should a WebRTC or voice AI team use this before launch?</h3><p>Use the homepage to shortlist realistic ASR lanes, check the benchmark notes for reproduction details, and then validate the finalists against your own codec, interruption, and domain-specific traffic before changing production defaults.</p></article>
+        </div>
       </section>
 
       <section>
@@ -596,7 +859,6 @@
           if (final !== 0) return final;
           const rest = numeric(left.rest.mean_ms) - numeric(right.rest.mean_ms);
           if (rest !== 0) return rest;
-          return numeric(left.accuracy.word_error_rate_mean) - numeric(right.accuracy.word_error_rate_mean);
         });
       }
       function firstVisiblePartial(entry) {
@@ -742,14 +1004,6 @@
             detail: `${fastestRest.backend} · ${fastestRest.model}`
           });
         }
-        const bestAccuracy = summary.highlights?.best_accuracy;
-        if (bestAccuracy) {
-          signalCards.push({
-            title: "Cleanest recognition",
-            value: `WER ${formatWer(bestAccuracy.value)}`,
-            detail: `${bestAccuracy.backend} · ${bestAccuracy.model}`
-          });
-        }
         const tightestCadence = summary.highlights?.tightest_partial_cadence;
         if (tightestCadence) {
           signalCards.push({
@@ -848,9 +1102,9 @@
                 <div class="tiny">P95 ${formatMs(entry.rest.p95_ms)} · RTF ${formatRatio(entry.rest.rtf_mean)}</div>
                 <div class="metric-bar"><span style="width:${restWidth}%"></span></div>
               </td>
-              <td data-label="Accuracy">
-                <strong>WER ${formatWer(entry.accuracy.word_error_rate_mean)}</strong>
-                <div class="tiny">CER ${formatWer(entry.accuracy.character_error_rate_mean)}</div>
+              <td data-label="Official WER">
+                <strong>${entry.official_wer_reference || "see notes"}</strong>
+                <div class="tiny">Upstream model-card / benchmark reference</div>
               </td>
               <td data-label="Config">
                 <strong>${entry.contract?.chunk_ms == null ? "n/a" : `${entry.contract.chunk_ms} ms`}</strong>
@@ -876,7 +1130,7 @@
                 <th>Partial</th>
                 <th>Final</th>
                 <th>REST</th>
-                <th>Accuracy</th>
+                <th>Official WER</th>
                 <th>Config</th>
                 <th>Samples</th>
                 <th>Artifact</th>
@@ -913,7 +1167,6 @@
               <div class="metric-row"><span>Partial cadence</span><strong>${formatMs(track.streaming.partial_gap_mean_ms)}</strong></div>
               <div class="metric-row"><span>Final mean</span><strong>${formatMs(track.streaming.final_mean_ms)}</strong></div>
               <div class="metric-row"><span>REST mean</span><strong>${formatMs(track.rest.mean_ms)}</strong></div>
-              <div class="metric-row"><span>WER</span><strong>${formatWer(track.accuracy.word_error_rate_mean)}</strong></div>
               <div class="metric-row"><span>RTF</span><strong>${formatRatio(track.rest.rtf_mean)}</strong></div>
             </div>
             <div class="lane-actions">
@@ -922,6 +1175,23 @@
             </div>
           </article>
         `).join("");
+      }
+      function setupLaneToggle() {
+        const button = document.getElementById("lane-toggle");
+        const panel = document.getElementById("lane-panel");
+        const label = document.getElementById("lane-toggle-label");
+        if (!button || !panel || !label) return;
+
+        const sync = (expanded) => {
+          button.setAttribute("aria-expanded", expanded ? "true" : "false");
+          panel.hidden = !expanded;
+          label.textContent = expanded ? "hide" : "show";
+        };
+
+        sync(false);
+        button.addEventListener("click", () => {
+          sync(button.getAttribute("aria-expanded") !== "true");
+        });
       }
       function renderContract(summary) {
         const contract = summary.sample_contract || {};
@@ -942,7 +1212,7 @@
             <div class="section-kicker">Publishing rule</div>
             <h3>What reaches the homepage</h3>
             <ul class="contract-list">
-              <li>Only checked-in JSON artifacts produce visible latency comparisons.</li>
+              <li>Only checked-in JSON artifacts produce visible latency comparisons. The homepage can show official upstream WER references today, while repo-measured WER/CER only returns once a named annotated benchmark dataset and methodology are published for issue #46.</li>
               <li>Legacy runs stay labeled so stale-but-inspectable baselines remain usable.</li>
               <li>Tracked lanes without publishable artifacts stay out of the front-end comparison flow.</li>
             </ul>
@@ -988,6 +1258,7 @@
           document.getElementById("comparison-wrap").innerHTML = `<div class="error">${error.message}</div>`;
         }
       }
+      setupLaneToggle();
       main();
     </script>
   </body>

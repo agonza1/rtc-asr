@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-06-11T02:22:21Z",
+  "generated_at": "2026-06-11T19:12:46Z",
   "summary": {
     "asr_count": 7,
-    "tracked_count": 8,
+    "tracked_count": 7,
     "artifact_file_count": 8,
     "validated_count": 5,
     "legacy_count": 2,
-    "blocked_count": 1,
+    "blocked_count": 0,
     "latest_measured_at": "2026-06-11T00:08:33Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
       "chunk_ms": 250,
-      "partial_window_seconds": 2.0,
+      "partial_window_seconds": 2,
       "partial_interval_chunks": 1,
       "binary_frames": false,
       "partial_event_timeout_seconds": 0.1
     },
-    "backend_count": 5,
+    "backend_count": 4,
     "lane_count": 3,
     "ranges": {
       "rest_mean_ms": {
@@ -35,19 +35,15 @@
       "partial_gap_mean_ms": null,
       "final_mean_ms": {
         "min": 0.9,
-        "max": 46867.0
+        "max": 46867
       },
       "rtf_mean": {
         "min": 0.046,
         "max": 0.753
       },
-      "wer": {
-        "min": 0.095,
-        "max": 0.19
-      },
       "overall_score": {
-        "min": 43.0,
-        "max": 90.8
+        "min": 40.1,
+        "max": 95.8
       }
     },
     "highlights": {
@@ -77,20 +73,12 @@
         "value": 379,
         "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
       },
-      "best_accuracy": {
-        "label": "Lowest normalized WER",
-        "slug": "faster-whisper-base",
-        "backend": "faster-whisper",
-        "model": "base.en",
-        "value": 0.095,
-        "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json"
-      },
       "best_overall": {
         "label": "Best overall benchmark balance",
         "slug": "parakeet-nemo-compose",
         "backend": "parakeet-nemo",
         "model": "nvidia/parakeet-tdt_ctc-110m",
-        "value": 90.8,
+        "value": 95.8,
         "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
       },
       "best_live_caption": {
@@ -116,6 +104,7 @@
       "status_detail": "Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.",
       "target_sample_count": 10,
       "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
@@ -141,8 +130,8 @@
         "final_p95_ms": 633.5
       },
       "accuracy": {
-        "word_error_rate_mean": 0.19,
-        "character_error_rate_mean": 0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 98.1,
@@ -150,8 +139,7 @@
         "finalization_score": 95.7,
         "stability_score": 85.5,
         "efficiency_score": 98.4,
-        "accuracy_score": 45.7,
-        "overall_score": 90.8,
+        "overall_score": 95.8,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.543,
@@ -171,13 +159,14 @@
       "status_detail": "Validated 10-sample local Apple Silicon MPS artifact.",
       "target_sample_count": 10,
       "run_command": "make benchmark-qwen-mps",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -186,7 +175,7 @@
         "rtf_mean": 0.163
       },
       "streaming": {
-        "partial_mean_ms": 352.0,
+        "partial_mean_ms": 352,
         "partial_p95_ms": 445.5,
         "first_partial_end_to_end_mean_ms": null,
         "first_partial_end_to_end_p95_ms": null,
@@ -196,8 +185,8 @@
         "final_p95_ms": 1248.2
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 85.0,
@@ -205,8 +194,7 @@
         "finalization_score": 82.6,
         "stability_score": 97.3,
         "efficiency_score": 86.3,
-        "accuracy_score": 72.9,
-        "overall_score": 87.1,
+        "overall_score": 88.7,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.063,
@@ -226,13 +214,14 @@
       "status_detail": "Validated 10-sample local CPU baseline.",
       "target_sample_count": 10,
       "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -241,7 +230,7 @@
         "rtf_mean": 0.079
       },
       "streaming": {
-        "partial_mean_ms": 553.0,
+        "partial_mean_ms": 553,
         "partial_p95_ms": 2451.5,
         "first_partial_end_to_end_mean_ms": null,
         "first_partial_end_to_end_p95_ms": null,
@@ -251,8 +240,8 @@
         "final_p95_ms": 761.2
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 94.2,
@@ -260,8 +249,7 @@
         "finalization_score": 92.8,
         "stability_score": 71.7,
         "efficiency_score": 94.9,
-        "accuracy_score": 72.9,
-        "overall_score": 85.1,
+        "overall_score": 86.5,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.293,
@@ -281,13 +269,14 @@
       "status_detail": "Validated 10-sample local CPU baseline using the default service model.",
       "target_sample_count": 10,
       "run_command": "make benchmark-faster-whisper-small",
+      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)",
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -303,11 +292,11 @@
         "partial_gap_mean_ms": null,
         "partial_gap_p95_ms": null,
         "final_mean_ms": 1420.6,
-        "final_p95_ms": 1514.0
+        "final_p95_ms": 1514
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 81.3,
@@ -315,8 +304,7 @@
         "finalization_score": 78.2,
         "stability_score": 97.4,
         "efficiency_score": 83.6,
-        "accuracy_score": 72.9,
-        "overall_score": 82.1,
+        "overall_score": 83.1,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.111,
@@ -336,13 +324,14 @@
       "status_detail": "Validated 10-sample Compose CPU artifact.",
       "target_sample_count": 10,
       "run_command": "make benchmark-compose-parakeet",
+      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)",
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -361,8 +350,8 @@
         "final_p95_ms": 3080.4
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 53.2,
@@ -370,8 +359,7 @@
         "finalization_score": 58.2,
         "stability_score": 85.9,
         "efficiency_score": 69.3,
-        "accuracy_score": 72.9,
-        "overall_score": 63.0,
+        "overall_score": 61.9,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.716,
@@ -391,6 +379,7 @@
       "status_detail": "Exploratory 1-sample low-latency preview at 80 ms chunks and a 0.75 s partial window. First visible partial arrived at 1.7 s, while finalization remained extremely slow (~46.9 s), and the binary-frame companion still hit a websocket keepalive close during stop/final.",
       "target_sample_count": 1,
       "run_command": "make benchmark-faster-whisper-base-low-latency-sweep LOW_LATENCY_SWEEP_CHUNK_MS=\"80\" LOW_LATENCY_SWEEP_PARTIAL_WINDOWS=\"0.75\" LOW_LATENCY_SWEEP_BINARY_FRAMES=\"false\"",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
       "measured_at": "2026-06-11T00:08:33Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json",
@@ -412,12 +401,12 @@
         "first_partial_end_to_end_p95_ms": 1695.4,
         "partial_gap_mean_ms": null,
         "partial_gap_p95_ms": null,
-        "final_mean_ms": 46867.0,
-        "final_p95_ms": 46867.0
+        "final_mean_ms": 46867,
+        "final_p95_ms": 46867
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 96.1,
@@ -425,8 +414,7 @@
         "finalization_score": 0.0,
         "stability_score": 100.0,
         "efficiency_score": 95.5,
-        "accuracy_score": 72.9,
-        "overall_score": 71.2,
+        "overall_score": 71.4,
         "confidence_score": 85.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.0,
@@ -446,6 +434,7 @@
       "status_detail": "Single-sample legacy artifact remains published because the 2026-06-10 refresh restarted during first generation and REST warmup failed with httpx.ReadError.",
       "target_sample_count": 10,
       "run_command": "make benchmark-compose-qwen",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
       "measured_at": "2026-06-08T16:30:59Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
@@ -471,8 +460,8 @@
         "final_p95_ms": 0.9
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 12.8,
@@ -480,68 +469,12 @@
         "finalization_score": 100.0,
         "stability_score": 94.6,
         "efficiency_score": 25.5,
-        "accuracy_score": 72.9,
-        "overall_score": 43.0,
+        "overall_score": 40.1,
         "confidence_score": 40.0,
         "sample_coverage_pct": 10.0,
         "rest_jitter_ratio": 1.077,
         "partial_jitter_ratio": 1.708,
         "final_jitter_ratio": 1.0
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "ultravox-compose",
-      "label": "Ultravox Compose",
-      "backend": "ultravox",
-      "model": "fixie-ai/ultravox-v0_6-llama-3_1-8b",
-      "lane": "Docker Compose CPU",
-      "runtime": "cpu / float32",
-      "status": "blocked",
-      "status_detail": "Blocked before validation because the default model loads gated meta-llama/Llama-3.1-8B-Instruct weights and Hugging Face returned 403 on 2026-06-10.",
-      "target_sample_count": 10,
-      "run_command": "HF_TOKEN=... make benchmark-compose-ultravox",
-      "measured_at": null,
-      "sample_count": null,
-      "artifact_path": null,
-      "contract": {
-        "chunk_ms": null,
-        "partial_interval_chunks": null,
-        "partial_window_seconds": null,
-        "binary_frames": null
-      },
-      "rest": {
-        "mean_ms": null,
-        "p95_ms": null,
-        "rtf_mean": null
-      },
-      "streaming": {
-        "partial_mean_ms": null,
-        "partial_p95_ms": null,
-        "first_partial_end_to_end_mean_ms": null,
-        "first_partial_end_to_end_p95_ms": null,
-        "partial_gap_mean_ms": null,
-        "partial_gap_p95_ms": null,
-        "final_mean_ms": null,
-        "final_p95_ms": null
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": null,
-        "live_caption_score": null,
-        "finalization_score": null,
-        "stability_score": null,
-        "efficiency_score": null,
-        "accuracy_score": null,
-        "overall_score": null,
-        "confidence_score": 12.5,
-        "sample_coverage_pct": 0.0,
-        "rest_jitter_ratio": null,
-        "partial_jitter_ratio": null,
-        "final_jitter_ratio": null
       }
     }
   ],
@@ -572,12 +505,12 @@
         "first_partial_end_to_end_p95_ms": 1695.4,
         "partial_gap_mean_ms": null,
         "partial_gap_p95_ms": null,
-        "final_mean_ms": 46867.0,
-        "final_p95_ms": 46867.0
+        "final_mean_ms": 46867,
+        "final_p95_ms": 46867
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "character_error_rate_mean": 0
       },
       "label": "base.en"
     },
@@ -592,7 +525,7 @@
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -601,7 +534,7 @@
         "rtf_mean": 0.163
       },
       "streaming": {
-        "partial_mean_ms": 352.0,
+        "partial_mean_ms": 352,
         "partial_p95_ms": 445.5,
         "first_partial_end_to_end_mean_ms": null,
         "first_partial_end_to_end_p95_ms": null,
@@ -612,7 +545,7 @@
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "character_error_rate_mean": 0
       },
       "label": "Qwen/Qwen3-ASR-0.6B"
     },
@@ -662,7 +595,7 @@
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -678,11 +611,11 @@
         "partial_gap_mean_ms": null,
         "partial_gap_p95_ms": null,
         "final_mean_ms": 1420.6,
-        "final_p95_ms": 1514.0
+        "final_p95_ms": 1514
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "character_error_rate_mean": 0
       },
       "label": "small.en"
     },
@@ -697,7 +630,7 @@
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -706,7 +639,7 @@
         "rtf_mean": 0.079
       },
       "streaming": {
-        "partial_mean_ms": 553.0,
+        "partial_mean_ms": 553,
         "partial_p95_ms": 2451.5,
         "first_partial_end_to_end_mean_ms": null,
         "first_partial_end_to_end_p95_ms": null,
@@ -717,7 +650,7 @@
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "character_error_rate_mean": 0
       },
       "label": "base.en"
     },
@@ -732,7 +665,7 @@
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -752,7 +685,7 @@
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "character_error_rate_mean": 0
       },
       "label": "nvidia/parakeet-tdt-0.6b-v3"
     },
@@ -812,7 +745,7 @@
       },
       "streaming": {
         "partial_mean_ms": 1349.7,
-        "partial_p95_ms": 1863.0,
+        "partial_p95_ms": 1863,
         "first_partial_end_to_end_mean_ms": null,
         "first_partial_end_to_end_p95_ms": null,
         "partial_gap_mean_ms": null,
@@ -822,7 +755,7 @@
       },
       "accuracy": {
         "word_error_rate_mean": 0.333,
-        "character_error_rate_mean": 0.0
+        "character_error_rate_mean": 0
       },
       "label": "Qwen/Qwen3-ASR-0.6B"
     }
@@ -840,6 +773,7 @@
       "status_detail": "Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.",
       "target_sample_count": 10,
       "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
@@ -865,8 +799,8 @@
         "final_p95_ms": 633.5
       },
       "accuracy": {
-        "word_error_rate_mean": 0.19,
-        "character_error_rate_mean": 0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 98.1,
@@ -874,8 +808,7 @@
         "finalization_score": 95.7,
         "stability_score": 85.5,
         "efficiency_score": 98.4,
-        "accuracy_score": 45.7,
-        "overall_score": 90.8,
+        "overall_score": 95.8,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.543,
@@ -895,13 +828,14 @@
       "status_detail": "Validated 10-sample local Apple Silicon MPS artifact.",
       "target_sample_count": 10,
       "run_command": "make benchmark-qwen-mps",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -910,7 +844,7 @@
         "rtf_mean": 0.163
       },
       "streaming": {
-        "partial_mean_ms": 352.0,
+        "partial_mean_ms": 352,
         "partial_p95_ms": 445.5,
         "first_partial_end_to_end_mean_ms": null,
         "first_partial_end_to_end_p95_ms": null,
@@ -920,8 +854,8 @@
         "final_p95_ms": 1248.2
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 85.0,
@@ -929,8 +863,7 @@
         "finalization_score": 82.6,
         "stability_score": 97.3,
         "efficiency_score": 86.3,
-        "accuracy_score": 72.9,
-        "overall_score": 87.1,
+        "overall_score": 88.7,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.063,
@@ -950,13 +883,14 @@
       "status_detail": "Validated 10-sample local CPU baseline.",
       "target_sample_count": 10,
       "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -965,7 +899,7 @@
         "rtf_mean": 0.079
       },
       "streaming": {
-        "partial_mean_ms": 553.0,
+        "partial_mean_ms": 553,
         "partial_p95_ms": 2451.5,
         "first_partial_end_to_end_mean_ms": null,
         "first_partial_end_to_end_p95_ms": null,
@@ -975,8 +909,8 @@
         "final_p95_ms": 761.2
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 94.2,
@@ -984,8 +918,7 @@
         "finalization_score": 92.8,
         "stability_score": 71.7,
         "efficiency_score": 94.9,
-        "accuracy_score": 72.9,
-        "overall_score": 85.1,
+        "overall_score": 86.5,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.293,
@@ -1005,13 +938,14 @@
       "status_detail": "Validated 10-sample local CPU baseline using the default service model.",
       "target_sample_count": 10,
       "run_command": "make benchmark-faster-whisper-small",
+      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)",
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -1027,11 +961,11 @@
         "partial_gap_mean_ms": null,
         "partial_gap_p95_ms": null,
         "final_mean_ms": 1420.6,
-        "final_p95_ms": 1514.0
+        "final_p95_ms": 1514
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 81.3,
@@ -1039,8 +973,7 @@
         "finalization_score": 78.2,
         "stability_score": 97.4,
         "efficiency_score": 83.6,
-        "accuracy_score": 72.9,
-        "overall_score": 82.1,
+        "overall_score": 83.1,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.111,
@@ -1060,6 +993,7 @@
       "status_detail": "Exploratory 1-sample low-latency preview at 80 ms chunks and a 0.75 s partial window. First visible partial arrived at 1.7 s, while finalization remained extremely slow (~46.9 s), and the binary-frame companion still hit a websocket keepalive close during stop/final.",
       "target_sample_count": 1,
       "run_command": "make benchmark-faster-whisper-base-low-latency-sweep LOW_LATENCY_SWEEP_CHUNK_MS=\"80\" LOW_LATENCY_SWEEP_PARTIAL_WINDOWS=\"0.75\" LOW_LATENCY_SWEEP_BINARY_FRAMES=\"false\"",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
       "measured_at": "2026-06-11T00:08:33Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json",
@@ -1081,12 +1015,12 @@
         "first_partial_end_to_end_p95_ms": 1695.4,
         "partial_gap_mean_ms": null,
         "partial_gap_p95_ms": null,
-        "final_mean_ms": 46867.0,
-        "final_p95_ms": 46867.0
+        "final_mean_ms": 46867,
+        "final_p95_ms": 46867
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 96.1,
@@ -1094,8 +1028,7 @@
         "finalization_score": 0.0,
         "stability_score": 100.0,
         "efficiency_score": 95.5,
-        "accuracy_score": 72.9,
-        "overall_score": 71.2,
+        "overall_score": 71.4,
         "confidence_score": 85.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.0,
@@ -1115,13 +1048,14 @@
       "status_detail": "Validated 10-sample Compose CPU artifact.",
       "target_sample_count": 10,
       "run_command": "make benchmark-compose-parakeet",
+      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)",
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false
       },
       "rest": {
@@ -1140,8 +1074,8 @@
         "final_p95_ms": 3080.4
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 53.2,
@@ -1149,8 +1083,7 @@
         "finalization_score": 58.2,
         "stability_score": 85.9,
         "efficiency_score": 69.3,
-        "accuracy_score": 72.9,
-        "overall_score": 63.0,
+        "overall_score": 61.9,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.716,
@@ -1170,6 +1103,7 @@
       "status_detail": "Single-sample legacy artifact remains published because the 2026-06-10 refresh restarted during first generation and REST warmup failed with httpx.ReadError.",
       "target_sample_count": 10,
       "run_command": "make benchmark-compose-qwen",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
       "measured_at": "2026-06-08T16:30:59Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-08.json",
@@ -1195,8 +1129,8 @@
         "final_p95_ms": 0.9
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
       "derived": {
         "latency_score": 12.8,
@@ -1204,8 +1138,7 @@
         "finalization_score": 100.0,
         "stability_score": 94.6,
         "efficiency_score": 25.5,
-        "accuracy_score": 72.9,
-        "overall_score": 43.0,
+        "overall_score": 40.1,
         "confidence_score": 40.0,
         "sample_coverage_pct": 10.0,
         "rest_jitter_ratio": 1.077,

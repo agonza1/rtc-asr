@@ -100,49 +100,6 @@ def test_parse_args_rejects_zero_or_negative_runtime_values(monkeypatch: pytest.
         benchmark.parse_args()
 
 
-def test_parse_args_accepts_binary_frame_window_and_ultravox_flags(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "benchmark.py",
-            "--backend",
-            "ultravox",
-            "--ultravox-dtype",
-            "float32",
-            "--ultravox-max-new-tokens",
-            "96",
-            "--ultravox-prompt",
-            "Return only the transcript.",
-            "--binary-frames",
-            "--partial-interval-chunks",
-            "3",
-            "--max-buffer",
-            "4.5",
-            "--request-retries",
-            "5",
-            "--request-retry-delay",
-            "0.25",
-            "--output",
-            "docs/benchmark-results/ultravox-compose-test.json",
-        ],
-    )
-
-    args = benchmark.parse_args()
-
-    assert args.backend == "ultravox"
-    assert args.ultravox_dtype == "float32"
-    assert args.ultravox_max_new_tokens == 96
-    assert args.ultravox_prompt == "Return only the transcript."
-    assert args.binary_frames is True
-    assert args.partial_interval_chunks == 3
-    assert args.max_buffer == 4.5
-    assert args.partial_event_timeout == 0.1
-    assert args.request_retries == 5
-    assert args.request_retry_delay == 0.25
-    assert args.output == Path("docs/benchmark-results/ultravox-compose-test.json")
-
-
 def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_and_serialization() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
@@ -207,10 +164,11 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
+    assert "scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --check" in block
     assert '@echo "  ✓ Benchmark site manifest is up to date"' in block
 
 
@@ -237,14 +195,14 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
 
     assert "BENCHMARK_SAMPLE_COUNT ?= 10" in makefile
     assert "BENCHMARK_REQUEST_RETRIES ?= 3" in makefile
-    assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-compose-ultravox" in makefile
+    assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo" in makefile
     assert "PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8" in makefile
     assert "QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit" in makefile
     assert "MLX_VENV ?= .venv-mlx" in makefile
     assert "benchmark-qwen-mlx-text: mlx-venv" in makefile
     assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil" in makefile
     assert "scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL)" in makefile
-    for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m"), ("benchmark-compose-ultravox: venv", "ultravox")):
+    for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m")):
         assert target_name in makefile
         line = next(
             line
@@ -259,7 +217,7 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
 def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
-    for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo"), ("benchmark-compose-ultravox", "ultravox")):
+    for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo")):
         block = makefile.split(f"{target}: venv\n", 1)[1].split("\n\n", 1)[0]
         assert "@{ set -e; \\" in block
         assert "trap cleanup EXIT INT TERM" in block

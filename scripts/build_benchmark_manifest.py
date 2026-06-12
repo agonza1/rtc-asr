@@ -105,7 +105,6 @@ def runtime_label(payload: dict[str, Any]) -> str:
         backend.get("compute_type")
         or backend.get("qwen_dtype")
         or backend.get("parakeet_dtype")
-        or backend.get("ultravox_dtype")
     )
     if compute:
         return f"{device} / {compute}"
@@ -126,7 +125,6 @@ def benchmark_key(payload: dict[str, Any]) -> str:
         backend.get("compute_type")
         or backend.get("qwen_dtype")
         or backend.get("parakeet_dtype")
-        or backend.get("ultravox_dtype")
         or "default"
     )
     device = backend.get("device") or "unknown"
@@ -173,6 +171,10 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     if partial_event_timeout_seconds is not None:
         contract["partial_event_timeout_seconds"] = partial_event_timeout_seconds
     return contract
+
+
+def accuracy_is_publishable(entry: dict[str, Any]) -> bool:
+    return False
 
 
 def summarize_accuracy(rest: dict[str, Any], streaming: dict[str, Any]) -> dict[str, Any]:
@@ -233,7 +235,6 @@ def build_artifact_history_entry(path: Path, payload: dict[str, Any]) -> dict[st
 def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
     rest = entry["rest"]
     streaming = entry["streaming"]
-    accuracy = entry["accuracy"]
     target_sample_count = entry.get("target_sample_count") or 0
     actual_sample_count = entry.get("sample_count") or 0
 
@@ -272,7 +273,6 @@ def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
         invert_score(final_jitter_ratio, 1.0, 5.0),
     )
     efficiency_score = invert_score(rest.get("rtf_mean"), 0.03, 1.0)
-    accuracy_score = invert_score(accuracy.get("word_error_rate_mean"), 0.0, 0.35)
 
     status_confidence = {
         "validated": 100.0,
@@ -287,7 +287,6 @@ def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
         (finalization_score, 0.18),
         (stability_score, 0.14),
         (efficiency_score, 0.1),
-        (accuracy_score, 0.1),
     ]
     weighted_total = sum(value * weight for value, weight in weighted_scores if value is not None)
     applied_weight = sum(weight for value, weight in weighted_scores if value is not None)
@@ -303,7 +302,6 @@ def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
         "finalization_score": finalization_score,
         "stability_score": stability_score,
         "efficiency_score": efficiency_score,
-        "accuracy_score": accuracy_score,
         "overall_score": overall_score,
         "confidence_score": confidence_score,
         "sample_coverage_pct": sample_coverage_pct,
@@ -326,6 +324,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
         "status_detail": track["status_detail"],
         "target_sample_count": track["target_sample_count"],
         "run_command": track["run_command"],
+        "official_wer_reference": track.get("official_wer_reference"),
         "measured_at": None,
         "sample_count": None,
         "artifact_path": None,
@@ -359,9 +358,11 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
                 "contract": measured["contract"],
                 "rest": measured["rest"],
                 "streaming": measured["streaming"],
-                "accuracy": measured["accuracy"],
             }
         )
+
+    if not accuracy_is_publishable(entry):
+        entry["accuracy"] = {"word_error_rate_mean": None, "character_error_rate_mean": None}
 
     entry["derived"] = derive_track_metrics(entry)
     return entry
@@ -378,33 +379,6 @@ def build_highlight(label: str, metric_key: tuple[str, str], entries: list[dict[
         "backend": best["backend"],
         "model": best["model"],
         "value": best[metric_key[0]][metric_key[1]],
-        "artifact_path": best["artifact_path"],
-    }
-
-
-def build_accuracy_highlight(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
-    candidates = [
-        entry
-        for entry in entries
-        if entry["accuracy"]["word_error_rate_mean"] is not None
-        and entry["accuracy"]["character_error_rate_mean"] is not None
-    ]
-    if not candidates:
-        return None
-    best = min(
-        candidates,
-        key=lambda item: (
-            item["accuracy"]["word_error_rate_mean"],
-            item["accuracy"]["character_error_rate_mean"],
-            item["rest"]["mean_ms"] if item["rest"]["mean_ms"] is not None else float("inf"),
-        ),
-    )
-    return {
-        "label": "Lowest normalized WER",
-        "slug": best["slug"],
-        "backend": best["backend"],
-        "model": best["model"],
-        "value": best["accuracy"]["word_error_rate_mean"],
         "artifact_path": best["artifact_path"],
     }
 
@@ -496,7 +470,6 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "partial_gap_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["streaming"]["partial_gap_mean_ms"]),
         "final_mean_ms": build_metric_range(artifact_backed, lambda entry: entry["streaming"]["final_mean_ms"]),
         "rtf_mean": build_metric_range(artifact_backed, lambda entry: entry["rest"]["rtf_mean"]),
-        "wer": build_metric_range(artifact_backed, lambda entry: entry["accuracy"]["word_error_rate_mean"]),
         "overall_score": build_metric_range(artifact_backed, lambda entry: entry["derived"]["overall_score"]),
     }
 
@@ -526,7 +499,6 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
             "fastest_final": build_highlight(
                 "Fastest streaming final mean", ("streaming", "final_mean_ms"), highlight_entries
             ),
-            "best_accuracy": build_accuracy_highlight(highlight_entries),
             "best_overall": build_derived_highlight("Best overall benchmark balance", "overall_score", highlight_entries),
             "best_live_caption": build_derived_highlight(
                 "Best live caption score", "live_caption_score", highlight_entries
