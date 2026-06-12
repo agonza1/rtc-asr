@@ -116,6 +116,10 @@ def replace_generated_block(document: str, block_id: str, content: str) -> str:
     return updated
 
 
+def hint(label: str, description: str) -> str:
+    return f'<span class="hint" title="{html.escape(description)}">{html.escape(label)}</span>'
+
+
 def render_row(
     entry: dict[str, Any],
     first_partial_baseline: float | None,
@@ -146,7 +150,7 @@ def render_row(
             f'<td data-label="State"><span class="status status-{status}">{status}</span></td>',
             f'<td data-label="Score"><strong>{score}</strong><div class="tiny">Confidence {confidence_text}</div></td>',
             f'<td data-label="First partial"><strong>{format_ms(first_partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</div><div class="tiny">{delta_text(first_partial_delta)} {html.escape(baseline_label)}</div></td>',
-            f'<td data-label="Partial"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs fastest</div></td>',
+            f'<td data-label="Partial response"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs fastest</div></td>',
             f'<td data-label="Final"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
             f'<td data-label="REST"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
             f'<td data-label="Official WER"><strong>{html.escape(entry.get("official_wer_reference") or "see notes")}</strong><div class="tiny">Upstream model-card / benchmark reference</div></td>',
@@ -218,7 +222,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
   <div class="comparison-scroll">
     <table>
       <thead>
-        <tr><th>Lane</th><th>State</th><th>Score</th><th>First partial</th><th>Partial</th><th>Final</th><th>REST</th><th>Official WER</th><th>Samples</th><th>Artifact</th></tr>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial response', 'Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.')}</th><th>{hint('Final', 'Time from stop or utterance end until the final transcript returns.')}</th><th>{hint('REST', 'Batch request latency for the same backend outside the streaming websocket path.')}</th><th>{hint('Official WER', 'Upstream model-card or benchmark reference numbers, not repo-measured accuracy from this site.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
       </thead>
       <tbody>
 {rows}
