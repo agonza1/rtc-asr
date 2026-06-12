@@ -79,23 +79,24 @@ Default artifact contract:
 
 The tracked registry in `docs/benchmark-results/tracks.json` now also records the recommended low-latency sweep matrix:
 
-- `chunk_ms`: `40`, `60`, `80`, `100`, `160`, `250`
-- `partial_window_seconds`: `0.5`, `0.75`, `1.0`, `2.0`
-- `binary_frames`: `false`, `true`
+- `chunk_ms`: `80`, `100`, `200`, `250`
+- `partial_window_seconds`: `1.0`, `2.0`
+- `binary_frames`: `false`
 
-A repeatable starter sweep is wired into the Makefile for the fastest local lane:
+A repeatable all-model sweep is wired into the Makefile:
 
 ```bash
-make benchmark-faster-whisper-base-low-latency-sweep
+make benchmark-all-asr-low-latency-sweep
 ```
 
-That target currently defaults to a smaller exploratory contract (`5` samples, `3` REST runs) across `60/80/100 ms` chunks, `0.5/0.75/1.0 s` partial windows, and both websocket frame modes so fresh publishable artifacts can be generated without hand-editing commands.
+That aggregate target fans out to the per-model sweep commands for faster-whisper base, faster-whisper small, qwen MPS, qwen Compose CPU, parakeet Compose CPU, and parakeet NeMo Compose CPU. Each sweep uses the same smaller exploratory contract (`5` samples, `3` REST runs) across `80/100/200/250 ms` chunks and `1.0/2.0 s` partial windows so the benchmark matrix stays consistent across all published ASR lanes.
 
 Run the local baseline benchmarks:
 
 ```bash
 make benchmark-faster-whisper-matrix
 make benchmark-qwen-mps
+make benchmark-all-asr-low-latency-sweep
 ```
 
 Run the Compose CPU baselines that currently have checked-in artifacts:
