@@ -117,22 +117,17 @@
   ],
   "low_latency_matrix": {
     "chunk_ms": [
-      40,
-      60,
       80,
       100,
-      160,
+      200,
       250
     ],
     "partial_window_seconds": [
-      0.5,
-      0.75,
       1,
       2
     ],
     "binary_frames": [
-      false,
-      true
+      false
     ]
   }
 }

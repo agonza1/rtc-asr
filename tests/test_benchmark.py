@@ -110,7 +110,13 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
     assert "benchmark-faster-whisper-base: venv" in makefile
     assert "benchmark-faster-whisper-small: venv" in makefile
     assert "benchmark-faster-whisper-base-low-latency-sweep: venv" in makefile
-    assert ".NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-compose-matrix" in makefile
+    assert "benchmark-faster-whisper-small-low-latency-sweep: venv" in makefile
+    assert "benchmark-qwen-mps-low-latency-sweep: venv" in makefile
+    assert "benchmark-compose-qwen-low-latency-sweep: venv" in makefile
+    assert "benchmark-compose-parakeet-low-latency-sweep: venv" in makefile
+    assert "benchmark-compose-parakeet-nemo-low-latency-sweep: venv" in makefile
+    assert "benchmark-all-asr-low-latency-sweep:" in makefile
+    assert ".NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix" in makefile
     assert "benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-whisper-small" in makefile
     for model_var in ("BASE", "SMALL"):
         line = next(
@@ -124,9 +130,9 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
     sweep_block = makefile.split("benchmark-faster-whisper-base-low-latency-sweep: venv\n", 1)[1].split("\n\n", 1)[0]
     assert "LOW_LATENCY_SWEEP_SAMPLE_COUNT ?= 5" in makefile
     assert "LOW_LATENCY_SWEEP_REST_RUNS ?= 3" in makefile
-    assert "LOW_LATENCY_SWEEP_CHUNK_MS ?= 60 80 100" in makefile
-    assert "LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 0.5 0.75 1.0" in makefile
-    assert "LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false true" in makefile
+    assert "LOW_LATENCY_SWEEP_CHUNK_MS ?= 80 100 200 250" in makefile
+    assert "LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 1.0 2.0" in makefile
+    assert "LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false" in makefile
     assert "set -e;" in sweep_block
     assert "--sample-count $(LOW_LATENCY_SWEEP_SAMPLE_COUNT)" in sweep_block
     assert "--rest-runs $(LOW_LATENCY_SWEEP_REST_RUNS)" in sweep_block
@@ -164,7 +170,7 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-qwen-mps benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
