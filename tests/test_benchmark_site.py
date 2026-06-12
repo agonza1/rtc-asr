@@ -312,6 +312,9 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
     assert 'id="generated-at"' in homepage
+    assert 'id="static-summary"' in homepage
+    assert 'BEGIN GENERATED:generated-at' in homepage
+    assert 'BEGIN GENERATED:static-summary' in homepage
     assert 'id="hero-side"' in homepage
     assert 'id="snapshot-grid"' in homepage
     assert 'id="story-grid"' in homepage
@@ -453,3 +456,14 @@ def test_homepage_filters_blocked_tracks_from_visible_results() -> None:
 
     assert 'track.artifact_path && track.status !== "blocked"' in html
     assert "Tracked lanes without publishable artifacts stay out of the front-end comparison flow." in html
+
+
+def test_homepage_initial_html_contains_prerendered_summary() -> None:
+    homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
+
+    assert "Benchmark content rendered into initial HTML" in homepage
+    assert "This prerender keeps the key comparison crawlable before JavaScript enhances the page." in homepage
+    assert "Median first partial" in homepage
+    assert "Official WER" in homepage
+    assert "open JSON" in homepage
+    assert "Loading benchmark manifest..." not in homepage
