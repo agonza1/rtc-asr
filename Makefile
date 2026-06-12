@@ -42,6 +42,17 @@ LOW_LATENCY_SWEEP_CHUNK_MS ?= 80 100 200 250
 LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 1.0 2.0
 LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false
 
+LOW_LATENCY_SWEEP_TARGETS := \
+	benchmark-faster-whisper-base-low-latency-sweep \
+	benchmark-faster-whisper-small-low-latency-sweep \
+	benchmark-compose-qwen-low-latency-sweep \
+	benchmark-compose-parakeet-low-latency-sweep \
+	benchmark-compose-parakeet-nemo-low-latency-sweep
+
+ifeq ($(shell uname -s),Darwin)
+LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
+endif
+
 .PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
@@ -359,7 +370,7 @@ benchmark-compose-parakeet-nemo-low-latency-sweep: venv
 		done; \
 	done; }
 
-benchmark-all-asr-low-latency-sweep: benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep
+benchmark-all-asr-low-latency-sweep: $(LOW_LATENCY_SWEEP_TARGETS)
 	@echo "  ✓ all ASR low-latency sweeps complete"
 
 

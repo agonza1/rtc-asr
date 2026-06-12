@@ -89,7 +89,7 @@ A repeatable all-model sweep is wired into the Makefile:
 make benchmark-all-asr-low-latency-sweep
 ```
 
-That aggregate target fans out to the per-model sweep commands for faster-whisper base, faster-whisper small, qwen MPS, qwen Compose CPU, parakeet Compose CPU, and parakeet NeMo Compose CPU. Each sweep uses the same smaller exploratory contract (`5` samples, `3` REST runs) across `80/100/200/250 ms` chunks and `1.0/2.0 s` partial windows so the benchmark matrix stays consistent across all published ASR lanes.
+That aggregate target always fans out to the faster-whisper base/small local sweeps plus the qwen/parakeet/parakeet-nemo Compose CPU sweeps. On macOS it also includes the qwen MPS sweep; on non-Apple hosts the MPS-only lane is skipped so the portable CPU matrix can still complete. Each sweep uses the same smaller exploratory contract (`5` samples, `3` REST runs) across `80/100/200/250 ms` chunks and `1.0/2.0 s` partial windows so the benchmark matrix stays consistent across all published ASR lanes.
 
 Run the local baseline benchmarks:
 
