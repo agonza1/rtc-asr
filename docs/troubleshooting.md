@@ -16,7 +16,7 @@ pytest tests/test_client.py tests/test_smoke.py -v
 
 ### 1. `GET /ready` returns `503`
 
-This means the backend is not usable yet. With `ASR_PRELOAD_MODEL=true`, that usually means startup preload failed; with preload disabled, `/ready` will also stay `503` until the first successful backend load.
+This means the backend is not usable yet. With `ASR_PRELOAD_MODEL=true`, that usually means startup preload failed; with preload disabled, `/ready` only returns `503` after the first lazy load fails and records a degraded `preload_error`.
 
 Check the payload first:
 
@@ -48,7 +48,7 @@ pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2
 
 ### 2. `GET /health` is healthy but `model_loaded` is `false`
 
-That is expected when preload is disabled and the backend has not been used yet. In that state `/health` reports `status=loading` and `/ready` returns `503` until the backend loads successfully.
+That is expected when preload is disabled and the backend has not been used yet. In that state `/health` reports `status=loading`, `ready=true`, and `/ready` stays `200` so the first request can trigger the lazy load.
 
 Check:
 
