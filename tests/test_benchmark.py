@@ -163,7 +163,7 @@ def test_makefile_mlx_venv_target_repairs_broken_virtualenvs_before_benchmarks()
     assert 'echo "  Rebuilding $(MLX_VENV) because the interpreter is missing or broken..."; \\' in mlx_venv_block
     assert "rm -rf $(MLX_VENV); \\" in mlx_venv_block
     assert "python3 -m venv $(MLX_VENV); \\" in mlx_venv_block
-    assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil; \\" in mlx_venv_block
+    assert "$(MLX_PYTHON) -m pip install --upgrade pip parakeet-mlx psutil; \\" in mlx_venv_block
     assert '@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"' in mlx_venv_block
 
 def test_makefile_exposes_benchmark_site_sync_targets() -> None:
@@ -171,7 +171,7 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
@@ -204,13 +204,13 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "BENCHMARK_REQUEST_RETRIES ?= 3" in makefile
     assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo" in makefile
     assert "PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8" in makefile
-    assert "QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit" in makefile
+    assert "PARAKEET_MLX_MODEL ?= mlx-community/parakeet-tdt-0.6b-v3" in makefile
     assert "MLX_VENV ?= .venv-mlx" in makefile
-    assert "benchmark-qwen-mlx-text: mlx-venv" in makefile
+    assert "benchmark-parakeet-mlx: mlx-venv" in makefile
     assert "benchmark-pipecat-e2e: venv" in makefile
     assert "$(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json" in makefile
-    assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil" in makefile
-    assert "scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL)" in makefile
+    assert "$(MLX_PYTHON) -m pip install --upgrade pip parakeet-mlx psutil" in makefile
+    assert "scripts/benchmark_mlx_asr.py --model $(PARAKEET_MLX_MODEL)" in makefile
     assert makefile.count("ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE=\"$${base_image}\" docker compose up -d --build; \\") == 6
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m")):
         assert target_name in makefile

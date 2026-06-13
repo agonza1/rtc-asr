@@ -149,6 +149,26 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
     assert runtimes == {"cpu / int8", "cpu / float16"}
 
 
+def test_manifest_skips_non_asr_artifacts(tmp_path: Path) -> None:
+    payload = json.loads((RESULTS_DIR / "faster-whisper-base.en-int8-2026-06-10.json").read_text(encoding="utf-8"))
+    (tmp_path / "faster-whisper-base.en-int8-2026-06-10.json").write_text(json.dumps(payload), encoding="utf-8")
+    (tmp_path / "parakeet-mlx-2026-06-13.json").write_text(
+        json.dumps({
+            "kind": "mlx-asr-benchmark",
+            "backend": {"name": "parakeet-mlx", "model": "mlx-community/parakeet-tdt-0.6b-v3"},
+            "benchmark": {"sample_count": 1},
+            "samples": [{"transcript": "hello", "latency_ms": 12.3}],
+            "summary": {"mean_ms": 12.3},
+        }),
+        encoding="utf-8",
+    )
+
+    manifest = build_manifest(tmp_path, TRACKS_PATH)
+
+    assert manifest["summary"]["artifact_file_count"] == 1
+    assert all("parakeet-mlx" not in entry["artifact_path"] for entry in manifest["artifacts"])
+
+
 def test_manifest_exposes_derived_asr_scores() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
