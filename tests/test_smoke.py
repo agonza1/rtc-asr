@@ -11,6 +11,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
 from src.main import _seconds_to_buffer_bytes, create_app
+from src.model_loader import ASRUnavailableError
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
@@ -24,12 +25,14 @@ class FakeTranscriber:
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
         self.preload_calls = 0
+        self.loaded = False
 
     def is_loaded(self) -> bool:
-        return self.preload_calls > 0
+        return self.loaded
 
     def preload(self) -> None:
         self.preload_calls += 1
+        self.loaded = True
 
     def describe(self) -> dict[str, object]:
         return {
@@ -47,6 +50,7 @@ class FakeTranscriber:
         }
 
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
+        self.loaded = True
         self.calls.append(
             {
                 "audio_size": len(audio_data),
@@ -96,41 +100,118 @@ class RecoveringPreloadTranscriber(FakeTranscriber):
         return super().transcribe(audio_data, language=language, sample_rate=sample_rate)
 
 
-def test_health_smoke() -> None:
-    transcriber = FakeTranscriber()
-    with TestClient(create_app(transcriber=transcriber)) as client:
-        response = client.get("/health")
+class BrokenLazyLoadTranscriber(FakeTranscriber):
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
+        raise RuntimeError("invalid device")
 
-    assert response.status_code == 200
-    assert response.json() == {
-        "status": "healthy",
+
+def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
+    transcriber = FakeTranscriber()
+    config = AppConfig(asr_preload_model=False)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        health = client.get("/health")
+        ready = client.get("/ready")
+        models = client.get("/api/models")
+
+    assert health.status_code == 200
+    assert health.json() == {
+        "status": "loading",
         "service": "realtime-asr",
         "backend": "fake-whisper",
         "model": "fixture-adapter",
-        "model_loaded": True,
+        "ready": True,
+        "model_loaded": False,
+        "preload_enabled": False,
+        "preload_error": None,
     }
+    assert ready.status_code == 200
+    assert ready.json() == health.json()
+    assert models.status_code == 200
+    assert models.json()["status"] == "loading"
+    assert models.json()["ready"] is True
+    assert models.json()["preload_enabled"] is False
+    assert models.json()["preload_error"] is None
+    assert transcriber.preload_calls == 0
 
 
 def test_ready_and_model_capabilities_smoke() -> None:
     transcriber = FakeTranscriber()
-    with TestClient(create_app(transcriber=transcriber)) as client:
+    config = AppConfig(asr_preload_model=True)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        health = client.get("/health")
         ready = client.get("/ready")
         models = client.get("/api/models")
 
+    assert health.status_code == 200
+    assert health.json() == {
+        "status": "ready",
+        "service": "realtime-asr",
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+        "ready": True,
+        "model_loaded": True,
+        "preload_enabled": True,
+        "preload_error": None,
+    }
     assert ready.status_code == 200
     assert ready.json() == {
         "status": "ready",
         "service": "realtime-asr",
         "backend": "fake-whisper",
         "model": "fixture-adapter",
+        "ready": True,
         "model_loaded": True,
+        "preload_enabled": True,
         "preload_error": None,
     }
     assert models.status_code == 200
     assert models.json() == {
-        "models": ["fixture-adapter"],
         "backend": "fake-whisper",
+        "model": "fixture-adapter",
         "sample_rate": 16000,
+        "status": "ready",
+        "ready": True,
+        "preload_enabled": True,
+        "preload_error": None,
+        "streaming": {
+            "transport": "websocket",
+            "path": "/ws/stream",
+            "reusable_connection": True,
+            "message_types": ["start", "audio", "stop", "cancel"],
+            "audio_frame_formats": ["json-base64", "binary"],
+            "event_types": ["ready", "partial", "final", "canceled", "error"],
+        },
+        "models": [
+            {
+                "id": "fixture-adapter",
+                "backend": "fake-whisper",
+                "model": "fixture-adapter",
+                "loaded": True,
+                "streaming": {
+                    "transport": "websocket",
+                    "path": "/ws/stream",
+                    "reusable_connection": True,
+                    "message_types": ["start", "audio", "stop", "cancel"],
+                    "audio_frame_formats": ["json-base64", "binary"],
+                    "event_types": ["ready", "partial", "final", "canceled", "error"],
+                },
+                "capabilities": {
+                    "backend": "fake-whisper",
+                    "model": "fixture-adapter",
+                    "loaded": True,
+                    "streaming": {
+                        "transport": "websocket",
+                        "path": "/ws/stream",
+                        "reusable_connection": True,
+                        "message_types": ["start", "audio", "stop", "cancel"],
+                        "audio_frame_formats": ["json-base64", "binary"],
+                        "event_types": ["ready", "partial", "final", "canceled", "error"],
+                    },
+                },
+            }
+        ],
         "capabilities": {
             "backend": "fake-whisper",
             "model": "fixture-adapter",
@@ -149,26 +230,40 @@ def test_ready_and_model_capabilities_smoke() -> None:
 
 
 def test_ready_returns_503_when_preload_is_degraded() -> None:
-    transcriber = FailingPreloadTranscriber(RuntimeError("model download failed"))
-    config = AppConfig(asr_fail_fast=False)
+    transcriber = FailingPreloadTranscriber(ASRUnavailableError("backend unavailable"))
+    config = AppConfig(asr_preload_model=True, asr_fail_fast=False)
 
     with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        health = client.get("/health")
         ready = client.get("/ready")
 
+    assert health.status_code == 200
+    assert health.json() == {
+        "status": "degraded",
+        "service": "realtime-asr",
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+        "ready": False,
+        "model_loaded": False,
+        "preload_enabled": True,
+        "preload_error": "backend unavailable",
+    }
     assert ready.status_code == 503
     assert ready.json() == {
         "status": "degraded",
         "service": "realtime-asr",
         "backend": "fake-whisper",
         "model": "fixture-adapter",
+        "ready": False,
         "model_loaded": False,
-        "preload_error": "model download failed",
+        "preload_enabled": True,
+        "preload_error": "backend unavailable",
     }
 
 
 def test_ready_recovers_after_successful_transcription() -> None:
     transcriber = RecoveringPreloadTranscriber()
-    config = AppConfig(asr_fail_fast=False)
+    config = AppConfig(asr_preload_model=True, asr_fail_fast=False)
     fixture_bytes = FIXTURE_PATH.read_bytes()
 
     with TestClient(create_app(config=config, transcriber=transcriber)) as client:
@@ -185,19 +280,84 @@ def test_ready_recovers_after_successful_transcription() -> None:
 
     assert degraded_ready.status_code == 503
     assert degraded_ready.json()["preload_error"] == "model download failed"
+    assert degraded_ready.json()["status"] == "degraded"
     assert transcribe.status_code == 200
     assert recovered_ready.status_code == 200
+    assert recovered_ready.json()["status"] == "ready"
+    assert recovered_ready.json()["ready"] is True
     assert recovered_ready.json()["preload_error"] is None
     assert recovered_ready.json()["model_loaded"] is True
 
 
 def test_fail_fast_raises_for_non_asr_preload_failures() -> None:
     transcriber = FailingPreloadTranscriber(RuntimeError("invalid device"))
-    config = AppConfig(asr_fail_fast=True)
+    config = AppConfig(asr_preload_model=True, asr_fail_fast=True)
 
     with pytest.raises(RuntimeError, match="invalid device"):
         with TestClient(create_app(config=config, transcriber=transcriber)):
             pass
+
+
+def test_lazy_load_runtime_failure_marks_service_degraded() -> None:
+    fixture_bytes = FIXTURE_PATH.read_bytes()
+    transcriber = BrokenLazyLoadTranscriber()
+    config = AppConfig(asr_preload_model=False)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        response = client.post(
+            "/api/transcribe",
+            json={
+                "audio_data": base64.b64encode(fixture_bytes).decode("ascii"),
+                "language": "en",
+                "sample_rate": 16000,
+            },
+        )
+        health = client.get("/health")
+        ready = client.get("/ready")
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "invalid device"}
+    assert health.status_code == 200
+    assert health.json()["status"] == "degraded"
+    assert health.json()["ready"] is False
+    assert health.json()["preload_error"] == "invalid device"
+    assert ready.status_code == 503
+    assert ready.json()["status"] == "degraded"
+    assert ready.json()["preload_error"] == "invalid device"
+
+
+def test_websocket_lazy_load_runtime_failure_marks_service_degraded() -> None:
+    fixture_bytes = FIXTURE_PATH.read_bytes()
+    transcriber = BrokenLazyLoadTranscriber()
+    config = AppConfig(asr_preload_model=False)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(fixture_bytes).decode("ascii"),
+                }
+            )
+            error_event = websocket.receive_json()
+
+        health = client.get("/health")
+        ready = client.get("/ready")
+
+    assert error_event == {
+        "type": "error",
+        "message": "Unexpected streaming error",
+        "code": 1011,
+    }
+    assert health.status_code == 200
+    assert health.json()["status"] == "degraded"
+    assert health.json()["ready"] is False
+    assert health.json()["preload_error"] == "invalid device"
+    assert ready.status_code == 503
+    assert ready.json()["status"] == "degraded"
+    assert ready.json()["preload_error"] == "invalid device"
 
 
 def test_transcribe_smoke_fixture() -> None:

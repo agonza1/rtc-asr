@@ -14,7 +14,7 @@ ASR_MODEL_SIZE=small.en
 ASR_DEVICE=cpu
 ASR_COMPUTE_TYPE=int8
 ASR_VAD_FILTER=true
-ASR_PRELOAD_MODEL=true
+ASR_PRELOAD_MODEL=false
 ASR_FAIL_FAST=false
 
 # Optional qwen-asr backend settings

@@ -53,11 +53,11 @@ STREAM_MAX_BUFFER_BYTES=1048576
 ASR_BACKEND=faster-whisper
 ASR_MODEL_SIZE=small.en
 ASR_DEVICE=cpu
-ASR_PRELOAD_MODEL=true
+ASR_PRELOAD_MODEL=false
 ASR_FAIL_FAST=false
 ```
 
-Backend-specific variables are available for Qwen, Parakeet, and NeMo Parakeet. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
+Backend-specific variables are available for Qwen, Parakeet, and NeMo Parakeet. Set `ASR_PRELOAD_MODEL=true` when you want startup-time backend validation instead of lazy first-use loading. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
 
 If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service defaults to `cuda`. Legacy aliases `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted for compatibility.
 
