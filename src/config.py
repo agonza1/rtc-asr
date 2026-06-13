@@ -64,7 +64,7 @@ class AppConfig:
     asr_device: str = "cpu"
     asr_compute_type: str = "int8"
     asr_vad_filter: bool = True
-    asr_preload_model: bool = True
+    asr_preload_model: bool = False
     asr_fail_fast: bool = False
     asr_qwen_model: str = "Qwen/Qwen3-ASR-0.6B"
     asr_qwen_dtype: str = "auto"

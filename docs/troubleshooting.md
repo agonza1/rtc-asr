@@ -16,7 +16,7 @@ pytest tests/test_client.py tests/test_smoke.py -v
 
 ### 1. `GET /ready` returns `503`
 
-This means the service booted, but backend preload failed.
+This means the backend is not usable yet. With `ASR_PRELOAD_MODEL=true`, that usually means startup preload failed; with preload disabled, `/ready` will also stay `503` until the first successful backend load.
 
 Check the payload first:
 
@@ -48,7 +48,7 @@ pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2
 
 ### 2. `GET /health` is healthy but `model_loaded` is `false`
 
-That is expected when preload is disabled or the backend has not been used yet.
+That is expected when preload is disabled and the backend has not been used yet. In that state `/health` reports `status=loading` and `/ready` returns `503` until the backend loads successfully.
 
 Check:
 
@@ -57,7 +57,7 @@ curl http://localhost:8080/health
 curl http://localhost:8080/ready
 ```
 
-If you want eager validation at boot, keep `ASR_PRELOAD_MODEL=true`. If you want startup to fail immediately on preload errors, also set `ASR_FAIL_FAST=true`.
+If you want eager validation at boot, set `ASR_PRELOAD_MODEL=true`. If you want startup to fail immediately on preload errors, also set `ASR_FAIL_FAST=true`.
 
 ### 3. Websocket stream closes with an `error` event
 

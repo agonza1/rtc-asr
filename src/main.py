@@ -50,6 +50,28 @@ class AppServices:
     preload_error: str | None = None
 
 
+def _backend_status(services: AppServices) -> str:
+    if services.preload_error is not None:
+        return "degraded"
+    if services.transcriber.is_loaded():
+        return "ready"
+    return "loading"
+
+
+def _health_payload(services: AppServices) -> dict[str, object]:
+    status = _backend_status(services)
+    return {
+        "status": status,
+        "service": "realtime-asr",
+        "backend": services.transcriber.backend_name,
+        "model": services.transcriber.model_name,
+        "ready": status == "ready",
+        "model_loaded": services.transcriber.is_loaded(),
+        "preload_enabled": services.config.asr_preload_model,
+        "preload_error": services.preload_error,
+    }
+
+
 class StreamClientError(ValueError):
     def __init__(self, message: str, *, code: int = 1003) -> None:
         super().__init__(message)
@@ -139,37 +161,39 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
 
     @app.get("/health")
     async def health_check() -> dict[str, object]:
-        current = app.state.services
-        return {
-            "status": "healthy",
-            "service": "realtime-asr",
-            "backend": current.transcriber.backend_name,
-            "model": current.transcriber.model_name,
-            "model_loaded": current.transcriber.is_loaded(),
-        }
+        return _health_payload(app.state.services)
 
     @app.get("/ready")
     async def readiness_check() -> JSONResponse:
         current = app.state.services
-        is_ready = current.preload_error is None
-        payload = {
-            "status": "ready" if is_ready else "degraded",
-            "service": "realtime-asr",
-            "backend": current.transcriber.backend_name,
-            "model": current.transcriber.model_name,
-            "model_loaded": current.transcriber.is_loaded(),
-            "preload_error": current.preload_error,
-        }
-        return JSONResponse(status_code=200 if is_ready else 503, content=payload)
+        payload = _health_payload(current)
+        return JSONResponse(status_code=200 if payload["ready"] else 503, content=payload)
 
     @app.get("/api/models")
     async def list_models() -> dict[str, object]:
         current = app.state.services
         description = current.transcriber.describe()
+        status = _backend_status(current)
+        streaming = description.get("streaming")
         return {
-            "models": [current.transcriber.model_name],
             "backend": current.transcriber.backend_name,
+            "model": current.transcriber.model_name,
             "sample_rate": current.config.sample_rate,
+            "status": status,
+            "ready": status == "ready",
+            "preload_enabled": current.config.asr_preload_model,
+            "preload_error": current.preload_error,
+            "streaming": streaming,
+            "models": [
+                {
+                    "id": current.transcriber.model_name,
+                    "backend": current.transcriber.backend_name,
+                    "model": current.transcriber.model_name,
+                    "loaded": current.transcriber.is_loaded(),
+                    "streaming": streaming,
+                    "capabilities": description,
+                }
+            ],
             "capabilities": description,
         }
 
@@ -301,6 +325,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         except WebSocketDisconnect:
             return
         except ASRUnavailableError as exc:
+            services.preload_error = str(exc)
             await _close_websocket_error(websocket, str(exc), code=1011)
         except StreamClientError as exc:
             await _close_websocket_error(websocket, str(exc), code=exc.code)
@@ -479,6 +504,7 @@ def _transcribe_bytes(
             sample_rate=sample_rate,
         )
     except ASRUnavailableError as exc:
+        services.preload_error = str(exc)
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

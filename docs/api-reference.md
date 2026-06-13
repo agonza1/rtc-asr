@@ -18,11 +18,14 @@ Example response:
 
 ```json
 {
-  "status": "healthy",
+  "status": "loading",
   "service": "realtime-asr",
   "backend": "faster-whisper",
   "model": "small.en",
-  "model_loaded": false
+  "ready": false,
+  "model_loaded": false,
+  "preload_enabled": false,
+  "preload_error": null
 }
 ```
 
@@ -40,7 +43,9 @@ Example response:
   "service": "realtime-asr",
   "backend": "faster-whisper",
   "model": "small.en",
+  "ready": true,
   "model_loaded": true,
+  "preload_enabled": true,
   "preload_error": null
 }
 ```
@@ -55,9 +60,50 @@ Example response:
 
 ```json
 {
-  "models": ["small.en"],
   "backend": "faster-whisper",
+  "model": "small.en",
   "sample_rate": 16000,
+  "status": "ready",
+  "ready": true,
+  "preload_enabled": true,
+  "preload_error": null,
+  "streaming": {
+    "transport": "websocket",
+    "path": "/ws/stream",
+    "reusable_connection": true,
+    "message_types": ["start", "audio", "stop", "cancel"],
+    "audio_frame_formats": ["json-base64", "binary"],
+    "event_types": ["ready", "partial", "final", "canceled", "error"]
+  },
+  "models": [
+    {
+      "id": "small.en",
+      "backend": "faster-whisper",
+      "model": "small.en",
+      "loaded": true,
+      "streaming": {
+        "transport": "websocket",
+        "path": "/ws/stream",
+        "reusable_connection": true,
+        "message_types": ["start", "audio", "stop", "cancel"],
+        "audio_frame_formats": ["json-base64", "binary"],
+        "event_types": ["ready", "partial", "final", "canceled", "error"]
+      },
+      "capabilities": {
+        "backend": "faster-whisper",
+        "model": "small.en",
+        "loaded": true,
+        "streaming": {
+          "transport": "websocket",
+          "path": "/ws/stream",
+          "reusable_connection": true,
+          "message_types": ["start", "audio", "stop", "cancel"],
+          "audio_frame_formats": ["json-base64", "binary"],
+          "event_types": ["ready", "partial", "final", "canceled", "error"]
+        }
+      }
+    }
+  ],
   "capabilities": {
     "backend": "faster-whisper",
     "model": "small.en",
