@@ -289,7 +289,7 @@ class ManagedServer:
         if self.backend == "qwen-asr":
             env.setdefault("ASR_QWEN_MODEL", self.model)
             env.setdefault("ASR_QWEN_DTYPE", self.qwen_dtype)
-        elif self.backend in {"parakeet", "parakeet-nemo"}:
+        elif self.backend in {"parakeet", "parakeet-nemo", "parakeet-mlx"}:
             env.setdefault("ASR_PARAKEET_MODEL", self.model)
             env.setdefault("ASR_PARAKEET_DTYPE", self.parakeet_dtype)
         else:

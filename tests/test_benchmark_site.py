@@ -31,13 +31,14 @@ def load_tracks() -> dict[str, object]:
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
-    assert manifest["summary"]["asr_count"] == 8
-    assert manifest["summary"]["tracked_count"] == 8
-    assert manifest["summary"]["validated_count"] == 5
+    assert manifest["summary"]["asr_count"] == 9
+    assert manifest["summary"]["tracked_count"] == 9
+    assert manifest["summary"]["validated_count"] == 6
     assert manifest["summary"]["legacy_count"] == 2
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
+    assert tracks["parakeet-mlx-service-110m"]["artifact_path"].endswith("parakeet-mlx-110m-service-2026-06-13.json")
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
@@ -321,6 +322,23 @@ def test_docs_parakeet_mlx_110m_row_matches_checked_in_artifact_summary() -> Non
     assert f"its `{mean_ms} ms` mean latency" in docs_text
 
 
+def test_docs_parakeet_mlx_service_110m_row_matches_checked_in_artifact_summary() -> None:
+    docs_text = DOCS_PATH.read_text(encoding="utf-8")
+    artifact = json.loads((RESULTS_DIR / "parakeet-mlx-110m-service-2026-06-13.json").read_text(encoding="utf-8"))
+
+    mean_ms = artifact["rest"]["mean_ms"]
+    p95_ms = artifact["rest"]["p95_ms"]
+    row = next(
+        line
+        for line in docs_text.splitlines()
+        if line.startswith("| `parakeet-mlx-service-110m` | 10 |")
+        and "docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json" in line
+    )
+
+    assert f"| `parakeet-mlx-service-110m` | 10 | {mean_ms} ms / {p95_ms} ms |" in row
+    assert f"its `{mean_ms} ms` REST mean" in docs_text
+
+
 def test_docs_and_tracks_registry_stay_aligned() -> None:
     docs_text = DOCS_PATH.read_text(encoding="utf-8")
     tracks = load_tracks()["tracks"]
@@ -352,6 +370,7 @@ def test_docs_index_surfaces_official_wer_references() -> None:
     assert "upstream Hugging Face benchmark or model-card values" in docs_index_text
     assert "parakeet-mlx" in docs_index_text
     assert "parakeet-mlx-110m" in docs_index_text
+    assert "parakeet-mlx-service-110m" in docs_index_text
     assert "openai/whisper-base.en" in docs_index_text
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 

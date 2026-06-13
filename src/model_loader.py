@@ -347,6 +347,79 @@ class ParakeetNemoAdapter:
         return self._model
 
 
+@dataclass(slots=True)
+class ParakeetMLXAdapter:
+    """MLX-backed Parakeet adapter for local Apple Silicon service benchmarks."""
+
+    config: AppConfig
+    audio_processor: AudioProcessor
+    backend_name: str = field(init=False, default="parakeet-mlx")
+    model_name: str = field(init=False)
+    _model: Any | None = field(init=False, default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        self.model_name = self.config.asr_parakeet_model
+
+    def is_loaded(self) -> bool:
+        return self._model is not None
+
+    def preload(self) -> None:
+        self._load_model()
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
+        decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
+        model = self._load_model()
+        try:
+            import soundfile as sf
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The parakeet-mlx backend requires soundfile. Install the MLX benchmark runtime to enable ASR_BACKEND=parakeet-mlx."
+            ) from exc
+
+        with tempfile.NamedTemporaryFile(prefix="rtc_asr_parakeet_mlx_", suffix=".wav") as audio_file:
+            sf.write(audio_file.name, decoded_audio.samples, decoded_audio.sample_rate)
+            result = model.transcribe(
+                audio_file.name,
+                dtype=_resolve_mlx_dtype(self.config.asr_parakeet_dtype),
+            )
+        text = _extract_mlx_text(result)
+
+        return {
+            "text": text,
+            "language": language,
+            "duration_ms": decoded_audio.duration_ms,
+            "backend": self.backend_name,
+            "model": self.model_name,
+        }
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "device": self.config.asr_device,
+            "dtype": self.config.asr_parakeet_dtype,
+            "implementation": "parakeet_mlx.from_pretrained",
+            "loaded": self.is_loaded(),
+            **_shared_capabilities(self.audio_processor),
+        }
+
+    def _load_model(self) -> Any:
+        if self._model is not None:
+            return self._model
+
+        try:
+            from parakeet_mlx import from_pretrained
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The parakeet-mlx backend requires parakeet-mlx. Install the MLX benchmark runtime to enable ASR_BACKEND=parakeet-mlx."
+            ) from exc
+
+        self._model = from_pretrained(
+            self.model_name,
+            dtype=_resolve_mlx_dtype(self.config.asr_parakeet_dtype),
+        )
+        return self._model
+
 
 BACKEND_ALIASES = {
     "faster-whisper": "faster-whisper",
@@ -358,6 +431,7 @@ BACKEND_ALIASES = {
     "parakeet-asr": "parakeet",
     "parakeet-nemo": "parakeet-nemo",
     "parakeet-ctc": "parakeet-nemo",
+    "parakeet-mlx": "parakeet-mlx",
 }
 
 
@@ -418,13 +492,22 @@ def _resolve_torch_dtype(torch: Any, configured_dtype: str, device: str) -> Any:
         raise ASRUnavailableError(f"Unsupported dtype: {configured_dtype}") from exc
 
 
-def _extract_pipeline_text(result: Any) -> str:
-    if isinstance(result, dict):
-        text = result.get("text", "")
-        return str(text).strip()
-    if isinstance(result, list) and result:
-        return _extract_pipeline_text(result[0])
-    return str(result).strip()
+def _resolve_mlx_dtype(configured_dtype: str) -> Any:
+    try:
+        import mlx.core as mx
+    except ImportError as exc:
+        raise ASRUnavailableError(
+            "The parakeet-mlx backend requires mlx. Install the MLX benchmark runtime to enable ASR_BACKEND=parakeet-mlx."
+        ) from exc
+
+    dtype_name = configured_dtype.strip().lower()
+    if dtype_name == "auto":
+        dtype_name = "bfloat16"
+
+    try:
+        return getattr(mx, dtype_name)
+    except AttributeError as exc:
+        raise ASRUnavailableError(f"Unsupported MLX dtype: {configured_dtype}") from exc
 
 
 def _extract_nemo_text(result: Any) -> str:
@@ -432,6 +515,13 @@ def _extract_nemo_text(result: Any) -> str:
         return _extract_nemo_text(result[0])
     if isinstance(result, list) and result:
         return _extract_nemo_text(result[0])
+    text = getattr(result, "text", None)
+    if text is not None:
+        return str(text).strip()
+    return str(result).strip()
+
+
+def _extract_mlx_text(result: Any) -> str:
     text = getattr(result, "text", None)
     if text is not None:
         return str(text).strip()
@@ -475,4 +565,6 @@ def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Tra
         return ParakeetAdapter(config=config, audio_processor=audio_processor)
     if backend == "parakeet-nemo":
         return ParakeetNemoAdapter(config=config, audio_processor=audio_processor)
+    if backend == "parakeet-mlx":
+        return ParakeetMLXAdapter(config=config, audio_processor=audio_processor)
     raise ASRUnavailableError(f"Unsupported ASR backend: {config.asr_backend}")

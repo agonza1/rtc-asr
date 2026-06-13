@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-13T04:09:41Z",
+  "generated_at": "2026-06-13T22:17:55Z",
   "summary": {
-    "asr_count": 8,
-    "tracked_count": 8,
-    "artifact_file_count": 9,
-    "validated_count": 5,
+    "asr_count": 9,
+    "tracked_count": 9,
+    "artifact_file_count": 10,
+    "validated_count": 6,
     "legacy_count": 2,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-13T03:44:05Z",
+    "latest_measured_at": "2026-06-13T22:16:14Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -17,11 +17,11 @@
       "binary_frames": false,
       "partial_event_timeout_seconds": 0.1
     },
-    "backend_count": 4,
-    "lane_count": 4,
+    "backend_count": 5,
+    "lane_count": 5,
     "ranges": {
       "rest_mean_ms": {
-        "min": 331.4,
+        "min": 146.9,
         "max": 5482.2
       },
       "partial_mean_ms": {
@@ -29,11 +29,11 @@
         "max": 3696.1
       },
       "first_partial_end_to_end_mean_ms": {
-        "min": 564.8,
+        "min": 557.8,
         "max": 1695.4
       },
       "partial_gap_mean_ms": {
-        "min": 367.9,
+        "min": 243.7,
         "max": 367.9
       },
       "final_mean_ms": {
@@ -41,48 +41,62 @@
         "max": 46867
       },
       "rtf_mean": {
-        "min": 0.046,
+        "min": 0.02,
         "max": 0.753
       },
       "overall_score": {
         "min": 40.1,
-        "max": 95.8
+        "max": 98.4
       }
     },
     "highlights": {
       "fastest_rest": {
         "label": "Fastest REST mean",
-        "slug": "parakeet-nemo-compose",
-        "backend": "parakeet-nemo",
-        "model": "nvidia/parakeet-tdt_ctc-110m",
-        "value": 331.4,
-        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+        "slug": "parakeet-mlx-service-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "value": 146.9,
+        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
       },
       "fastest_partial": {
         "label": "Fastest streaming partial mean",
-        "slug": "parakeet-nemo-compose",
-        "backend": "parakeet-nemo",
-        "model": "nvidia/parakeet-tdt_ctc-110m",
-        "value": 148.5,
-        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+        "slug": "parakeet-mlx-service-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "value": 70.5,
+        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
       },
-      "fastest_first_partial": null,
-      "tightest_partial_cadence": null,
+      "fastest_first_partial": {
+        "label": "Fastest first visible partial",
+        "slug": "parakeet-mlx-service-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "value": 557.8,
+        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
+      },
+      "tightest_partial_cadence": {
+        "label": "Tightest partial cadence",
+        "slug": "parakeet-mlx-service-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "value": 243.7,
+        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
+      },
       "fastest_final": {
         "label": "Fastest streaming finalization delay",
-        "slug": "parakeet-nemo-compose",
-        "backend": "parakeet-nemo",
-        "model": "nvidia/parakeet-tdt_ctc-110m",
-        "value": 379,
-        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+        "slug": "parakeet-mlx-service-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "value": 205.2,
+        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
       },
       "best_overall": {
         "label": "Best overall benchmark balance",
-        "slug": "parakeet-nemo-compose",
-        "backend": "parakeet-nemo",
-        "model": "nvidia/parakeet-tdt_ctc-110m",
-        "value": 95.8,
-        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+        "slug": "parakeet-mlx-service-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "value": 98.4,
+        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
       },
       "best_live_caption": {
         "label": "Best live caption score",
@@ -95,6 +109,63 @@
     }
   },
   "tracks": [
+    {
+      "kind": "asr",
+      "slug": "parakeet-mlx-service-110m",
+      "label": "Parakeet 110M MLX Service",
+      "backend": "parakeet-mlx",
+      "model": "mlx-community/parakeet-tdt_ctc-110m",
+      "lane": "Local Python Apple Silicon MLX Service",
+      "runtime": "apple-silicon / auto",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-parakeet-mlx-service-110m",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
+      "measured_at": "2026-06-13T22:16:14Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 22050,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 146.9,
+        "p95_ms": 198.2,
+        "rtf_mean": 0.02
+      },
+      "streaming": {
+        "partial_mean_ms": 70.5,
+        "partial_p95_ms": 88.8,
+        "first_partial_end_to_end_mean_ms": 557.8,
+        "first_partial_end_to_end_p95_ms": 589.5,
+        "partial_gap_mean_ms": 243.7,
+        "partial_gap_p95_ms": 260.9,
+        "final_mean_ms": 205.2,
+        "final_p95_ms": 262.5
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 100.0,
+        "live_caption_score": 97.8,
+        "finalization_score": 100.0,
+        "stability_score": 93.0,
+        "efficiency_score": 100.0,
+        "overall_score": 98.4,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.349,
+        "partial_jitter_ratio": 1.26,
+        "final_jitter_ratio": 1.279
+      }
+    },
     {
       "kind": "asr",
       "slug": "parakeet-nemo-compose",
@@ -549,6 +620,193 @@
   "artifacts": [
     {
       "kind": "asr",
+      "backend": "parakeet-mlx",
+      "model": {
+        "id": "mlx-community/parakeet-tdt_ctc-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "loaded": true,
+        "streaming": {
+          "transport": "websocket",
+          "path": "/ws/stream",
+          "reusable_connection": true,
+          "message_types": [
+            "start",
+            "audio",
+            "stop",
+            "cancel"
+          ],
+          "audio_frame_formats": [
+            "json-base64",
+            "binary"
+          ],
+          "event_types": [
+            "ready",
+            "partial",
+            "final",
+            "canceled",
+            "error"
+          ]
+        },
+        "audio": {
+          "target_sample_rate": 16000,
+          "channels": 1,
+          "accepted_formats": [
+            "wav",
+            "pcm16",
+            "other formats supported by soundfile when installed"
+          ]
+        },
+        "capabilities": {
+          "backend": "parakeet-mlx",
+          "model": "mlx-community/parakeet-tdt_ctc-110m",
+          "device": "apple-silicon",
+          "dtype": "auto",
+          "implementation": "parakeet_mlx.from_pretrained",
+          "loaded": true,
+          "streaming": {
+            "transport": "websocket",
+            "path": "/ws/stream",
+            "reusable_connection": true,
+            "message_types": [
+              "start",
+              "audio",
+              "stop",
+              "cancel"
+            ],
+            "audio_frame_formats": [
+              "json-base64",
+              "binary"
+            ],
+            "event_types": [
+              "ready",
+              "partial",
+              "final",
+              "canceled",
+              "error"
+            ]
+          },
+          "audio": {
+            "target_sample_rate": 16000,
+            "channels": 1,
+            "accepted_formats": [
+              "wav",
+              "pcm16",
+              "other formats supported by soundfile when installed"
+            ]
+          }
+        }
+      },
+      "runtime": "apple-silicon / int8",
+      "measured_at": "2026-06-13T22:16:14Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 22050,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 146.9,
+        "p95_ms": 198.2,
+        "rtf_mean": 0.02
+      },
+      "streaming": {
+        "partial_mean_ms": 70.5,
+        "partial_p95_ms": 88.8,
+        "first_partial_end_to_end_mean_ms": 557.8,
+        "first_partial_end_to_end_p95_ms": 589.5,
+        "partial_gap_mean_ms": 243.7,
+        "partial_gap_p95_ms": 260.9,
+        "final_mean_ms": 205.2,
+        "final_p95_ms": 262.5
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.19,
+        "character_error_rate_mean": 0.0
+      },
+      "label": {
+        "id": "mlx-community/parakeet-tdt_ctc-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "loaded": true,
+        "streaming": {
+          "transport": "websocket",
+          "path": "/ws/stream",
+          "reusable_connection": true,
+          "message_types": [
+            "start",
+            "audio",
+            "stop",
+            "cancel"
+          ],
+          "audio_frame_formats": [
+            "json-base64",
+            "binary"
+          ],
+          "event_types": [
+            "ready",
+            "partial",
+            "final",
+            "canceled",
+            "error"
+          ]
+        },
+        "audio": {
+          "target_sample_rate": 16000,
+          "channels": 1,
+          "accepted_formats": [
+            "wav",
+            "pcm16",
+            "other formats supported by soundfile when installed"
+          ]
+        },
+        "capabilities": {
+          "backend": "parakeet-mlx",
+          "model": "mlx-community/parakeet-tdt_ctc-110m",
+          "device": "apple-silicon",
+          "dtype": "auto",
+          "implementation": "parakeet_mlx.from_pretrained",
+          "loaded": true,
+          "streaming": {
+            "transport": "websocket",
+            "path": "/ws/stream",
+            "reusable_connection": true,
+            "message_types": [
+              "start",
+              "audio",
+              "stop",
+              "cancel"
+            ],
+            "audio_frame_formats": [
+              "json-base64",
+              "binary"
+            ],
+            "event_types": [
+              "ready",
+              "partial",
+              "final",
+              "canceled",
+              "error"
+            ]
+          },
+          "audio": {
+            "target_sample_rate": 16000,
+            "channels": 1,
+            "accepted_formats": [
+              "wav",
+              "pcm16",
+              "other formats supported by soundfile when installed"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "kind": "asr",
       "backend": "faster-whisper",
       "model": "base.en",
       "runtime": "cpu / int8",
@@ -875,6 +1133,63 @@
     }
   ],
   "asr_benchmarks": [
+    {
+      "kind": "asr",
+      "slug": "parakeet-mlx-service-110m",
+      "label": "Parakeet 110M MLX Service",
+      "backend": "parakeet-mlx",
+      "model": "mlx-community/parakeet-tdt_ctc-110m",
+      "lane": "Local Python Apple Silicon MLX Service",
+      "runtime": "apple-silicon / auto",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-parakeet-mlx-service-110m",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
+      "measured_at": "2026-06-13T22:16:14Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 22050,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 146.9,
+        "p95_ms": 198.2,
+        "rtf_mean": 0.02
+      },
+      "streaming": {
+        "partial_mean_ms": 70.5,
+        "partial_p95_ms": 88.8,
+        "first_partial_end_to_end_mean_ms": 557.8,
+        "first_partial_end_to_end_p95_ms": 589.5,
+        "partial_gap_mean_ms": 243.7,
+        "partial_gap_p95_ms": 260.9,
+        "final_mean_ms": 205.2,
+        "final_p95_ms": 262.5
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 100.0,
+        "live_caption_score": 97.8,
+        "finalization_score": 100.0,
+        "stability_score": 93.0,
+        "efficiency_score": 100.0,
+        "overall_score": 98.4,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.349,
+        "partial_jitter_ratio": 1.26,
+        "final_jitter_ratio": 1.279
+      }
+    },
     {
       "kind": "asr",
       "slug": "parakeet-nemo-compose",

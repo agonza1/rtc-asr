@@ -28,7 +28,7 @@ The docs screen now carries the same official WER references shown in the benchm
 | `faster-whisper-base` and `faster-whisper-base-c80-w075-json-preview` | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` |
 | `faster-whisper-small` | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` |
 | `parakeet-mlx` and `parakeet-compose` | `1.93 / 3.59` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt-0.6b-v3` |
-| `parakeet-mlx-110m` and `parakeet-nemo-compose` | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` |
+| `parakeet-mlx-110m`, `parakeet-mlx-service-110m`, and `parakeet-nemo-compose` | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` |
 | `qwen-mps` and `qwen-compose` | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` |
 
 Use [Benchmarks](./benchmarks.md) for the full artifact-backed comparison matrix, source links, and the methodology note that keeps these upstream WER references separate from local latency measurements. Distinct runtime setups stay split into separate rows there even when they share the same upstream model benchmark reference.

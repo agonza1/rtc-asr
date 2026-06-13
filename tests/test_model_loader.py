@@ -9,7 +9,7 @@ import pytest
 
 from src.audio_processor import AudioProcessor
 from src.config import AppConfig
-from src.model_loader import ASRUnavailableError, ParakeetAdapter, ParakeetNemoAdapter, QwenASRAdapter, build_transcriber
+from src.model_loader import ASRUnavailableError, ParakeetAdapter, ParakeetMLXAdapter, ParakeetNemoAdapter, QwenASRAdapter, build_transcriber
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 
@@ -45,6 +45,17 @@ def test_build_transcriber_accepts_parakeet_nemo_aliases(backend: str) -> None:
 
     assert isinstance(transcriber, ParakeetNemoAdapter)
     assert transcriber.model_name == "nvidia/parakeet-tdt_ctc-110m"
+
+
+@pytest.mark.parametrize("backend", ["parakeet-mlx"])
+def test_build_transcriber_accepts_parakeet_mlx_aliases(backend: str) -> None:
+    transcriber = build_transcriber(
+        AppConfig(asr_backend=backend, asr_parakeet_model="mlx-community/parakeet-tdt_ctc-110m"),
+        AudioProcessor(),
+    )
+
+    assert isinstance(transcriber, ParakeetMLXAdapter)
+    assert transcriber.model_name == "mlx-community/parakeet-tdt_ctc-110m"
 
 
 def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -218,6 +229,51 @@ def test_parakeet_nemo_adapter_transcribe_uses_nemo_model(monkeypatch: pytest.Mo
     assert str(calls["paths"][0]).endswith(".wav")
 
 
+def test_parakeet_mlx_adapter_transcribe_uses_mlx_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    class FakeAlignedResult:
+        text = " Yesterday it worked. "
+
+    class FakeModel:
+        def transcribe(self, path: str, *, dtype: object) -> FakeAlignedResult:
+            calls["path"] = path
+            calls["dtype"] = dtype
+            return FakeAlignedResult()
+
+    fake_parakeet_mlx = ModuleType("parakeet_mlx")
+    fake_parakeet_mlx.from_pretrained = lambda model_name, *, dtype: calls.update({"model_name": model_name, "load_dtype": dtype}) or FakeModel()
+    fake_mx = ModuleType("mlx.core")
+    fake_mx.bfloat16 = object()
+    monkeypatch.setitem(sys.modules, "parakeet_mlx", fake_parakeet_mlx)
+    monkeypatch.setitem(sys.modules, "mlx", ModuleType("mlx"))
+    monkeypatch.setitem(sys.modules, "mlx.core", fake_mx)
+
+    adapter = ParakeetMLXAdapter(
+        config=AppConfig(
+            asr_backend="parakeet-mlx",
+            asr_device="apple-silicon",
+            asr_parakeet_model="mlx-community/parakeet-tdt_ctc-110m",
+            asr_parakeet_dtype="auto",
+        ),
+        audio_processor=AudioProcessor(),
+    )
+
+    result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
+
+    assert result == {
+        "text": "Yesterday it worked.",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+    }
+    assert calls["model_name"] == "mlx-community/parakeet-tdt_ctc-110m"
+    assert calls["load_dtype"] is fake_mx.bfloat16
+    assert calls["dtype"] is fake_mx.bfloat16
+    assert str(calls["path"]).endswith(".wav")
+
+
 def test_qwen_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     real_import = builtins.__import__
 
@@ -301,6 +357,25 @@ def test_parakeet_adapter_raises_actionable_error_for_qwen_pinned_runtime(monkey
     )
 
     with pytest.raises(ASRUnavailableError, match=r"huggingface-hub==1\.18\.0 transformers==5\.10\.2"):
+        adapter.preload()
+
+
+def test_parakeet_mlx_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    real_import = builtins.__import__
+
+    def fake_import(name: str, globals: object = None, locals: object = None, fromlist: tuple[str, ...] = (), level: int = 0):
+        if name == "parakeet_mlx":
+            raise ImportError(name)
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    adapter = ParakeetMLXAdapter(
+        config=AppConfig(asr_backend="parakeet-mlx"),
+        audio_processor=AudioProcessor(),
+    )
+
+    with pytest.raises(ASRUnavailableError, match="parakeet-mlx backend requires parakeet-mlx"):
         adapter.preload()
 
 
