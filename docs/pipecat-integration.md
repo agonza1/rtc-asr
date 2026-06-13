@@ -99,6 +99,16 @@ class MyPipecatProcessor:
 - If you send WAV or another encoded format instead of raw PCM16, each websocket `audio_data` payload still needs to be a complete decodable chunk.
 - Start with `50` to `200` ms chunks for a good latency/overhead balance.
 
+## Local Benchmark
+
+Run the Pipecat-style end-to-end benchmark harness against a local backend with a real speech clip:
+
+```bash
+make benchmark-pipecat-e2e BENCHMARK_PIPECAT_AUDIO_FILE=/absolute/path/to/speech.wav
+```
+
+That command captures a checked-in JSON artifact contract with Pipecat source-frame cadence, bridge chunk size, framing mode, first visible partial timing, partial cadence/jitter, final closeout after audio end, and missing partial counts. The current repo keeps these artifacts as a separate integration track instead of mixing them into the homepage leaderboard until there are comparable E2E artifacts across multiple backends.
+
 ## Local Verification
 
 Start the service:

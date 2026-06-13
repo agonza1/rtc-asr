@@ -31,6 +31,11 @@ BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 1
 PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8
 BENCHMARK_PARTIAL_WINDOW ?= 2.0
 BENCHMARK_BINARY_FRAMES ?=
+BENCHMARK_PIPECAT_AUDIO_FILE ?= tests/fixtures/smoke.wav
+BENCHMARK_PIPECAT_BACKEND ?= faster-whisper
+BENCHMARK_PIPECAT_MODEL ?= base.en
+BENCHMARK_PIPECAT_COMPUTE_TYPE ?= int8
+BENCHMARK_PIPECAT_SOURCE_FRAME_MS ?= 20
 BENCHMARK_REQUEST_RETRIES ?= 3
 BENCHMARK_REQUEST_RETRY_DELAY ?= 2.0
 FASTER_WHISPER_BASE_MODEL ?= base.en
@@ -53,7 +58,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -74,6 +79,7 @@ help:
 	@echo "  make benchmark-faster-whisper-small-low-latency-sweep - Run faster-whisper small.en low-latency sweep"
 	@echo "  make benchmark-qwen-mps - Run qwen-asr locally on Apple Silicon MPS"
 	@echo "  make benchmark-qwen-mps-low-latency-sweep - Run qwen-asr low-latency sweep on Apple Silicon MPS"
+	@echo "  make benchmark-pipecat-e2e - Run a Pipecat-style end-to-end streaming benchmark against a local backend"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
 	@echo "  make benchmark-compose-qwen-low-latency-sweep - Start compose and sweep qwen-asr low-latency settings"
@@ -373,6 +379,11 @@ benchmark-compose-parakeet-nemo-low-latency-sweep: venv
 benchmark-all-asr-low-latency-sweep: $(LOW_LATENCY_SWEEP_TARGETS)
 	@echo "  ✓ all ASR low-latency sweeps complete"
 
+
+benchmark-pipecat-e2e: venv
+	@echo "Running Pipecat-style end-to-end benchmark..."
+	@test -n "$(BENCHMARK_PIPECAT_AUDIO_FILE)" || (echo "Set BENCHMARK_PIPECAT_AUDIO_FILE to a speech clip path." >&2; exit 1)
+	@$(PYTHON) tests/benchmark.py --spawn-server --mode pipecat-e2e --backend $(BENCHMARK_PIPECAT_BACKEND) --model $(BENCHMARK_PIPECAT_MODEL) --compute-type $(BENCHMARK_PIPECAT_COMPUTE_TYPE) --audio-file $(BENCHMARK_PIPECAT_AUDIO_FILE) --sample-count 1 --rest-runs 1 --chunk-ms 100 --pipecat-source-frame-ms $(BENCHMARK_PIPECAT_SOURCE_FRAME_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-qwen-mlx-text: mlx-venv
 	@echo "Benchmarking $(QWEN_MLX_TEXT_MODEL) with mlx-lm on Apple Silicon..."

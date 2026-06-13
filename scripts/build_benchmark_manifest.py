@@ -158,12 +158,20 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     benchmark = payload.get("benchmark") or {}
     streaming = payload.get("streaming") or {}
     ready = streaming.get("ready") or {}
+    audio = payload.get("audio") or {}
     contract = {
         "chunk_ms": benchmark.get("chunk_ms", streaming.get("chunk_ms")),
         "partial_interval_chunks": benchmark.get("partial_interval_chunks", ready.get("partial_interval_chunks")),
         "partial_window_seconds": benchmark.get("partial_window_seconds", ready.get("partial_window_seconds")),
         "binary_frames": benchmark.get("binary_frames", streaming.get("binary_frames")),
+        "sample_rate": audio.get("sample_rate", ready.get("sample_rate")),
     }
+    max_buffer_seconds = benchmark.get("max_buffer_seconds", streaming.get("max_buffer_seconds"))
+    if max_buffer_seconds is not None:
+        contract["max_buffer_seconds"] = max_buffer_seconds
+    source_frame_ms = benchmark.get("source_frame_ms", streaming.get("source_frame_ms"))
+    if source_frame_ms is not None:
+        contract["source_frame_ms"] = source_frame_ms
     partial_event_timeout_seconds = benchmark.get(
         "partial_event_timeout_seconds",
         streaming.get("partial_event_timeout_seconds"),

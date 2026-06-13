@@ -170,7 +170,7 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
@@ -206,6 +206,7 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit" in makefile
     assert "MLX_VENV ?= .venv-mlx" in makefile
     assert "benchmark-qwen-mlx-text: mlx-venv" in makefile
+    assert "benchmark-pipecat-e2e: venv" in makefile
     assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil" in makefile
     assert "scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL)" in makefile
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m")):
@@ -704,6 +705,73 @@ def test_run_ws_benchmark_records_late_partial_before_final(monkeypatch: pytest.
         assert result["partial_end_to_end_ms"] == [300.0]
         assert result["last_partial"] == "chunk"
         assert result["final_transcript"] == "done"
+
+    asyncio.run(scenario())
+
+
+def test_run_pipecat_e2e_benchmark_aggregates_source_frames_and_reports_end_to_end_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    sent_chunks: list[bytes] = []
+
+    class FakeEvent:
+        def __init__(self, event_type: str, text: str) -> None:
+            self.type = event_type
+            self.text = text
+
+    class FakePipecatClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.ws_url = ws_url
+            self.connect_fn = connect_fn
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            assert kwargs["sample_rate"] == 10
+            assert kwargs["partial_interval_chunks"] == 1
+            assert kwargs["partial_window_seconds"] == 1.5
+            return {"type": "ready", "stream_id": 9, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1):
+            assert response_timeout == 0.5
+            sent_chunks.append(chunk)
+            if len(sent_chunks) == 1:
+                return None
+            if len(sent_chunks) == 2:
+                return FakeEvent("partial", "first")
+            return FakeEvent("partial", "second")
+
+        async def stop(self) -> FakeEvent:
+            return FakeEvent("final", "done")
+
+        async def close(self) -> None:
+            return None
+
+    perf_values = iter([1.0, 2.0, 2.03, 3.0, 3.0, 3.02, 4.0, 4.2])
+    monkeypatch.setattr(benchmark, "AsyncASRClient", FakePipecatClient)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    async def scenario() -> None:
+        result = await benchmark.run_pipecat_e2e_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcdefghijkl",
+            10,
+            200,
+            source_frame_ms=100,
+            partial_interval_chunks=1,
+            partial_window_seconds=1.5,
+            partial_event_timeout_seconds=0.5,
+        )
+
+        assert sent_chunks == [b"abcd", b"efgh", b"ijkl"]
+        assert result["transport"] == "pipecat-e2e"
+        assert result["chunks"] == 3
+        assert result["source_frame_count"] == 6
+        assert result["aggregation_frame_count"] == 2
+        assert result["partial_audio_offsets_ms"] == [400.0, 600.0]
+        assert result["partial_end_to_end_ms"] == [430.0, 620.0]
+        assert result["partial_gap_ms"] == [190.0]
+        assert result["expected_partial_events"] == 3
+        assert result["observed_partial_events"] == 2
+        assert result["missing_partial_events"] == 1
+        assert result["final_transcript"] == "done"
+        assert result["final_event_received"] is True
 
     asyncio.run(scenario())
 
