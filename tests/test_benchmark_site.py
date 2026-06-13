@@ -31,11 +31,11 @@ def load_tracks() -> dict[str, object]:
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
-    assert manifest["summary"]["asr_count"] == 7
-    assert manifest["summary"]["tracked_count"] == 7
+    assert manifest["summary"]["asr_count"] == 8
+    assert manifest["summary"]["tracked_count"] == 8
     assert manifest["summary"]["validated_count"] == 5
     assert manifest["summary"]["legacy_count"] == 2
-    assert manifest["summary"]["blocked_count"] == 0
+    assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
@@ -46,6 +46,8 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["faster-whisper-base-c80-w075-json-preview"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
+    assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json")
+    assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
 
 
@@ -229,22 +231,26 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
         "partial_interval_chunks": 2,
         "partial_window_seconds": 0.75,
         "binary_frames": True,
+        "sample_rate": None,
         "partial_event_timeout_seconds": 0.25,
     }
     assert track["streaming"]["first_partial_end_to_end_mean_ms"] == 185
     assert track["streaming"]["partial_gap_mean_ms"] == 95
     assert manifest["summary"]["highlights"]["fastest_first_partial"]["slug"] == "demo-track"
     assert manifest["summary"]["highlights"]["tightest_partial_cadence"]["slug"] == "demo-track"
+    assert manifest["summary"]["highlights"]["fastest_final"]["label"] == "Fastest streaming finalization delay"
 
 
 def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
+    assert "Finalization" in html
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
     assert "const baselineEntries = comparableEntries(ranked);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
     assert 'Partial response' in html
+    assert 'title="Time from audio end until the final transcript returns."' in html
     assert 'title="Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial."' in html
     assert 'title="Buffered audio window used when generating partial transcripts."' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html

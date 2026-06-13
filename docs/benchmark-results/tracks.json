@@ -40,6 +40,21 @@
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
     },
     {
+      "slug": "pipecat-e2e-faster-whisper-base",
+      "label": "Pipecat E2E Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "device": "cpu",
+      "compute": "int8",
+      "lane": "Pipecat E2E Local Python CPU",
+      "status": "blocked",
+      "target_sample_count": 1,
+      "artifact": "faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "status_detail": "Checked-in single-sample Pipecat E2E artifact using 20 ms source frames bridged into 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
+      "run_command": "make benchmark-pipecat-e2e BENCHMARK_PIPECAT_AUDIO_FILE=/absolute/path/to/speech.wav",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
+    },
+    {
       "slug": "faster-whisper-small",
       "label": "Faster-Whisper Small",
       "backend": "faster-whisper",

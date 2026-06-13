@@ -1,0 +1,225 @@
+{
+  "environment": {
+    "date_utc": "2026-06-13T03:44:05Z",
+    "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+    "python": "3.11.2",
+    "processor": "aarch64"
+  },
+  "benchmark": {
+    "sample_count": 1,
+    "mode": "pipecat-e2e",
+    "rest_runs_per_sample": 1,
+    "chunk_ms": 100,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "source_frame_ms": 20,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
+    "partial_event_timeout_seconds": 0.1,
+    "request_retries": 1,
+    "request_retry_delay": 0.0,
+    "pipecat_source_frame_ms": 20
+  },
+  "integration": {
+    "name": "pipecat",
+    "transport": "pipecat-e2e",
+    "source_frame_ms": 20,
+    "bridge_chunk_ms": 100,
+    "send_binary_frames": false
+  },
+  "audio": {
+    "path": ".hb-venv/lib/python3.11/site-packages/gradio/media_assets/audio/cate_blanch_2.mp3",
+    "duration_s": 3.96,
+    "sample_rate": 32000,
+    "synthesized": false,
+    "reference_text": null
+  },
+  "backend": {
+    "name": "faster-whisper",
+    "model": "base.en",
+    "device": "cpu",
+    "compute_type": "int8",
+    "qwen_dtype": null,
+    "parakeet_dtype": null
+  },
+  "service": {
+    "models": [
+      "base.en"
+    ],
+    "backend": "faster-whisper",
+    "sample_rate": 16000,
+    "capabilities": {
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "loaded": true,
+      "streaming": {
+        "transport": "websocket",
+        "path": "/ws/stream",
+        "reusable_connection": true,
+        "message_types": [
+          "start",
+          "audio",
+          "stop",
+          "cancel"
+        ],
+        "audio_frame_formats": [
+          "json-base64",
+          "binary"
+        ],
+        "event_types": [
+          "ready",
+          "partial",
+          "final",
+          "canceled",
+          "error"
+        ]
+      },
+      "audio": {
+        "target_sample_rate": 16000,
+        "channels": 1,
+        "accepted_formats": [
+          "wav",
+          "pcm16",
+          "other formats supported by soundfile when installed"
+        ]
+      }
+    }
+  },
+  "samples": {
+    "rest": [
+      {
+        "sample": 1,
+        "mean_ms": 443.1,
+        "p90_ms": 443.1,
+        "p95_ms": 443.1,
+        "min_ms": 443.1,
+        "max_ms": 443.1,
+        "rtf_mean": 0.112,
+        "transcript": "I trust you had an historic evening.",
+        "accuracy": null
+      }
+    ],
+    "streaming": [
+      {
+        "sample": 1,
+        "transport": "pipecat-e2e",
+        "source_frame_ms": 20,
+        "source_frame_count": 198,
+        "aggregation_frame_count": 5,
+        "binary_frames": false,
+        "partial_mean_ms": 29.7,
+        "partial_p90_ms": 64.8,
+        "partial_p95_ms": 64.8,
+        "partial_first_ms": 64.8,
+        "partial_last_ms": 0.6,
+        "first_partial_audio_ms": 500.0,
+        "first_partial_end_to_end_ms": 564.8,
+        "partial_gap_mean_ms": 367.9,
+        "partial_gap_p95_ms": 658.9,
+        "time_to_final_from_audio_end_ms": 22619.2,
+        "final_ms": 22619.0,
+        "ready": {
+          "type": "ready",
+          "stream_id": 1,
+          "backend": "faster-whisper",
+          "model": "base.en",
+          "language": "en",
+          "sample_rate": 32000,
+          "partial_interval_chunks": 1,
+          "max_buffer_bytes": 1048576,
+          "partial_window_seconds": 2.0
+        },
+        "last_partial": "Oh!",
+        "final_transcript": "I trust you had an historic evening.",
+        "expected_partial_events": 40,
+        "observed_partial_events": 3,
+        "missing_partial_events": 37,
+        "final_event_received": true,
+        "closeout_event_type": "final",
+        "accuracy": null
+      }
+    ]
+  },
+  "rest": {
+    "sample_count": 1,
+    "runs_per_sample": 1,
+    "durations_ms": [
+      443.1
+    ],
+    "mean_ms": 443.1,
+    "p90_ms": 443.1,
+    "p95_ms": 443.1,
+    "min_ms": 443.1,
+    "max_ms": 443.1,
+    "rtf_mean": 0.112,
+    "accuracy": null,
+    "transcript": "I trust you had an historic evening."
+  },
+  "streaming": {
+    "sample_count": 1,
+    "transport": "pipecat-e2e",
+    "chunk_ms": 100,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "source_frame_ms": 20,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
+    "partial_event_timeout_seconds": 0.1,
+    "request_retries": 1,
+    "request_retry_delay": 0.0,
+    "partial_latencies_ms": [
+      64.8,
+      23.7,
+      0.6
+    ],
+    "first_partial_end_to_end_latencies_ms": [
+      564.8
+    ],
+    "partial_gap_latencies_ms": [
+      658.9,
+      76.9
+    ],
+    "final_latencies_ms": [
+      22619.0
+    ],
+    "partial_mean_ms": 29.7,
+    "partial_p90_ms": 64.8,
+    "partial_p95_ms": 64.8,
+    "partial_min_ms": 0.6,
+    "partial_max_ms": 64.8,
+    "first_partial_end_to_end_mean_ms": 564.8,
+    "first_partial_end_to_end_p90_ms": 564.8,
+    "first_partial_end_to_end_p95_ms": 564.8,
+    "partial_gap_mean_ms": 367.9,
+    "partial_gap_p90_ms": 658.9,
+    "partial_gap_p95_ms": 658.9,
+    "final_mean_ms": 22619.0,
+    "final_p90_ms": 22619.0,
+    "final_p95_ms": 22619.0,
+    "final_min_ms": 22619.0,
+    "final_max_ms": 22619.0,
+    "ready": {
+      "type": "ready",
+      "stream_id": 1,
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "language": "en",
+      "sample_rate": 32000,
+      "partial_interval_chunks": 1,
+      "max_buffer_bytes": 1048576,
+      "partial_window_seconds": 2.0
+    },
+    "last_partial": "Oh!",
+    "final_transcript": "I trust you had an historic evening.",
+    "expected_partial_events": 40,
+    "observed_partial_events": 3,
+    "missing_partial_events": 37,
+    "final_event_received_count": 1,
+    "closeout_event_types": [
+      "final"
+    ],
+    "accuracy": null
+  }
+}

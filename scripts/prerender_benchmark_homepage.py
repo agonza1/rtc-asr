@@ -205,7 +205,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     <p>Server response time after a partial trigger, separated from chunk and window cadence.</p>
   </article>
   <article class="snapshot-card">
-    <div class="section-kicker">Median final</div>
+    <div class="section-kicker">Median finalization</div>
     <div class="headline-value">{format_ms(medians['final'])}</div>
     <p>How long a caller waits for completed transcript closure after speech ends.</p>
   </article>
@@ -222,7 +222,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
   <div class="comparison-scroll">
     <table>
       <thead>
-        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial response', 'Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.')}</th><th>{hint('Final', 'Time from stop or utterance end until the final transcript returns.')}</th><th>{hint('REST', 'Batch request latency for the same backend outside the streaming websocket path.')}</th><th>{hint('Official WER', 'Upstream model-card or benchmark reference numbers, not repo-measured accuracy from this site.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial response', 'Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.')}</th><th>{hint('Finalization', 'Time from audio end until the final transcript returns.')}</th><th>{hint('REST', 'Batch request latency for the same backend outside the streaming websocket path.')}</th><th>{hint('Official WER', 'Upstream model-card or benchmark reference numbers, not repo-measured accuracy from this site.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
       </thead>
       <tbody>
 {rows}

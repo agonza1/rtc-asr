@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-12T04:04:46Z",
+  "generated_at": "2026-06-13T04:09:41Z",
   "summary": {
-    "asr_count": 7,
-    "tracked_count": 7,
-    "artifact_file_count": 8,
+    "asr_count": 8,
+    "tracked_count": 8,
+    "artifact_file_count": 9,
     "validated_count": 5,
     "legacy_count": 2,
-    "blocked_count": 0,
-    "latest_measured_at": "2026-06-11T00:08:33Z",
+    "blocked_count": 1,
+    "latest_measured_at": "2026-06-13T03:44:05Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -18,7 +18,7 @@
       "partial_event_timeout_seconds": 0.1
     },
     "backend_count": 4,
-    "lane_count": 3,
+    "lane_count": 4,
     "ranges": {
       "rest_mean_ms": {
         "min": 331.4,
@@ -29,10 +29,13 @@
         "max": 3696.1
       },
       "first_partial_end_to_end_mean_ms": {
-        "min": 1695.4,
+        "min": 564.8,
         "max": 1695.4
       },
-      "partial_gap_mean_ms": null,
+      "partial_gap_mean_ms": {
+        "min": 367.9,
+        "max": 367.9
+      },
       "final_mean_ms": {
         "min": 0.9,
         "max": 46867
@@ -66,7 +69,7 @@
       "fastest_first_partial": null,
       "tightest_partial_cadence": null,
       "fastest_final": {
-        "label": "Fastest streaming final mean",
+        "label": "Fastest streaming finalization delay",
         "slug": "parakeet-nemo-compose",
         "backend": "parakeet-nemo",
         "model": "nvidia/parakeet-tdt_ctc-110m",
@@ -112,7 +115,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 331.4,
@@ -167,7 +171,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 1186.2,
@@ -222,7 +227,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 573.3,
@@ -277,7 +283,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 1378.3,
@@ -332,7 +339,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 2388.3,
@@ -387,7 +395,8 @@
         "chunk_ms": 80,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 0.75,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 537.4,
@@ -442,7 +451,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": null,
-        "binary_frames": null
+        "binary_frames": null,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 5482.2,
@@ -476,9 +486,105 @@
         "partial_jitter_ratio": 1.708,
         "final_jitter_ratio": 1.0
       }
+    },
+    {
+      "kind": "asr",
+      "slug": "pipecat-e2e-faster-whisper-base",
+      "label": "Pipecat E2E Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "lane": "Pipecat E2E Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "blocked",
+      "status_detail": "Checked-in single-sample Pipecat E2E artifact using 20 ms source frames bridged into 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
+      "target_sample_count": 1,
+      "run_command": "make benchmark-pipecat-e2e BENCHMARK_PIPECAT_AUDIO_FILE=/absolute/path/to/speech.wav",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "measured_at": "2026-06-13T03:44:05Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 32000,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 443.1,
+        "p95_ms": 443.1,
+        "rtf_mean": 0.112
+      },
+      "streaming": {
+        "partial_mean_ms": 29.7,
+        "partial_p95_ms": 64.8,
+        "first_partial_end_to_end_mean_ms": 564.8,
+        "first_partial_end_to_end_p95_ms": 564.8,
+        "partial_gap_mean_ms": 367.9,
+        "partial_gap_p95_ms": 658.9,
+        "final_mean_ms": 22619.0,
+        "final_p95_ms": 22619.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 97.6,
+        "live_caption_score": 97.8,
+        "finalization_score": 0.0,
+        "stability_score": 92.1,
+        "efficiency_score": 91.5,
+        "overall_score": 42.1,
+        "confidence_score": 62.5,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 2.182,
+        "final_jitter_ratio": 1.0
+      }
     }
   ],
   "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-13T03:44:05Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 32000,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 443.1,
+        "p95_ms": 443.1,
+        "rtf_mean": 0.112
+      },
+      "streaming": {
+        "partial_mean_ms": 29.7,
+        "partial_p95_ms": 64.8,
+        "first_partial_end_to_end_mean_ms": 564.8,
+        "first_partial_end_to_end_p95_ms": 564.8,
+        "partial_gap_mean_ms": 367.9,
+        "partial_gap_p95_ms": 658.9,
+        "final_mean_ms": 22619.0,
+        "final_p95_ms": 22619.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "label": "base.en"
+    },
     {
       "kind": "asr",
       "backend": "faster-whisper",
@@ -491,7 +597,8 @@
         "chunk_ms": 80,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 0.75,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 537.4,
@@ -526,7 +633,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 1186.2,
@@ -561,7 +669,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 331.4,
@@ -596,7 +705,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 1378.3,
@@ -631,7 +741,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 573.3,
@@ -666,7 +777,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 2388.3,
@@ -701,7 +813,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": null,
-        "binary_frames": null
+        "binary_frames": null,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 5482.2,
@@ -736,7 +849,8 @@
         "chunk_ms": 1000,
         "partial_interval_chunks": 1,
         "partial_window_seconds": null,
-        "binary_frames": null
+        "binary_frames": null,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 1691.4,
@@ -781,7 +895,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 331.4,
@@ -836,7 +951,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 1186.2,
@@ -891,7 +1007,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 573.3,
@@ -946,7 +1063,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 1378.3,
@@ -1001,7 +1119,8 @@
         "chunk_ms": 80,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 0.75,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 537.4,
@@ -1056,7 +1175,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2,
-        "binary_frames": false
+        "binary_frames": false,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 2388.3,
@@ -1093,6 +1213,64 @@
     },
     {
       "kind": "asr",
+      "slug": "pipecat-e2e-faster-whisper-base",
+      "label": "Pipecat E2E Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "lane": "Pipecat E2E Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "blocked",
+      "status_detail": "Checked-in single-sample Pipecat E2E artifact using 20 ms source frames bridged into 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
+      "target_sample_count": 1,
+      "run_command": "make benchmark-pipecat-e2e BENCHMARK_PIPECAT_AUDIO_FILE=/absolute/path/to/speech.wav",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "measured_at": "2026-06-13T03:44:05Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 32000,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 443.1,
+        "p95_ms": 443.1,
+        "rtf_mean": 0.112
+      },
+      "streaming": {
+        "partial_mean_ms": 29.7,
+        "partial_p95_ms": 64.8,
+        "first_partial_end_to_end_mean_ms": 564.8,
+        "first_partial_end_to_end_p95_ms": 564.8,
+        "partial_gap_mean_ms": 367.9,
+        "partial_gap_p95_ms": 658.9,
+        "final_mean_ms": 22619.0,
+        "final_p95_ms": 22619.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 97.6,
+        "live_caption_score": 97.8,
+        "finalization_score": 0.0,
+        "stability_score": 92.1,
+        "efficiency_score": 91.5,
+        "overall_score": 42.1,
+        "confidence_score": 62.5,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 2.182,
+        "final_jitter_ratio": 1.0
+      }
+    },
+    {
+      "kind": "asr",
       "slug": "qwen-compose",
       "label": "Qwen Compose",
       "backend": "qwen-asr",
@@ -1111,7 +1289,8 @@
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
         "partial_window_seconds": null,
-        "binary_frames": null
+        "binary_frames": null,
+        "sample_rate": 22050
       },
       "rest": {
         "mean_ms": 5482.2,

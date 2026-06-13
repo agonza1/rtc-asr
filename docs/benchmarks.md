@@ -27,6 +27,7 @@ Recommended source-of-truth path for this repo:
 | Track | Backend | Model | Lane | Runtime | Status | Source |
 | --- | --- | --- | --- | --- | --- | --- |
 | `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` |
+| `pipecat-e2e-faster-whisper-base` | `faster-whisper` | `base.en` | Pipecat E2E Local Python CPU | `cpu / int8` | blocked integration artifact | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json` |
 | `faster-whisper-base-c80-w075-json-preview` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | legacy preview artifact | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
 | `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
 | `parakeet-compose` | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU | `cpu / float32` | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` |
@@ -37,6 +38,7 @@ Recommended source-of-truth path for this repo:
 Status details from the track registry:
 
 - `faster-whisper-base`: validated 10-sample local CPU baseline.
+- `pipecat-e2e-faster-whisper-base`: checked-in single-sample Pipecat E2E artifact using `20 ms` source frames bridged into `100 ms` websocket chunks; intentionally kept off the homepage until more E2E lanes exist.
 - `faster-whisper-base-c80-w075-json-preview`: exploratory 1-sample low-latency preview at `80 ms` chunks and a `0.75 s` partial window; first visible partial arrived at `1.7 s`, but finalization remained extremely slow at about `46.9 s`.
 - `faster-whisper-small`: validated 10-sample local CPU baseline using the default service model.
 - `parakeet-compose`: validated 10-sample Compose CPU artifact.
@@ -63,6 +65,16 @@ Notes:
 - These WER references are model-level upstream benchmarks. They do not capture this repo's runtime choices such as CPU vs MPS, chunk/window cadence, websocket framing, warmup state, or transport overhead.
 - The two `faster-whisper-base*` rows share the same Hugging Face WER reference because they use the same `openai/whisper-base.en` backbone under different local serving settings.
 - The docs now surface official benchmark references only; local diagnostic WER from our small internal sample set remains intentionally unpublished.
+
+## Pipecat E2E Integration Track
+
+This repo now keeps Pipecat end-to-end results as a separate integration lane instead of mixing them into the backend-only homepage leaderboard. The checked-in artifact below uses a local `faster-whisper` base lane with `20 ms` Pipecat-style source frames aggregated into `100 ms` websocket chunks. That lets us capture metrics the homepage does not currently rank on its own: first useful partial timing, partial cadence/jitter, final closeout after audio end, and missing partial counts across the bridge.
+
+| Track | Samples | First Visible Partial | Partial Mean / P95 | Partial Gap Mean / P95 | Final Mean | Missing Partials | Artifact |
+| --- | ---: | --- | --- | --- | --- | ---: | --- |
+| `pipecat-e2e-faster-whisper-base` | 1 | 564.8 ms | 29.7 ms / 64.8 ms | 367.9 ms / 658.9 ms | 22619.0 ms | 37 | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json` |
+
+The artifact stays tracked in `docs/benchmark-results/tracks.json`, but it is intentionally excluded from `docs/index.html` because there is only one Pipecat E2E lane today. That keeps backend-only and integration-level claims separate until there are comparable E2E artifacts across multiple backends.
 
 ## Reproduce
 
@@ -112,7 +124,8 @@ Benchmark artifacts now include extra streaming responsiveness metrics for low-l
 
 - `first_partial_end_to_end_*`: when a caller could first see a useful partial in real time
 - `partial_gap_*`: cadence between visible partial updates
-- `time_to_final_from_audio_end_ms`: finalization delay after audio stops
+- `time_to_final_from_audio_end_ms`: per-sample finalization delay after audio stops
+- `time_to_final_from_audio_end_*`: aggregated finalization delay summary used by the benchmark site (`final_*` remains a compatibility alias)
 
 Rebuild the homepage manifest after artifact or track changes:
 
