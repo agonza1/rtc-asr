@@ -47,6 +47,11 @@ class FakeTranscriber:
                 "audio_frame_formats": ["json-base64", "binary"],
                 "event_types": ["ready", "partial", "final", "canceled", "error"],
             },
+            "audio": {
+                "target_sample_rate": 16000,
+                "channels": 1,
+                "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
+            },
         }
 
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
@@ -183,6 +188,11 @@ def test_ready_and_model_capabilities_smoke() -> None:
             "audio_frame_formats": ["json-base64", "binary"],
             "event_types": ["ready", "partial", "final", "canceled", "error"],
         },
+        "audio": {
+            "target_sample_rate": 16000,
+            "channels": 1,
+            "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
+        },
         "models": [
             {
                 "id": "fixture-adapter",
@@ -197,6 +207,11 @@ def test_ready_and_model_capabilities_smoke() -> None:
                     "audio_frame_formats": ["json-base64", "binary"],
                     "event_types": ["ready", "partial", "final", "canceled", "error"],
                 },
+                "audio": {
+                    "target_sample_rate": 16000,
+                    "channels": 1,
+                    "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
+                },
                 "capabilities": {
                     "backend": "fake-whisper",
                     "model": "fixture-adapter",
@@ -208,6 +223,11 @@ def test_ready_and_model_capabilities_smoke() -> None:
                         "message_types": ["start", "audio", "stop", "cancel"],
                         "audio_frame_formats": ["json-base64", "binary"],
                         "event_types": ["ready", "partial", "final", "canceled", "error"],
+                    },
+                    "audio": {
+                        "target_sample_rate": 16000,
+                        "channels": 1,
+                        "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
                     },
                 },
             }
@@ -223,6 +243,11 @@ def test_ready_and_model_capabilities_smoke() -> None:
                 "message_types": ["start", "audio", "stop", "cancel"],
                 "audio_frame_formats": ["json-base64", "binary"],
                 "event_types": ["ready", "partial", "final", "canceled", "error"],
+            },
+            "audio": {
+                "target_sample_rate": 16000,
+                "channels": 1,
+                "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"],
             },
         },
     }
