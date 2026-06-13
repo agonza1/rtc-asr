@@ -235,6 +235,13 @@ def load_catalog(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def is_asr_payload(payload: dict[str, Any]) -> bool:
+    kind = payload.get("kind")
+    if kind in (None, "asr"):
+        return True
+    return all(key in payload for key in ("backend", "rest", "streaming"))
+
+
 def build_artifact_history_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     entry = build_asr_entry(path, payload)
     entry["label"] = payload["backend"]["model"]
@@ -422,6 +429,8 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         if path.name in {"manifest.json", tracks_path.name}:
             continue
         payload = load_payload(path)
+        if not is_asr_payload(payload):
+            continue
         key = benchmark_key(payload)
         stamp = artifact_timestamp(path, payload)
         artifact_history.append(build_artifact_history_entry(path, payload))

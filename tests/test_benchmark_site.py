@@ -31,13 +31,14 @@ def load_tracks() -> dict[str, object]:
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
-    assert manifest["summary"]["asr_count"] == 8
-    assert manifest["summary"]["tracked_count"] == 8
-    assert manifest["summary"]["validated_count"] == 5
+    assert manifest["summary"]["asr_count"] == 9
+    assert manifest["summary"]["tracked_count"] == 9
+    assert manifest["summary"]["validated_count"] == 6
     assert manifest["summary"]["legacy_count"] == 2
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
+    assert tracks["parakeet-mlx-service-110m"]["artifact_path"].endswith("parakeet-mlx-110m-service-2026-06-13.json")
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
@@ -147,6 +148,26 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
     assert manifest["summary"]["asr_count"] == 2
     runtimes = {entry["runtime"] for entry in manifest["asr_benchmarks"]}
     assert runtimes == {"cpu / int8", "cpu / float16"}
+
+
+def test_manifest_skips_non_asr_artifacts(tmp_path: Path) -> None:
+    payload = json.loads((RESULTS_DIR / "faster-whisper-base.en-int8-2026-06-10.json").read_text(encoding="utf-8"))
+    (tmp_path / "faster-whisper-base.en-int8-2026-06-10.json").write_text(json.dumps(payload), encoding="utf-8")
+    (tmp_path / "parakeet-mlx-2026-06-13.json").write_text(
+        json.dumps({
+            "kind": "mlx-asr-benchmark",
+            "backend": {"name": "parakeet-mlx", "model": "mlx-community/parakeet-tdt-0.6b-v3"},
+            "benchmark": {"sample_count": 1},
+            "samples": [{"transcript": "hello", "latency_ms": 12.3}],
+            "summary": {"mean_ms": 12.3},
+        }),
+        encoding="utf-8",
+    )
+
+    manifest = build_manifest(tmp_path, TRACKS_PATH)
+
+    assert manifest["summary"]["artifact_file_count"] == 1
+    assert all("parakeet-mlx" not in entry["artifact_path"] for entry in manifest["artifacts"])
 
 
 def test_manifest_exposes_derived_asr_scores() -> None:
@@ -267,6 +288,57 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     assert 'const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);' in html
 
 
+def test_docs_parakeet_mlx_row_matches_checked_in_artifact_summary() -> None:
+    docs_text = DOCS_PATH.read_text(encoding="utf-8")
+    artifact = json.loads((RESULTS_DIR / "parakeet-mlx-2026-06-13.json").read_text(encoding="utf-8"))
+
+    mean_ms = artifact["summary"]["mean_ms"]
+    p95_ms = artifact["summary"]["p95_ms"]
+    row = next(
+        line
+        for line in docs_text.splitlines()
+        if line.startswith("| `parakeet-mlx` | 3 |")
+        and "docs/benchmark-results/parakeet-mlx-2026-06-13.json" in line
+    )
+
+    assert f"| `parakeet-mlx` | 3 | {mean_ms} ms / {p95_ms} ms |" in row
+    assert f"its `{mean_ms} ms` mean latency" in docs_text
+
+
+def test_docs_parakeet_mlx_110m_row_matches_checked_in_artifact_summary() -> None:
+    docs_text = DOCS_PATH.read_text(encoding="utf-8")
+    artifact = json.loads((RESULTS_DIR / "parakeet-mlx-110m-2026-06-13.json").read_text(encoding="utf-8"))
+
+    mean_ms = artifact["summary"]["mean_ms"]
+    p95_ms = artifact["summary"]["p95_ms"]
+    row = next(
+        line
+        for line in docs_text.splitlines()
+        if line.startswith("| `parakeet-mlx-110m` | 3 |")
+        and "docs/benchmark-results/parakeet-mlx-110m-2026-06-13.json" in line
+    )
+
+    assert f"| `parakeet-mlx-110m` | 3 | {mean_ms} ms / {p95_ms} ms |" in row
+    assert f"its `{mean_ms} ms` mean latency" in docs_text
+
+
+def test_docs_parakeet_mlx_service_110m_row_matches_checked_in_artifact_summary() -> None:
+    docs_text = DOCS_PATH.read_text(encoding="utf-8")
+    artifact = json.loads((RESULTS_DIR / "parakeet-mlx-110m-service-2026-06-13.json").read_text(encoding="utf-8"))
+
+    mean_ms = artifact["rest"]["mean_ms"]
+    p95_ms = artifact["rest"]["p95_ms"]
+    row = next(
+        line
+        for line in docs_text.splitlines()
+        if line.startswith("| `parakeet-mlx-service-110m` | 10 |")
+        and "docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json" in line
+    )
+
+    assert f"| `parakeet-mlx-service-110m` | 10 | {mean_ms} ms / {p95_ms} ms |" in row
+    assert f"its `{mean_ms} ms` REST mean" in docs_text
+
+
 def test_docs_and_tracks_registry_stay_aligned() -> None:
     docs_text = DOCS_PATH.read_text(encoding="utf-8")
     tracks = load_tracks()["tracks"]
@@ -296,6 +368,9 @@ def test_docs_index_surfaces_official_wer_references() -> None:
     assert "## Official WER References" in docs_index_text
     assert "same official WER references shown in the benchmark notes" in docs_index_text
     assert "upstream Hugging Face benchmark or model-card values" in docs_index_text
+    assert "parakeet-mlx" in docs_index_text
+    assert "parakeet-mlx-110m" in docs_index_text
+    assert "parakeet-mlx-service-110m" in docs_index_text
     assert "openai/whisper-base.en" in docs_index_text
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 
@@ -354,6 +429,7 @@ def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
         f"benchmark-results/{path.name}"
         for path in RESULTS_DIR.glob("*.json")
         if path.name not in {"manifest.json", "tracks.json", "qwen-compose-2026-06-07.json"}
+        and manifest_module.is_asr_payload(json.loads(path.read_text(encoding="utf-8")))
     }
 
     assert tracked_artifacts == expected_files

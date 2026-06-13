@@ -100,6 +100,21 @@
       "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
     },
     {
+      "slug": "parakeet-mlx-service-110m",
+      "label": "Parakeet 110M MLX Service",
+      "backend": "parakeet-mlx",
+      "model": "mlx-community/parakeet-tdt_ctc-110m",
+      "device": "apple-silicon",
+      "compute": "auto",
+      "lane": "Local Python Apple Silicon MLX Service",
+      "status": "validated",
+      "target_sample_count": 10,
+      "artifact": "parakeet-mlx-110m-service-2026-06-13.json",
+      "status_detail": "Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.",
+      "run_command": "make benchmark-parakeet-mlx-service-110m",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
+    },
+    {
       "slug": "qwen-mps",
       "label": "Qwen MPS",
       "backend": "qwen-asr",

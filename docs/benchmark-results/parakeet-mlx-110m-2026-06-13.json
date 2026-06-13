@@ -1,0 +1,48 @@
+{
+  "kind": "mlx-asr-benchmark",
+  "backend": {
+    "name": "parakeet-mlx",
+    "model": "mlx-community/parakeet-tdt_ctc-110m",
+    "device": "apple-silicon",
+    "runtime": "mlx"
+  },
+  "benchmark": {
+    "sample_count": 3,
+    "audio_file": "<synthesized-speech>",
+    "command": "parakeet-mlx",
+    "speech_text": "The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service."
+  },
+  "samples": [
+    {
+      "index": 1,
+      "transcript": "The quick brown fox jumps over the lazy dog. This is a real time SR latency benchmark for the RDC ASR service.",
+      "transcript_char_count": 110,
+      "latency_ms": 1716.2
+    },
+    {
+      "index": 2,
+      "transcript": "The quick brown fox jumps over the lazy dog. This is a real time SR latency benchmark for the RDC ASR service.",
+      "transcript_char_count": 110,
+      "latency_ms": 1157.0
+    },
+    {
+      "index": 3,
+      "transcript": "The quick brown fox jumps over the lazy dog. This is a real time SR latency benchmark for the RDC ASR service.",
+      "transcript_char_count": 110,
+      "latency_ms": 1209.0
+    }
+  ],
+  "summary": {
+    "mean_ms": 1360.7,
+    "p95_ms": 1716.2,
+    "min_ms": 1157.0,
+    "max_ms": 1716.2
+  },
+  "environment": {
+    "date_utc": "2026-06-13T21:33:15Z",
+    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.5",
+    "machine": "arm64",
+    "process_rss_mb": 23.6
+  }
+}

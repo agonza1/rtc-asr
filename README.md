@@ -61,6 +61,20 @@ Backend-specific variables are available for Qwen, Parakeet, and NeMo Parakeet. 
 
 If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service defaults to `cuda`. Legacy aliases `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted for compatibility.
 
+## Warm-Up And Keep-Warm
+
+Most ASR backends have a cold-start penalty from model load, graph compilation, and first-request cache setup. That means the very first transcription can be much slower than steady-state traffic, especially for MLX, MPS, and larger transformer-based models.
+
+Best practice for production-style serving:
+
+- Set `ASR_PRELOAD_MODEL=true` so model load happens at startup instead of on the first live request.
+- Gate traffic on `GET /ready` rather than only `GET /health` so callers wait for preload to finish.
+- Send one short warm-up transcription after startup or deploy before measuring latency or shifting traffic.
+- Keep the process resident and reuse it across requests; avoid one-shot CLI-style invocations if you care about real serving latency.
+- If a platform idles containers or workers aggressively, use a small synthetic keep-warm request on a cadence that matches that platform's eviction behavior.
+
+In this repo, checked-in service benchmarks use warmed server flows for apples-to-apples latency comparisons. Cold CLI preview artifacts are useful for exploration, but they should not be treated as the steady-state serving baseline.
+
 ## Streaming Contract
 
 The realtime path is the main integration surface.
@@ -132,6 +146,8 @@ make benchmark-compose-parakeet
 make benchmark-compose-parakeet-nemo
 make benchmark-site-check
 ```
+
+For fair comparisons, benchmark the warmed service path when possible. One-shot runs mostly measure startup overhead, while the service harness reflects the latency users see after preload and warm-up.
 
 ## Documentation
 

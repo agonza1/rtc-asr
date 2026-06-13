@@ -20,9 +20,10 @@ PYTHON_BASE_IMAGE_FALLBACK ?= mirror.gcr.io/library/python:3.11-slim
 PARAKEET_COMPOSE_MODEL ?= nvidia/parakeet-tdt-0.6b-v3
 PARAKEET_NEMO_COMPOSE_MODEL ?= nvidia/parakeet-tdt_ctc-110m
 PARAKEET_COMPOSE_DTYPE ?= float32
-QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit
-QWEN_MLX_TEXT_MAX_TOKENS ?= 64
-QWEN_MLX_TEXT_SAMPLE_COUNT ?= 3
+PARAKEET_MLX_MODEL ?= mlx-community/parakeet-tdt-0.6b-v3
+PARAKEET_MLX_ARTIFACT_SLUG ?= parakeet-mlx
+PARAKEET_MLX_SAMPLE_COUNT ?= 3
+PARAKEET_MLX_SERVICE_ARTIFACT_SLUG ?= parakeet-mlx-service
 BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
 BENCHMARK_RESULT_DATE ?= $(shell date -u +%Y-%m-%d)
 BENCHMARK_SAMPLE_COUNT ?= 10
@@ -58,7 +59,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -87,6 +88,10 @@ help:
 	@echo "  make benchmark-compose-parakeet-low-latency-sweep - Start compose and sweep parakeet low-latency settings"
 	@echo "  make benchmark-compose-parakeet-nemo - Start compose and benchmark Parakeet 110M through NeMo"
 	@echo "  make benchmark-compose-parakeet-nemo-low-latency-sweep - Start compose and sweep Parakeet 110M through NeMo"
+	@echo "  make benchmark-parakeet-mlx - Run a local Parakeet MLX ASR benchmark on Apple Silicon with synthesized speech by default"
+	@echo "  make benchmark-parakeet-mlx-110m - Run the 110M Parakeet MLX ASR benchmark with its own artifact slug"
+	@echo "  make benchmark-parakeet-mlx-service - Run the warmed MLX service benchmark through the shared REST/websocket harness"
+	@echo "  make benchmark-parakeet-mlx-service-110m - Run the warmed 110M MLX service benchmark through the shared REST/websocket harness"
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
 	@echo "  make docs           - Build documentation snapshot"
@@ -109,13 +114,13 @@ venv:
 
 mlx-venv:
 	@echo "Preparing MLX virtualenv..."
-	@if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import sys" >/dev/null 2>&1; then \
+	@if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import fastapi, httpx, numpy, parakeet_mlx, soundfile, uvicorn, websockets" >/dev/null 2>&1; then \
 		echo "  ✓ Reusing existing MLX virtualenv at $(MLX_VENV)"; \
 	else \
-		echo "  Rebuilding $(MLX_VENV) because the interpreter is missing or broken..."; \
+		echo "  Rebuilding $(MLX_VENV) because the MLX benchmark runtime is missing or broken..."; \
 		rm -rf $(MLX_VENV); \
 		python3 -m venv $(MLX_VENV); \
-		$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil; \
+		$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx psutil; \
 	fi
 	@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"
 
@@ -385,14 +390,25 @@ benchmark-pipecat-e2e: venv
 	@test -n "$(BENCHMARK_PIPECAT_AUDIO_FILE)" || (echo "Set BENCHMARK_PIPECAT_AUDIO_FILE to a speech clip path." >&2; exit 1)
 	@$(PYTHON) tests/benchmark.py --spawn-server --mode pipecat-e2e --backend $(BENCHMARK_PIPECAT_BACKEND) --model $(BENCHMARK_PIPECAT_MODEL) --compute-type $(BENCHMARK_PIPECAT_COMPUTE_TYPE) --audio-file $(BENCHMARK_PIPECAT_AUDIO_FILE) --sample-count 1 --rest-runs 1 --chunk-ms 100 --pipecat-source-frame-ms $(BENCHMARK_PIPECAT_SOURCE_FRAME_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json
 
-benchmark-qwen-mlx-text: mlx-venv
-	@echo "Benchmarking $(QWEN_MLX_TEXT_MODEL) with mlx-lm on Apple Silicon..."
+benchmark-parakeet-mlx: mlx-venv
+	@echo "Benchmarking $(PARAKEET_MLX_MODEL) with parakeet-mlx on Apple Silicon..."
 	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
-	@$(MLX_PYTHON) scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL) --sample-count $(QWEN_MLX_TEXT_SAMPLE_COUNT) --max-tokens $(QWEN_MLX_TEXT_MAX_TOKENS) --output $(BENCHMARK_RESULTS_DIR)/qwen3-0.6b-mlx-4bit-text-$(BENCHMARK_RESULT_DATE).json
+	@$(MLX_PYTHON) scripts/benchmark_mlx_asr.py --model $(PARAKEET_MLX_MODEL) --sample-count $(PARAKEET_MLX_SAMPLE_COUNT) $(if $(BENCHMARK_MLX_AUDIO_FILE),--audio-file $(BENCHMARK_MLX_AUDIO_FILE),) --output $(BENCHMARK_RESULTS_DIR)/$(PARAKEET_MLX_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json
+
+benchmark-parakeet-mlx-110m:
+	@$(MAKE) benchmark-parakeet-mlx PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_ARTIFACT_SLUG=parakeet-mlx-110m
+
+benchmark-parakeet-mlx-service: mlx-venv
+	@echo "Benchmarking $(PARAKEET_MLX_MODEL) through the warmed MLX service harness..."
+	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
+	@{ set -e; 	cleanup() { if [ -n "$$server_pid" ] && kill -0 "$$server_pid" >/dev/null 2>&1; then kill "$$server_pid" >/dev/null 2>&1 || true; wait "$$server_pid" 2>/dev/null || true; fi; rm -f "$$log_file"; }; 	trap cleanup EXIT INT TERM; 	log_file="$$(mktemp -t rtc-asr-parakeet-mlx.XXXXXX.log)"; 	PYTHONPATH=. ASR_BACKEND=parakeet-mlx ASR_DEVICE=apple-silicon ASR_PRELOAD_MODEL=true ASR_PARAKEET_MODEL=$(PARAKEET_MLX_MODEL) ASR_PARAKEET_DTYPE=auto $(MLX_PYTHON) -m uvicorn src.main:app --host 127.0.0.1 --port 8090 --log-level warning >"$$log_file" 2>&1 & 	server_pid=$$!; 	for attempt in $$(seq 1 180); do 		if curl -sf http://127.0.0.1:8090/ready >/dev/null; then break; fi; 		if ! kill -0 "$$server_pid" >/dev/null 2>&1; then cat "$$log_file"; exit 1; fi; 		sleep 1; 	done; 	curl -sf http://127.0.0.1:8090/ready >/dev/null || (cat "$$log_file"; exit 1); 	PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --url http://127.0.0.1:8090 --ws-url ws://127.0.0.1:8090/ws/stream --backend parakeet-mlx --model $(PARAKEET_MLX_MODEL) --device apple-silicon --parakeet-dtype auto --sample-count $(BENCHMARK_SAMPLE_COUNT) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(PARAKEET_MLX_SERVICE_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json; 	}
+
+benchmark-parakeet-mlx-service-110m:
+	@$(MAKE) benchmark-parakeet-mlx-service PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service
 
 lint: venv
 	@echo "Running linter..."
-	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py scripts/prerender_benchmark_homepage.py
+	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py scripts/prerender_benchmark_homepage.py scripts/benchmark_mlx_asr.py
 	@echo "  ✓ Linting complete"
 
 benchmark-site:

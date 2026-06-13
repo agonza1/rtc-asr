@@ -159,11 +159,11 @@ def test_makefile_mlx_venv_target_repairs_broken_virtualenvs_before_benchmarks()
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
     mlx_venv_block = makefile.split("mlx-venv:\n", 1)[1].split("\n\n", 1)[0]
-    assert 'if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import sys" >/dev/null 2>&1; then \\' in mlx_venv_block
-    assert 'echo "  Rebuilding $(MLX_VENV) because the interpreter is missing or broken..."; \\' in mlx_venv_block
+    assert 'if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import fastapi, httpx, numpy, parakeet_mlx, soundfile, uvicorn, websockets" >/dev/null 2>&1; then \\' in mlx_venv_block
+    assert 'echo "  Rebuilding $(MLX_VENV) because the MLX benchmark runtime is missing or broken..."; \\' in mlx_venv_block
     assert "rm -rf $(MLX_VENV); \\" in mlx_venv_block
     assert "python3 -m venv $(MLX_VENV); \\" in mlx_venv_block
-    assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil; \\" in mlx_venv_block
+    assert '$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx psutil; \\' in mlx_venv_block
     assert '@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"' in mlx_venv_block
 
 def test_makefile_exposes_benchmark_site_sync_targets() -> None:
@@ -171,7 +171,7 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-qwen-mlx-text benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
@@ -204,13 +204,26 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "BENCHMARK_REQUEST_RETRIES ?= 3" in makefile
     assert "benchmark-compose-matrix: benchmark-compose-qwen benchmark-compose-parakeet benchmark-compose-parakeet-nemo" in makefile
     assert "PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8" in makefile
-    assert "QWEN_MLX_TEXT_MODEL ?= Qwen/Qwen3-0.6B-MLX-4bit" in makefile
+    assert "PARAKEET_MLX_MODEL ?= mlx-community/parakeet-tdt-0.6b-v3" in makefile
+    assert "PARAKEET_MLX_ARTIFACT_SLUG ?= parakeet-mlx" in makefile
+    assert "PARAKEET_MLX_SERVICE_ARTIFACT_SLUG ?= parakeet-mlx-service" in makefile
     assert "MLX_VENV ?= .venv-mlx" in makefile
-    assert "benchmark-qwen-mlx-text: mlx-venv" in makefile
+    assert "benchmark-parakeet-mlx: mlx-venv" in makefile
+    assert "benchmark-parakeet-mlx-110m:" in makefile
+    assert "benchmark-parakeet-mlx-service: mlx-venv" in makefile
+    assert "benchmark-parakeet-mlx-service-110m:" in makefile
     assert "benchmark-pipecat-e2e: venv" in makefile
     assert "$(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json" in makefile
-    assert "$(MLX_PYTHON) -m pip install --upgrade pip mlx-lm psutil" in makefile
-    assert "scripts/benchmark_mlx_text.py --model $(QWEN_MLX_TEXT_MODEL)" in makefile
+    assert '$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx psutil' in makefile
+    assert "scripts/benchmark_mlx_asr.py --model $(PARAKEET_MLX_MODEL)" in makefile
+    assert "$(BENCHMARK_RESULTS_DIR)/$(PARAKEET_MLX_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json" in makefile
+    assert "PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_ARTIFACT_SLUG=parakeet-mlx-110m" in makefile
+    mlx_service_block = makefile.split("benchmark-parakeet-mlx-service: mlx-venv\n", 1)[1].split("\n\n", 1)[0]
+    assert "trap cleanup EXIT INT TERM" in mlx_service_block
+    assert "PYTHONPATH=. ASR_BACKEND=parakeet-mlx ASR_DEVICE=apple-silicon ASR_PRELOAD_MODEL=true ASR_PARAKEET_MODEL=$(PARAKEET_MLX_MODEL) ASR_PARAKEET_DTYPE=auto $(MLX_PYTHON) -m uvicorn src.main:app --host 127.0.0.1 --port 8090 --log-level warning" in mlx_service_block
+    assert "curl -sf http://127.0.0.1:8090/ready >/dev/null" in mlx_service_block
+    assert "PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --url http://127.0.0.1:8090 --ws-url ws://127.0.0.1:8090/ws/stream --backend parakeet-mlx" in mlx_service_block
+    assert "PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service" in makefile
     assert makefile.count("ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE=\"$${base_image}\" docker compose up -d --build; \\") == 6
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m")):
         assert target_name in makefile
@@ -865,6 +878,15 @@ def test_run_pipecat_e2e_benchmark_records_late_partial_before_final(monkeypatch
     asyncio.run(scenario())
 
 
+def test_resolve_service_model_prefers_scalar_identifier_fields() -> None:
+    assert benchmark.resolve_service_model({"model": "top-level-model"}, "fallback-model") == "top-level-model"
+    assert benchmark.resolve_service_model({"models": ["list-model"]}, "fallback-model") == "list-model"
+    assert benchmark.resolve_service_model({"models": [{"id": "model-id", "model": "nested-model"}]}, "fallback-model") == "model-id"
+    assert benchmark.resolve_service_model({"models": [{"model": "nested-model"}]}, "fallback-model") == "nested-model"
+    assert benchmark.resolve_service_model({"models": [{}]}, "fallback-model") == "fallback-model"
+    assert benchmark.resolve_service_model(None, "fallback-model") == "fallback-model"
+
+
 def test_async_main_summarizes_final_metric_from_audio_end_delay(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_fetch_service_metadata(_: str) -> dict[str, object]:
         return {
@@ -995,6 +1017,109 @@ def test_async_main_summarizes_final_metric_from_audio_end_delay(monkeypatch: py
     assert result["streaming"]["time_to_final_from_audio_end_mean_ms"] == 1300.0
     assert result["streaming"]["final_mean_ms"] == 1300.0
     assert result["streaming"]["final_p95_ms"] == 1500.0
+
+
+def test_async_main_uses_service_model_id_and_parakeet_mlx_dtype(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_fetch_service_metadata(_: str) -> dict[str, object]:
+        return {
+            "backend": "parakeet-mlx",
+            "model": "mlx-community/parakeet-tdt_ctc-110m",
+            "models": [
+                {
+                    "id": "mlx-community/parakeet-tdt_ctc-110m",
+                    "model": "mlx-community/parakeet-tdt_ctc-110m",
+                    "capabilities": {"dtype": "auto"},
+                }
+            ],
+            "capabilities": {"device": "apple-silicon", "dtype": "auto"},
+        }
+
+    async def fake_run_rest_benchmark(*args, **kwargs) -> dict[str, object]:
+        return {
+            "durations_ms": [40.0],
+            "mean_ms": 40.0,
+            "p90_ms": 40.0,
+            "p95_ms": 40.0,
+            "min_ms": 40.0,
+            "max_ms": 40.0,
+            "rtf_mean": 0.1,
+            "transcript": "done",
+        }
+
+    async def fake_run_ws_benchmark(*args, **kwargs) -> dict[str, object]:
+        return {
+            "binary_frames": False,
+            "partial_latencies_ms": [20.0],
+            "partial_audio_offsets_ms": [250.0],
+            "partial_end_to_end_ms": [350.0],
+            "partial_gap_ms": [],
+            "partial_mean_ms": 20.0,
+            "partial_p90_ms": 20.0,
+            "partial_p95_ms": 20.0,
+            "partial_first_ms": 20.0,
+            "partial_last_ms": 20.0,
+            "first_partial_audio_ms": 250.0,
+            "first_partial_end_to_end_ms": 350.0,
+            "partial_gap_mean_ms": None,
+            "partial_gap_p95_ms": None,
+            "final_ms": 200.0,
+            "time_to_final_from_audio_end_ms": 300.0,
+            "ready": {"type": "ready"},
+            "last_partial": "p1",
+            "final_transcript": "done",
+            "expected_partial_events": 1,
+            "observed_partial_events": 1,
+            "missing_partial_events": 0,
+            "final_event_received": True,
+            "closeout_event_type": "final",
+            "transport": "direct",
+            "source_frame_ms": None,
+            "source_frame_count": None,
+            "aggregation_frame_count": None,
+        }
+
+    monkeypatch.setattr(benchmark, "benchmark_audio_path", lambda args: benchmark.FIXTURE_PATH)
+    monkeypatch.setattr(benchmark, "resolve_reference_text", lambda args, synthesized=False: None)
+    monkeypatch.setattr(benchmark, "load_audio", lambda path: (np.zeros(8, dtype=np.float32), 4))
+    monkeypatch.setattr(benchmark, "make_wav_bytes", lambda samples, sample_rate: b"wav")
+    monkeypatch.setattr(benchmark, "fetch_service_metadata", fake_fetch_service_metadata)
+    monkeypatch.setattr(benchmark, "run_rest_benchmark", fake_run_rest_benchmark)
+    monkeypatch.setattr(benchmark, "run_ws_benchmark", fake_run_ws_benchmark)
+
+    args = argparse.Namespace(
+        audio_file=None,
+        speech_text=benchmark.DEFAULT_TEXT,
+        reference_text=None,
+        reference_file=None,
+        spawn_server=False,
+        backend="parakeet-mlx",
+        model="fallback-model",
+        sample_count=1,
+        rest_runs=1,
+        chunk_ms=250,
+        partial_interval_chunks=1,
+        partial_window=2.0,
+        max_buffer=None,
+        binary_frames=False,
+        output=None,
+        device="cpu",
+        compute_type="int8",
+        qwen_dtype=None,
+        parakeet_dtype="float32",
+        mode="direct",
+        url="http://127.0.0.1:8090",
+        ws_url="ws://127.0.0.1:8090/ws/stream",
+        pipecat_source_frame_ms=20,
+        partial_event_timeout=0.1,
+        request_retries=1,
+        request_retry_delay=0.0,
+    )
+
+    result = asyncio.run(benchmark.async_main(args))
+
+    assert result["backend"]["model"] == "mlx-community/parakeet-tdt_ctc-110m"
+    assert result["backend"]["parakeet_dtype"] == "auto"
+    assert result["backend"]["compute_type"] is None
 
 
 def test_benchmarks_doc_legacy_artifact_rows_reference_checked_in_legacy_schema_artifacts() -> None:
