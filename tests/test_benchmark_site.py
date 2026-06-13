@@ -244,6 +244,9 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
     assert "const baselineEntries = comparableEntries(ranked);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
+    assert 'Partial response' in html
+    assert 'title="Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial."' in html
+    assert 'title="Buffered audio window used when generating partial transcripts."' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
     assert "safest latency bet" in html
     assert "sample coverage" in html
