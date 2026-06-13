@@ -273,6 +273,7 @@ def test_ready_recovers_after_successful_transcription() -> None:
     fixture_bytes = FIXTURE_PATH.read_bytes()
 
     with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        degraded_health = client.get("/health")
         degraded_ready = client.get("/ready")
         degraded_models = client.get("/api/models")
         transcribe = client.post(
@@ -283,9 +284,14 @@ def test_ready_recovers_after_successful_transcription() -> None:
                 "sample_rate": 16000,
             },
         )
+        recovered_health = client.get("/health")
         recovered_ready = client.get("/ready")
         recovered_models = client.get("/api/models")
 
+    assert degraded_health.status_code == 200
+    assert degraded_health.json()["status"] == "degraded"
+    assert degraded_health.json()["ready"] is False
+    assert degraded_health.json()["preload_error"] == "model download failed"
     assert degraded_ready.status_code == 503
     assert degraded_ready.json()["preload_error"] == "model download failed"
     assert degraded_ready.json()["status"] == "degraded"
@@ -295,6 +301,11 @@ def test_ready_recovers_after_successful_transcription() -> None:
     assert degraded_models.json()["preload_error"] == "model download failed"
     assert degraded_models.json()["models"][0]["loaded"] is False
     assert transcribe.status_code == 200
+    assert recovered_health.status_code == 200
+    assert recovered_health.json()["status"] == "ready"
+    assert recovered_health.json()["ready"] is True
+    assert recovered_health.json()["preload_error"] is None
+    assert recovered_health.json()["model_loaded"] is True
     assert recovered_ready.status_code == 200
     assert recovered_ready.json()["status"] == "ready"
     assert recovered_ready.json()["ready"] is True
