@@ -58,6 +58,10 @@ def _backend_status(services: AppServices) -> str:
     return "loading"
 
 
+def _accepting_traffic(services: AppServices) -> bool:
+    return services.preload_error is None and (not services.config.asr_preload_model or services.transcriber.is_loaded())
+
+
 def _health_payload(services: AppServices) -> dict[str, object]:
     status = _backend_status(services)
     return {
@@ -65,7 +69,7 @@ def _health_payload(services: AppServices) -> dict[str, object]:
         "service": "realtime-asr",
         "backend": services.transcriber.backend_name,
         "model": services.transcriber.model_name,
-        "ready": status == "ready",
+        "ready": _accepting_traffic(services),
         "model_loaded": services.transcriber.is_loaded(),
         "preload_enabled": services.config.asr_preload_model,
         "preload_error": services.preload_error,
@@ -180,7 +184,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             "model": current.transcriber.model_name,
             "sample_rate": current.config.sample_rate,
             "status": status,
-            "ready": status == "ready",
+            "ready": _accepting_traffic(current),
             "preload_enabled": current.config.asr_preload_model,
             "preload_error": current.preload_error,
             "streaming": streaming,

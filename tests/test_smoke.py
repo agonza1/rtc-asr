@@ -100,24 +100,33 @@ class RecoveringPreloadTranscriber(FakeTranscriber):
         return super().transcribe(audio_data, language=language, sample_rate=sample_rate)
 
 
-def test_health_reports_loading_without_preload() -> None:
+def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
     transcriber = FakeTranscriber()
     config = AppConfig(asr_preload_model=False)
 
     with TestClient(create_app(config=config, transcriber=transcriber)) as client:
-        response = client.get("/health")
+        health = client.get("/health")
+        ready = client.get("/ready")
+        models = client.get("/api/models")
 
-    assert response.status_code == 200
-    assert response.json() == {
+    assert health.status_code == 200
+    assert health.json() == {
         "status": "loading",
         "service": "realtime-asr",
         "backend": "fake-whisper",
         "model": "fixture-adapter",
-        "ready": False,
+        "ready": True,
         "model_loaded": False,
         "preload_enabled": False,
         "preload_error": None,
     }
+    assert ready.status_code == 200
+    assert ready.json() == health.json()
+    assert models.status_code == 200
+    assert models.json()["status"] == "loading"
+    assert models.json()["ready"] is True
+    assert models.json()["preload_enabled"] is False
+    assert models.json()["preload_error"] is None
     assert transcriber.preload_calls == 0
 
 

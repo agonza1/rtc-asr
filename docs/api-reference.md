@@ -22,7 +22,7 @@ Example response:
   "service": "realtime-asr",
   "backend": "faster-whisper",
   "model": "small.en",
-  "ready": false,
+  "ready": true,
   "model_loaded": false,
   "preload_enabled": false,
   "preload_error": null
