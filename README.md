@@ -4,7 +4,7 @@
 
 The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, and `parakeet-nemo` backends behind the same API surface.
 
-> Benchmark status: the repo includes checked-in latency baselines for validated local and Compose-backed runs. Treat untracked GPU, load, and accuracy claims as provisional until the corresponding artifacts are committed.
+> Benchmark status: the repo includes checked-in latency baselines for validated local and Compose-backed runs.
 
 ## What It Ships Today
 
