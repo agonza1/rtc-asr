@@ -304,6 +304,23 @@ def test_docs_parakeet_mlx_row_matches_checked_in_artifact_summary() -> None:
     assert f"its `{mean_ms} ms` mean latency" in docs_text
 
 
+def test_docs_parakeet_mlx_110m_row_matches_checked_in_artifact_summary() -> None:
+    docs_text = DOCS_PATH.read_text(encoding="utf-8")
+    artifact = json.loads((RESULTS_DIR / "parakeet-mlx-110m-2026-06-13.json").read_text(encoding="utf-8"))
+
+    mean_ms = artifact["summary"]["mean_ms"]
+    p95_ms = artifact["summary"]["p95_ms"]
+    row = next(
+        line
+        for line in docs_text.splitlines()
+        if line.startswith("| `parakeet-mlx-110m` | 3 |")
+        and "docs/benchmark-results/parakeet-mlx-110m-2026-06-13.json" in line
+    )
+
+    assert f"| `parakeet-mlx-110m` | 3 | {mean_ms} ms / {p95_ms} ms |" in row
+    assert f"its `{mean_ms} ms` mean latency" in docs_text
+
+
 def test_docs_and_tracks_registry_stay_aligned() -> None:
     docs_text = DOCS_PATH.read_text(encoding="utf-8")
     tracks = load_tracks()["tracks"]
@@ -334,6 +351,7 @@ def test_docs_index_surfaces_official_wer_references() -> None:
     assert "same official WER references shown in the benchmark notes" in docs_index_text
     assert "upstream Hugging Face benchmark or model-card values" in docs_index_text
     assert "parakeet-mlx" in docs_index_text
+    assert "parakeet-mlx-110m" in docs_index_text
     assert "openai/whisper-base.en" in docs_index_text
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 

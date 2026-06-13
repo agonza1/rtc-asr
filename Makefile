@@ -21,6 +21,7 @@ PARAKEET_COMPOSE_MODEL ?= nvidia/parakeet-tdt-0.6b-v3
 PARAKEET_NEMO_COMPOSE_MODEL ?= nvidia/parakeet-tdt_ctc-110m
 PARAKEET_COMPOSE_DTYPE ?= float32
 PARAKEET_MLX_MODEL ?= mlx-community/parakeet-tdt-0.6b-v3
+PARAKEET_MLX_ARTIFACT_SLUG ?= parakeet-mlx
 PARAKEET_MLX_SAMPLE_COUNT ?= 3
 BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
 BENCHMARK_RESULT_DATE ?= $(shell date -u +%Y-%m-%d)
@@ -57,7 +58,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -87,6 +88,7 @@ help:
 	@echo "  make benchmark-compose-parakeet-nemo - Start compose and benchmark Parakeet 110M through NeMo"
 	@echo "  make benchmark-compose-parakeet-nemo-low-latency-sweep - Start compose and sweep Parakeet 110M through NeMo"
 	@echo "  make benchmark-parakeet-mlx - Run a local Parakeet MLX ASR benchmark on Apple Silicon with synthesized speech by default"
+	@echo "  make benchmark-parakeet-mlx-110m - Run the 110M Parakeet MLX ASR benchmark with its own artifact slug"
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
 	@echo "  make docs           - Build documentation snapshot"
@@ -388,7 +390,10 @@ benchmark-pipecat-e2e: venv
 benchmark-parakeet-mlx: mlx-venv
 	@echo "Benchmarking $(PARAKEET_MLX_MODEL) with parakeet-mlx on Apple Silicon..."
 	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
-	@$(MLX_PYTHON) scripts/benchmark_mlx_asr.py --model $(PARAKEET_MLX_MODEL) --sample-count $(PARAKEET_MLX_SAMPLE_COUNT) $(if $(BENCHMARK_MLX_AUDIO_FILE),--audio-file $(BENCHMARK_MLX_AUDIO_FILE),) --output $(BENCHMARK_RESULTS_DIR)/parakeet-mlx-$(BENCHMARK_RESULT_DATE).json
+	@$(MLX_PYTHON) scripts/benchmark_mlx_asr.py --model $(PARAKEET_MLX_MODEL) --sample-count $(PARAKEET_MLX_SAMPLE_COUNT) $(if $(BENCHMARK_MLX_AUDIO_FILE),--audio-file $(BENCHMARK_MLX_AUDIO_FILE),) --output $(BENCHMARK_RESULTS_DIR)/$(PARAKEET_MLX_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json
+
+benchmark-parakeet-mlx-110m:
+	@$(MAKE) benchmark-parakeet-mlx PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_ARTIFACT_SLUG=parakeet-mlx-110m
 
 lint: venv
 	@echo "Running linter..."
