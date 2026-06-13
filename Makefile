@@ -86,7 +86,7 @@ help:
 	@echo "  make benchmark-compose-parakeet-low-latency-sweep - Start compose and sweep parakeet low-latency settings"
 	@echo "  make benchmark-compose-parakeet-nemo - Start compose and benchmark Parakeet 110M through NeMo"
 	@echo "  make benchmark-compose-parakeet-nemo-low-latency-sweep - Start compose and sweep Parakeet 110M through NeMo"
-	@echo "  make benchmark-parakeet-mlx - Run a local Parakeet MLX ASR benchmark on Apple Silicon"
+	@echo "  make benchmark-parakeet-mlx - Run a local Parakeet MLX ASR benchmark on Apple Silicon with synthesized speech by default"
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
 	@echo "  make docs           - Build documentation snapshot"
@@ -388,7 +388,7 @@ benchmark-pipecat-e2e: venv
 benchmark-parakeet-mlx: mlx-venv
 	@echo "Benchmarking $(PARAKEET_MLX_MODEL) with parakeet-mlx on Apple Silicon..."
 	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
-	@$(MLX_PYTHON) scripts/benchmark_mlx_asr.py --model $(PARAKEET_MLX_MODEL) --sample-count $(PARAKEET_MLX_SAMPLE_COUNT) --output $(BENCHMARK_RESULTS_DIR)/parakeet-mlx-$(BENCHMARK_RESULT_DATE).json
+	@$(MLX_PYTHON) scripts/benchmark_mlx_asr.py --model $(PARAKEET_MLX_MODEL) --sample-count $(PARAKEET_MLX_SAMPLE_COUNT) $(if $(BENCHMARK_MLX_AUDIO_FILE),--audio-file $(BENCHMARK_MLX_AUDIO_FILE),) --output $(BENCHMARK_RESULTS_DIR)/parakeet-mlx-$(BENCHMARK_RESULT_DATE).json
 
 lint: venv
 	@echo "Running linter..."

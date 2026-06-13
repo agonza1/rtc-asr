@@ -59,6 +59,7 @@ def test_run_benchmark_serializes_parakeet_mlx_output(monkeypatch, tmp_path: Pat
     }
     assert payload["benchmark"]["sample_count"] == 2
     assert payload["benchmark"]["command"] == "parakeet-mlx"
+    assert payload["benchmark"]["speech_text"] is None
     assert len(payload["samples"]) == 2
     assert payload["samples"][0]["transcript"] == "hello from parakeet"
     assert payload["summary"]["mean_ms"] >= 0
@@ -79,6 +80,7 @@ def test_run_benchmark_raises_actionable_error_when_cli_is_missing(monkeypatch, 
             model_name="mlx-community/parakeet-tdt-0.6b-v3",
             sample_count=1,
             audio_file=audio_path,
+            speech_text="hello world",
             command="parakeet-mlx",
         )
     except RuntimeError as exc:
@@ -105,3 +107,39 @@ def test_run_benchmark_falls_back_to_cli_adjacent_to_active_python(monkeypatch, 
 
 def test_coerce_transcript_prefers_explicit_empty_text_field() -> None:
     assert benchmark_module._coerce_transcript({"text": ""}) == ""
+
+
+def test_run_benchmark_synthesizes_speech_when_audio_file_is_omitted(monkeypatch, tmp_path: Path) -> None:
+    calls: list[list[str]] = []
+    synthesized_path = tmp_path / "generated.wav"
+    synthesized_path.write_bytes(b"RIFF")
+
+    monkeypatch.setattr(benchmark_module.shutil, "which", lambda command: f"/mock/bin/{command}")
+    monkeypatch.setattr(benchmark_module, "describe_environment", lambda: {"platform": "test"})
+
+    class Scratch:
+        def cleanup(self) -> None:
+            return None
+
+    monkeypatch.setattr(benchmark_module, "_resolve_audio_file", lambda audio_file, speech_text: (synthesized_path, Scratch()))
+
+    def fake_run(command: list[str], *, check: bool, capture_output: bool, text: bool, **kwargs):
+        calls.append(command)
+        output_dir = Path(command[command.index("--output-dir") + 1])
+        (output_dir / f"{Path(command[1]).stem}.json").write_text(json.dumps({"text": "spoken words"}), encoding="utf-8")
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(benchmark_module.subprocess, "run", fake_run)
+
+    artifact = benchmark_module.run_benchmark(
+        model_name="mlx-community/parakeet-tdt-0.6b-v3",
+        sample_count=1,
+        audio_file=None,
+        speech_text="benchmark speech",
+        command="parakeet-mlx",
+    )
+
+    assert artifact["benchmark"]["speech_text"] == "benchmark speech"
+    assert artifact["benchmark"]["audio_file"] == "<synthesized-speech>"
+    assert artifact["samples"][0]["transcript"] == "spoken words"
+    assert calls[0][1].endswith("generated.wav")

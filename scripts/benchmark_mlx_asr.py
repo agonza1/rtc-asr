@@ -14,7 +14,10 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_AUDIO_FILE = ROOT / "tests" / "fixtures" / "smoke.wav"
+DEFAULT_SPEECH_TEXT = (
+    "The quick brown fox jumps over the lazy dog. "
+    "This is a realtime ASR latency benchmark for the rtc asr service."
+)
 
 
 def positive_int(value: str) -> int:
@@ -28,7 +31,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark Parakeet MLX ASR latency")
     parser.add_argument("--model", required=True, help="Parakeet MLX model identifier to load")
     parser.add_argument("--sample-count", type=positive_int, default=3, help="Number of transcription runs")
-    parser.add_argument("--audio-file", type=Path, default=DEFAULT_AUDIO_FILE, help="Audio clip to transcribe")
+    parser.add_argument("--audio-file", type=Path, help="Optional speech clip to transcribe")
+    parser.add_argument(
+        "--speech-text",
+        default=DEFAULT_SPEECH_TEXT,
+        help="Speech text used when synthesizing a benchmark clip on macOS",
+    )
     parser.add_argument("--command", default="parakeet-mlx", help="CLI entry point to execute")
     parser.add_argument("--output", type=Path, help="Optional JSON artifact path")
     return parser.parse_args(argv)
@@ -110,63 +118,99 @@ def _load_cli_output(output_dir: Path, audio_file: Path) -> dict[str, Any]:
     return json.loads(candidate_paths[0].read_text(encoding="utf-8"))
 
 
-def run_benchmark(*, model_name: str, sample_count: int, audio_file: Path, command: str) -> dict[str, Any]:
+def _synthesize_speech_clip(*, speech_text: str, output_file: Path) -> None:
+    if not speech_text.strip():
+        raise RuntimeError("speech text must not be empty when synthesizing a benchmark clip")
+
+    aiff_path = output_file.with_suffix(".aiff")
+    try:
+        subprocess.run(["say", "-o", str(aiff_path), speech_text], check=True, capture_output=True, text=True)
+        subprocess.run(
+            ["afconvert", "-f", "WAVE", "-d", "LEI16@16000", str(aiff_path), str(output_file)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError("Synthesized speech requires macOS `say` and `afconvert`.") from exc
+    finally:
+        aiff_path.unlink(missing_ok=True)
+
+
+def _resolve_audio_file(audio_file: Path | None, *, speech_text: str) -> tuple[Path, tempfile.TemporaryDirectory[str] | None]:
+    if audio_file is not None:
+        return audio_file, None
+
+    scratch = tempfile.TemporaryDirectory(prefix="rtc_asr_parakeet_mlx_audio_")
+    synthesized = Path(scratch.name) / "benchmark-speech.wav"
+    _synthesize_speech_clip(speech_text=speech_text, output_file=synthesized)
+    return synthesized, scratch
+
+
+def run_benchmark(*, model_name: str, sample_count: int, audio_file: Path | None, speech_text: str, command: str) -> dict[str, Any]:
     cli = _resolve_cli(command)
-    if not audio_file.exists():
-        raise FileNotFoundError(f"Audio file not found: {audio_file}")
+    resolved_audio_file, audio_scratch = _resolve_audio_file(audio_file, speech_text=speech_text)
 
-    samples: list[dict[str, Any]] = []
-    latencies_ms: list[float] = []
+    try:
+        if not resolved_audio_file.exists():
+            raise FileNotFoundError(f"Audio file not found: {resolved_audio_file}")
 
-    for index in range(1, sample_count + 1):
-        with tempfile.TemporaryDirectory(prefix="rtc_asr_parakeet_mlx_") as output_dir_text:
-            output_dir = Path(output_dir_text)
-            started = time.perf_counter()
-            subprocess.run(
-                [
-                    cli,
-                    str(audio_file),
-                    "--model",
-                    model_name,
-                    "--output-dir",
-                    str(output_dir),
-                    "--output-format",
-                    "json",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            latency_ms = round((time.perf_counter() - started) * 1000, 1)
-            latencies_ms.append(latency_ms)
-            cli_payload = _load_cli_output(output_dir, audio_file)
-            transcript = _coerce_transcript(cli_payload)
-            samples.append(
-                {
-                    "index": index,
-                    "transcript": transcript,
-                    "transcript_char_count": len(transcript),
-                    "latency_ms": latency_ms,
-                }
-            )
+        samples: list[dict[str, Any]] = []
+        latencies_ms: list[float] = []
 
-    return {
-        "kind": "mlx-asr-benchmark",
-        "backend": {
-            "name": "parakeet-mlx",
-            "model": model_name,
-            "device": "apple-silicon",
-            "runtime": "mlx",
-        },
-        "benchmark": {
-            "sample_count": sample_count,
-            "audio_file": str(audio_file),
-            "command": Path(cli).name,
-        },
-        "samples": samples,
-        "summary": summarize(latencies_ms),
-        "environment": describe_environment(),
-    }
+        for index in range(1, sample_count + 1):
+            with tempfile.TemporaryDirectory(prefix="rtc_asr_parakeet_mlx_") as output_dir_text:
+                output_dir = Path(output_dir_text)
+                started = time.perf_counter()
+                subprocess.run(
+                    [
+                        cli,
+                        str(resolved_audio_file),
+                        "--model",
+                        model_name,
+                        "--output-dir",
+                        str(output_dir),
+                        "--output-format",
+                        "json",
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                latency_ms = round((time.perf_counter() - started) * 1000, 1)
+                latencies_ms.append(latency_ms)
+                cli_payload = _load_cli_output(output_dir, resolved_audio_file)
+                transcript = _coerce_transcript(cli_payload)
+                samples.append(
+                    {
+                        "index": index,
+                        "transcript": transcript,
+                        "transcript_char_count": len(transcript),
+                        "latency_ms": latency_ms,
+                    }
+                )
+
+        return {
+            "kind": "mlx-asr-benchmark",
+            "backend": {
+                "name": "parakeet-mlx",
+                "model": model_name,
+                "device": "apple-silicon",
+                "runtime": "mlx",
+            },
+            "benchmark": {
+                "sample_count": sample_count,
+                "audio_file": str(audio_file) if audio_file is not None else "<synthesized-speech>",
+                "command": Path(cli).name,
+                "speech_text": None if audio_file is not None else speech_text.strip(),
+            },
+            "samples": samples,
+            "summary": summarize(latencies_ms),
+            "environment": describe_environment(),
+        }
+    finally:
+        if audio_scratch is not None:
+            audio_scratch.cleanup()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -175,6 +219,7 @@ def main(argv: list[str] | None = None) -> int:
         model_name=args.model,
         sample_count=args.sample_count,
         audio_file=args.audio_file,
+        speech_text=args.speech_text,
         command=args.command,
     )
     payload = json.dumps(artifact, indent=2)
