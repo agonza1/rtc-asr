@@ -326,6 +326,40 @@ def test_lazy_load_runtime_failure_marks_service_degraded() -> None:
     assert ready.json()["preload_error"] == "invalid device"
 
 
+def test_websocket_lazy_load_runtime_failure_marks_service_degraded() -> None:
+    fixture_bytes = FIXTURE_PATH.read_bytes()
+    transcriber = BrokenLazyLoadTranscriber()
+    config = AppConfig(asr_preload_model=False)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        with client.websocket_connect("/ws/stream") as websocket:
+            websocket.send_json({"type": "start", "language": "en", "sample_rate": 16000})
+            assert websocket.receive_json()["type"] == "ready"
+            websocket.send_json(
+                {
+                    "type": "audio",
+                    "audio_data": base64.b64encode(fixture_bytes).decode("ascii"),
+                }
+            )
+            error_event = websocket.receive_json()
+
+        health = client.get("/health")
+        ready = client.get("/ready")
+
+    assert error_event == {
+        "type": "error",
+        "message": "Unexpected streaming error",
+        "code": 1011,
+    }
+    assert health.status_code == 200
+    assert health.json()["status"] == "degraded"
+    assert health.json()["ready"] is False
+    assert health.json()["preload_error"] == "invalid device"
+    assert ready.status_code == 503
+    assert ready.json()["status"] == "degraded"
+    assert ready.json()["preload_error"] == "invalid device"
+
+
 def test_transcribe_smoke_fixture() -> None:
     fixture_bytes = FIXTURE_PATH.read_bytes()
     transcriber = FakeTranscriber()
