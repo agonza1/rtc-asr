@@ -374,6 +374,7 @@ def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
         f"benchmark-results/{path.name}"
         for path in RESULTS_DIR.glob("*.json")
         if path.name not in {"manifest.json", "tracks.json", "qwen-compose-2026-06-07.json"}
+        and manifest_module.is_asr_payload(json.loads(path.read_text(encoding="utf-8")))
     }
 
     assert tracked_artifacts == expected_files

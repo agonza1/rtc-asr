@@ -21,8 +21,9 @@ def test_run_benchmark_serializes_parakeet_mlx_output(monkeypatch, tmp_path: Pat
     audio_path.write_bytes(b"RIFF")
 
     monkeypatch.setattr(benchmark_module.shutil, "which", lambda command: f"/mock/bin/{command}")
+    monkeypatch.setattr(benchmark_module, "describe_environment", lambda: {"platform": "test"})
 
-    def fake_run(command: list[str], *, check: bool, capture_output: bool, text: bool):
+    def fake_run(command: list[str], *, check: bool, capture_output: bool, text: bool, **kwargs):
         assert check is True
         assert capture_output is True
         assert text is True
@@ -84,3 +85,23 @@ def test_run_benchmark_raises_actionable_error_when_cli_is_missing(monkeypatch, 
         assert "parakeet-mlx is required" in str(exc)
     else:
         raise AssertionError("Expected RuntimeError when parakeet-mlx is unavailable")
+
+
+def test_run_benchmark_falls_back_to_cli_adjacent_to_active_python(monkeypatch, tmp_path: Path) -> None:
+    audio_path = tmp_path / "clip.wav"
+    audio_path.write_bytes(b"RIFF")
+    cli_dir = tmp_path / "mlx-bin"
+    cli_dir.mkdir()
+    cli_path = cli_dir / "parakeet-mlx"
+    cli_path.write_text("#!/bin/sh\n", encoding="utf-8")
+
+    monkeypatch.setattr(benchmark_module.shutil, "which", lambda command: None)
+    monkeypatch.setattr(benchmark_module.sys, "executable", str(cli_dir / "python"))
+
+    resolved = benchmark_module._resolve_cli("parakeet-mlx")
+
+    assert resolved == str(cli_path)
+
+
+def test_coerce_transcript_prefers_explicit_empty_text_field() -> None:
+    assert benchmark_module._coerce_transcript({"text": ""}) == ""

@@ -68,6 +68,14 @@ def describe_environment() -> dict[str, Any]:
 
 
 def _resolve_cli(command: str) -> str:
+    candidate = Path(command)
+    if candidate.exists():
+        return str(candidate)
+
+    venv_candidate = Path(sys.executable).with_name(command)
+    if venv_candidate.exists():
+        return str(venv_candidate)
+
     resolved = shutil.which(command)
     if resolved:
         return resolved
@@ -79,9 +87,8 @@ def _coerce_transcript(payload: Any) -> str:
         return payload.strip()
     if isinstance(payload, dict):
         for key in ("text", "transcript", "output"):
-            value = payload.get(key)
-            if value:
-                return str(value).strip()
+            if key in payload:
+                return str(payload[key]).strip()
         segments = payload.get("segments")
         if isinstance(segments, list):
             parts = []
