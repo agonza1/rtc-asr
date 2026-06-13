@@ -316,6 +316,7 @@ def test_docs_index_surfaces_official_wer_references() -> None:
     assert "## Official WER References" in docs_index_text
     assert "same official WER references shown in the benchmark notes" in docs_index_text
     assert "upstream Hugging Face benchmark or model-card values" in docs_index_text
+    assert "parakeet-mlx" in docs_index_text
     assert "openai/whisper-base.en" in docs_index_text
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 
