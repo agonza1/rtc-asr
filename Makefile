@@ -392,7 +392,7 @@ benchmark-qwen-mlx-text: mlx-venv
 
 lint: venv
 	@echo "Running linter..."
-	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py scripts/prerender_benchmark_homepage.py
+	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py scripts/prerender_benchmark_homepage.py scripts/benchmark_mlx_text.py
 	@echo "  ✓ Linting complete"
 
 benchmark-site:
