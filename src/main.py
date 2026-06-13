@@ -76,6 +76,12 @@ def _health_payload(services: AppServices) -> dict[str, object]:
     }
 
 
+def _record_lazy_load_failure(services: AppServices, exc: Exception) -> None:
+    # Only promote the service to degraded when the backend failed before it ever loaded.
+    if not services.transcriber.is_loaded():
+        services.preload_error = str(exc)
+
+
 class StreamClientError(ValueError):
     def __init__(self, message: str, *, code: int = 1003) -> None:
         super().__init__(message)
@@ -335,7 +341,8 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             await _close_websocket_error(websocket, str(exc), code=exc.code)
         except ValueError as exc:
             await _close_websocket_error(websocket, str(exc), code=1003)
-        except Exception:  # pragma: no cover - defensive websocket boundary
+        except Exception as exc:  # pragma: no cover - defensive websocket boundary
+            _record_lazy_load_failure(services, exc)
             logger.exception("Unexpected websocket stream error")
             await _close_websocket_error(websocket, "Unexpected streaming error", code=1011)
 
@@ -513,6 +520,7 @@ def _transcribe_bytes(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - defensive API boundary
+        _record_lazy_load_failure(services, exc)
         logger.exception("Unexpected transcription error")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

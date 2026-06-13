@@ -100,6 +100,11 @@ class RecoveringPreloadTranscriber(FakeTranscriber):
         return super().transcribe(audio_data, language=language, sample_rate=sample_rate)
 
 
+class BrokenLazyLoadTranscriber(FakeTranscriber):
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
+        raise RuntimeError("invalid device")
+
+
 def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
     transcriber = FakeTranscriber()
     config = AppConfig(asr_preload_model=False)
@@ -291,6 +296,34 @@ def test_fail_fast_raises_for_non_asr_preload_failures() -> None:
     with pytest.raises(RuntimeError, match="invalid device"):
         with TestClient(create_app(config=config, transcriber=transcriber)):
             pass
+
+
+def test_lazy_load_runtime_failure_marks_service_degraded() -> None:
+    fixture_bytes = FIXTURE_PATH.read_bytes()
+    transcriber = BrokenLazyLoadTranscriber()
+    config = AppConfig(asr_preload_model=False)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        response = client.post(
+            "/api/transcribe",
+            json={
+                "audio_data": base64.b64encode(fixture_bytes).decode("ascii"),
+                "language": "en",
+                "sample_rate": 16000,
+            },
+        )
+        health = client.get("/health")
+        ready = client.get("/ready")
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "invalid device"}
+    assert health.status_code == 200
+    assert health.json()["status"] == "degraded"
+    assert health.json()["ready"] is False
+    assert health.json()["preload_error"] == "invalid device"
+    assert ready.status_code == 503
+    assert ready.json()["status"] == "degraded"
+    assert ready.json()["preload_error"] == "invalid device"
 
 
 def test_transcribe_smoke_fixture() -> None:
