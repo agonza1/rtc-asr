@@ -253,6 +253,28 @@ async def fetch_service_metadata(base_url: str) -> dict[str, object] | None:
     return payload
 
 
+def resolve_service_model(service: dict[str, object] | None, fallback_model: str) -> str:
+    if not isinstance(service, dict):
+        return fallback_model
+
+    top_level_model = service.get("model")
+    if isinstance(top_level_model, str) and top_level_model:
+        return top_level_model
+
+    service_models = service.get("models")
+    if isinstance(service_models, list) and service_models:
+        primary_model = service_models[0]
+        if isinstance(primary_model, str) and primary_model:
+            return primary_model
+        if isinstance(primary_model, dict):
+            for key in ("id", "model"):
+                value = primary_model.get(key)
+                if isinstance(value, str) and value:
+                    return value
+
+    return fallback_model
+
+
 class ManagedServer:
     def __init__(
         self,
@@ -911,9 +933,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "accuracy": ws["accuracy"],
             })
         capabilities = service.get("capabilities") if isinstance(service, dict) else None
-        service_models = service.get("models") if isinstance(service, dict) else None
         effective_backend = service.get("backend", args.backend) if isinstance(service, dict) else args.backend
-        effective_model = service_models[0] if isinstance(service_models, list) and service_models else args.model
+        effective_model = resolve_service_model(service, args.model)
         effective_device = capabilities.get("device", args.device) if isinstance(capabilities, dict) else args.device
         effective_compute_type = None
         effective_qwen_dtype = None
@@ -923,7 +944,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 effective_qwen_dtype = capabilities.get("dtype")
             if effective_qwen_dtype is None:
                 effective_qwen_dtype = args.qwen_dtype
-        elif effective_backend in {"parakeet", "parakeet-nemo"}:
+        elif effective_backend in {"parakeet", "parakeet-nemo", "parakeet-mlx"}:
             if isinstance(capabilities, dict):
                 effective_parakeet_dtype = capabilities.get("dtype")
             if effective_parakeet_dtype is None:
