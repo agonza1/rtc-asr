@@ -185,6 +185,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         description = current.transcriber.describe()
         status = _backend_status(current)
         streaming = description.get("streaming")
+        audio = description.get("audio")
         return {
             "backend": current.transcriber.backend_name,
             "model": current.transcriber.model_name,
@@ -194,6 +195,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             "preload_enabled": current.config.asr_preload_model,
             "preload_error": current.preload_error,
             "streaming": streaming,
+            "audio": audio,
             "models": [
                 {
                     "id": current.transcriber.model_name,
@@ -201,6 +203,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     "model": current.transcriber.model_name,
                     "loaded": current.transcriber.is_loaded(),
                     "streaming": streaming,
+                    "audio": audio,
                     "capabilities": description,
                 }
             ],

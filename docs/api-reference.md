@@ -75,6 +75,11 @@ Example response:
     "audio_frame_formats": ["json-base64", "binary"],
     "event_types": ["ready", "partial", "final", "canceled", "error"]
   },
+  "audio": {
+    "target_sample_rate": 16000,
+    "channels": 1,
+    "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"]
+  },
   "models": [
     {
       "id": "small.en",
@@ -89,6 +94,11 @@ Example response:
         "audio_frame_formats": ["json-base64", "binary"],
         "event_types": ["ready", "partial", "final", "canceled", "error"]
       },
+      "audio": {
+        "target_sample_rate": 16000,
+        "channels": 1,
+        "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"]
+      },
       "capabilities": {
         "backend": "faster-whisper",
         "model": "small.en",
@@ -100,6 +110,11 @@ Example response:
           "message_types": ["start", "audio", "stop", "cancel"],
           "audio_frame_formats": ["json-base64", "binary"],
           "event_types": ["ready", "partial", "final", "canceled", "error"]
+        },
+        "audio": {
+          "target_sample_rate": 16000,
+          "channels": 1,
+          "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"]
         }
       }
     }
@@ -115,12 +130,17 @@ Example response:
       "message_types": ["start", "audio", "stop", "cancel"],
       "audio_frame_formats": ["json-base64", "binary"],
       "event_types": ["ready", "partial", "final", "canceled", "error"]
+    },
+    "audio": {
+      "target_sample_rate": 16000,
+      "channels": 1,
+      "accepted_formats": ["wav", "pcm16", "other formats supported by soundfile when installed"]
     }
   }
 }
 ```
 
-Capability metadata changes by backend. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields.
+Capability metadata changes by backend. The top-level `streaming` and `audio` keys provide the active transport contract clients can read without digging into nested capability blobs, while backend-specific details remain under `capabilities`. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields.
 
 ## Synchronous Transcription
 
