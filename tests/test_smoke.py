@@ -236,6 +236,7 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
     with TestClient(create_app(config=config, transcriber=transcriber)) as client:
         health = client.get("/health")
         ready = client.get("/ready")
+        models = client.get("/api/models")
 
     assert health.status_code == 200
     assert health.json() == {
@@ -259,6 +260,11 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
         "preload_enabled": True,
         "preload_error": "backend unavailable",
     }
+    assert models.status_code == 200
+    assert models.json()["status"] == "degraded"
+    assert models.json()["ready"] is False
+    assert models.json()["preload_error"] == "backend unavailable"
+    assert models.json()["models"][0]["loaded"] is False
 
 
 def test_ready_recovers_after_successful_transcription() -> None:
@@ -267,7 +273,9 @@ def test_ready_recovers_after_successful_transcription() -> None:
     fixture_bytes = FIXTURE_PATH.read_bytes()
 
     with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        degraded_health = client.get("/health")
         degraded_ready = client.get("/ready")
+        degraded_models = client.get("/api/models")
         transcribe = client.post(
             "/api/transcribe",
             json={
@@ -276,17 +284,38 @@ def test_ready_recovers_after_successful_transcription() -> None:
                 "sample_rate": 16000,
             },
         )
+        recovered_health = client.get("/health")
         recovered_ready = client.get("/ready")
+        recovered_models = client.get("/api/models")
 
+    assert degraded_health.status_code == 200
+    assert degraded_health.json()["status"] == "degraded"
+    assert degraded_health.json()["ready"] is False
+    assert degraded_health.json()["preload_error"] == "model download failed"
     assert degraded_ready.status_code == 503
     assert degraded_ready.json()["preload_error"] == "model download failed"
     assert degraded_ready.json()["status"] == "degraded"
+    assert degraded_models.status_code == 200
+    assert degraded_models.json()["status"] == "degraded"
+    assert degraded_models.json()["ready"] is False
+    assert degraded_models.json()["preload_error"] == "model download failed"
+    assert degraded_models.json()["models"][0]["loaded"] is False
     assert transcribe.status_code == 200
+    assert recovered_health.status_code == 200
+    assert recovered_health.json()["status"] == "ready"
+    assert recovered_health.json()["ready"] is True
+    assert recovered_health.json()["preload_error"] is None
+    assert recovered_health.json()["model_loaded"] is True
     assert recovered_ready.status_code == 200
     assert recovered_ready.json()["status"] == "ready"
     assert recovered_ready.json()["ready"] is True
     assert recovered_ready.json()["preload_error"] is None
     assert recovered_ready.json()["model_loaded"] is True
+    assert recovered_models.status_code == 200
+    assert recovered_models.json()["status"] == "ready"
+    assert recovered_models.json()["ready"] is True
+    assert recovered_models.json()["preload_error"] is None
+    assert recovered_models.json()["models"][0]["loaded"] is True
 
 
 def test_fail_fast_raises_for_non_asr_preload_failures() -> None:
@@ -314,6 +343,7 @@ def test_lazy_load_runtime_failure_marks_service_degraded() -> None:
         )
         health = client.get("/health")
         ready = client.get("/ready")
+        models = client.get("/api/models")
 
     assert response.status_code == 500
     assert response.json() == {"detail": "invalid device"}
@@ -324,6 +354,11 @@ def test_lazy_load_runtime_failure_marks_service_degraded() -> None:
     assert ready.status_code == 503
     assert ready.json()["status"] == "degraded"
     assert ready.json()["preload_error"] == "invalid device"
+    assert models.status_code == 200
+    assert models.json()["status"] == "degraded"
+    assert models.json()["ready"] is False
+    assert models.json()["preload_error"] == "invalid device"
+    assert models.json()["models"][0]["loaded"] is False
 
 
 def test_websocket_lazy_load_runtime_failure_marks_service_degraded() -> None:
@@ -345,6 +380,7 @@ def test_websocket_lazy_load_runtime_failure_marks_service_degraded() -> None:
 
         health = client.get("/health")
         ready = client.get("/ready")
+        models = client.get("/api/models")
 
     assert error_event == {
         "type": "error",
@@ -358,6 +394,11 @@ def test_websocket_lazy_load_runtime_failure_marks_service_degraded() -> None:
     assert ready.status_code == 503
     assert ready.json()["status"] == "degraded"
     assert ready.json()["preload_error"] == "invalid device"
+    assert models.status_code == 200
+    assert models.json()["status"] == "degraded"
+    assert models.json()["ready"] is False
+    assert models.json()["preload_error"] == "invalid device"
+    assert models.json()["models"][0]["loaded"] is False
 
 
 def test_transcribe_smoke_fixture() -> None:
