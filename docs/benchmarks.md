@@ -124,7 +124,8 @@ Benchmark artifacts now include extra streaming responsiveness metrics for low-l
 
 - `first_partial_end_to_end_*`: when a caller could first see a useful partial in real time
 - `partial_gap_*`: cadence between visible partial updates
-- `time_to_final_from_audio_end_ms`: finalization delay after audio stops
+- `time_to_final_from_audio_end_ms`: per-sample finalization delay after audio stops
+- `time_to_final_from_audio_end_*`: aggregated finalization delay summary used by the benchmark site (`final_*` remains a compatibility alias)
 
 Rebuild the homepage manifest after artifact or track changes:
 

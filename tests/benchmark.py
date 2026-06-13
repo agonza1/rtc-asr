@@ -23,7 +23,7 @@ import numpy as np
 import soundfile as sf
 import websockets
 
-from src.rtc_client import AsyncASRClient
+from src.rtc_client import AsyncASRClient, TranscriptEvent
 
 DEFAULT_TEXT = (
     "The quick brown fox jumps over the lazy dog. "
@@ -633,6 +633,62 @@ async def run_pipecat_e2e_benchmark(
     last_partial_visible_ms = 0.0
     last_partial_text = ""
     observed_partial_events = 0
+    pending_partial_started_at: dict[int, float] = {}
+    recorded_partial_chunks: set[int] = set()
+
+    def record_partial_event(
+        event: TranscriptEvent,
+        received_at: float,
+        *,
+        fallback_chunk_index: int,
+    ) -> int | None:
+        nonlocal last_partial_visible_ms, last_partial_text, observed_partial_events
+
+        chunk_index = getattr(event, "chunks_received", 0)
+        if chunk_index < 1:
+            chunk_index = fallback_chunk_index
+        started_at = pending_partial_started_at.get(chunk_index)
+        if started_at is None or chunk_index in recorded_partial_chunks:
+            return None
+
+        response_latency_ms = (received_at - started_at) * 1000
+        audio_offset_ms = chunk_audio_offsets_ms[min(chunk_index - 1, len(chunk_audio_offsets_ms) - 1)]
+        visible_elapsed_ms = max(audio_offset_ms, last_partial_visible_ms) + response_latency_ms
+        visible_elapsed_ms = round(visible_elapsed_ms, 1)
+        partial_latencies.append(response_latency_ms)
+        partial_audio_offsets_ms.append(audio_offset_ms)
+        partial_end_to_end_ms.append(visible_elapsed_ms)
+        if len(partial_end_to_end_ms) > 1:
+            partial_gap_ms.append(round(partial_end_to_end_ms[-1] - partial_end_to_end_ms[-2], 1))
+        last_partial_visible_ms = visible_elapsed_ms
+        last_partial_text = event.text
+        observed_partial_events += 1
+        recorded_partial_chunks.add(chunk_index)
+        pending_partial_started_at.pop(chunk_index, None)
+        return chunk_index
+
+    async def recv_event_with_timeout(timeout: float) -> TranscriptEvent | None:
+        payload = await client._recv_json_with_timeout(timeout)
+        if payload is None:
+            return None
+        return TranscriptEvent.from_payload(payload)
+
+    async def collect_partial_events(expected_chunk_index: int) -> None:
+        deadline = time.perf_counter() + partial_event_timeout_seconds
+        while expected_chunk_index not in recorded_partial_chunks:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
+                return
+            event = await recv_event_with_timeout(remaining)
+            if event is None:
+                return
+            received_at = time.perf_counter()
+            if event.type != "partial":
+                raise RuntimeError(f"Expected partial event, got: {event.type}")
+            if event.chunks_received > expected_chunk_index:
+                record_partial_event(event, received_at, fallback_chunk_index=event.chunks_received)
+                return
+            record_partial_event(event, received_at, fallback_chunk_index=expected_chunk_index)
 
     client = AsyncASRClient(ws_url, connect_fn=connect_fn)
     ready_event = await client.start(
@@ -651,27 +707,36 @@ async def run_pipecat_e2e_benchmark(
             partial_event = await client.send_audio(chunk, response_timeout=partial_event_timeout_seconds)
             if chunk_index == len(chunks):
                 audio_finished_at = time.perf_counter()
+            if chunk_index % partial_interval_chunks != 0:
+                continue
+            pending_partial_started_at[chunk_index] = started
             if partial_event is None:
+                if hasattr(client, "_recv_json_with_timeout"):
+                    await collect_partial_events(chunk_index)
                 continue
             if partial_event.type != "partial":
                 raise RuntimeError(f"Expected partial event, got: {partial_event.type}")
-
-            observed_partial_events += 1
-            response_latency_ms = (time.perf_counter() - started) * 1000
-            audio_offset_ms = chunk_audio_offsets_ms[min(chunk_index - 1, len(chunk_audio_offsets_ms) - 1)]
-            visible_elapsed_ms = max(audio_offset_ms, last_partial_visible_ms) + response_latency_ms
-            visible_elapsed_ms = round(visible_elapsed_ms, 1)
-            partial_latencies.append(response_latency_ms)
-            partial_audio_offsets_ms.append(audio_offset_ms)
-            partial_end_to_end_ms.append(visible_elapsed_ms)
-            last_partial_text = partial_event.text
-            if len(partial_end_to_end_ms) > 1:
-                partial_gap_ms.append(round(partial_end_to_end_ms[-1] - partial_end_to_end_ms[-2], 1))
-            last_partial_visible_ms = visible_elapsed_ms
+            record_partial_event(partial_event, time.perf_counter(), fallback_chunk_index=chunk_index)
 
         stop_started_at = time.perf_counter()
-        final_event = await client.stop()
-        final_received_at = time.perf_counter()
+        if hasattr(client, "_require_websocket") and hasattr(client, "_recv_json"):
+            websocket = client._require_websocket()
+            await websocket.send(json.dumps({"type": "stop"}))
+            client._chunks_sent = 0
+            client._send_binary_frames = False
+            while True:
+                event = TranscriptEvent.from_payload(await client._recv_json(allow_error=True))
+                received_at = time.perf_counter()
+                if event.type == "partial":
+                    fallback_chunk_index = event.chunks_received if event.chunks_received > 0 else len(chunks)
+                    record_partial_event(event, received_at, fallback_chunk_index=fallback_chunk_index)
+                    continue
+                final_event = event
+                final_received_at = received_at
+                break
+        else:
+            final_event = await client.stop()
+            final_received_at = time.perf_counter()
     finally:
         await client.close()
 
@@ -748,6 +813,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         first_partial_end_to_end_all: list[float] = []
         partial_gap_all: list[float] = []
         final_latencies_all: list[float] = []
+        finalization_latencies_all: list[float] = []
         missing_partial_events_all: list[int] = []
         closeout_event_types: list[str] = []
         final_event_received_count = 0
@@ -796,6 +862,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 first_partial_end_to_end_all.append(float(first_partial_end_to_end))
             partial_gap_all.extend(float(value) for value in ws.get("partial_gap_ms", []))
             final_latencies_all.append(float(ws.get("final_ms", 0.0)))
+            finalization_latencies_all.append(
+                float(ws.get("time_to_final_from_audio_end_ms", ws.get("final_ms", 0.0)))
+            )
             missing_partial_events_all.append(int(ws.get("missing_partial_events", 0)))
             if ws.get("final_event_received"):
                 final_event_received_count += 1
@@ -888,7 +957,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         streaming_summary = summarize_latencies(partial_latencies_all) if partial_latencies_all else None
         first_partial_summary = summarize_latencies(first_partial_end_to_end_all) if first_partial_end_to_end_all else None
         partial_gap_summary = summarize_latencies(partial_gap_all) if partial_gap_all else None
-        final_summary = summarize_latencies(final_latencies_all)
+        final_summary = summarize_latencies(finalization_latencies_all)
 
         return {
             "environment": describe_environment(),
@@ -957,7 +1026,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "partial_latencies_ms": [round(value, 1) for value in partial_latencies_all],
                 "first_partial_end_to_end_latencies_ms": [round(value, 1) for value in first_partial_end_to_end_all],
                 "partial_gap_latencies_ms": [round(value, 1) for value in partial_gap_all],
-                "final_latencies_ms": [round(value, 1) for value in final_latencies_all],
+                "final_latencies_ms": [round(value, 1) for value in finalization_latencies_all],
+                "stop_to_final_latencies_ms": [round(value, 1) for value in final_latencies_all],
                 "binary_frames": args.binary_frames,
                 "partial_mean_ms": streaming_summary["mean_ms"] if streaming_summary else None,
                 "partial_p90_ms": streaming_summary["p90_ms"] if streaming_summary else None,
@@ -970,6 +1040,11 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "partial_gap_mean_ms": partial_gap_summary["mean_ms"] if partial_gap_summary else None,
                 "partial_gap_p90_ms": partial_gap_summary["p90_ms"] if partial_gap_summary else None,
                 "partial_gap_p95_ms": partial_gap_summary["p95_ms"] if partial_gap_summary else None,
+                "time_to_final_from_audio_end_mean_ms": final_summary["mean_ms"],
+                "time_to_final_from_audio_end_p90_ms": final_summary["p90_ms"],
+                "time_to_final_from_audio_end_p95_ms": final_summary["p95_ms"],
+                "time_to_final_from_audio_end_min_ms": final_summary["min_ms"],
+                "time_to_final_from_audio_end_max_ms": final_summary["max_ms"],
                 "final_mean_ms": final_summary["mean_ms"],
                 "final_p90_ms": final_summary["p90_ms"],
                 "final_p95_ms": final_summary["p95_ms"],

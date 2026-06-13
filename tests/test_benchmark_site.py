@@ -238,16 +238,19 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
     assert track["streaming"]["partial_gap_mean_ms"] == 95
     assert manifest["summary"]["highlights"]["fastest_first_partial"]["slug"] == "demo-track"
     assert manifest["summary"]["highlights"]["tightest_partial_cadence"]["slug"] == "demo-track"
+    assert manifest["summary"]["highlights"]["fastest_final"]["label"] == "Fastest streaming finalization delay"
 
 
 def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
+    assert "Finalization" in html
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
     assert "const baselineEntries = comparableEntries(ranked);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
     assert 'Partial response' in html
+    assert 'title="Time from audio end until the final transcript returns."' in html
     assert 'title="Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial."' in html
     assert 'title="Buffered audio window used when generating partial transcripts."' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
