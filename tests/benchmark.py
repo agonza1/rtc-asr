@@ -521,7 +521,12 @@ async def run_ws_benchmark(
         if not isinstance(chunk_index, int) or isinstance(chunk_index, bool) or chunk_index < 1:
             chunk_index = fallback_chunk_index
         started_at = pending_partial_started_at.get(chunk_index)
-        if started_at is None or chunk_index in recorded_partial_chunks:
+        if started_at is None:
+            return None
+
+        partial_text = event.get("text", "")
+        partial_texts.append(partial_text)
+        if chunk_index in recorded_partial_chunks:
             return None
 
         response_latency_ms = (received_at - started_at) * 1000
@@ -532,10 +537,7 @@ async def run_ws_benchmark(
         visible_elapsed_ms = round(visible_elapsed_ms, 1)
         partial_end_to_end_ms.append(visible_elapsed_ms)
         last_partial_visible_ms = visible_elapsed_ms
-        partial_text = event.get("text", "")
-        partial_texts.append(partial_text)
         recorded_partial_chunks.add(chunk_index)
-        pending_partial_started_at.pop(chunk_index, None)
         return chunk_index
 
     async def collect_partial_events(expected_chunk_index: int) -> None:
@@ -631,7 +633,6 @@ async def run_ws_benchmark(
         "partial_gap_p95_ms": round(percentile(partial_gap_ms, 0.95), 1) if partial_gap_ms else None,
     }
     partial_churn = summarize_partial_churn(partial_texts)
-    partial_churn = summarize_partial_churn(partial_texts)
     return {
         "chunks": len(chunks),
         "chunk_ms": chunk_ms,
@@ -716,7 +717,12 @@ async def run_pipecat_e2e_benchmark(
         if chunk_index < 1:
             chunk_index = fallback_chunk_index
         started_at = pending_partial_started_at.get(chunk_index)
-        if started_at is None or chunk_index in recorded_partial_chunks:
+        if started_at is None:
+            return None
+
+        last_partial_text = event.text
+        partial_texts.append(last_partial_text)
+        if chunk_index in recorded_partial_chunks:
             return None
 
         response_latency_ms = (received_at - started_at) * 1000
@@ -729,11 +735,8 @@ async def run_pipecat_e2e_benchmark(
         if len(partial_end_to_end_ms) > 1:
             partial_gap_ms.append(round(partial_end_to_end_ms[-1] - partial_end_to_end_ms[-2], 1))
         last_partial_visible_ms = visible_elapsed_ms
-        last_partial_text = event.text
-        partial_texts.append(last_partial_text)
         observed_partial_events += 1
         recorded_partial_chunks.add(chunk_index)
-        pending_partial_started_at.pop(chunk_index, None)
         return chunk_index
 
     async def recv_event_with_timeout(timeout: float) -> TranscriptEvent | None:
@@ -788,7 +791,11 @@ async def run_pipecat_e2e_benchmark(
                 continue
             if partial_event.type != "partial":
                 raise RuntimeError(f"Expected partial event, got: {partial_event.type}")
-            record_partial_event(partial_event, time.perf_counter(), fallback_chunk_index=chunk_index)
+            event_chunk_index = getattr(partial_event, "chunks_received", 0)
+            if event_chunk_index != chunk_index:
+                late_partial_events += 1
+            fallback_chunk_index = event_chunk_index if event_chunk_index > 0 else chunk_index
+            record_partial_event(partial_event, time.perf_counter(), fallback_chunk_index=fallback_chunk_index)
 
         stop_started_at = time.perf_counter()
         if hasattr(client, "_require_websocket") and hasattr(client, "_recv_json"):
