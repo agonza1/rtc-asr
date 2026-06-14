@@ -768,10 +768,11 @@ async def run_pipecat_e2e_benchmark(
             received_at = time.perf_counter()
             if event.type != "partial":
                 raise RuntimeError(f"Expected partial event, got: {event.type}")
-            if event.chunks_received != expected_chunk_index:
+            event_chunk_index = getattr(event, "chunks_received", 0)
+            if event_chunk_index > 0 and event_chunk_index != expected_chunk_index:
                 late_partial_events += 1
-                if event.chunks_received > expected_chunk_index:
-                    record_partial_event(event, received_at, fallback_chunk_index=event.chunks_received)
+                if event_chunk_index > expected_chunk_index:
+                    record_partial_event(event, received_at, fallback_chunk_index=event_chunk_index)
                     return
             record_partial_event(event, received_at, fallback_chunk_index=expected_chunk_index)
 
@@ -802,7 +803,7 @@ async def run_pipecat_e2e_benchmark(
             if partial_event.type != "partial":
                 raise RuntimeError(f"Expected partial event, got: {partial_event.type}")
             event_chunk_index = getattr(partial_event, "chunks_received", 0)
-            if event_chunk_index != chunk_index:
+            if event_chunk_index > 0 and event_chunk_index != chunk_index:
                 late_partial_events += 1
             fallback_chunk_index = event_chunk_index if event_chunk_index > 0 else chunk_index
             record_partial_event(partial_event, time.perf_counter(), fallback_chunk_index=fallback_chunk_index)
