@@ -88,6 +88,18 @@ def test_summarize_latencies_reports_mean_and_p90() -> None:
     assert summary["rtf_mean"] == 0.01
 
 
+def test_summarize_ratio_series_preserves_sub_tenth_precision() -> None:
+    summary = benchmark.summarize_ratio_series([0.01, 0.02, 0.03])
+
+    assert summary == {
+        "mean": 0.02,
+        "p90": 0.03,
+        "p95": 0.03,
+        "min": 0.01,
+        "max": 0.03,
+    }
+
+
 def test_summarize_partial_churn_reports_revision_and_ratio_metrics() -> None:
     summary = summarize_partial_churn(["hello world", "hello brave world", "yellow brave world"])
 
@@ -953,6 +965,153 @@ def test_run_pipecat_e2e_benchmark_records_late_partial_before_final(monkeypatch
         assert result["final_transcript"] == "done"
 
     asyncio.run(scenario())
+
+
+def test_async_main_preserves_partial_churn_precision(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_fetch_service_metadata(_: str) -> dict[str, object]:
+        return {
+            "backend": "demo",
+            "models": ["demo-v1"],
+            "capabilities": {"device": "cpu", "compute_type": "int8"},
+        }
+
+    async def fake_run_rest_benchmark(*args, **kwargs) -> dict[str, object]:
+        return {
+            "durations_ms": [40.0],
+            "mean_ms": 40.0,
+            "p90_ms": 40.0,
+            "p95_ms": 40.0,
+            "min_ms": 40.0,
+            "max_ms": 40.0,
+            "rtf_mean": 0.1,
+            "transcript": "done",
+        }
+
+    samples = iter([
+        {
+            "binary_frames": False,
+            "partial_latencies_ms": [20.0],
+            "partial_audio_offsets_ms": [250.0],
+            "partial_end_to_end_ms": [350.0],
+            "partial_gap_ms": [],
+            "partial_mean_ms": 20.0,
+            "partial_p90_ms": 20.0,
+            "partial_p95_ms": 20.0,
+            "partial_first_ms": 20.0,
+            "partial_last_ms": 20.0,
+            "first_partial_audio_ms": 250.0,
+            "first_partial_end_to_end_ms": 350.0,
+            "partial_gap_mean_ms": None,
+            "partial_gap_p95_ms": None,
+            "final_ms": 200.0,
+            "time_to_final_from_audio_end_ms": 1100.0,
+            "ready": {"type": "ready"},
+            "last_partial": "p1",
+            "final_transcript": "done",
+            "expected_partial_events": 1,
+            "observed_partial_events": 1,
+            "missing_partial_events": 0,
+            "late_partial_events": 0,
+            "late_partial_ratio": 0.0,
+            "partial_revision_count": 1,
+            "partial_transcript_churn_char_mean": 0.01,
+            "partial_transcript_churn_char_p95": 0.01,
+            "partial_transcript_churn_word_mean": 0.02,
+            "partial_transcript_churn_word_p95": 0.02,
+            "bridge": None,
+            "final_event_received": True,
+            "closeout_event_type": "final",
+            "transport": "direct",
+            "source_frame_ms": None,
+            "source_frame_count": None,
+            "aggregation_frame_count": None,
+        },
+        {
+            "binary_frames": False,
+            "partial_latencies_ms": [30.0],
+            "partial_audio_offsets_ms": [250.0],
+            "partial_end_to_end_ms": [360.0],
+            "partial_gap_ms": [],
+            "partial_mean_ms": 30.0,
+            "partial_p90_ms": 30.0,
+            "partial_p95_ms": 30.0,
+            "partial_first_ms": 30.0,
+            "partial_last_ms": 30.0,
+            "first_partial_audio_ms": 250.0,
+            "first_partial_end_to_end_ms": 360.0,
+            "partial_gap_mean_ms": None,
+            "partial_gap_p95_ms": None,
+            "final_ms": 300.0,
+            "time_to_final_from_audio_end_ms": 1500.0,
+            "ready": {"type": "ready"},
+            "last_partial": "p2",
+            "final_transcript": "done",
+            "expected_partial_events": 1,
+            "observed_partial_events": 1,
+            "missing_partial_events": 0,
+            "late_partial_events": 0,
+            "late_partial_ratio": 0.0,
+            "partial_revision_count": 1,
+            "partial_transcript_churn_char_mean": 0.02,
+            "partial_transcript_churn_char_p95": 0.02,
+            "partial_transcript_churn_word_mean": 0.03,
+            "partial_transcript_churn_word_p95": 0.03,
+            "bridge": None,
+            "final_event_received": True,
+            "closeout_event_type": "final",
+            "transport": "direct",
+            "source_frame_ms": None,
+            "source_frame_count": None,
+            "aggregation_frame_count": None,
+        },
+    ])
+
+    async def fake_run_ws_benchmark(*args, **kwargs) -> dict[str, object]:
+        return next(samples)
+
+    monkeypatch.setattr(benchmark, "benchmark_audio_path", lambda args: benchmark.FIXTURE_PATH)
+    monkeypatch.setattr(benchmark, "resolve_reference_text", lambda args, synthesized=False: None)
+    monkeypatch.setattr(benchmark, "load_audio", lambda path: (np.zeros(8, dtype=np.float32), 4))
+    monkeypatch.setattr(benchmark, "make_wav_bytes", lambda samples, sample_rate: b"wav")
+    monkeypatch.setattr(benchmark, "fetch_service_metadata", fake_fetch_service_metadata)
+    monkeypatch.setattr(benchmark, "run_rest_benchmark", fake_run_rest_benchmark)
+    monkeypatch.setattr(benchmark, "run_ws_benchmark", fake_run_ws_benchmark)
+
+    args = argparse.Namespace(
+        audio_file=None,
+        speech_text=benchmark.DEFAULT_TEXT,
+        reference_text=None,
+        reference_file=None,
+        spawn_server=False,
+        backend="demo",
+        model="demo-v1",
+        sample_count=2,
+        rest_runs=1,
+        chunk_ms=250,
+        partial_interval_chunks=1,
+        partial_window=2.0,
+        max_buffer=None,
+        binary_frames=False,
+        output=None,
+        device="cpu",
+        compute_type="int8",
+        qwen_dtype=None,
+        parakeet_dtype=None,
+        mode="direct",
+        url="http://example.test",
+        ws_url="ws://example.test/ws/stream",
+        pipecat_source_frame_ms=20,
+        partial_event_timeout=0.1,
+        request_retries=1,
+        request_retry_delay=0.1,
+    )
+
+    result = asyncio.run(benchmark.async_main(args))
+
+    assert result["streaming"]["partial_transcript_churn_char_mean"] == 0.015
+    assert result["streaming"]["partial_transcript_churn_char_p95"] == 0.02
+    assert result["streaming"]["partial_transcript_churn_word_mean"] == 0.025
+    assert result["streaming"]["partial_transcript_churn_word_p95"] == 0.03
 
 
 def test_resolve_service_model_prefers_scalar_identifier_fields() -> None:

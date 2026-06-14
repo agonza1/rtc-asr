@@ -127,6 +127,16 @@ def summarize_latencies(values: list[float], *, duration_s: float | None = None)
     return summary
 
 
+def summarize_ratio_series(values: list[float]) -> dict[str, float]:
+    return {
+        "mean": round(statistics.mean(values), 3),
+        "p90": round(percentile(values, 0.90), 3),
+        "p95": round(percentile(values, 0.95), 3),
+        "min": round(min(values), 3),
+        "max": round(max(values), 3),
+    }
+
+
 def make_wav_bytes(samples: np.ndarray, sample_rate: int) -> bytes:
     clipped = np.clip(samples, -1.0, 1.0)
     pcm16 = (clipped * 32767.0).astype("<i2")
@@ -1063,8 +1073,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         first_partial_summary = summarize_latencies(first_partial_end_to_end_all) if first_partial_end_to_end_all else None
         partial_gap_summary = summarize_latencies(partial_gap_all) if partial_gap_all else None
         final_summary = summarize_latencies(finalization_latencies_all)
-        partial_churn_char_summary = summarize_latencies(partial_churn_char_all) if partial_churn_char_all else None
-        partial_churn_word_summary = summarize_latencies(partial_churn_word_all) if partial_churn_word_all else None
+        partial_churn_char_summary = summarize_ratio_series(partial_churn_char_all) if partial_churn_char_all else None
+        partial_churn_word_summary = summarize_ratio_series(partial_churn_word_all) if partial_churn_word_all else None
 
         return {
             "environment": describe_environment(),
@@ -1166,10 +1176,10 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "late_partial_events": sum(late_partial_events_all),
                 "late_partial_ratio": round(sum(late_partial_events_all) / sum(int(sample.get("observed_partial_events", 0)) for sample in streaming_samples), 3) if sum(int(sample.get("observed_partial_events", 0)) for sample in streaming_samples) else None,
                 "partial_revision_count": sum(int(sample.get("partial_revision_count", 0)) for sample in streaming_samples),
-                "partial_transcript_churn_char_mean": partial_churn_char_summary["mean_ms"] if partial_churn_char_summary else None,
-                "partial_transcript_churn_char_p95": partial_churn_char_summary["p95_ms"] if partial_churn_char_summary else None,
-                "partial_transcript_churn_word_mean": partial_churn_word_summary["mean_ms"] if partial_churn_word_summary else None,
-                "partial_transcript_churn_word_p95": partial_churn_word_summary["p95_ms"] if partial_churn_word_summary else None,
+                "partial_transcript_churn_char_mean": partial_churn_char_summary["mean"] if partial_churn_char_summary else None,
+                "partial_transcript_churn_char_p95": partial_churn_char_summary["p95"] if partial_churn_char_summary else None,
+                "partial_transcript_churn_word_mean": partial_churn_word_summary["mean"] if partial_churn_word_summary else None,
+                "partial_transcript_churn_word_p95": partial_churn_word_summary["p95"] if partial_churn_word_summary else None,
                 "bridge": streaming_samples[0].get("bridge") if streaming_samples and args.mode == "pipecat-e2e" else None,
                 "final_event_received_count": final_event_received_count,
                 "closeout_event_types": closeout_event_types,
