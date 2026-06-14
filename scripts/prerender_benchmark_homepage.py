@@ -261,7 +261,6 @@ def render_row(
             f'<td data-label="Partial response"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs fastest</div></td>',
             f'<td data-label="Final"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
             f'<td data-label="REST"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
-            f'<td data-label="Official WER"><strong>{html.escape(entry.get("official_wer_reference") or "see notes")}</strong><div class="tiny">Upstream model-card / benchmark reference</div></td>',
             f'<td data-label="Samples"><strong>{entry.get("sample_count") or "n/a"}</strong><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
             f'<td data-label="Artifact"><a href="{html.escape(entry.get("artifact_path") or "#")}">open JSON</a><div class="tiny"><a href="{html.escape(detail_page_path(entry))}">open details</a></div></td>',
             "</tr>",
@@ -330,7 +329,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
   <div class="comparison-scroll">
     <table>
       <thead>
-        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial response', 'Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.')}</th><th>{hint('Finalization', 'Time from audio end until the final transcript returns.')}</th><th>{hint('REST', 'Batch request latency for the same backend outside the streaming websocket path.')}</th><th>{hint('Official WER', 'Upstream model-card or benchmark reference numbers, not repo-measured accuracy from this site.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial response', 'Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.')}</th><th>{hint('Finalization', 'Time from audio end until the final transcript returns.')}</th><th>{hint('REST', 'Batch request latency for the same backend outside the streaming websocket path.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
       </thead>
       <tbody>
 {rows}
