@@ -591,7 +591,7 @@
               <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
             <p class="meta-line" id="generated-at"><!-- BEGIN GENERATED:generated-at -->
-Published Jun 13, 2026, 10:55 PM UTC . 8 visible ASR lanes . 9 tracked lanes in the registry.
+Published Jun 14, 2026, 12:28 AM UTC . 8 visible ASR lanes . 9 tracked lanes in the registry.
 <!-- END GENERATED:generated-at --></p>
           </div>
           <div class="hero-side" id="hero-side"></div>
@@ -788,6 +788,9 @@ Published Jun 13, 2026, 10:55 PM UTC . 8 visible ASR lanes . 9 tracked lanes in 
       function formatRatio(value) {
         return value == null ? "n/a" : value.toFixed(3);
       }
+      function formatPercent(value) {
+        return value == null ? "n/a" : `${(value * 100).toFixed(1)}%`;
+      }
       function formatWer(value) {
         return value == null ? "n/a" : value.toFixed(3);
       }
@@ -803,6 +806,7 @@ Published Jun 13, 2026, 10:55 PM UTC . 8 visible ASR lanes . 9 tracked lanes in 
       }
       function statusLabel(status) {
         if (status === "validated") return "validated";
+        if (status === "blocked") return "blocked";
         return "legacy";
       }
       function statusClass(status) {
@@ -1121,6 +1125,7 @@ Published Jun 13, 2026, 10:55 PM UTC . 8 visible ASR lanes . 9 tracked lanes in 
               <td data-label="Config">
                 <strong>${entry.contract?.chunk_ms == null ? "n/a" : `${entry.contract.chunk_ms} ms`}</strong>
                 <div class="tiny"><span class="hint" title="Buffered audio window used when generating partial transcripts.">partial_window_seconds</span> ${entry.contract?.partial_window_seconds ?? "n/a"} s · <span class="hint" title="How many streamed chunks must arrive between partial attempts.">partial_interval_chunks</span> ${entry.contract?.partial_interval_chunks ?? "?"}</div>
+                <div class="tiny"><span class="hint" title="Share of partial events that arrived too late to be useful for the configured RTC-shaped cadence.">late_partial_ratio</span> ${formatPercent(entry.streaming.late_partial_ratio)} · <span class="hint" title="Average per-revision transcript change rate across visible partials.">partial_transcript_churn_word_mean</span> ${formatRatio(entry.streaming.partial_transcript_churn_word_mean)}</div>
                 <div class="tiny"><span class="hint" title="Whether websocket audio is sent as binary frames instead of JSON/base64 payloads.">binary_frames</span> ${entry.contract?.binary_frames ? "true" : "false"}</div>
               </td>
               <td data-label="Samples">
@@ -1177,6 +1182,8 @@ Published Jun 13, 2026, 10:55 PM UTC . 8 visible ASR lanes . 9 tracked lanes in 
               <div class="metric-row"><span>${hintLabel("First visible partial", "End-to-end time from stream start until the first visible partial transcript appears.")}</span><strong>${formatMs(firstVisiblePartial(track))}</strong></div>
               <div class="metric-row"><span>${hintLabel("Partial response", "Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.")}</span><strong>${formatMs(track.streaming.partial_mean_ms)}</strong></div>
               <div class="metric-row"><span>${hintLabel("Partial cadence", "Time gap between successive partial transcript events after streaming is underway.")}</span><strong>${formatMs(track.streaming.partial_gap_mean_ms)}</strong></div>
+              <div class="metric-row"><span>${hintLabel("Late partial ratio", "Share of partial events that arrived too late to be useful for the configured RTC-shaped cadence.")}</span><strong>${formatPercent(track.streaming.late_partial_ratio)}</strong></div>
+              <div class="metric-row"><span>${hintLabel("Word churn", "Average per-revision transcript change rate across visible partial updates; lower is steadier.")}</span><strong>${formatRatio(track.streaming.partial_transcript_churn_word_mean)}</strong></div>
               <div class="metric-row"><span>${hintLabel("Final mean", "Time from stop or utterance end until the final transcript returns.")}</span><strong>${formatMs(track.streaming.final_mean_ms)}</strong></div>
               <div class="metric-row"><span>${hintLabel("REST mean", "Batch request latency for the same backend outside the streaming websocket path.")}</span><strong>${formatMs(track.rest.mean_ms)}</strong></div>
               <div class="metric-row"><span>${hintLabel("RTF", "Real-time factor: processing time divided by audio duration; lower is faster.")}</span><strong>${formatRatio(track.rest.rtf_mean)}</strong></div>

@@ -46,7 +46,7 @@ Status details from the track registry:
 - `faster-whisper-small`: validated 10-sample local CPU baseline using the default service model.
 - `parakeet-compose`: validated 10-sample Compose CPU artifact.
 - `parakeet-nemo-compose`: validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.
-- `parakeet-mlx-service-110m`: validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness; its `146.9 ms` REST mean is faster than the `parakeet-nemo-compose` CPU lane (`331.4 ms`) and its `557.8 ms` first visible partial is the first apples-to-apples warmed MLX comparison for the 110M model.
+- `parakeet-mlx-service-110m`: validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness; its `141.9 ms` REST mean is faster than the `parakeet-nemo-compose` CPU lane (`331.4 ms`) and its `557.8 ms` first visible partial is the first apples-to-apples warmed MLX comparison for the 110M model.
 - `parakeet-mlx`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt-0.6b-v3`, documented here ahead of track registration; its `1971.9 ms` mean latency is faster than the `parakeet-compose` CPU lane (`2388.3 ms`) but slower than the `parakeet-nemo-compose` CPU lane (`331.4 ms`).
 - `parakeet-mlx-110m`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt_ctc-110m`, documented here ahead of track registration; its `1360.7 ms` mean latency is faster than both `parakeet-compose` CPU (`2388.3 ms`) and `parakeet-mlx` 0.6B MLX (`1971.9 ms`), but slower than the `parakeet-nemo-compose` CPU lane (`331.4 ms`).
 - `qwen-mps`: validated 10-sample local Apple Silicon MPS artifact.
@@ -58,7 +58,7 @@ These rows match the current manifest entries used on the homepage, plus two doc
 
 | Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Final Mean / P95 | Official WER reference | Artifact |
 | --- | ---: | --- | ---: | --- | --- | --- | --- |
-| `parakeet-mlx-service-110m` | 10 | 146.9 ms / 198.2 ms | 0.020 | 70.5 ms / 88.8 ms | 205.2 ms / 262.5 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
+| `parakeet-mlx-service-110m` | 10 | 141.9 ms / 170.0 ms | 0.020 | 74.5 ms / 96.9 ms | 210.6 ms / 246.3 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
 | `parakeet-nemo-compose` | 10 | 331.4 ms / 511.5 ms | 0.046 | 148.5 ms / 245.8 ms | 379.0 ms / 633.5 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` |
 | `faster-whisper-base-c80-w075-json-preview` | 1 | 537.4 ms / 537.4 ms | 0.074 | 15.4 ms / 15.4 ms | 46867.0 ms / 46867.0 ms | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` ([HF discussion diff](https://huggingface.co/openai/whisper-base.en/discussions/18/files)) | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
 | `faster-whisper-base` | 10 | 573.3 ms / 741.1 ms | 0.079 | 553.0 ms / 2451.5 ms | 560.2 ms / 761.2 ms | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` ([HF discussion diff](https://huggingface.co/openai/whisper-base.en/discussions/18/files)) | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` |
@@ -99,7 +99,7 @@ The current checked-in artifacts already cover warmed service latency, first vis
 - package power when available
 - sustained thermal behavior over `5` to `10` minutes
 - dropped or late frames for bridged RTC lanes
-- transcript churn across partial updates
+- transcript churn across partial updates, including per-revision churn ratios
 
 When testing buffered websocket ASR against RTC-shaped traffic, start with separate lanes for `80`, `100`, `160`, and `200` ms websocket chunks. Sweep `partial_window_seconds` across `0.75`, `1.0`, `1.5`, and `2.0` seconds when you want to compare responsiveness against transcript stability.
 
@@ -118,8 +118,8 @@ Default artifact contract:
 
 The tracked registry in `docs/benchmark-results/tracks.json` now also records the recommended low-latency sweep matrix:
 
-- `chunk_ms`: `80`, `100`, `200`, `250`
-- `partial_window_seconds`: `1.0`, `2.0`
+- `chunk_ms`: `80`, `100`, `160`, `200`
+- `partial_window_seconds`: `0.75`, `1.0`, `1.5`, `2.0`
 - `binary_frames`: `false`
 
 A repeatable all-model sweep is wired into the Makefile:
@@ -128,7 +128,7 @@ A repeatable all-model sweep is wired into the Makefile:
 make benchmark-all-asr-low-latency-sweep
 ```
 
-That aggregate target always fans out to the faster-whisper base/small local sweeps plus the qwen/parakeet/parakeet-nemo Compose CPU sweeps. On macOS it also includes the qwen MPS sweep; on non-Apple hosts the MPS-only lane is skipped so the portable CPU matrix can still complete. Each sweep uses the same smaller exploratory contract (`5` samples, `3` REST runs) across `80/100/200/250 ms` chunks and `1.0/2.0 s` partial windows so the benchmark matrix stays consistent across all published ASR lanes.
+That aggregate target always fans out to the faster-whisper base/small local sweeps plus the qwen/parakeet/parakeet-nemo Compose CPU sweeps. On macOS it also includes the qwen MPS sweep; on non-Apple hosts the MPS-only lane is skipped so the portable CPU matrix can still complete. Each sweep uses the same smaller exploratory contract (`5` samples, `3` REST runs) across `80/100/160/200 ms` chunks and `0.75/1.0/1.5/2.0 s` partial windows so the benchmark matrix stays consistent across all published ASR lanes.
 
 Run the local baseline benchmarks:
 
