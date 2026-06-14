@@ -1,15 +1,17 @@
 # Pipecat Integration Guide
 
-This guide shows how to bridge Pipecat audio into the current `rtc-asr` streaming API.
+This guide shows how to bridge Pipecat audio into the current `rtc-asr` websocket API.
 
-The backend is configurable, but streaming partials and finals are always emitted on `ws://.../ws/stream`; do not call `POST /api/stream`, and there is no `/api/flush` route.
+The backend is configurable, but partials and finals are always emitted on `ws://.../ws/stream`; do not call `POST /api/stream`, and there is no `/api/flush` route.
 
 ## Protocol Summary
+
+The current contract is buffered websocket ASR, not a true frame-synchronous streaming decoder API. Pipecat should stay responsible for WebRTC transport, jitter handling, audio decode, and media-edge timing. `rtc-asr` should stay responsible for normalized audio ingestion, partial refreshes over buffered windows, and final transcript generation.
 
 Open one websocket per utterance or per continuous stream and use this event order:
 
 ```json
-{ "type": "start", "language": "en", "sample_rate": 16000, "partial_interval_chunks": 1, "partial_window_seconds": 2.0, "max_buffer_seconds": 30.0 }
+{ "type": "start", "language": "en", "sample_rate": 16000, "partial_interval_chunks": 1, "partial_window_seconds": 1.0, "max_buffer_seconds": 10.0 }
 ```
 
 ```json
@@ -44,8 +46,8 @@ class PipecatASRBridge:
             language=language,
             sample_rate=sample_rate,
             partial_interval_chunks=1,
-            partial_window_seconds=2.0,
-            max_buffer_seconds=30.0,
+            partial_window_seconds=1.0,
+            max_buffer_seconds=10.0,
             send_binary_frames=True,
         )
 
@@ -71,9 +73,10 @@ Pipecat APIs move between releases, so keep the websocket bridge stable and adap
 Typical flow:
 
 1. Start an `AsyncASRClient` when Pipecat begins a new speech segment.
-2. Convert each Pipecat audio frame to mono PCM16 bytes.
-3. Call `send_audio_chunk()` for every chunk and forward non-empty `partial` text into your transcript/event pipeline.
-4. Call `stop_stream()` when VAD or turn detection ends the segment and publish the returned final transcript.
+2. Receive Pipecat `InputAudioRawFrame` values, which are typically decoded PCM frames at about `20` ms cadence.
+3. Aggregate `4` to `8` source frames into one websocket chunk before calling `send_audio_chunk()`.
+4. Forward non-empty `partial` text into your transcript or event pipeline.
+5. Call `stop_stream()` when VAD or turn detection ends the segment and publish the returned final transcript.
 
 Minimal processor sketch:
 
@@ -81,23 +84,59 @@ Minimal processor sketch:
 class MyPipecatProcessor:
     def __init__(self) -> None:
         self._asr = PipecatASRBridge()
+        self._pending = bytearray()
 
     async def on_segment_start(self) -> None:
+        self._pending.clear()
         await self._asr.start_stream(language="en", sample_rate=16000)
 
-    async def on_audio_chunk(self, pcm16_chunk: bytes) -> str:
-        return await self._asr.send_audio_chunk(pcm16_chunk)
+    async def on_audio_frame(self, pcm16_frame: bytes) -> str:
+        self._pending.extend(pcm16_frame)
+        if len(self._pending) < 3200:
+            return ""
+
+        chunk = bytes(self._pending)
+        self._pending.clear()
+        return await self._asr.send_audio_chunk(chunk)
 
     async def on_segment_end(self) -> str:
+        if self._pending:
+            await self._asr.send_audio_chunk(bytes(self._pending))
+            self._pending.clear()
         return await self._asr.stop_stream()
 ```
 
-## Audio Format Notes
+## Chunking Guidance
 
-- Lowest-friction path: send raw mono PCM16 chunks as binary websocket frames and set `sample_rate` in the `start` event.
-- The server can resample raw PCM16 if your Pipecat source is not already 16kHz.
-- If you send WAV or another encoded format instead of raw PCM16, each websocket `audio_data` payload still needs to be a complete decodable chunk.
-- Start with `50` to `200` ms chunks for a good latency/overhead balance.
+Start with `100` to `200` ms PCM16 websocket chunks for service benchmarking. Use `20` ms only at the RTC edge, then aggregate before websocket transmission unless you are intentionally measuring per-frame transport overhead.
+
+| Chunk duration | RTC frames | Payload size at 16 kHz mono PCM16 |
+| --- | --- | --- |
+| `20` ms | `1` | `640` bytes |
+| `80` ms | `4` | `2560` bytes |
+| `100` ms | `5` | `3200` bytes |
+| `160` ms | `8` | `5120` bytes |
+| `200` ms | `10` | `6400` bytes |
+
+`80` to `160` ms is the practical sweet spot for this architecture because it keeps perceived latency low, reduces websocket overhead, gives the backend enough context for steadier partials, maps cleanly from Pipecat's frame cadence, and avoids excessive ASR invocation rates on smaller devices.
+
+## Architecture Boundary
+
+Keep the media edge and the ASR service separate:
+
+```text
+Browser / mobile mic
+  -> WebRTC / RTP / Opus
+Pipecat transport
+  -> decoded PCM frames, usually ~20 ms
+Chunk aggregator
+  -> binary PCM16 websocket frame every 80-160 ms
+rtc-asr /ws/stream
+  -> partial/final transcript events
+Voice agent pipeline
+```
+
+That avoids turning `rtc-asr` into a media server. Pipecat handles WebRTC, jitter, decode, device integration, and frame timing. `rtc-asr` stays a simpler ASR benchmark and service layer.
 
 ## Local Benchmark
 
@@ -107,7 +146,7 @@ Run the Pipecat-style end-to-end benchmark harness against a local backend with 
 make benchmark-pipecat-e2e BENCHMARK_PIPECAT_AUDIO_FILE=/absolute/path/to/speech.wav
 ```
 
-That command captures a checked-in JSON artifact contract with Pipecat source-frame cadence, bridge chunk size, framing mode, first visible partial timing, partial cadence/jitter, final closeout after audio end, and missing partial counts. The current repo keeps these artifacts as a separate integration track instead of mixing them into the homepage leaderboard until there are comparable E2E artifacts across multiple backends.
+That command captures a checked-in JSON artifact contract with Pipecat source-frame cadence, bridge chunk size, framing mode, first visible partial timing, partial cadence or jitter, final closeout after audio end, and missing partial counts. The repo keeps these artifacts as a separate integration track instead of mixing them into the homepage leaderboard until there are comparable E2E artifacts across multiple backends.
 
 ## Local Verification
 

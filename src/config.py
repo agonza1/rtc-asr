@@ -60,7 +60,7 @@ class AppConfig:
     sample_rate: int = 16000
     stream_max_buffer_bytes: int = 1024 * 1024
     asr_backend: str = "faster-whisper"
-    asr_model_size: str = "small.en"
+    asr_model_size: str = "base.en"
     asr_device: str = "cpu"
     asr_compute_type: str = "int8"
     asr_vad_filter: bool = True
