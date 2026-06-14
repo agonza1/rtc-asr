@@ -291,8 +291,8 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
     assert "safest latency bet" in html
     assert "sample coverage" in html
-    assert "named annotated dataset, pinned split, and reproducible methodology" in html
-    assert "not mix WER into the homepage comparison table" in html
+    assert "reference WER sourced from upstream evaluations" in html
+    assert "not official rtc-asr measurements" in html
 
 
 def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
@@ -363,7 +363,8 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
     assert "FLEURS `en_us` and a pinned Common Voice English test split" in docs_text
     assert "qwen-compose-2026-06-07.json" not in docs_text
     assert "## Recommended Quality Methodology" in docs_text
-    assert "No WER column is shown in this comparison by design" in docs_text
+    assert "Reference WER" in docs_text
+    assert "not an official rtc-asr measurement" in docs_text
     assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
 
     for track in tracks:
@@ -376,13 +377,13 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
             assert "no committed artifact" in docs_text
 
 
-def test_docs_index_documents_quality_policy() -> None:
+def test_docs_index_surfaces_reference_wer_notes() -> None:
     docs_index_text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
 
-    assert "## Quality Methodology" in docs_index_text
-    assert "do not publish WER" in docs_index_text
-    assert "FLEURS plus a pinned Common Voice English test split" in docs_index_text
-    assert "Future public WER belongs on the benchmark methodology page" in docs_index_text
+    assert "## Reference WER Notes" in docs_index_text
+    assert "not official rtc-asr measurements" in docs_index_text
+    assert "parakeet-mlx-service-110m" in docs_index_text
+    assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 
 
 def test_detail_page_path_uses_artifact_stem() -> None:
@@ -448,8 +449,8 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "benchmark-results/manifest.json" in homepage
     assert "WebRTC.ventures benchmarks" in homepage
     assert "Built for WebRTC.ventures launch conversations" in homepage
-    assert "not mix WER into the homepage comparison table" in homepage
-    assert "Only checked-in JSON artifacts produce visible latency comparisons" in homepage
+    assert "Reference WER" in homepage
+    assert "not an official rtc-asr measurement" in homepage
     assert "Open detail page" in homepage
 
 
@@ -610,7 +611,7 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     assert "Benchmark content rendered into initial HTML" in homepage
     assert "This prerender keeps the key comparison crawlable before JavaScript enhances the page." in homepage
     assert "Median first partial" in homepage
-    assert "Samples" in homepage
+    assert "Reference WER" in homepage
     assert "open JSON" in homepage
     assert "open details" in homepage
     assert "Loading benchmark manifest..." not in homepage

@@ -19,16 +19,19 @@
 - Use [Benchmarks](./benchmarks.md) when you need current latency artifacts or reproduction commands.
 - Use [Troubleshooting](./troubleshooting.md) for preload, backend runtime, and streaming failure modes.
 
-## Quality Methodology
+## Reference WER Notes
 
-Public benchmark landing pages in this repo stay latency-first.
+The docs screen keeps the same reference WER values shown in the benchmark notes. These are upstream benchmark or model-card values for the underlying models, not official rtc-asr measurements, and they may vary slightly across hardware, runtime, quantization, decoding, and setup.
 
-- The homepage comparison and this docs index do not publish WER.
-- Local smoke clips remain latency and streaming diagnostics only unless they have trustworthy labels and a checked-in evaluation recipe.
-- Future public WER belongs on the benchmark methodology page, tied to a named annotated dataset, a pinned split, normalization rules, and a reproducible scoring command.
-- The current recommended path is a clean/reference quality track first using FLEURS plus a pinned Common Voice English test split, with noisy or telephony-style robustness work kept as a separate follow-up track.
+| Runtime lane | Reference WER |
+| --- | --- |
+| `faster-whisper-base` and `faster-whisper-base-c80-w075-json-preview` | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` |
+| `faster-whisper-small` | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` |
+| `parakeet-mlx` and `parakeet-compose` | `1.93 / 3.59` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt-0.6b-v3` |
+| `parakeet-mlx-110m`, `parakeet-mlx-service-110m`, and `parakeet-nemo-compose` | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` |
+| `qwen-mps` and `qwen-compose` | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` |
 
-Use [Benchmarks](./benchmarks.md) for the full artifact-backed latency matrix and the issue #46 methodology note covering future official quality reporting.
+Use [Benchmarks](./benchmarks.md) for the full artifact-backed comparison matrix, source links, and the methodology note that keeps these external WER references separate from local latency measurements. Distinct runtime setups stay split into separate rows there even when they share the same upstream model benchmark reference.
 
 ## Architecture Snapshot
 
