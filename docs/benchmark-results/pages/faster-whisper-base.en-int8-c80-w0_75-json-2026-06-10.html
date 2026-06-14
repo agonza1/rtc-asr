@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Faster-Whisper Base 80ms Preview | rtc-asr benchmark artifact</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --panel: #fffdf9;
+        --ink: #1f2933;
+        --muted: #5f6c7b;
+        --accent: #8a3b12;
+        --line: rgba(31, 41, 51, 0.12);
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: linear-gradient(180deg, #f4efe7 0%, #fbf7f0 100%); color: var(--ink); }
+      main { max-width: 980px; margin: 0 auto; padding: 40px 20px 64px; }
+      .eyebrow { text-transform: uppercase; letter-spacing: 0.14em; font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); }
+      h1 { margin: 12px 0 10px; font-size: clamp(2.2rem, 4vw, 3.6rem); line-height: 0.98; }
+      p { color: var(--muted); line-height: 1.6; }
+      .actions, .grid { display: grid; gap: 16px; }
+      .actions { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 28px 0; }
+      .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(31, 41, 51, 0.06); }
+      .label { display: block; font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+      .value { font-size: 1.4rem; line-height: 1.2; }
+      a { color: var(--accent); text-decoration-thickness: 0.08em; }
+      pre { margin: 0; padding: 18px; overflow: auto; border-radius: 18px; background: #201a17; color: #f7f4ef; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Artifact detail page</div>
+      <h1>Faster-Whisper Base 80ms Preview</h1>
+      <p>Exploratory 1-sample low-latency preview at 80 ms chunks and a 0.75 s partial window. First visible partial arrived at 1.7 s, while finalization remained extremely slow (~46.9 s), and the binary-frame companion still hit a websocket keepalive close during stop/final.</p>
+      <div class="actions">
+        <div class="card"><span class="label">Lane</span><div class="value">Local Python CPU</div><p>faster-whisper · base.en</p></div>
+        <div class="card"><span class="label">Runtime</span><div class="value">cpu / int8</div><p>Status: legacy · Samples: 1</p></div>
+        <div class="card"><span class="label">Links</span><div><a href="../../index.html">Back to benchmark homepage</a></div><div><a href="../faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json">Open raw JSON artifact</a></div><p>Measured Jun 11, 2026, 12:08 AM UTC</p></div>
+      </div>
+      <div class="grid">
+        <article class="card"><span class="label">Overall score</span><div class="value">71.4 / 100</div><p>Confidence 85.0 / 100</p></article>
+        <article class="card"><span class="label">First visible partial</span><div class="value">1695.4 ms</div><p>P95 1695.4 ms</p></article>
+        <article class="card"><span class="label">Partial response</span><div class="value">15.4 ms</div><p>Gap n/a · Late ratio n/a</p></article>
+        <article class="card"><span class="label">Finalization</span><div class="value">46867.0 ms</div><p>P95 46867.0 ms</p></article>
+        <article class="card"><span class="label">REST mean</span><div class="value">537.4 ms</div><p>P95 537.4 ms · RTF 0.074</p></article>
+        <article class="card"><span class="label">Buffered contract</span><div class="value">80 ms chunks</div><p>Window 0.75 s · Interval 1 · Binary False</p></article>
+      </div>
+      <div class="card" style="margin-top: 24px;">
+        <span class="label">Raw artifact JSON</span>
+        <pre>{
+  &quot;environment&quot;: {
+    &quot;date_utc&quot;: &quot;2026-06-11T00:08:33Z&quot;,
+    &quot;platform&quot;: &quot;macOS-26.5.1-arm64-arm-64bit-Mach-O&quot;,
+    &quot;python&quot;: &quot;3.14.4&quot;,
+    &quot;processor&quot;: &quot;arm&quot;
+  },
+  &quot;benchmark&quot;: {
+    &quot;sample_count&quot;: 1,
+    &quot;rest_runs_per_sample&quot;: 1,
+    &quot;chunk_ms&quot;: 80,
+    &quot;partial_interval_chunks&quot;: 1,
+    &quot;binary_frames&quot;: false,
+    &quot;partial_window_seconds&quot;: 0.75,
+    &quot;max_buffer_seconds&quot;: null,
+    &quot;request_retries&quot;: 3,
+    &quot;request_retry_delay&quot;: 2
+  },
+  &quot;audio&quot;: {
+    &quot;path&quot;: &quot;/Users/alberto/.openclaw/tmp/rtc_asr_bench_rvio_kbo.aiff&quot;,
+    &quot;duration_s&quot;: 7.28,
+    &quot;sample_rate&quot;: 22050,
+    &quot;synthesized&quot;: true,
+    &quot;reference_text&quot;: &quot;The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.&quot;
+  },
+  &quot;backend&quot;: {
+    &quot;name&quot;: &quot;faster-whisper&quot;,
+    &quot;model&quot;: &quot;base.en&quot;,
+    &quot;device&quot;: &quot;cpu&quot;,
+    &quot;compute_type&quot;: &quot;int8&quot;,
+    &quot;qwen_dtype&quot;: null,
+    &quot;parakeet_dtype&quot;: null
+  },
+  &quot;service&quot;: {
+    &quot;models&quot;: [
+      &quot;base.en&quot;
+    ],
+    &quot;backend&quot;: &quot;faster-whisper&quot;,
+    &quot;sample_rate&quot;: 16000,
+    &quot;capabilities&quot;: {
+      &quot;backend&quot;: &quot;faster-whisper&quot;,
+      &quot;model&quot;: &quot;base.en&quot;,
+      &quot;device&quot;: &quot;cpu&quot;,
+      &quot;compute_type&quot;: &quot;int8&quot;,
+      &quot;loaded&quot;: true,
+      &quot;streaming&quot;: {
+        &quot;transport&quot;: &quot;websocket&quot;,
+        &quot;path&quot;: &quot;/ws/stream&quot;,
+        &quot;reusable_connection&quot;: true,
+        &quot;message_types&quot;: [
+          &quot;start&quot;,
+          &quot;audio&quot;,
+          &quot;stop&quot;,
+          &quot;cancel&quot;
+        ],
+        &quot;audio_frame_formats&quot;: [
+          &quot;json-base64&quot;,
+          &quot;binary&quot;
+        ],
+        &quot;event_types&quot;: [
+          &quot;ready&quot;,
+          &quot;partial&quot;,
+          &quot;final&quot;,
+          &quot;canceled&quot;,
+          &quot;error&quot;
+        ]
+      },
+      &quot;audio&quot;: {
+        &quot;target_sample_rate&quot;: 16000,
+        &quot;channels&quot;: 1,
+        &quot;accepted_formats&quot;: [
+          &quot;wav&quot;,
+          &quot;pcm16&quot;,
+          &quot;other formats supported by soundfile when installed&quot;
+        ]
+      }
+    }
+  },
+  &quot;samples&quot;: {
+    &quot;rest&quot;: [
+      {
+        &quot;sample&quot;: 1,
+        &quot;mean_ms&quot;: 537.4,
+        &quot;p90_ms&quot;: 537.4,
+        &quot;p95_ms&quot;: 537.4,
+        &quot;min_ms&quot;: 537.4,
+        &quot;max_ms&quot;: 537.4,
+        &quot;rtf_mean&quot;: 0.074,
+        &quot;transcript&quot;: &quot;The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.&quot;,
+        &quot;accuracy&quot;: {
+          &quot;reference_text&quot;: &quot;The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.&quot;,
+          &quot;normalized_reference&quot;: &quot;the quick brown fox jumps over the lazy dog this is a realtime asr latency benchmark for the rtc asr service&quot;,
+          &quot;normalized_hypothesis&quot;: &quot;the quick brown fox jumps over the lazy dog this is a real time asr latency benchmark for the rtc asr service&quot;,
+          &quot;exact_match&quot;: false,
+          &quot;word_error_rate&quot;: 0.095,
+          &quot;character_error_rate&quot;: 0,
+          &quot;reference_word_count&quot;: 21,
+          &quot;hypothesis_word_count&quot;: 22
+        }
+      }
+    ],
+    &quot;streaming&quot;: [
+      {
+        &quot;sample&quot;: 1,
+        &quot;binary_frames&quot;: false,
+        &quot;partial_mean_ms&quot;: 15.4,
+        &quot;partial_p90_ms&quot;: 15.4,
+        &quot;partial_p95_ms&quot;: 15.4,
+        &quot;partial_first_ms&quot;: 15.4,
+        &quot;partial_last_ms&quot;: 15.4,
+        &quot;first_partial_audio_ms&quot;: 1680,
+        &quot;first_partial_end_to_end_ms&quot;: 1695.4,
+        &quot;partial_gap_mean_ms&quot;: null,
+        &quot;partial_gap_p95_ms&quot;: null,
+        &quot;time_to_final_from_audio_end_ms&quot;: 46867,
+        &quot;final_ms&quot;: 46867,
+        &quot;ready&quot;: {
+          &quot;type&quot;: &quot;ready&quot;,
+          &quot;stream_id&quot;: 1,
+          &quot;backend&quot;: &quot;faster-whisper&quot;,
+          &quot;model&quot;: &quot;base.en&quot;,
+          &quot;language&quot;: &quot;en&quot;,
+          &quot;sample_rate&quot;: 22050,
+          &quot;partial_interval_chunks&quot;: 1,
+          &quot;max_buffer_bytes&quot;: 1048576,
+          &quot;partial_window_seconds&quot;: 0.75
+        },
+        &quot;last_partial&quot;: &quot;Thank you.&quot;,
+        &quot;final_transcript&quot;: &quot;The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.&quot;,
+        &quot;accuracy&quot;: {
+          &quot;reference_text&quot;: &quot;The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.&quot;,
+          &quot;normalized_reference&quot;: &quot;the quick brown fox jumps over the lazy dog this is a realtime asr latency benchmark for the rtc asr service&quot;,
+          &quot;normalized_hypothesis&quot;: &quot;the quick brown fox jumps over the lazy dog this is a real time asr latency benchmark for the rtc asr service&quot;,
+          &quot;exact_match&quot;: false,
+          &quot;word_error_rate&quot;: 0.095,
+          &quot;character_error_rate&quot;: 0,
+          &quot;reference_word_count&quot;: 21,
+          &quot;hypothesis_word_count&quot;: 22
+        }
+      }
+    ]
+  },
+  &quot;rest&quot;: {
+    &quot;sample_count&quot;: 1,
+    &quot;runs_per_sample&quot;: 1,
+    &quot;durations_ms&quot;: [
+      537.4
+    ],
+    &quot;mean_ms&quot;: 537.4,
+    &quot;p90_ms&quot;: 537.4,
+    &quot;p95_ms&quot;: 537.4,
+    &quot;min_ms&quot;: 537.4,
+    &quot;max_ms&quot;: 537.4,
+    &quot;rtf_mean&quot;: 0.074,
+    &quot;accuracy&quot;: {
+      &quot;sample_count&quot;: 1,
+      &quot;exact_match_rate&quot;: 0,
+      &quot;word_error_rate_mean&quot;: 0.095,
+      &quot;word_error_rate_p90&quot;: 0.095,
+      &quot;character_error_rate_mean&quot;: 0,
+      &quot;character_error_rate_p90&quot;: 0
+    },
+    &quot;transcript&quot;: &quot;The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.&quot;
+  },
+  &quot;streaming&quot;: {
+    &quot;sample_count&quot;: 1,
+    &quot;chunk_ms&quot;: 80,
+    &quot;partial_interval_chunks&quot;: 1,
+    &quot;binary_frames&quot;: false,
+    &quot;partial_window_seconds&quot;: 0.75,
+    &quot;max_buffer_seconds&quot;: null,
+    &quot;request_retries&quot;: 3,
+    &quot;request_retry_delay&quot;: 2,
+    &quot;partial_latencies_ms&quot;: [
+      15.4
+    ],
+    &quot;first_partial_end_to_end_latencies_ms&quot;: [
+      1695.4
+    ],
+    &quot;partial_gap_latencies_ms&quot;: [],
+    &quot;final_latencies_ms&quot;: [
+      46867
+    ],
+    &quot;partial_mean_ms&quot;: 15.4,
+    &quot;partial_p90_ms&quot;: 15.4,
+    &quot;partial_p95_ms&quot;: 15.4,
+    &quot;partial_min_ms&quot;: 15.4,
+    &quot;partial_max_ms&quot;: 15.4,
+    &quot;first_partial_end_to_end_mean_ms&quot;: 1695.4,
+    &quot;first_partial_end_to_end_p90_ms&quot;: 1695.4,
+    &quot;first_partial_end_to_end_p95_ms&quot;: 1695.4,
+    &quot;partial_gap_mean_ms&quot;: null,
+    &quot;partial_gap_p90_ms&quot;: null,
+    &quot;partial_gap_p95_ms&quot;: null,
+    &quot;final_mean_ms&quot;: 46867,
+    &quot;final_p90_ms&quot;: 46867,
+    &quot;final_p95_ms&quot;: 46867,
+    &quot;final_min_ms&quot;: 46867,
+    &quot;final_max_ms&quot;: 46867,
+    &quot;ready&quot;: {
+      &quot;type&quot;: &quot;ready&quot;,
+      &quot;stream_id&quot;: 1,
+      &quot;backend&quot;: &quot;faster-whisper&quot;,
+      &quot;model&quot;: &quot;base.en&quot;,
+      &quot;language&quot;: &quot;en&quot;,
+      &quot;sample_rate&quot;: 22050,
+      &quot;partial_interval_chunks&quot;: 1,
+      &quot;max_buffer_bytes&quot;: 1048576,
+      &quot;partial_window_seconds&quot;: 0.75
+    },
+    &quot;last_partial&quot;: &quot;Thank you.&quot;,
+    &quot;final_transcript&quot;: &quot;The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.&quot;,
+    &quot;accuracy&quot;: {
+      &quot;sample_count&quot;: 1,
+      &quot;exact_match_rate&quot;: 0,
+      &quot;word_error_rate_mean&quot;: 0.095,
+      &quot;word_error_rate_p90&quot;: 0.095,
+      &quot;character_error_rate_mean&quot;: 0,
+      &quot;character_error_rate_p90&quot;: 0
+    }
+  }
+}</pre>
+      </div>
+    </main>
+  </body>
+</html>

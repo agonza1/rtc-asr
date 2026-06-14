@@ -13,12 +13,14 @@ from typing import Any
 
 DEFAULT_MANIFEST_PATH = Path("docs") / "benchmark-results" / "manifest.json"
 DEFAULT_HOMEPAGE_PATH = Path("docs") / "index.html"
+DEFAULT_DETAIL_DIR = Path("docs") / "benchmark-results" / "pages"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prerender benchmark homepage summary")
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST_PATH, help="Manifest JSON path")
     parser.add_argument("--homepage", type=Path, default=DEFAULT_HOMEPAGE_PATH, help="Homepage HTML path")
+    parser.add_argument("--detail-dir", type=Path, default=DEFAULT_DETAIL_DIR, help="Detail pages output directory")
     parser.add_argument("--check", action="store_true", help="Exit non-zero when the homepage prerender is stale")
     return parser.parse_args()
 
@@ -29,6 +31,10 @@ def format_ms(value: float | None) -> str:
 
 def format_ratio(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.3f}"
+
+
+def format_percent(value: float | None) -> str:
+    return "n/a" if value is None else f"{value * 100:.1f}%"
 
 
 def format_date(value: str | None) -> str:
@@ -120,6 +126,108 @@ def hint(label: str, description: str) -> str:
     return f'<span class="hint" title="{html.escape(description)}">{html.escape(label)}</span>'
 
 
+def detail_page_path(entry: dict[str, Any]) -> str:
+    artifact_path = entry.get("artifact_path") or ""
+    artifact_name = Path(artifact_path).name
+    if not artifact_name.endswith(".json"):
+        return "#"
+    return f"benchmark-results/pages/{Path(artifact_name).stem}.html"
+
+
+def detail_output_path(detail_dir: Path, entry: dict[str, Any]) -> Path:
+    return detail_dir / Path(detail_page_path(entry)).name
+
+
+def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] | None) -> str:
+    rest = entry.get("rest", {})
+    streaming = entry.get("streaming", {})
+    contract = entry.get("contract", {})
+    derived = entry.get("derived", {})
+    raw_json = "n/a" if artifact_payload is None else json.dumps(artifact_payload, indent=2)
+    title = html.escape(entry.get("label") or "Benchmark artifact")
+    artifact_href = html.escape("../" + Path(entry.get("artifact_path") or "").name)
+    homepage_href = html.escape("../../index.html")
+    score = "n/a" if derived.get("overall_score") is None else f"{derived['overall_score']:.1f} / 100"
+    confidence = "n/a" if derived.get("confidence_score") is None else f"{derived['confidence_score']:.1f} / 100"
+    contract_value = "n/a" if contract.get("chunk_ms") is None else f"{contract['chunk_ms']} ms chunks"
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{title} | rtc-asr benchmark artifact</title>
+    <style>
+      :root {{
+        color-scheme: light;
+        --panel: #fffdf9;
+        --ink: #1f2933;
+        --muted: #5f6c7b;
+        --accent: #8a3b12;
+        --line: rgba(31, 41, 51, 0.12);
+      }}
+      * {{ box-sizing: border-box; }}
+      body {{ margin: 0; font-family: Georgia, "Times New Roman", serif; background: linear-gradient(180deg, #f4efe7 0%, #fbf7f0 100%); color: var(--ink); }}
+      main {{ max-width: 980px; margin: 0 auto; padding: 40px 20px 64px; }}
+      .eyebrow {{ text-transform: uppercase; letter-spacing: 0.14em; font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); }}
+      h1 {{ margin: 12px 0 10px; font-size: clamp(2.2rem, 4vw, 3.6rem); line-height: 0.98; }}
+      p {{ color: var(--muted); line-height: 1.6; }}
+      .actions, .grid {{ display: grid; gap: 16px; }}
+      .actions {{ grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 28px 0; }}
+      .grid {{ grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}
+      .card {{ background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(31, 41, 51, 0.06); }}
+      .label {{ display: block; font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }}
+      .value {{ font-size: 1.4rem; line-height: 1.2; }}
+      a {{ color: var(--accent); text-decoration-thickness: 0.08em; }}
+      pre {{ margin: 0; padding: 18px; overflow: auto; border-radius: 18px; background: #201a17; color: #f7f4ef; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Artifact detail page</div>
+      <h1>{title}</h1>
+      <p>{html.escape(entry.get("status_detail") or "Checked-in benchmark artifact.")}</p>
+      <div class="actions">
+        <div class="card"><span class="label">Lane</span><div class="value">{html.escape(entry.get("lane") or "unknown")}</div><p>{html.escape(entry.get("backend") or "unknown")} · {html.escape(entry.get("model") or "unknown")}</p></div>
+        <div class="card"><span class="label">Runtime</span><div class="value">{html.escape(entry.get("runtime") or "unknown")}</div><p>Status: {html.escape(entry.get("status") or "unknown")} · Samples: {entry.get("sample_count") or 'n/a'}</p></div>
+        <div class="card"><span class="label">Links</span><div><a href="{homepage_href}">Back to benchmark homepage</a></div><div><a href="{artifact_href}">Open raw JSON artifact</a></div><p>Measured {html.escape(format_date(entry.get("measured_at")))}</p></div>
+      </div>
+      <div class="grid">
+        <article class="card"><span class="label">Overall score</span><div class="value">{score}</div><p>Confidence {confidence}</p></article>
+        <article class="card"><span class="label">First visible partial</span><div class="value">{format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</div><p>P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</p></article>
+        <article class="card"><span class="label">Partial response</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
+        <article class="card"><span class="label">Finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
+        <article class="card"><span class="label">REST mean</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
+        <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
+      </div>
+      <div class="card" style="margin-top: 24px;">
+        <span class="label">Raw artifact JSON</span>
+        <pre>{html.escape(raw_json)}</pre>
+      </div>
+    </main>
+  </body>
+</html>
+"""
+
+
+def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_dir: Path) -> dict[Path, str]:
+    results_dir = manifest_path.parent
+    pages: dict[Path, str] = {}
+    for entry in manifest.get("tracks", []):
+        if not entry.get("artifact_path"):
+            continue
+        artifact_payload = None
+        artifact_path = results_dir.parent / entry["artifact_path"]
+        if artifact_path.exists():
+            artifact_payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+        pages[detail_output_path(detail_dir, entry)] = render_detail_page(entry, artifact_payload)
+    return pages
+
+
+def orphaned_detail_pages(detail_dir: Path, detail_pages: dict[Path, str]) -> list[Path]:
+    expected_paths = set(detail_pages)
+    return sorted(path for path in detail_dir.glob("*.html") if path not in expected_paths)
+
+
 def render_row(
     entry: dict[str, Any],
     first_partial_baseline: float | None,
@@ -155,7 +263,7 @@ def render_row(
             f'<td data-label="REST"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
             f'<td data-label="Official WER"><strong>{html.escape(entry.get("official_wer_reference") or "see notes")}</strong><div class="tiny">Upstream model-card / benchmark reference</div></td>',
             f'<td data-label="Samples"><strong>{entry.get("sample_count") or "n/a"}</strong><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
-            f'<td data-label="Artifact"><a href="{html.escape(entry.get("artifact_path") or "#")}">open JSON</a></td>',
+            f'<td data-label="Artifact"><a href="{html.escape(entry.get("artifact_path") or "#")}">open JSON</a><div class="tiny"><a href="{html.escape(detail_page_path(entry))}">open details</a></div></td>',
             "</tr>",
         ]
     )
@@ -243,13 +351,26 @@ def main() -> None:
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     homepage = args.homepage.read_text(encoding="utf-8")
     rendered = render_homepage(manifest, homepage)
+    detail_pages = render_detail_pages(manifest, args.manifest, args.detail_dir)
     if args.check:
         if homepage != rendered:
             raise SystemExit(
                 f"Homepage prerender is stale: {args.homepage}. Run scripts/prerender_benchmark_homepage.py to regenerate it."
             )
+        missing = [path for path in detail_pages if not path.exists()]
+        stale = [path for path, content in detail_pages.items() if path.exists() and path.read_text(encoding="utf-8") != content]
+        orphaned = orphaned_detail_pages(args.detail_dir, detail_pages) if args.detail_dir.exists() else []
+        if missing or stale or orphaned:
+            raise SystemExit(
+                f"Benchmark detail pages are stale: {args.detail_dir}. Run scripts/prerender_benchmark_homepage.py to regenerate them."
+            )
         return
     args.homepage.write_text(rendered, encoding="utf-8")
+    args.detail_dir.mkdir(parents=True, exist_ok=True)
+    for path in orphaned_detail_pages(args.detail_dir, detail_pages):
+        path.unlink()
+    for path, content in detail_pages.items():
+        path.write_text(content, encoding="utf-8")
 
 
 if __name__ == "__main__":
