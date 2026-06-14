@@ -220,6 +220,39 @@ def compute_accuracy_metrics(reference_text: str | None, hypothesis_text: str) -
     }
 
 
+def summarize_partial_churn(partial_texts: list[str]) -> dict[str, object]:
+    if len(partial_texts) < 2:
+        return {
+            "partial_revision_count": max(len(partial_texts) - 1, 0),
+            "partial_transcript_churn_char_mean": None,
+            "partial_transcript_churn_char_p95": None,
+            "partial_transcript_churn_word_mean": None,
+            "partial_transcript_churn_word_p95": None,
+        }
+
+    char_churn: list[float] = []
+    word_churn: list[float] = []
+    for previous, current in zip(partial_texts, partial_texts[1:]):
+        normalized_previous = normalize_text(previous)
+        normalized_current = normalize_text(current)
+        previous_chars = list(normalized_previous.replace(" ", ""))
+        current_chars = list(normalized_current.replace(" ", ""))
+        previous_words = normalized_previous.split()
+        current_words = normalized_current.split()
+        char_denominator = max(len(previous_chars), len(current_chars), 1)
+        word_denominator = max(len(previous_words), len(current_words), 1)
+        char_churn.append(edit_distance(previous_chars, current_chars) / char_denominator)
+        word_churn.append(edit_distance(previous_words, current_words) / word_denominator)
+
+    return {
+        "partial_revision_count": len(partial_texts) - 1,
+        "partial_transcript_churn_char_mean": round(statistics.mean(char_churn), 3),
+        "partial_transcript_churn_char_p95": round(percentile(char_churn, 0.95), 3),
+        "partial_transcript_churn_word_mean": round(statistics.mean(word_churn), 3),
+        "partial_transcript_churn_word_p95": round(percentile(word_churn, 0.95), 3),
+    }
+
+
 def resolve_reference_text(args: argparse.Namespace, *, synthesized: bool) -> str | None:
     if args.reference_text:
         return args.reference_text.strip()
@@ -470,6 +503,8 @@ async def run_ws_benchmark(
     partial_end_to_end_ms = []
     last_partial_visible_ms = 0.0
     partial_text = ""
+    partial_texts: list[str] = []
+    late_partial_events = 0
     pending_partial_event: tuple[dict[str, object], float] | None = None
     pending_partial_started_at: dict[int, float] = {}
     recorded_partial_chunks: set[int] = set()
@@ -498,14 +533,16 @@ async def run_ws_benchmark(
         partial_end_to_end_ms.append(visible_elapsed_ms)
         last_partial_visible_ms = visible_elapsed_ms
         partial_text = event.get("text", "")
+        partial_texts.append(partial_text)
         recorded_partial_chunks.add(chunk_index)
         pending_partial_started_at.pop(chunk_index, None)
         return chunk_index
 
     async def collect_partial_events(expected_chunk_index: int) -> None:
-        nonlocal pending_partial_event
+        nonlocal pending_partial_event, late_partial_events
 
         deadline = time.perf_counter() + partial_event_timeout_seconds
+        nonlocal late_partial_events
         while expected_chunk_index not in recorded_partial_chunks:
             if pending_partial_event is not None:
                 event, received_at = pending_partial_event
@@ -522,9 +559,11 @@ async def run_ws_benchmark(
             if event.get("type") != "partial":
                 raise RuntimeError(f"Expected partial event, got: {event}")
             chunk_index = event.get("chunks_received")
-            if isinstance(chunk_index, int) and not isinstance(chunk_index, bool) and chunk_index > expected_chunk_index:
-                pending_partial_event = (event, received_at)
-                return
+            if isinstance(chunk_index, int) and not isinstance(chunk_index, bool) and chunk_index != expected_chunk_index:
+                late_partial_events += 1
+                if chunk_index > expected_chunk_index:
+                    pending_partial_event = (event, received_at)
+                    return
             record_partial_event(event, received_at, fallback_chunk_index=expected_chunk_index)
 
     audio_finished_at: float | None = None
@@ -591,6 +630,8 @@ async def run_ws_benchmark(
         "partial_gap_mean_ms": round(statistics.mean(partial_gap_ms), 1) if partial_gap_ms else None,
         "partial_gap_p95_ms": round(percentile(partial_gap_ms, 0.95), 1) if partial_gap_ms else None,
     }
+    partial_churn = summarize_partial_churn(partial_texts)
+    partial_churn = summarize_partial_churn(partial_texts)
     return {
         "chunks": len(chunks),
         "chunk_ms": chunk_ms,
@@ -610,8 +651,11 @@ async def run_ws_benchmark(
         "expected_partial_events": len(chunks) // partial_interval_chunks,
         "observed_partial_events": len(recorded_partial_chunks),
         "missing_partial_events": max((len(chunks) // partial_interval_chunks) - len(recorded_partial_chunks), 0),
+        "late_partial_events": late_partial_events,
+        "late_partial_ratio": round(late_partial_events / len(recorded_partial_chunks), 3) if recorded_partial_chunks else None,
         "final_event_received": True,
         "closeout_event_type": final_event.get("type", "final"),
+        **partial_churn,
     }
 
 
@@ -654,7 +698,9 @@ async def run_pipecat_e2e_benchmark(
     partial_gap_ms: list[float] = []
     last_partial_visible_ms = 0.0
     last_partial_text = ""
+    partial_texts: list[str] = []
     observed_partial_events = 0
+    late_partial_events = 0
     pending_partial_started_at: dict[int, float] = {}
     recorded_partial_chunks: set[int] = set()
 
@@ -684,6 +730,7 @@ async def run_pipecat_e2e_benchmark(
             partial_gap_ms.append(round(partial_end_to_end_ms[-1] - partial_end_to_end_ms[-2], 1))
         last_partial_visible_ms = visible_elapsed_ms
         last_partial_text = event.text
+        partial_texts.append(last_partial_text)
         observed_partial_events += 1
         recorded_partial_chunks.add(chunk_index)
         pending_partial_started_at.pop(chunk_index, None)
@@ -696,6 +743,7 @@ async def run_pipecat_e2e_benchmark(
         return TranscriptEvent.from_payload(payload)
 
     async def collect_partial_events(expected_chunk_index: int) -> None:
+        nonlocal late_partial_events
         deadline = time.perf_counter() + partial_event_timeout_seconds
         while expected_chunk_index not in recorded_partial_chunks:
             remaining = deadline - time.perf_counter()
@@ -707,9 +755,11 @@ async def run_pipecat_e2e_benchmark(
             received_at = time.perf_counter()
             if event.type != "partial":
                 raise RuntimeError(f"Expected partial event, got: {event.type}")
-            if event.chunks_received > expected_chunk_index:
-                record_partial_event(event, received_at, fallback_chunk_index=event.chunks_received)
-                return
+            if event.chunks_received != expected_chunk_index:
+                late_partial_events += 1
+                if event.chunks_received > expected_chunk_index:
+                    record_partial_event(event, received_at, fallback_chunk_index=event.chunks_received)
+                    return
             record_partial_event(event, received_at, fallback_chunk_index=expected_chunk_index)
 
     client = AsyncASRClient(ws_url, connect_fn=connect_fn)
@@ -774,6 +824,7 @@ async def run_pipecat_e2e_benchmark(
         "partial_gap_mean_ms": round(statistics.mean(partial_gap_ms), 1) if partial_gap_ms else None,
         "partial_gap_p95_ms": round(percentile(partial_gap_ms, 0.95), 1) if partial_gap_ms else None,
     }
+    partial_churn = summarize_partial_churn(partial_texts)
     expected_partial_events = len(chunks) // partial_interval_chunks
     return {
         "chunks": len(chunks),
@@ -797,8 +848,18 @@ async def run_pipecat_e2e_benchmark(
         "expected_partial_events": expected_partial_events,
         "observed_partial_events": observed_partial_events,
         "missing_partial_events": max(expected_partial_events - observed_partial_events, 0),
+        "late_partial_events": late_partial_events,
+        "late_partial_ratio": round(late_partial_events / observed_partial_events, 3) if observed_partial_events else None,
+        "bridge": {
+            "source_frame_ms": source_frame_ms,
+            "source_frame_count": len(source_frames),
+            "chunk_count": len(chunks),
+            "aggregation_frame_count": max(int(round(chunk_ms / max(source_frame_ms, 1))), 1),
+            "source_frames_dropped": 0,
+        },
         "final_event_received": final_event is not None and final_event.type == "final",
         "closeout_event_type": None if final_event is None else final_event.type,
+        **partial_churn,
     }
 
 
@@ -837,6 +898,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         final_latencies_all: list[float] = []
         finalization_latencies_all: list[float] = []
         missing_partial_events_all: list[int] = []
+        late_partial_events_all: list[int] = []
+        partial_churn_char_all: list[float] = []
+        partial_churn_word_all: list[float] = []
         closeout_event_types: list[str] = []
         final_event_received_count = 0
 
@@ -888,6 +952,11 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 float(ws.get("time_to_final_from_audio_end_ms", ws.get("final_ms", 0.0)))
             )
             missing_partial_events_all.append(int(ws.get("missing_partial_events", 0)))
+            late_partial_events_all.append(int(ws.get("late_partial_events", 0)))
+            if ws.get("partial_transcript_churn_char_mean") is not None:
+                partial_churn_char_all.append(float(ws["partial_transcript_churn_char_mean"]))
+            if ws.get("partial_transcript_churn_word_mean") is not None:
+                partial_churn_word_all.append(float(ws["partial_transcript_churn_word_mean"]))
             if ws.get("final_event_received"):
                 final_event_received_count += 1
             closeout_event_type = ws.get("closeout_event_type")
@@ -928,6 +997,14 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "expected_partial_events": ws.get("expected_partial_events"),
                 "observed_partial_events": ws.get("observed_partial_events"),
                 "missing_partial_events": ws.get("missing_partial_events"),
+                "late_partial_events": ws.get("late_partial_events"),
+                "late_partial_ratio": ws.get("late_partial_ratio"),
+                "partial_revision_count": ws.get("partial_revision_count"),
+                "partial_transcript_churn_char_mean": ws.get("partial_transcript_churn_char_mean"),
+                "partial_transcript_churn_char_p95": ws.get("partial_transcript_churn_char_p95"),
+                "partial_transcript_churn_word_mean": ws.get("partial_transcript_churn_word_mean"),
+                "partial_transcript_churn_word_p95": ws.get("partial_transcript_churn_word_p95"),
+                "bridge": ws.get("bridge"),
                 "final_event_received": ws.get("final_event_received"),
                 "closeout_event_type": ws.get("closeout_event_type"),
                 "accuracy": ws["accuracy"],
@@ -979,6 +1056,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         first_partial_summary = summarize_latencies(first_partial_end_to_end_all) if first_partial_end_to_end_all else None
         partial_gap_summary = summarize_latencies(partial_gap_all) if partial_gap_all else None
         final_summary = summarize_latencies(finalization_latencies_all)
+        partial_churn_char_summary = summarize_latencies(partial_churn_char_all) if partial_churn_char_all else None
+        partial_churn_word_summary = summarize_latencies(partial_churn_word_all) if partial_churn_word_all else None
 
         return {
             "environment": describe_environment(),
@@ -1077,6 +1156,14 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "expected_partial_events": sum(int(sample.get("expected_partial_events", 0)) for sample in streaming_samples),
                 "observed_partial_events": sum(int(sample.get("observed_partial_events", 0)) for sample in streaming_samples),
                 "missing_partial_events": sum(missing_partial_events_all),
+                "late_partial_events": sum(late_partial_events_all),
+                "late_partial_ratio": round(sum(late_partial_events_all) / sum(int(sample.get("observed_partial_events", 0)) for sample in streaming_samples), 3) if sum(int(sample.get("observed_partial_events", 0)) for sample in streaming_samples) else None,
+                "partial_revision_count": sum(int(sample.get("partial_revision_count", 0)) for sample in streaming_samples),
+                "partial_transcript_churn_char_mean": partial_churn_char_summary["mean_ms"] if partial_churn_char_summary else None,
+                "partial_transcript_churn_char_p95": partial_churn_char_summary["p95_ms"] if partial_churn_char_summary else None,
+                "partial_transcript_churn_word_mean": partial_churn_word_summary["mean_ms"] if partial_churn_word_summary else None,
+                "partial_transcript_churn_word_p95": partial_churn_word_summary["p95_ms"] if partial_churn_word_summary else None,
+                "bridge": streaming_samples[0].get("bridge") if streaming_samples and args.mode == "pipecat-e2e" else None,
                 "final_event_received_count": final_event_received_count,
                 "closeout_event_types": closeout_event_types,
                 "accuracy": summarize_accuracy(streaming_accuracy_samples),

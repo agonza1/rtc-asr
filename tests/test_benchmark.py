@@ -23,6 +23,7 @@ compute_accuracy_metrics = benchmark.compute_accuracy_metrics
 normalize_text = benchmark.normalize_text
 resolve_reference_text = benchmark.resolve_reference_text
 summarize_latencies = benchmark.summarize_latencies
+summarize_partial_churn = benchmark.summarize_partial_churn
 
 
 class FakeBenchmarkWebSocket:
@@ -87,6 +88,16 @@ def test_summarize_latencies_reports_mean_and_p90() -> None:
     assert summary["rtf_mean"] == 0.01
 
 
+def test_summarize_partial_churn_reports_revision_and_ratio_metrics() -> None:
+    summary = summarize_partial_churn(["hello world", "hello brave world", "yellow brave world"])
+
+    assert summary["partial_revision_count"] == 2
+    assert summary["partial_transcript_churn_char_mean"] > 0
+    assert summary["partial_transcript_churn_char_p95"] >= summary["partial_transcript_churn_char_mean"]
+    assert summary["partial_transcript_churn_word_mean"] > 0
+    assert summary["partial_transcript_churn_word_p95"] >= summary["partial_transcript_churn_word_mean"]
+
+
 def test_parse_args_rejects_zero_or_negative_runtime_values(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["benchmark.py", "--partial-interval-chunks", "0"])
     with pytest.raises(SystemExit):
@@ -131,8 +142,8 @@ def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_a
     sweep_block = makefile.split("benchmark-faster-whisper-base-low-latency-sweep: venv\n", 1)[1].split("\n\n", 1)[0]
     assert "LOW_LATENCY_SWEEP_SAMPLE_COUNT ?= 5" in makefile
     assert "LOW_LATENCY_SWEEP_REST_RUNS ?= 3" in makefile
-    assert "LOW_LATENCY_SWEEP_CHUNK_MS ?= 80 100 200 250" in makefile
-    assert "LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 1.0 2.0" in makefile
+    assert "LOW_LATENCY_SWEEP_CHUNK_MS ?= 80 100 160 200" in makefile
+    assert "LOW_LATENCY_SWEEP_PARTIAL_WINDOWS ?= 0.75 1.0 1.5 2.0" in makefile
     assert "LOW_LATENCY_SWEEP_BINARY_FRAMES ?= false" in makefile
     assert "set -e;" in sweep_block
     assert "--sample-count $(LOW_LATENCY_SWEEP_SAMPLE_COUNT)" in sweep_block
@@ -684,6 +695,7 @@ def test_run_ws_benchmark_counts_late_partial_against_original_chunk(monkeypatch
         assert result["partial_end_to_end_ms"] == [1400.0, 1640.0]
         assert result["first_partial_audio_ms"] == 250
         assert result["first_partial_end_to_end_ms"] == 1400.0
+        assert result["late_partial_events"] == 1
         assert result["last_partial"] == "fresh"
         assert result["final_transcript"] == "done"
 
@@ -870,6 +882,7 @@ def test_run_pipecat_e2e_benchmark_records_late_partial_before_final(monkeypatch
         assert sent_chunks == [b"abcd", b"efgh"]
         assert result["observed_partial_events"] == 2
         assert result["missing_partial_events"] == 0
+        assert result["late_partial_events"] == 0
         assert result["partial_audio_offsets_ms"] == [250.0, 500.0]
         assert result["partial_end_to_end_ms"] == [270.0, 650.0]
         assert result["last_partial"] == "late"
@@ -931,6 +944,14 @@ def test_async_main_summarizes_final_metric_from_audio_end_delay(monkeypatch: py
             "expected_partial_events": 1,
             "observed_partial_events": 1,
             "missing_partial_events": 0,
+            "late_partial_events": 0,
+            "late_partial_ratio": 0.0,
+            "partial_revision_count": 0,
+            "partial_transcript_churn_char_mean": None,
+            "partial_transcript_churn_char_p95": None,
+            "partial_transcript_churn_word_mean": None,
+            "partial_transcript_churn_word_p95": None,
+            "bridge": None,
             "final_event_received": True,
             "closeout_event_type": "final",
             "transport": "direct",
@@ -961,6 +982,14 @@ def test_async_main_summarizes_final_metric_from_audio_end_delay(monkeypatch: py
             "expected_partial_events": 1,
             "observed_partial_events": 1,
             "missing_partial_events": 0,
+            "late_partial_events": 0,
+            "late_partial_ratio": 0.0,
+            "partial_revision_count": 0,
+            "partial_transcript_churn_char_mean": None,
+            "partial_transcript_churn_char_p95": None,
+            "partial_transcript_churn_word_mean": None,
+            "partial_transcript_churn_word_p95": None,
+            "bridge": None,
             "final_event_received": True,
             "closeout_event_type": "final",
             "transport": "direct",
@@ -1070,6 +1099,14 @@ def test_async_main_uses_service_model_id_and_parakeet_mlx_dtype(monkeypatch: py
             "expected_partial_events": 1,
             "observed_partial_events": 1,
             "missing_partial_events": 0,
+            "late_partial_events": 0,
+            "late_partial_ratio": 0.0,
+            "partial_revision_count": 0,
+            "partial_transcript_churn_char_mean": None,
+            "partial_transcript_churn_char_p95": None,
+            "partial_transcript_churn_word_mean": None,
+            "partial_transcript_churn_word_p95": None,
+            "bridge": None,
             "final_event_received": True,
             "closeout_event_type": "final",
             "transport": "direct",
