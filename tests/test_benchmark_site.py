@@ -266,6 +266,7 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
+    assert "function formatPercent(value)" in html
     assert "Finalization" in html
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
     assert "const baselineEntries = comparableEntries(ranked);" in html
@@ -274,6 +275,10 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert 'title="Time from audio end until the final transcript returns."' in html
     assert 'title="Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial."' in html
     assert 'title="Buffered audio window used when generating partial transcripts."' in html
+    assert 'late_partial_ratio' in html
+    assert 'partial_transcript_churn_word_mean' in html
+    assert 'title="Share of partial events that arrived too late to be useful for the configured RTC-shaped cadence."' in html
+    assert 'title="Average per-revision transcript change rate across visible partial updates; lower is steadier."' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
     assert "safest latency bet" in html
     assert "sample coverage" in html
