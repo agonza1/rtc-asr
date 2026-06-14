@@ -556,6 +556,36 @@ def test_manifest_check_succeeds_when_checked_in_file_matches_generated_output(t
     assert result.stderr == ""
 
 
+def test_prerender_check_fails_for_orphaned_detail_pages(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    manifest_path = repo_root / RESULTS_DIR / "manifest.json"
+    homepage_path = repo_root / HOMEPAGE_PATH
+    detail_dir = tmp_path / "pages"
+    detail_dir.mkdir()
+    (detail_dir / "orphaned-artifact.html").write_text("<html>old page</html>\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(PRERENDER_MODULE_PATH),
+            "--manifest",
+            str(manifest_path),
+            "--homepage",
+            str(homepage_path),
+            "--detail-dir",
+            str(detail_dir),
+            "--check",
+        ],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert f"Benchmark detail pages are stale: {detail_dir}" in result.stderr
+
+
 
 def test_homepage_highlights_advanced_asr_sections() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")

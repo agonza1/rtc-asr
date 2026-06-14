@@ -223,6 +223,11 @@ def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_di
     return pages
 
 
+def orphaned_detail_pages(detail_dir: Path, detail_pages: dict[Path, str]) -> list[Path]:
+    expected_paths = set(detail_pages)
+    return sorted(path for path in detail_dir.glob("*.html") if path not in expected_paths)
+
+
 def render_row(
     entry: dict[str, Any],
     first_partial_baseline: float | None,
@@ -354,13 +359,16 @@ def main() -> None:
             )
         missing = [path for path in detail_pages if not path.exists()]
         stale = [path for path, content in detail_pages.items() if path.exists() and path.read_text(encoding="utf-8") != content]
-        if missing or stale:
+        orphaned = orphaned_detail_pages(args.detail_dir, detail_pages) if args.detail_dir.exists() else []
+        if missing or stale or orphaned:
             raise SystemExit(
                 f"Benchmark detail pages are stale: {args.detail_dir}. Run scripts/prerender_benchmark_homepage.py to regenerate them."
             )
         return
     args.homepage.write_text(rendered, encoding="utf-8")
     args.detail_dir.mkdir(parents=True, exist_ok=True)
+    for path in orphaned_detail_pages(args.detail_dir, detail_pages):
+        path.unlink()
     for path, content in detail_pages.items():
         path.write_text(content, encoding="utf-8")
 
