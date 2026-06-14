@@ -806,6 +806,7 @@ Published Jun 14, 2026, 12:28 AM UTC . 8 visible ASR lanes . 9 tracked lanes in 
       }
       function statusLabel(status) {
         if (status === "validated") return "validated";
+        if (status === "blocked") return "blocked";
         return "legacy";
       }
       function statusClass(status) {
