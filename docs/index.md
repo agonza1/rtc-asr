@@ -1,6 +1,6 @@
 # Documentation Index
 
-`rtc-asr` is a modular transcription service for RTC and voice-agent workloads. These docs focus on how to run the service, integrate it over the websocket contract, and reproduce the current benchmark story.
+`rtc-asr` is a modular transcription service for RTC and voice-agent workloads. These docs focus on how to run the service, integrate it over the buffered websocket contract, and reproduce the current benchmark story without overstating the transport as a true frame-synchronous streaming decoder.
 
 ## Quick Links
 

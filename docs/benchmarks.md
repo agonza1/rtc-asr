@@ -87,6 +87,22 @@ This repo now keeps Pipecat end-to-end results as a separate integration lane in
 
 The artifact stays tracked in `docs/benchmark-results/tracks.json`, but it is intentionally excluded from `docs/index.html` because there is only one Pipecat E2E lane today. That keeps backend-only and integration-level claims separate until there are comparable E2E artifacts across multiple backends.
 
+## Recommended Low-Power Profiling Fields
+
+The current checked-in artifacts already cover warmed service latency, first visible partial timing, finalization delay, and `RTF`. For low-power claims, add these fields to each benchmark lane as the next step:
+
+- device, CPU, and RAM
+- accelerator type: none, MPS, MLX, CUDA, or NPU
+- wall latency: REST mean and P95, first partial, and final
+- peak RSS memory
+- CPU utilization
+- package power when available
+- sustained thermal behavior over `5` to `10` minutes
+- dropped or late frames for bridged RTC lanes
+- transcript churn across partial updates
+
+When testing buffered websocket ASR against RTC-shaped traffic, start with separate lanes for `80`, `100`, `160`, and `200` ms websocket chunks. Sweep `partial_window_seconds` across `0.75`, `1.0`, `1.5`, and `2.0` seconds when you want to compare responsiveness against transcript stability.
+
 ## Reproduce
 
 Default artifact contract:

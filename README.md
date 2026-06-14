@@ -1,8 +1,8 @@
 # rtc-asr
 
-`rtc-asr` is a lightweight FastAPI service for low-latency transcription over REST and WebSockets. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
+`rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST and buffered WebSockets. It is optimized for warmed, local or on-device inference paths, especially low-power CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
 
-The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, and `parakeet-nemo` backends behind the same API surface.
+The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, and `parakeet-nemo` backends behind the same API surface.
 
 > Benchmark status: the repo includes checked-in latency baselines for validated local and Compose-backed runs.
 
@@ -13,7 +13,7 @@ The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, and `pa
 - `GET /api/models` for backend/model capability metadata that RTC clients can inspect
 - `POST /api/transcribe` for one-shot base64 audio requests
 - `POST /api/transcribe/file` for uploaded file transcription
-- `ws://.../ws/stream` for buffered streaming transcription with `ready`, `partial`, `final`, `canceled`, and `error` events
+- `ws://.../ws/stream` for buffered websocket transcription with `ready`, `partial`, `final`, `canceled`, and `error` events
 - Shared client helpers in `src/rtc_client.py` and `src/streaming.py`
 
 ## Quick Start
@@ -43,6 +43,19 @@ docker compose ps
 docker compose logs -f
 ```
 
+## Best Low-Power Quick Start
+
+For the most useful default CPU baseline, start with:
+
+```env
+ASR_BACKEND=faster-whisper
+ASR_MODEL_SIZE=base.en
+ASR_DEVICE=cpu
+ASR_COMPUTE_TYPE=int8
+```
+
+If you only need a smoke-test edge lane, `tiny.en` is a reasonable alternate quick-start. Use `base.en` for the more representative low-power benchmark lane.
+
 ## Operator Defaults
 
 ```env
@@ -51,8 +64,9 @@ PORT=8080
 SAMPLE_RATE=16000
 STREAM_MAX_BUFFER_BYTES=1048576
 ASR_BACKEND=faster-whisper
-ASR_MODEL_SIZE=small.en
+ASR_MODEL_SIZE=base.en
 ASR_DEVICE=cpu
+ASR_COMPUTE_TYPE=int8
 ASR_PRELOAD_MODEL=false
 ASR_FAIL_FAST=false
 ```
@@ -61,23 +75,20 @@ Backend-specific variables are available for Qwen, Parakeet, and NeMo Parakeet. 
 
 If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service defaults to `cuda`. Legacy aliases `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted for compatibility.
 
-## Warm-Up And Keep-Warm
+## Recommended Low-Power Profiles
 
-Most ASR backends have a cold-start penalty from model load, graph compilation, and first-request cache setup. That means the very first transcription can be much slower than steady-state traffic, especially for MLX, MPS, and larger transformer-based models.
+| Profile | Target | Backend | Model | Notes |
+| --- | --- | --- | --- | --- |
+| Tiny CPU | Raspberry Pi / mini PC | `faster-whisper` | `tiny.en` `int8` | Best smoke test, lowest accuracy |
+| Practical CPU | Mac Mini / N100 / laptop | `faster-whisper` | `base.en` `int8` | Good default benchmark lane |
+| Apple Silicon | M-series Mac | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Strong warmed latency and power tradeoff |
+| Not low-power | Large CPU or accelerator comparison lane | `qwen-asr` or larger Parakeet variants | `Qwen/Qwen3-ASR-0.6B` or `nvidia/parakeet-tdt-0.6b-v3` | Useful comparison, not the default edge path |
 
-Best practice for production-style serving:
-
-- Set `ASR_PRELOAD_MODEL=true` so model load happens at startup instead of on the first live request.
-- Gate traffic on `GET /ready` rather than only `GET /health` so callers wait for preload to finish.
-- Send one short warm-up transcription after startup or deploy before measuring latency or shifting traffic.
-- Keep the process resident and reuse it across requests; avoid one-shot CLI-style invocations if you care about real serving latency.
-- If a platform idles containers or workers aggressively, use a small synthetic keep-warm request on a cadence that matches that platform's eviction behavior.
-
-In this repo, checked-in service benchmarks use warmed server flows for apples-to-apples latency comparisons. Cold CLI preview artifacts are useful for exploration, but they should not be treated as the steady-state serving baseline.
+Current checked-in benchmarks make the Apple Silicon story especially strong for the warmed `parakeet-mlx-service-110m` lane. See [Benchmarks](./docs/benchmarks.md) for the latest artifact-backed numbers.
 
 ## Streaming Contract
 
-The realtime path is the main integration surface.
+The websocket path is the main integration surface, but it is buffered websocket ASR rather than a frame-synchronous decoder contract. Partial transcripts are generated from buffered windows and backend behavior varies. A fast `partial` event does not always mean the backend is a true streaming ASR model.
 
 1. Open `ws://localhost:8080/ws/stream`.
 2. Send a `start` event with `language`, `sample_rate`, and optional partial/buffer controls.
@@ -93,8 +104,8 @@ Example start event:
   "language": "en",
   "sample_rate": 16000,
   "partial_interval_chunks": 1,
-  "partial_window_seconds": 2.0,
-  "max_buffer_seconds": 30.0
+  "partial_window_seconds": 1.0,
+  "max_buffer_seconds": 10.0
 }
 ```
 
@@ -105,7 +116,7 @@ Example ready event:
   "type": "ready",
   "stream_id": 1,
   "backend": "faster-whisper",
-  "model": "small.en",
+  "model": "base.en",
   "language": "en",
   "sample_rate": 16000,
   "partial_interval_chunks": 1,
@@ -120,9 +131,75 @@ After a `final` event, the socket stays open so the client can start the next ut
 - Preferred transport is mono PCM16 chunks over binary websocket frames.
 - JSON base64 audio events are still supported for simpler clients.
 - A `sample_rate` must be supplied in the `start` event for raw PCM streams.
-- `50` to `200` ms chunks are the best starting point for low-latency RTC clients.
+- Start with `100` to `200` ms PCM16 chunks for service benchmarking.
+- Use `20` ms only when bridging from RTC audio frames, and aggregate before websocket transmission unless you are explicitly measuring per-frame overhead.
 - The service decodes and resamples once through the shared audio processor before handing audio to the configured backend.
 - `partial_window_seconds` and `max_buffer_seconds` let clients cap how much buffered audio feeds partials and finals.
+
+## RTC Edge Pattern
+
+Use WebRTC, RTP, or Opus only at the media edge, then forward normalized raw audio into `rtc-asr` over a simple websocket. That keeps `rtc-asr` focused on ASR benchmarking and serving instead of turning it into a media server.
+
+```text
+Browser / mobile mic
+  -> WebRTC / RTP / Opus
+Pipecat transport
+  -> decoded PCM frames, usually ~20 ms
+Chunk aggregator
+  -> binary PCM16 websocket frame every 80-160 ms
+rtc-asr /ws/stream
+  -> partial/final transcript events
+Voice agent pipeline
+```
+
+Why aggregate `20` ms frames before sending them to `rtc-asr`?
+
+| Chunk duration | RTC frames | Payload size at 16 kHz mono PCM16 |
+| --- | --- | --- |
+| `20` ms | `1` | `640` bytes |
+| `80` ms | `4` | `2560` bytes |
+| `100` ms | `5` | `3200` bytes |
+| `160` ms | `8` | `5120` bytes |
+| `200` ms | `10` | `6400` bytes |
+
+`80` to `160` ms is a good compromise because it preserves user-perceived responsiveness, reduces websocket overhead, gives the backend enough audio for more stable partials, maps cleanly from RTC frame cadence, and keeps CPU load lower on small devices.
+
+## Warm-Up And Keep-Warm
+
+Most ASR backends have a cold-start penalty from model load, graph compilation, and first-request cache setup. That means the very first transcription can be much slower than steady-state traffic, especially for MLX, MPS, and larger transformer-based models.
+
+Best practice for production-style serving:
+
+- Set `ASR_PRELOAD_MODEL=true` so model load happens at startup instead of on the first live request.
+- Gate traffic on `GET /ready` rather than only `GET /health` so callers wait for preload to finish.
+- Send one short warm-up transcription after startup or deploy before measuring latency or shifting traffic.
+- Keep the process resident and reuse it across requests; avoid one-shot CLI-style invocations if you care about real serving latency.
+- If a platform idles containers or workers aggressively, use a small synthetic keep-warm request on a cadence that matches that platform's eviction behavior.
+
+In this repo, checked-in service benchmarks use warmed server flows for apples-to-apples latency comparisons. Cold CLI preview artifacts are useful for exploration, but they should not be treated as the steady-state serving baseline.
+
+## Benchmark Methodology
+
+For low-power claims, latency alone is not enough. Recommended benchmark fields:
+
+- device, CPU, and RAM
+- accelerator type: none, MPS, MLX, CUDA, or NPU
+- wall latency: REST mean and P95, first partial, and final
+- realtime factor (`RTF`)
+- peak RSS memory
+- CPU utilization
+- package power when available
+- sustained thermal behavior over `5` to `10` minutes
+- transcript churn across partial updates
+
+The checked-in artifacts already cover warmed service latency, first partial responsiveness, and `RTF`. Memory, power, thermal, and transcript-churn reporting are the next useful additions for low-power benchmarking.
+
+## Known Limitations
+
+- `/ws/stream` is buffered websocket ASR, not a native frame-synchronous decoder API.
+- Partial transcripts are computed from the current buffered window, so lower latency settings can increase transcript instability.
+- Backend behavior varies widely; equal chunk cadence does not guarantee equal partial quality or equal streaming semantics.
+- `rtc-asr` is not a WebRTC media server. Use Pipecat, LiveKit, or another transport layer for RTC session handling and audio decoding.
 
 ## Verification
 

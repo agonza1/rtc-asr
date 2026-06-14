@@ -418,6 +418,12 @@ def _decode_base64_audio(encoded_audio: str) -> bytes:
 
 
 def _decode_websocket_audio(payload: dict[str, Any]) -> bytes:
+    raw_audio = payload.get("audio_bytes")
+    if raw_audio is not None:
+        if not isinstance(raw_audio, (bytes, bytearray)):
+            raise StreamClientError("audio_bytes must be raw bytes")
+        return bytes(raw_audio)
+
     encoded_audio = payload.get("audio_data") or payload.get("audio")
     if not encoded_audio or not isinstance(encoded_audio, str):
         raise StreamClientError("audio_data or audio is required for audio events")
@@ -440,7 +446,7 @@ async def _receive_stream_event(
     if binary_audio is not None:
         if session is None:
             raise StreamClientError("Send a start event before audio chunks")
-        return {"audio_data": base64.b64encode(binary_audio).decode("ascii")}, "audio"
+        return {"audio_bytes": binary_audio}, "audio"
 
     raw_text = message.get("text")
     if raw_text is None:

@@ -10,12 +10,20 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
-from src.main import _seconds_to_buffer_bytes, create_app
+from src.main import _receive_stream_event, _seconds_to_buffer_bytes, create_app
 from src.model_loader import ASRUnavailableError
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 DEFAULT_MAX_BUFFER_BYTES = AppConfig().stream_max_buffer_bytes
+
+
+class FakeIncomingWebSocket:
+    def __init__(self, message: dict[str, object]) -> None:
+        self._message = message
+
+    async def receive(self) -> dict[str, object]:
+        return self._message
 
 
 class FakeTranscriber:
@@ -887,6 +895,21 @@ def test_stream_max_buffer_bytes_must_be_positive(
 
     with pytest.raises(ValueError, match="STREAM_MAX_BUFFER_BYTES must be a positive integer"):
         AppConfig.from_env()
+
+
+
+
+def test_app_config_defaults_to_base_en() -> None:
+    assert AppConfig().asr_model_size == "base.en"
+
+
+def test_receive_stream_event_keeps_binary_audio_bytes() -> None:
+    payload, event_type = asyncio.run(
+        _receive_stream_event(FakeIncomingWebSocket({"type": "websocket.receive", "bytes": b"frame-bytes"}), object())
+    )
+
+    assert event_type == "audio"
+    assert payload == {"audio_bytes": b"frame-bytes"}
 
 
 def test_websocket_rejects_audio_before_start() -> None:
