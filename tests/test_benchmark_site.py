@@ -17,6 +17,14 @@ build_manifest = manifest_module.build_manifest
 comparable_manifest = manifest_module.comparable_manifest
 render_manifest = manifest_module.render_manifest
 
+PRERENDER_MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prerender_benchmark_homepage.py"
+PRERENDER_SPEC = importlib.util.spec_from_file_location("rtc_asr_prerender_benchmark_homepage", PRERENDER_MODULE_PATH)
+assert PRERENDER_SPEC is not None and PRERENDER_SPEC.loader is not None
+prerender_module = importlib.util.module_from_spec(PRERENDER_SPEC)
+sys.modules.setdefault("rtc_asr_prerender_benchmark_homepage", prerender_module)
+PRERENDER_SPEC.loader.exec_module(prerender_module)
+detail_page_path = prerender_module.detail_page_path
+
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
 DOCS_PATH = Path("docs") / "benchmarks.md"
@@ -381,6 +389,26 @@ def test_docs_index_surfaces_official_wer_references() -> None:
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 
 
+def test_detail_page_path_uses_artifact_stem() -> None:
+    entry = {"artifact_path": "benchmark-results/demo-artifact-2026-06-14.json"}
+
+    assert detail_page_path(entry) == "benchmark-results/pages/demo-artifact-2026-06-14.html"
+
+
+def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+
+    for track in manifest["tracks"]:
+        if not track["artifact_path"]:
+            continue
+        detail_path = Path("docs") / detail_page_path(track)
+        assert detail_path.exists()
+        detail_html = detail_path.read_text(encoding="utf-8")
+        assert "Artifact detail page" in detail_html
+        assert "Back to benchmark homepage" in detail_html
+        assert Path(track["artifact_path"]).name in detail_html
+
+
 def test_homepage_head_includes_launch_seo_metadata() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
@@ -426,6 +454,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Built for WebRTC.ventures launch conversations" in homepage
     assert "Official WER" in homepage
     assert 'entry.official_wer_reference || "see notes"' in homepage
+    assert "Open detail page" in homepage
 
 
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
@@ -557,4 +586,5 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     assert "Median first partial" in homepage
     assert "Official WER" in homepage
     assert "open JSON" in homepage
+    assert "open details" in homepage
     assert "Loading benchmark manifest..." not in homepage
