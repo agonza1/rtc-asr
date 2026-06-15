@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-15T17:33:25Z",
+  "generated_at": "2026-06-15T18:25:39Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -7,7 +7,7 @@
     "validated_count": 7,
     "legacy_count": 0,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-15T17:29:25Z",
+    "latest_measured_at": "2026-06-15T18:22:40Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -22,19 +22,19 @@
     "ranges": {
       "rest_mean_ms": {
         "min": 141.9,
-        "max": 3885.6
+        "max": 6999.3
       },
       "partial_mean_ms": {
         "min": 29.7,
-        "max": 4376.6
+        "max": 7112.9
       },
       "first_partial_end_to_end_mean_ms": {
         "min": 557.4,
-        "max": 3466.6
+        "max": 4772.5
       },
       "partial_gap_mean_ms": {
         "min": 244.2,
-        "max": 6098.3
+        "max": 9283.1
       },
       "final_mean_ms": {
         "min": 210.6,
@@ -42,10 +42,10 @@
       },
       "rtf_mean": {
         "min": 0.019,
-        "max": 0.534
+        "max": 0.961
       },
       "overall_score": {
-        "min": 34.6,
+        "min": 14.6,
         "max": 98.7
       }
     },
@@ -479,12 +479,12 @@
       "lane": "Docker Compose CPU",
       "runtime": "cpu / float16",
       "status": "validated",
-      "status_detail": "Validated 3-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
-      "target_sample_count": 3,
-      "run_command": "BENCHMARK_SAMPLE_COUNT=3 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
+      "status_detail": "Validated 5-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
+      "target_sample_count": 5,
+      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-15T17:29:25Z",
-      "sample_count": 3,
+      "measured_at": "2026-06-15T18:22:40Z",
+      "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
       "contract": {
         "chunk_ms": 250,
@@ -495,40 +495,40 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 3885.6,
-        "p95_ms": 4135.9,
-        "rtf_mean": 0.534
+        "mean_ms": 6999.3,
+        "p95_ms": 8098.5,
+        "rtf_mean": 0.961
       },
       "streaming": {
-        "partial_mean_ms": 4376.6,
-        "partial_p95_ms": 8518.6,
-        "first_partial_end_to_end_mean_ms": 3466.6,
-        "first_partial_end_to_end_p95_ms": 3519.3,
-        "partial_gap_mean_ms": 6098.3,
-        "partial_gap_p95_ms": 9006.6,
+        "partial_mean_ms": 7112.9,
+        "partial_p95_ms": 15367.9,
+        "first_partial_end_to_end_mean_ms": 4772.5,
+        "first_partial_end_to_end_p95_ms": 5710.9,
+        "partial_gap_mean_ms": 9283.1,
+        "partial_gap_p95_ms": 17130.2,
         "partial_transcript_churn_char_mean": 0.863,
         "partial_transcript_churn_word_mean": 1.0,
         "late_partial_events": 0,
         "late_partial_ratio": 0.0,
-        "final_mean_ms": 7765.3,
-        "final_p95_ms": 8306.4
+        "final_mean_ms": 13565.7,
+        "final_p95_ms": 17019.5
       },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 40.0,
-        "live_caption_score": 10.8,
+        "latency_score": 0.0,
+        "live_caption_score": 1.6,
         "finalization_score": 0.0,
-        "stability_score": 92.6,
-        "efficiency_score": 48.0,
-        "overall_score": 34.6,
+        "stability_score": 88.8,
+        "efficiency_score": 4.0,
+        "overall_score": 14.6,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.064,
-        "partial_jitter_ratio": 1.946,
-        "final_jitter_ratio": 1.07
+        "rest_jitter_ratio": 1.157,
+        "partial_jitter_ratio": 2.161,
+        "final_jitter_ratio": 1.255
       }
     },
     {
@@ -600,8 +600,8 @@
       "backend": "qwen-asr",
       "model": "Qwen/Qwen3-ASR-0.6B",
       "runtime": "cpu / float16",
-      "measured_at": "2026-06-15T17:29:25Z",
-      "sample_count": 3,
+      "measured_at": "2026-06-15T18:22:40Z",
+      "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
       "contract": {
         "chunk_ms": 250,
@@ -612,23 +612,23 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 3885.6,
-        "p95_ms": 4135.9,
-        "rtf_mean": 0.534
+        "mean_ms": 6999.3,
+        "p95_ms": 8098.5,
+        "rtf_mean": 0.961
       },
       "streaming": {
-        "partial_mean_ms": 4376.6,
-        "partial_p95_ms": 8518.6,
-        "first_partial_end_to_end_mean_ms": 3466.6,
-        "first_partial_end_to_end_p95_ms": 3519.3,
-        "partial_gap_mean_ms": 6098.3,
-        "partial_gap_p95_ms": 9006.6,
+        "partial_mean_ms": 7112.9,
+        "partial_p95_ms": 15367.9,
+        "first_partial_end_to_end_mean_ms": 4772.5,
+        "first_partial_end_to_end_p95_ms": 5710.9,
+        "partial_gap_mean_ms": 9283.1,
+        "partial_gap_p95_ms": 17130.2,
         "partial_transcript_churn_char_mean": 0.863,
         "partial_transcript_churn_word_mean": 1.0,
         "late_partial_events": 0,
         "late_partial_ratio": 0.0,
-        "final_mean_ms": 7765.3,
-        "final_p95_ms": 8306.4
+        "final_mean_ms": 13565.7,
+        "final_p95_ms": 17019.5
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
@@ -1353,12 +1353,12 @@
       "lane": "Docker Compose CPU",
       "runtime": "cpu / float16",
       "status": "validated",
-      "status_detail": "Validated 3-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
-      "target_sample_count": 3,
-      "run_command": "BENCHMARK_SAMPLE_COUNT=3 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
+      "status_detail": "Validated 5-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
+      "target_sample_count": 5,
+      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-15T17:29:25Z",
-      "sample_count": 3,
+      "measured_at": "2026-06-15T18:22:40Z",
+      "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
       "contract": {
         "chunk_ms": 250,
@@ -1369,40 +1369,40 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 3885.6,
-        "p95_ms": 4135.9,
-        "rtf_mean": 0.534
+        "mean_ms": 6999.3,
+        "p95_ms": 8098.5,
+        "rtf_mean": 0.961
       },
       "streaming": {
-        "partial_mean_ms": 4376.6,
-        "partial_p95_ms": 8518.6,
-        "first_partial_end_to_end_mean_ms": 3466.6,
-        "first_partial_end_to_end_p95_ms": 3519.3,
-        "partial_gap_mean_ms": 6098.3,
-        "partial_gap_p95_ms": 9006.6,
+        "partial_mean_ms": 7112.9,
+        "partial_p95_ms": 15367.9,
+        "first_partial_end_to_end_mean_ms": 4772.5,
+        "first_partial_end_to_end_p95_ms": 5710.9,
+        "partial_gap_mean_ms": 9283.1,
+        "partial_gap_p95_ms": 17130.2,
         "partial_transcript_churn_char_mean": 0.863,
         "partial_transcript_churn_word_mean": 1.0,
         "late_partial_events": 0,
         "late_partial_ratio": 0.0,
-        "final_mean_ms": 7765.3,
-        "final_p95_ms": 8306.4
+        "final_mean_ms": 13565.7,
+        "final_p95_ms": 17019.5
       },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 40.0,
-        "live_caption_score": 10.8,
+        "latency_score": 0.0,
+        "live_caption_score": 1.6,
         "finalization_score": 0.0,
-        "stability_score": 92.6,
-        "efficiency_score": 48.0,
-        "overall_score": 34.6,
+        "stability_score": 88.8,
+        "efficiency_score": 4.0,
+        "overall_score": 14.6,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.064,
-        "partial_jitter_ratio": 1.946,
-        "final_jitter_ratio": 1.07
+        "rest_jitter_ratio": 1.157,
+        "partial_jitter_ratio": 2.161,
+        "final_jitter_ratio": 1.255
       }
     }
   ]
