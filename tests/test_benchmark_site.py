@@ -312,7 +312,20 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
     assert 'if (entry.status === "validated") return 0;' in html
+    assert 'const scoreDelta = scoreRank(left) - scoreRank(right);' in html
+    assert 'return -overall;' in html
     assert 'const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);' in html
+
+
+def test_docs_index_live_labels_match_streaming_framing() -> None:
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert 'Median per-partial latency' in html
+    assert 'Median audio-end finalization' in html
+    assert 'Median REST throughput context' in html
+    assert 'data-label="Per-partial latency"' in html
+    assert 'data-label="Audio-end finalization"' in html
+    assert 'data-label="REST throughput context"' in html
 
 
 def test_docs_parakeet_mlx_row_matches_checked_in_artifact_summary() -> None:

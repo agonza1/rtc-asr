@@ -79,11 +79,23 @@ def numeric(value: float | None) -> float:
     return float("inf") if value is None else value
 
 
+def score_rank(entry: dict[str, Any]) -> float:
+    derived = entry.get("derived", {})
+    overall = derived.get("overall_score")
+    if overall is not None:
+        return -overall
+    live_caption = derived.get("live_caption_score")
+    if live_caption is not None:
+        return -live_caption
+    return float("inf")
+
+
 def sort_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(
         entries,
         key=lambda entry: (
             status_rank(entry),
+            score_rank(entry),
             numeric(first_visible_partial(entry)),
             numeric(entry.get("streaming", {}).get("partial_mean_ms")),
             numeric(entry.get("streaming", {}).get("final_mean_ms")),

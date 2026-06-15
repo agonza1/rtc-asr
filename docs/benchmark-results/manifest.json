@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-15T18:52:30Z",
+  "generated_at": "2026-06-15T19:07:53Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -125,6 +125,18 @@
       "measured_at": "2026-06-13T22:55:30Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -186,6 +198,18 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.4",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
@@ -246,6 +270,18 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.4",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -306,6 +342,18 @@
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -366,6 +414,18 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -426,6 +486,18 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -486,6 +558,18 @@
       "measured_at": "2026-06-15T18:22:40Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
@@ -547,6 +631,18 @@
       "measured_at": "2026-06-13T03:44:05Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "system": {
+        "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+        "processor": "aarch64",
+        "python": "3.11.2",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 100,
         "partial_interval_chunks": 1,
@@ -603,6 +699,18 @@
       "measured_at": "2026-06-15T18:22:40Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
@@ -644,6 +752,18 @@
       "measured_at": "2026-06-13T22:55:30Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -685,6 +805,18 @@
       "measured_at": "2026-06-13T03:44:05Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "system": {
+        "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+        "processor": "aarch64",
+        "python": "3.11.2",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 100,
         "partial_interval_chunks": 1,
@@ -727,6 +859,18 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.4",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -767,6 +911,18 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.4",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
@@ -807,6 +963,18 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -847,6 +1015,18 @@
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -887,6 +1067,18 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -937,6 +1129,18 @@
       "measured_at": "2026-06-13T22:55:30Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -998,6 +1202,18 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.4",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
@@ -1058,6 +1274,18 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.4",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -1118,6 +1346,18 @@
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -1178,6 +1418,18 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -1238,6 +1490,18 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 1,
@@ -1298,6 +1562,18 @@
       "measured_at": "2026-06-13T03:44:05Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "system": {
+        "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+        "processor": "aarch64",
+        "python": "3.11.2",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 100,
         "partial_interval_chunks": 1,
@@ -1360,6 +1636,18 @@
       "measured_at": "2026-06-15T18:22:40Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
       "contract": {
         "chunk_ms": 250,
         "partial_interval_chunks": 8,
