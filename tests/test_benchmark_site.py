@@ -304,8 +304,9 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
     assert "safest latency bet" in html
     assert "sample coverage" in html
-    assert "official upstream WER references today" in html
-    assert "named annotated benchmark dataset and methodology" in html
+    assert "The homepage stays latency-only." in html
+    assert "benchmark notes and artifact detail pages" in html
+    assert "reference WER sourced from upstream evaluations" not in html
 
 
 def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
@@ -373,10 +374,12 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
     assert "docs/benchmark-results/tracks.json" in docs_text
     assert "docs/benchmark-results/manifest.json" in docs_text
     assert "## Accuracy Publishing Policy" in docs_text
-    assert "Common Voice or FLEURS" in docs_text
+    assert "FLEURS `en_us` and a pinned Common Voice English test split" in docs_text
     assert "qwen-compose-2026-06-07.json" not in docs_text
-    assert "Official WER reference" in docs_text
-    assert "upstream Hugging Face benchmark/model-card numbers" in docs_text
+    assert "## Recommended Quality Methodology" in docs_text
+    assert "Reference WER" in docs_text
+    assert "should not show reference WER in the primary ranking table" in docs_text
+    assert "not an official rtc-asr measurement" in docs_text
     assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
 
     for track in tracks:
@@ -389,16 +392,12 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
             assert "no committed artifact" in docs_text
 
 
-def test_docs_index_surfaces_official_wer_references() -> None:
+def test_docs_index_surfaces_reference_wer_notes() -> None:
     docs_index_text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
 
-    assert "## Official WER References" in docs_index_text
-    assert "same official WER references shown in the benchmark notes" in docs_index_text
-    assert "upstream Hugging Face benchmark or model-card values" in docs_index_text
-    assert "parakeet-mlx" in docs_index_text
-    assert "parakeet-mlx-110m" in docs_index_text
+    assert "## Reference WER Notes" in docs_index_text
+    assert "not official rtc-asr measurements" in docs_index_text
     assert "parakeet-mlx-service-110m" in docs_index_text
-    assert "openai/whisper-base.en" in docs_index_text
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 
 
@@ -420,6 +419,55 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
         assert "Artifact detail page" in detail_html
         assert "Back to benchmark homepage" in detail_html
         assert Path(track["artifact_path"]).name in detail_html
+
+    rss_detail = (Path('docs') / 'benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html').read_text(encoding='utf-8')
+    assert "System profile" in rss_detail
+    assert "Efficiency signals" in rss_detail
+    assert "Artifact does not record sustained thermal notes yet." in rss_detail
+
+
+def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
+    entry = {
+        'label': 'demo-artifact',
+        'artifact_path': 'benchmark-results/demo-artifact-2026-06-14.json',
+        'device': 'apple-silicon',
+        'lane': 'demo lane',
+        'backend': 'demo',
+        'model': 'demo-v1',
+        'runtime': 'local',
+        'status': 'validated',
+        'sample_count': 3,
+        'measured_at': '2026-06-14T00:00:00Z',
+        'status_detail': 'Demo artifact.',
+        'rest': {'mean_ms': 42.0, 'p95_ms': 55.0, 'rtf_mean': 0.2},
+        'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
+        'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'binary_frames': False},
+        'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
+    }
+    payload = {
+        'environment': {
+            'platform': 'macOS',
+            'processor': 'arm64',
+            'python': '3.14.5',
+            'process_rss_mb': 23.6,
+        },
+        'metrics': {
+            'cpu_utilization_percent': 38.2,
+            'package_power_watts': 7.4,
+            'thermal_peak_celsius': 63.5,
+            'thermal_observation': 'Stable over 5 minutes.',
+        },
+    }
+
+    detail_html = render_detail_page(entry, payload)
+
+    assert 'System profile' in detail_html
+    assert 'macOS' in detail_html
+    assert 'Peak RSS 23.6 MB' in detail_html
+    assert 'CPU 38.2%' in detail_html
+    assert 'Power 7.4 W' in detail_html
+    assert 'Thermal 63.5 C' in detail_html
+    assert 'Stable over 5 minutes.' in detail_html
 
 
 def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
@@ -509,8 +557,8 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "benchmark-results/manifest.json" in homepage
     assert "WebRTC.ventures benchmarks" in homepage
     assert "Built for WebRTC.ventures launch conversations" in homepage
-    assert "Official WER" in homepage
-    assert 'entry.official_wer_reference || "see notes"' in homepage
+    assert "Reference WER" in homepage
+    assert "not an official rtc-asr measurement" in homepage
     assert "Open detail page" in homepage
     assert 'function formatHostSummary(entry)' in homepage
     assert 'Host profile' in homepage
@@ -674,7 +722,7 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     assert "Benchmark content rendered into initial HTML" in homepage
     assert "This prerender keeps the key comparison crawlable before JavaScript enhances the page." in homepage
     assert "Median first partial" in homepage
-    assert "Official WER" in homepage
+    assert "Reference WER" in homepage
     assert "open JSON" in homepage
     assert "open details" in homepage
     assert "Loading benchmark manifest..." not in homepage

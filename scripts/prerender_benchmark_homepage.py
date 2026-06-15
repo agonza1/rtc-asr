@@ -177,13 +177,42 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
         "platform": first_defined(environment.get("platform"), system.get("platform")),
         "processor": first_defined(environment.get("processor"), environment.get("machine"), system.get("processor")),
         "python": first_defined(environment.get("python"), system.get("python")),
-        "cpu_logical_cores": first_defined(environment.get("cpu_logical_cores"), system.get("cpu_logical_cores"), metrics.get("cpu_logical_cores")),
-        "memory_total_mb": first_defined(environment.get("memory_total_mb"), system.get("memory_total_mb"), metrics.get("memory_total_mb")),
-        "peak_rss_mb": first_defined(environment.get("peak_rss_mb"), environment.get("process_rss_mb"), system.get("peak_rss_mb"), metrics.get("peak_rss_mb")),
-        "cpu_utilization_percent": first_defined(environment.get("cpu_utilization_percent"), system.get("cpu_utilization_percent"), metrics.get("cpu_utilization_percent")),
-        "package_power_watts": first_defined(environment.get("package_power_watts"), system.get("package_power_watts"), metrics.get("package_power_watts")),
-        "thermal_peak_celsius": first_defined(environment.get("thermal_peak_celsius"), system.get("thermal_peak_celsius"), metrics.get("thermal_peak_celsius")),
-        "thermal_observation": first_defined(environment.get("thermal_observation"), system.get("thermal_observation"), metrics.get("thermal_observation")),
+        "cpu_logical_cores": first_defined(
+            environment.get("cpu_logical_cores"),
+            system.get("cpu_logical_cores"),
+            metrics.get("cpu_logical_cores"),
+        ),
+        "memory_total_mb": first_defined(
+            environment.get("memory_total_mb"),
+            system.get("memory_total_mb"),
+            metrics.get("memory_total_mb"),
+        ),
+        "peak_rss_mb": first_defined(
+            environment.get("peak_rss_mb"),
+            environment.get("process_rss_mb"),
+            system.get("peak_rss_mb"),
+            metrics.get("peak_rss_mb"),
+        ),
+        "cpu_utilization_percent": first_defined(
+            environment.get("cpu_utilization_percent"),
+            system.get("cpu_utilization_percent"),
+            metrics.get("cpu_utilization_percent"),
+        ),
+        "package_power_watts": first_defined(
+            environment.get("package_power_watts"),
+            system.get("package_power_watts"),
+            metrics.get("package_power_watts"),
+        ),
+        "thermal_peak_celsius": first_defined(
+            environment.get("thermal_peak_celsius"),
+            system.get("thermal_peak_celsius"),
+            metrics.get("thermal_peak_celsius"),
+        ),
+        "thermal_observation": first_defined(
+            environment.get("thermal_observation"),
+            system.get("thermal_observation"),
+            metrics.get("thermal_observation"),
+        ),
     }
 
 
@@ -264,9 +293,9 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Partial response</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
         <article class="card"><span class="label">Finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST mean</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
+        <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
-        <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
       </div>
       <div class="card" style="margin-top: 24px;">
         <span class="label">Raw artifact JSON</span>
@@ -330,7 +359,7 @@ def render_row(
             f'<td data-label="Partial response"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs fastest</div></td>',
             f'<td data-label="Final"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
             f'<td data-label="REST"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
-            f'<td data-label="Official WER"><strong>{html.escape(entry.get("official_wer_reference") or "see notes")}</strong><div class="tiny">Upstream model-card / benchmark reference</div></td>',
+            f'<td data-label="Reference WER"><strong>{html.escape(entry.get("official_wer_reference") or "see notes")}</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td>',
             f'<td data-label="Samples"><strong>{entry.get("sample_count") or "n/a"}</strong><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
             f'<td data-label="Artifact"><a href="{html.escape(entry.get("artifact_path") or "#")}">open JSON</a><div class="tiny"><a href="{html.escape(detail_page_path(entry))}">open details</a></div></td>',
             "</tr>",
@@ -399,7 +428,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
   <div class="comparison-scroll">
     <table>
       <thead>
-        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial response', 'Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.')}</th><th>{hint('Finalization', 'Time from audio end until the final transcript returns.')}</th><th>{hint('REST', 'Batch request latency for the same backend outside the streaming websocket path.')}</th><th>{hint('Official WER', 'Upstream model-card or benchmark reference numbers, not repo-measured accuracy from this site.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial response', 'Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.')}</th><th>{hint('Finalization', 'Time from audio end until the final transcript returns.')}</th><th>{hint('REST', 'Batch request latency for the same backend outside the streaming websocket path.')}</th><th>{hint('Reference WER', 'External reference WER for the underlying model, not an official rtc-asr measurement and it may vary by setup.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
       </thead>
       <tbody>
 {rows}

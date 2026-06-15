@@ -146,12 +146,13 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(benchmark.os, "cpu_count", lambda: 12)
     monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
 
-    payload = benchmark.describe_environment(service_pid=4321)
+    payload = benchmark.describe_environment(service_pid=4321, peak_rss_mb=384.0)
 
     assert payload["machine"] == "arm64"
     assert payload["cpu_logical_cores"] == 12
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] == 256.0
+    assert payload["peak_rss_mb"] == 384.0
     assert requested_pids == [4321]
 
 
@@ -167,6 +168,7 @@ def test_describe_environment_omits_process_rss_without_managed_service_pid(monk
 
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] is None
+    assert payload["peak_rss_mb"] is None
 
 
 def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_and_serialization() -> None:

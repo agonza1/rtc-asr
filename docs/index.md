@@ -19,11 +19,11 @@
 - Use [Benchmarks](./benchmarks.md) when you need current latency artifacts or reproduction commands.
 - Use [Troubleshooting](./troubleshooting.md) for preload, backend runtime, and streaming failure modes.
 
-## Official WER References
+## Reference WER Notes
 
-The docs screen now carries the same official WER references shown in the benchmark notes. These are upstream Hugging Face benchmark or model-card values for the underlying models, not repo-measured runtime results.
+The docs screen keeps the same reference WER values shown in the benchmark notes. These are upstream benchmark or model-card values for the underlying models, not official rtc-asr measurements, and they may vary slightly across hardware, runtime, quantization, decoding, and setup.
 
-| Runtime lane | Official WER reference |
+| Runtime lane | Reference WER |
 | --- | --- |
 | `faster-whisper-base` and `faster-whisper-base-c80-w075-json-preview` | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` |
 | `faster-whisper-small` | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` |
@@ -31,7 +31,7 @@ The docs screen now carries the same official WER references shown in the benchm
 | `parakeet-mlx-110m`, `parakeet-mlx-service-110m`, and `parakeet-nemo-compose` | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` |
 | `qwen-mps` and `qwen-compose` | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` |
 
-Use [Benchmarks](./benchmarks.md) for the full artifact-backed comparison matrix, source links, and the methodology note that keeps these upstream WER references separate from local latency measurements. Distinct runtime setups stay split into separate rows there even when they share the same upstream model benchmark reference.
+Use [Benchmarks](./benchmarks.md) for the full artifact-backed comparison matrix, source links, and the methodology note that keeps these external WER references separate from local latency measurements. Distinct runtime setups stay split into separate rows there even when they share the same upstream model benchmark reference.
 
 ## Architecture Snapshot
 
