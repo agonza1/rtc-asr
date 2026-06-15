@@ -126,13 +126,18 @@ def test_parse_args_rejects_zero_or_negative_runtime_values(monkeypatch: pytest.
 
 
 def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPatch) -> None:
+    requested_pids: list[int] = []
+
     class FakeProcess:
+        def __init__(self, pid: int) -> None:
+            requested_pids.append(pid)
+
         def memory_info(self) -> SimpleNamespace:
             return SimpleNamespace(rss=256 * 1024 * 1024)
 
     fake_psutil = SimpleNamespace(
         virtual_memory=lambda: SimpleNamespace(total=16384 * 1024 * 1024),
-        Process=lambda: FakeProcess(),
+        Process=FakeProcess,
     )
 
     monkeypatch.setattr(benchmark.platform, "platform", lambda: "TestOS")
@@ -141,12 +146,27 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(benchmark.os, "cpu_count", lambda: 12)
     monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
 
-    payload = benchmark.describe_environment()
+    payload = benchmark.describe_environment(service_pid=4321)
 
     assert payload["machine"] == "arm64"
     assert payload["cpu_logical_cores"] == 12
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] == 256.0
+    assert requested_pids == [4321]
+
+
+def test_describe_environment_omits_process_rss_without_managed_service_pid(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_psutil = SimpleNamespace(
+        virtual_memory=lambda: SimpleNamespace(total=16384 * 1024 * 1024),
+        Process=lambda _pid: (_ for _ in ()).throw(AssertionError("Process() should not be called without a service PID")),
+    )
+
+    monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+
+    payload = benchmark.describe_environment()
+
+    assert payload["memory_total_mb"] == 16384.0
+    assert payload["process_rss_mb"] is None
 
 
 def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_and_serialization() -> None:

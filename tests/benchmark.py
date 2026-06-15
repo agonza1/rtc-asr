@@ -273,7 +273,7 @@ def resolve_reference_text(args: argparse.Namespace, *, synthesized: bool) -> st
     return None
 
 
-def describe_environment() -> dict[str, object]:
+def describe_environment(*, service_pid: int | None = None) -> dict[str, object]:
     cpu_logical_cores = os.cpu_count()
     memory_total_mb: float | None = None
     process_rss_mb: float | None = None
@@ -283,7 +283,8 @@ def describe_environment() -> dict[str, object]:
 
         virtual_memory = psutil.virtual_memory()
         memory_total_mb = round(virtual_memory.total / (1024 * 1024), 1)
-        process_rss_mb = round(psutil.Process().memory_info().rss / (1024 * 1024), 1)
+        if service_pid is not None:
+            process_rss_mb = round(psutil.Process(service_pid).memory_info().rss / (1024 * 1024), 1)
     except Exception:
         memory_total_mb = None
         process_rss_mb = None
@@ -1096,7 +1097,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         partial_churn_word_summary = summarize_ratio_series(partial_churn_word_all) if partial_churn_word_all else None
 
         return {
-            "environment": describe_environment(),
+            "environment": describe_environment(service_pid=server.process.pid if server is not None and server.process is not None else None),
             "benchmark": {
                 "sample_count": sample_count,
                 "mode": args.mode,
