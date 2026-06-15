@@ -71,9 +71,9 @@ Status details from the track registry:
 - `faster-whisper-small`: validated 10-sample local CPU baseline using the default service model.
 - `parakeet-compose`: validated 10-sample Compose CPU artifact.
 - `parakeet-nemo-compose`: validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.
-- `parakeet-mlx-service-110m`: validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.
-- `parakeet-mlx`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt-0.6b-v3`.
-- `parakeet-mlx-110m`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt_ctc-110m`.
+- `parakeet-mlx-service-110m`: validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness; its `141.9 ms` REST mean keeps the warmed service lane grounded to the checked-in artifact.
+- `parakeet-mlx`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt-0.6b-v3`; its `1971.9 ms` mean latency reflects the checked-in cold CLI preview.
+- `parakeet-mlx-110m`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt_ctc-110m`; its `1360.7 ms` mean latency reflects the checked-in cold CLI preview.
 - `qwen-mps`: validated 10-sample local Apple Silicon MPS artifact.
 - `qwen-compose`: validated 5-sample Compose CPU artifact using `float16`, `3` REST runs per sample, and an `8`-chunk partial cadence.
 
