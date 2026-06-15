@@ -40,10 +40,10 @@ def load_tracks() -> dict[str, object]:
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
-    assert manifest["summary"]["asr_count"] == 9
-    assert manifest["summary"]["tracked_count"] == 9
-    assert manifest["summary"]["validated_count"] == 6
-    assert manifest["summary"]["legacy_count"] == 2
+    assert manifest["summary"]["asr_count"] == 8
+    assert manifest["summary"]["tracked_count"] == 8
+    assert manifest["summary"]["validated_count"] == 7
+    assert manifest["summary"]["legacy_count"] == 0
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
@@ -51,11 +51,10 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
-    assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
-    assert "accuracy_score" not in tracks["faster-whisper-base-c80-w075-json-preview"]["derived"]
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
-    assert tracks["faster-whisper-base-c80-w075-json-preview"]["accuracy"]["word_error_rate_mean"] is None
-    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
+    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
+    assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
+    assert tracks["qwen-compose"]["target_sample_count"] == 3
     assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
@@ -77,7 +76,7 @@ def test_manifest_prefers_explicit_track_artifact_for_same_runtime_family() -> N
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
 
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
-    assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
+    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
 
 
 def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
@@ -571,7 +570,7 @@ def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
     expected_files = {
         f"benchmark-results/{path.name}"
         for path in RESULTS_DIR.glob("*.json")
-        if path.name not in {"manifest.json", "tracks.json", "qwen-compose-2026-06-07.json"}
+        if path.name not in {"manifest.json", "tracks.json"}
         and manifest_module.is_asr_payload(json.loads(path.read_text(encoding="utf-8")))
     }
 

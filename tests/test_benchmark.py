@@ -363,6 +363,14 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
+        "qwen-compose-2026-06-15.json": {
+            "partial_interval_chunks": 8,
+            "binary_frames": False,
+            "partial_window_seconds": 2.0,
+            "max_buffer_seconds": None,
+            "request_retries": 3,
+            "request_retry_delay": 2.0,
+        },
     }
 
     results_dir = Path("docs") / "benchmark-results"
@@ -379,6 +387,7 @@ def test_checked_in_benchmark_artifacts_include_streaming_sample_binary_frame_me
         "faster-whisper-small.en-int8-2026-06-10.json",
         "parakeet-compose-2026-06-10.json",
         "parakeet-nemo-110m-compose-2026-06-09.json",
+        "qwen-compose-2026-06-15.json",
     ]
 
     for artifact_name in validated_artifacts:
@@ -1548,26 +1557,13 @@ def test_async_main_uses_service_model_id_and_parakeet_mlx_dtype(monkeypatch: py
     assert result["backend"]["compute_type"] is None
 
 
-def test_benchmarks_doc_legacy_artifact_rows_reference_checked_in_legacy_schema_artifacts() -> None:
+def test_benchmarks_doc_no_longer_references_legacy_qwen_artifacts() -> None:
     benchmarks_doc = (Path("docs") / "benchmarks.md").read_text(encoding="utf-8")
-    results_dir = Path("docs") / "benchmark-results"
 
     legacy_rows = [
         line
         for line in benchmarks_doc.splitlines()
         if line.startswith("| `") and "| validated legacy artifact" in line
     ]
-    assert legacy_rows
-
-    for row in legacy_rows:
-        artifact_name = row.split("`docs/benchmark-results/", 1)[1].split("`", 1)[0]
-        artifact_path = results_dir / artifact_name
-        assert artifact_path.exists(), f"documented legacy artifact missing: {artifact_name}"
-
-        payload = json.loads(artifact_path.read_text(encoding="utf-8"))
-        assert payload["backend"]["name"] == "qwen-asr"
-        assert payload["rest"]["runs"] == 5
-        assert payload["streaming"]["chunk_ms"] == 250
-        assert payload["streaming"]["ready"]["partial_interval_chunks"] == 1
-        assert set(payload["service"]["capabilities"]["streaming"]["audio_frame_formats"]) == {"json-base64", "binary"}
+    assert legacy_rows == []
 
