@@ -181,6 +181,65 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     return contract
 
 
+def first_defined(*values: Any) -> Any:
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, str) and value == "":
+            continue
+        if isinstance(value, (list, dict)) and not value:
+            continue
+        return value
+    return None
+
+
+def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
+    environment = payload.get("environment") or {}
+    system = payload.get("system") or {}
+    metrics = payload.get("metrics") or {}
+    return {
+        "platform": first_defined(environment.get("platform"), system.get("platform")),
+        "processor": first_defined(environment.get("processor"), environment.get("machine"), system.get("processor")),
+        "python": first_defined(environment.get("python"), system.get("python")),
+        "cpu_logical_cores": first_defined(
+            environment.get("cpu_logical_cores"),
+            system.get("cpu_logical_cores"),
+            metrics.get("cpu_logical_cores"),
+        ),
+        "memory_total_mb": first_defined(
+            environment.get("memory_total_mb"),
+            system.get("memory_total_mb"),
+            metrics.get("memory_total_mb"),
+        ),
+        "peak_rss_mb": first_defined(
+            environment.get("peak_rss_mb"),
+            environment.get("process_rss_mb"),
+            system.get("peak_rss_mb"),
+            metrics.get("peak_rss_mb"),
+        ),
+        "cpu_utilization_percent": first_defined(
+            environment.get("cpu_utilization_percent"),
+            system.get("cpu_utilization_percent"),
+            metrics.get("cpu_utilization_percent"),
+        ),
+        "package_power_watts": first_defined(
+            environment.get("package_power_watts"),
+            system.get("package_power_watts"),
+            metrics.get("package_power_watts"),
+        ),
+        "thermal_peak_celsius": first_defined(
+            environment.get("thermal_peak_celsius"),
+            system.get("thermal_peak_celsius"),
+            metrics.get("thermal_peak_celsius"),
+        ),
+        "thermal_observation": first_defined(
+            environment.get("thermal_observation"),
+            system.get("thermal_observation"),
+            metrics.get("thermal_observation"),
+        ),
+    }
+
+
 def accuracy_is_publishable(entry: dict[str, Any]) -> bool:
     return False
 
@@ -209,6 +268,7 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
         "measured_at": artifact_timestamp(path, payload),
         "sample_count": sample_count(payload),
         "artifact_path": f"benchmark-results/{path.name}",
+        "system": extract_system_signals(payload),
         "contract": contract,
         "rest": {
             "mean_ms": rest.get("mean_ms"),
@@ -348,6 +408,18 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
         "measured_at": None,
         "sample_count": None,
         "artifact_path": None,
+        "system": {
+            "platform": None,
+            "processor": None,
+            "python": None,
+            "cpu_logical_cores": None,
+            "memory_total_mb": None,
+            "peak_rss_mb": None,
+            "cpu_utilization_percent": None,
+            "package_power_watts": None,
+            "thermal_peak_celsius": None,
+            "thermal_observation": None,
+        },
         "contract": {
             "chunk_ms": None,
             "partial_interval_chunks": None,
@@ -375,6 +447,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
                 "measured_at": measured["measured_at"],
                 "sample_count": measured["sample_count"],
                 "artifact_path": measured["artifact_path"],
+                "system": measured["system"],
                 "contract": measured["contract"],
                 "rest": measured["rest"],
                 "streaming": measured["streaming"],

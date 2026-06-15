@@ -271,6 +271,18 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
     assert manifest["summary"]["highlights"]["fastest_final"]["label"] == "Fastest streaming finalization delay"
 
 
+
+
+def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    track = next(entry for entry in manifest["tracks"] if entry["slug"] == "parakeet-mlx-service-110m")
+
+    assert track["system"]["platform"] == "macOS-26.5.1-arm64-arm-64bit-Mach-O"
+    assert track["system"]["processor"] == "arm"
+    assert track["system"]["peak_rss_mb"] is None
+    assert track["system"]["memory_total_mb"] is None
+
+
 def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
@@ -500,6 +512,9 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Official WER" in homepage
     assert 'entry.official_wer_reference || "see notes"' in homepage
     assert "Open detail page" in homepage
+    assert 'function formatHostSummary(entry)' in homepage
+    assert 'Host profile' in homepage
+    assert 'Efficiency signals' in homepage
 
 
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
