@@ -290,18 +290,18 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "function formatPercent(value)" in html
     assert "Audio-end finalization" in html
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
-    assert "const baselineEntries = comparableEntries(ranked);" in html
-    assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
+    assert "const baselineEntries = comparableEntries(primary);" in html
+    assert 'const firstPartialBaselineLabel = baselineEntries.length !== primary.length ? "vs validated fastest" : "vs fastest";' in html
     assert 'Per-partial latency' in html
     assert 'title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration."' in html
     assert 'title="Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness."' in html
     assert 'title="Buffered audio window used when generating partial transcripts."' in html
     assert 'late_partial_ratio' in html
     assert 'partial_transcript_churn_word_mean' in html
-    assert 'title="Share of partial events that arrived too late to be useful for the configured RTC-shaped cadence."' in html
-    assert 'title="Average per-revision transcript change rate across visible partial updates; lower is steadier."' in html
+    assert 'Late partial ratio' in html
+    assert 'Word churn' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
-    assert "supporting context instead of the main live-score signal" in html
+    assert "keeps REST throughput in a supporting role" in html
     assert "sample coverage" in html
     assert "The homepage stays latency-only." in html
     assert "benchmark notes and artifact detail pages" in html
@@ -314,15 +314,17 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     assert 'if (entry.status === "validated") return 0;' in html
     assert 'const scoreDelta = scoreRank(left) - scoreRank(right);' in html
     assert 'return -overall;' in html
-    assert 'const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);' in html
+    assert 'const ranked = sortEntries(primaryEntries(entries)).slice(0, 3);' in html
+    assert 'function primaryEntries(entries)' in html
+    assert 'function secondaryEntries(entries)' in html
 
 
 def test_docs_index_live_labels_match_streaming_framing() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
-    assert 'Median per-partial latency' in html
-    assert 'Median audio-end finalization' in html
-    assert 'Median REST throughput context' in html
+    assert 'Recommended default' in html
+    assert 'Primary ranking scope' in html
+    assert 'Best live numbers' in html
     assert 'data-label="Per-partial latency"' in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html
@@ -565,12 +567,12 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Launch FAQ for benchmark readers" in homepage
     assert "Turn the benchmark into a launch decision" in homepage
     assert "What does this benchmark actually measure?" in homepage
-    assert "Checked-in artifact log" in homepage
+    assert "Benchmark appendix" in homepage
     assert "benchmark-results/manifest.json" in homepage
     assert "WebRTC.ventures benchmarks" in homepage
     assert "Built for WebRTC.ventures launch conversations" in homepage
     assert "Reference WER" in homepage
-    assert "not an official rtc-asr measurement" in homepage
+    assert "external context rather than official rtc-asr measurements" in homepage
     assert "Open detail page" in homepage
     assert 'function formatHostSummary(entry)' in homepage
     assert 'Host profile' in homepage
@@ -731,10 +733,10 @@ def test_homepage_filters_blocked_tracks_from_visible_results() -> None:
 def test_homepage_initial_html_contains_prerendered_summary() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
-    assert "Benchmark content rendered into initial HTML" in homepage
-    assert "This prerender keeps live turn-taking metrics crawlable before JavaScript enhances the page and leaves REST numbers in their supporting throughput role." in homepage
-    assert "Median first partial" in homepage
-    assert "Reference WER" in homepage
-    assert "open JSON" in homepage
-    assert "open details" in homepage
+    assert "Launch readout" in homepage
+    assert "The main ranking now stays focused on fully comparable live lanes" in homepage
+    assert "Recommended default" in homepage
+    assert "Artifacts kept out of the primary ranking" in homepage
+    assert "Open detail page" in homepage
+    assert "open JSON" not in homepage
     assert "Loading benchmark manifest..." not in homepage
