@@ -437,6 +437,9 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     rss_detail = (Path('docs') / 'benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html').read_text(encoding='utf-8')
     assert "System profile" in rss_detail
     assert "Efficiency signals" in rss_detail
+    assert "Accuracy context" in rss_detail
+    assert "Reproduction command" in rss_detail
+    assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
     assert "Artifact does not record sustained thermal notes yet." in rss_detail
 
 
@@ -457,6 +460,8 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
         'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'binary_frames': False},
         'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
+        'official_wer_reference': '3.1 / 7.2 Demo clean / other',
+        'run_command': 'make benchmark-demo',
     }
     payload = {
         'environment': {
@@ -481,6 +486,9 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
     assert 'Thermal 63.5 C' in detail_html
+    assert '3.1 / 7.2 Demo clean / other' in detail_html
+    assert 'make benchmark-demo' in detail_html
+    assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
     assert 'Stable over 5 minutes.' in detail_html
 
 

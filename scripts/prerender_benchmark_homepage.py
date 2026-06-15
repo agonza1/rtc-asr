@@ -262,6 +262,8 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     score = "n/a" if derived.get("overall_score") is None else f"{derived['overall_score']:.1f} / 100"
     confidence = "n/a" if derived.get("confidence_score") is None else f"{derived['confidence_score']:.1f} / 100"
     contract_value = "n/a" if contract.get("chunk_ms") is None else f"{contract['chunk_ms']} ms chunks"
+    official_wer_reference = entry.get("official_wer_reference")
+    run_command = entry.get("run_command")
     system_signals = extract_system_signals(artifact_payload)
     system_summary = " · ".join(
         [
@@ -327,6 +329,8 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
         <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
+        <article class="card"><span class="label">Accuracy context</span><div class="value">{html.escape(official_wer_reference or 'No external WER reference')}</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
+        <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
       </div>
