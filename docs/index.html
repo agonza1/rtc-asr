@@ -591,7 +591,7 @@
               <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
             <p class="meta-line" id="generated-at"><!-- BEGIN GENERATED:generated-at -->
-Published Jun 14, 2026, 08:39 PM UTC . 8 visible ASR lanes . 9 tracked lanes in the registry.
+Published Jun 15, 2026, 05:04 PM UTC . 8 visible ASR lanes . 9 tracked lanes in the registry.
 <!-- END GENERATED:generated-at --></p>
           </div>
           <div class="hero-side" id="hero-side"></div>
@@ -790,6 +790,21 @@ Published Jun 14, 2026, 08:39 PM UTC . 8 visible ASR lanes . 9 tracked lanes in 
       }
       function formatPercent(value) {
         return value == null ? "n/a" : `${(value * 100).toFixed(1)}%`;
+      }
+      function formatMb(value) {
+        return value == null ? "n/a" : `${Number(value).toFixed(1)} MB`;
+      }
+      function formatHostSummary(entry) {
+        const system = entry.system || {};
+        const parts = [];
+        if (system.platform) parts.push(system.platform);
+        if (system.processor) parts.push(system.processor);
+        if (system.cpu_logical_cores != null) parts.push(`${system.cpu_logical_cores} cores`);
+        return parts.length ? parts.join(" · ") : "n/a";
+      }
+      function formatEfficiencySummary(entry) {
+        const system = entry.system || {};
+        return `RAM ${formatMb(system.memory_total_mb)} · Peak RSS ${formatMb(system.peak_rss_mb)} · CPU ${system.cpu_utilization_percent == null ? "n/a" : `${Number(system.cpu_utilization_percent).toFixed(1)}%`}`;
       }
       function formatWer(value) {
         return value == null ? "n/a" : value.toFixed(3);
@@ -1177,6 +1192,8 @@ Published Jun 14, 2026, 08:39 PM UTC . 8 visible ASR lanes . 9 tracked lanes in 
             <p class="lane-note">${track.status_detail}</p>
             <div class="lane-metrics">
               <div class="metric-row"><span>${hintLabel("Measured", "Timestamp of the published benchmark artifact.")}</span><strong>${formatDate(track.measured_at)}</strong></div>
+              <div class="metric-row"><span>${hintLabel("Host profile", "Platform, processor, and core count recorded by the benchmark artifact.")}</span><strong>${formatHostSummary(track)}</strong></div>
+              <div class="metric-row"><span>${hintLabel("Efficiency signals", "Host memory, captured service RSS, and CPU utilization recorded with the artifact when available.")}</span><strong>${formatEfficiencySummary(track)}</strong></div>
               <div class="metric-row"><span>${hintLabel("Overall score", "Composite benchmark score across latency, stability, and sample coverage.")}</span><strong>${track.derived?.overall_score == null ? "n/a" : `${track.derived.overall_score.toFixed(1)} / 100`}</strong></div>
               <div class="metric-row"><span>${hintLabel("Confidence", "How trustworthy the published score is given artifact freshness and sample coverage.")}</span><strong>${track.derived?.confidence_score == null ? "n/a" : `${track.derived.confidence_score.toFixed(1)} / 100`}</strong></div>
               <div class="metric-row"><span>${hintLabel("First visible partial", "End-to-end time from stream start until the first visible partial transcript appears.")}</span><strong>${formatMs(firstVisiblePartial(track))}</strong></div>

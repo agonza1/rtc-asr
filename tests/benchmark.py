@@ -14,6 +14,7 @@ import statistics
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import wave
 from pathlib import Path
@@ -273,12 +274,80 @@ def resolve_reference_text(args: argparse.Namespace, *, synthesized: bool) -> st
     return None
 
 
-def describe_environment() -> dict[str, object]:
+class ProcessPeakRSSMonitor:
+    """Poll a managed service process so published RSS reflects the run peak."""
+
+    def __init__(self, pid: int, *, interval_seconds: float = 0.05) -> None:
+        self.pid = pid
+        self.interval_seconds = interval_seconds
+        self.peak_rss_mb: float | None = None
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        try:
+            import psutil
+        except Exception:
+            return
+
+        self._thread = threading.Thread(target=self._run, args=(psutil,), daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1)
+
+    def _run(self, psutil_module: object) -> None:
+        try:
+            process = psutil_module.Process(self.pid)
+        except Exception:
+            return
+
+        while not self._stop_event.is_set():
+            try:
+                rss_mb = round(process.memory_info().rss / (1024 * 1024), 1)
+            except Exception:
+                return
+            if self.peak_rss_mb is None or rss_mb > self.peak_rss_mb:
+                self.peak_rss_mb = rss_mb
+            self._stop_event.wait(self.interval_seconds)
+
+
+def describe_environment(
+    *,
+    service_pid: int | None = None,
+    peak_rss_mb: float | None = None,
+) -> dict[str, object]:
+    cpu_logical_cores = os.cpu_count()
+    memory_total_mb: float | None = None
+    process_rss_mb: float | None = None
+    measured_peak_rss_mb = peak_rss_mb
+
+    try:
+        import psutil
+
+        virtual_memory = psutil.virtual_memory()
+        memory_total_mb = round(virtual_memory.total / (1024 * 1024), 1)
+        if service_pid is not None:
+            process_rss_mb = round(psutil.Process(service_pid).memory_info().rss / (1024 * 1024), 1)
+            if measured_peak_rss_mb is None:
+                measured_peak_rss_mb = process_rss_mb
+    except Exception:
+        memory_total_mb = None
+        process_rss_mb = None
+        measured_peak_rss_mb = peak_rss_mb
+
     return {
         "date_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "platform": platform.platform(),
         "python": sys.version.split()[0],
         "processor": platform.processor() or platform.machine(),
+        "machine": platform.machine(),
+        "cpu_logical_cores": cpu_logical_cores,
+        "memory_total_mb": memory_total_mb,
+        "process_rss_mb": process_rss_mb,
+        "peak_rss_mb": measured_peak_rss_mb,
     }
 
 
@@ -899,11 +968,15 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         qwen_dtype=args.qwen_dtype,
         parakeet_dtype=args.parakeet_dtype,
     ) if args.spawn_server else None
+    process_rss_monitor: ProcessPeakRSSMonitor | None = None
 
     try:
         if server is not None:
             server.start()
             await server.wait_ready()
+            if server.process is not None:
+                process_rss_monitor = ProcessPeakRSSMonitor(server.process.pid)
+                process_rss_monitor.start()
         service = await fetch_service_metadata(args.url)
 
         sample_count = max(args.sample_count, 1)
@@ -1078,7 +1151,10 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         partial_churn_word_summary = summarize_ratio_series(partial_churn_word_all) if partial_churn_word_all else None
 
         return {
-            "environment": describe_environment(),
+            "environment": describe_environment(
+                service_pid=server.process.pid if server is not None and server.process is not None else None,
+                peak_rss_mb=process_rss_monitor.peak_rss_mb if process_rss_monitor is not None else None,
+            ),
             "benchmark": {
                 "sample_count": sample_count,
                 "mode": args.mode,
@@ -1188,6 +1264,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             },
         }
     finally:
+        if process_rss_monitor is not None:
+            process_rss_monitor.stop()
         if server is not None:
             server.stop()
         if audio_path != FIXTURE_PATH and (args.audio_file is None or audio_path != args.audio_file):

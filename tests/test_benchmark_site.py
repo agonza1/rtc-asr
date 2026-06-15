@@ -271,6 +271,18 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
     assert manifest["summary"]["highlights"]["fastest_final"]["label"] == "Fastest streaming finalization delay"
 
 
+
+
+def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    track = next(entry for entry in manifest["tracks"] if entry["slug"] == "parakeet-mlx-service-110m")
+
+    assert track["system"]["platform"] == "macOS-26.5.1-arm64-arm-64bit-Mach-O"
+    assert track["system"]["processor"] == "arm"
+    assert track["system"]["peak_rss_mb"] is None
+    assert track["system"]["memory_total_mb"] is None
+
+
 def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
@@ -458,6 +470,50 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'Stable over 5 minutes.' in detail_html
 
 
+def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
+    entry = {
+        'label': 'Parakeet MLX',
+        'status_detail': 'Local benchmark preview',
+        'lane': 'apple-silicon',
+        'backend': 'parakeet-mlx',
+        'model': 'mlx-community/parakeet-tdt-0.6b-v3',
+        'runtime': 'mlx',
+        'device': 'apple-silicon',
+        'status': 'validated',
+        'sample_count': 3,
+        'measured_at': '2026-06-13T22:55:00Z',
+        'artifact_path': 'benchmark-results/parakeet-mlx-2026-06-13.json',
+        'rest': {'mean_ms': 42.0, 'p95_ms': 55.0, 'rtf_mean': 0.2},
+        'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
+        'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'binary_frames': False},
+        'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
+    }
+    payload = {
+        'environment': {
+            'platform': 'macOS',
+            'processor': 'arm64',
+            'python': '3.14.5',
+            'cpu_logical_cores': 12,
+            'memory_total_mb': 16384.0,
+            'process_rss_mb': 23.6,
+        },
+        'metrics': {
+            'cpu_utilization_percent': 38.2,
+            'package_power_watts': 7.4,
+            'thermal_peak_celsius': 63.5,
+            'thermal_observation': 'Stable over 5 minutes.',
+        },
+    }
+
+    detail_html = render_detail_page(entry, payload)
+
+    assert 'System profile' in detail_html
+    assert 'Peak RSS 23.6 MB' in detail_html
+    assert 'Logical cores 12' in detail_html
+    assert 'System RAM 16384.0 MB' in detail_html
+    assert 'Stable over 5 minutes.' in detail_html
+
+
 def test_homepage_head_includes_launch_seo_metadata() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
@@ -504,6 +560,9 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Reference WER" in homepage
     assert "not an official rtc-asr measurement" in homepage
     assert "Open detail page" in homepage
+    assert 'function formatHostSummary(entry)' in homepage
+    assert 'Host profile' in homepage
+    assert 'Efficiency signals' in homepage
 
 
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:

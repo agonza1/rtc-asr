@@ -177,6 +177,16 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
         "platform": first_defined(environment.get("platform"), system.get("platform")),
         "processor": first_defined(environment.get("processor"), environment.get("machine"), system.get("processor")),
         "python": first_defined(environment.get("python"), system.get("python")),
+        "cpu_logical_cores": first_defined(
+            environment.get("cpu_logical_cores"),
+            system.get("cpu_logical_cores"),
+            metrics.get("cpu_logical_cores"),
+        ),
+        "memory_total_mb": first_defined(
+            environment.get("memory_total_mb"),
+            system.get("memory_total_mb"),
+            metrics.get("memory_total_mb"),
+        ),
         "peak_rss_mb": first_defined(
             environment.get("peak_rss_mb"),
             environment.get("process_rss_mb"),
@@ -228,6 +238,8 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     )
     efficiency_summary = " · ".join(
         [
+            f"Logical cores {format_system_text(system_signals.get('cpu_logical_cores'))}",
+            f"System RAM {format_mb(system_signals.get('memory_total_mb'))}",
             f"CPU {format_percent(system_signals.get('cpu_utilization_percent') / 100) if system_signals.get('cpu_utilization_percent') is not None else 'n/a'}",
             f"Power {format_watts(system_signals.get('package_power_watts'))}",
             f"Thermal {format_celsius(system_signals.get('thermal_peak_celsius'))}",
