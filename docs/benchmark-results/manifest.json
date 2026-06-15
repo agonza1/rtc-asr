@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-15T19:07:53Z",
+  "generated_at": "2026-06-15T20:09:53Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -7,7 +7,7 @@
     "validated_count": 7,
     "legacy_count": 0,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-15T18:22:40Z",
+    "latest_measured_at": "2026-06-15T20:09:37Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -22,19 +22,19 @@
     "ranges": {
       "rest_mean_ms": {
         "min": 141.9,
-        "max": 6999.3
+        "max": 3799.0
       },
       "partial_mean_ms": {
         "min": 29.7,
-        "max": 7112.9
+        "max": 3118.4
       },
       "first_partial_end_to_end_mean_ms": {
         "min": 557.4,
-        "max": 4772.5
+        "max": 3365.4
       },
       "partial_gap_mean_ms": {
         "min": 244.2,
-        "max": 9283.1
+        "max": 4312.3
       },
       "final_mean_ms": {
         "min": 210.6,
@@ -42,10 +42,10 @@
       },
       "rtf_mean": {
         "min": 0.019,
-        "max": 0.961
+        "max": 0.522
       },
       "overall_score": {
-        "min": 14.6,
+        "min": 38.3,
         "max": 98.7
       }
     },
@@ -112,7 +112,7 @@
     {
       "kind": "asr",
       "slug": "parakeet-mlx-service-110m",
-      "label": "Parakeet 110M MLX Service",
+      "label": "Parakeet 110M NeMo MLX",
       "backend": "parakeet-mlx",
       "model": "mlx-community/parakeet-tdt_ctc-110m",
       "lane": "Local Python Apple Silicon MLX Service",
@@ -473,7 +473,7 @@
     {
       "kind": "asr",
       "slug": "parakeet-compose",
-      "label": "Parakeet Compose",
+      "label": "Parakeet 0.6B Compose",
       "backend": "parakeet",
       "model": "nvidia/parakeet-tdt-0.6b-v3",
       "lane": "Docker Compose CPU",
@@ -555,15 +555,15 @@
       "target_sample_count": 5,
       "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-15T18:22:40Z",
+      "measured_at": "2026-06-15T20:09:37Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
         "python": "3.14.5",
-        "cpu_logical_cores": null,
-        "memory_total_mb": null,
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
@@ -579,40 +579,40 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 6999.3,
-        "p95_ms": 8098.5,
-        "rtf_mean": 0.961
+        "mean_ms": 3799.0,
+        "p95_ms": 4475.0,
+        "rtf_mean": 0.522
       },
       "streaming": {
-        "partial_mean_ms": 7112.9,
-        "partial_p95_ms": 15367.9,
-        "first_partial_end_to_end_mean_ms": 4772.5,
-        "first_partial_end_to_end_p95_ms": 5710.9,
-        "partial_gap_mean_ms": 9283.1,
-        "partial_gap_p95_ms": 17130.2,
+        "partial_mean_ms": 3118.4,
+        "partial_p95_ms": 4677.0,
+        "first_partial_end_to_end_mean_ms": 3365.4,
+        "first_partial_end_to_end_p95_ms": 3537.3,
+        "partial_gap_mean_ms": 4312.3,
+        "partial_gap_p95_ms": 6917.1,
         "partial_transcript_churn_char_mean": 0.863,
         "partial_transcript_churn_word_mean": 1.0,
         "late_partial_events": 0,
         "late_partial_ratio": 0.0,
-        "final_mean_ms": 13565.7,
-        "final_p95_ms": 17019.5
+        "final_mean_ms": 7318.6,
+        "final_p95_ms": 8168.1
       },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 0.0,
-        "live_caption_score": 1.6,
+        "latency_score": 38.1,
+        "live_caption_score": 28.6,
         "finalization_score": 0.0,
-        "stability_score": 88.8,
-        "efficiency_score": 4.0,
-        "overall_score": 14.6,
+        "stability_score": 94.2,
+        "efficiency_score": 49.3,
+        "overall_score": 38.3,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.157,
-        "partial_jitter_ratio": 2.161,
-        "final_jitter_ratio": 1.255
+        "rest_jitter_ratio": 1.178,
+        "partial_jitter_ratio": 1.5,
+        "final_jitter_ratio": 1.116
       }
     },
     {
@@ -696,15 +696,15 @@
       "backend": "qwen-asr",
       "model": "Qwen/Qwen3-ASR-0.6B",
       "runtime": "cpu / float16",
-      "measured_at": "2026-06-15T18:22:40Z",
+      "measured_at": "2026-06-15T20:09:37Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
         "python": "3.14.5",
-        "cpu_logical_cores": null,
-        "memory_total_mb": null,
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
@@ -720,23 +720,23 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 6999.3,
-        "p95_ms": 8098.5,
-        "rtf_mean": 0.961
+        "mean_ms": 3799.0,
+        "p95_ms": 4475.0,
+        "rtf_mean": 0.522
       },
       "streaming": {
-        "partial_mean_ms": 7112.9,
-        "partial_p95_ms": 15367.9,
-        "first_partial_end_to_end_mean_ms": 4772.5,
-        "first_partial_end_to_end_p95_ms": 5710.9,
-        "partial_gap_mean_ms": 9283.1,
-        "partial_gap_p95_ms": 17130.2,
+        "partial_mean_ms": 3118.4,
+        "partial_p95_ms": 4677.0,
+        "first_partial_end_to_end_mean_ms": 3365.4,
+        "first_partial_end_to_end_p95_ms": 3537.3,
+        "partial_gap_mean_ms": 4312.3,
+        "partial_gap_p95_ms": 6917.1,
         "partial_transcript_churn_char_mean": 0.863,
         "partial_transcript_churn_word_mean": 1.0,
         "late_partial_events": 0,
         "late_partial_ratio": 0.0,
-        "final_mean_ms": 13565.7,
-        "final_p95_ms": 17019.5
+        "final_mean_ms": 7318.6,
+        "final_p95_ms": 8168.1
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
@@ -1116,7 +1116,7 @@
     {
       "kind": "asr",
       "slug": "parakeet-mlx-service-110m",
-      "label": "Parakeet 110M MLX Service",
+      "label": "Parakeet 110M NeMo MLX",
       "backend": "parakeet-mlx",
       "model": "mlx-community/parakeet-tdt_ctc-110m",
       "lane": "Local Python Apple Silicon MLX Service",
@@ -1477,7 +1477,7 @@
     {
       "kind": "asr",
       "slug": "parakeet-compose",
-      "label": "Parakeet Compose",
+      "label": "Parakeet 0.6B Compose",
       "backend": "parakeet",
       "model": "nvidia/parakeet-tdt-0.6b-v3",
       "lane": "Docker Compose CPU",
@@ -1633,15 +1633,15 @@
       "target_sample_count": 5,
       "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-15T18:22:40Z",
+      "measured_at": "2026-06-15T20:09:37Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
         "python": "3.14.5",
-        "cpu_logical_cores": null,
-        "memory_total_mb": null,
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
@@ -1657,40 +1657,40 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 6999.3,
-        "p95_ms": 8098.5,
-        "rtf_mean": 0.961
+        "mean_ms": 3799.0,
+        "p95_ms": 4475.0,
+        "rtf_mean": 0.522
       },
       "streaming": {
-        "partial_mean_ms": 7112.9,
-        "partial_p95_ms": 15367.9,
-        "first_partial_end_to_end_mean_ms": 4772.5,
-        "first_partial_end_to_end_p95_ms": 5710.9,
-        "partial_gap_mean_ms": 9283.1,
-        "partial_gap_p95_ms": 17130.2,
+        "partial_mean_ms": 3118.4,
+        "partial_p95_ms": 4677.0,
+        "first_partial_end_to_end_mean_ms": 3365.4,
+        "first_partial_end_to_end_p95_ms": 3537.3,
+        "partial_gap_mean_ms": 4312.3,
+        "partial_gap_p95_ms": 6917.1,
         "partial_transcript_churn_char_mean": 0.863,
         "partial_transcript_churn_word_mean": 1.0,
         "late_partial_events": 0,
         "late_partial_ratio": 0.0,
-        "final_mean_ms": 13565.7,
-        "final_p95_ms": 17019.5
+        "final_mean_ms": 7318.6,
+        "final_p95_ms": 8168.1
       },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 0.0,
-        "live_caption_score": 1.6,
+        "latency_score": 38.1,
+        "live_caption_score": 28.6,
         "finalization_score": 0.0,
-        "stability_score": 88.8,
-        "efficiency_score": 4.0,
-        "overall_score": 14.6,
+        "stability_score": 94.2,
+        "efficiency_score": 49.3,
+        "overall_score": 38.3,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.157,
-        "partial_jitter_ratio": 2.161,
-        "final_jitter_ratio": 1.255
+        "rest_jitter_ratio": 1.178,
+        "partial_jitter_ratio": 1.5,
+        "final_jitter_ratio": 1.116
       }
     }
   ]
