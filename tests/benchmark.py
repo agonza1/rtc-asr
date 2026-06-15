@@ -274,11 +274,29 @@ def resolve_reference_text(args: argparse.Namespace, *, synthesized: bool) -> st
 
 
 def describe_environment() -> dict[str, object]:
+    cpu_logical_cores = os.cpu_count()
+    memory_total_mb: float | None = None
+    process_rss_mb: float | None = None
+
+    try:
+        import psutil
+
+        virtual_memory = psutil.virtual_memory()
+        memory_total_mb = round(virtual_memory.total / (1024 * 1024), 1)
+        process_rss_mb = round(psutil.Process().memory_info().rss / (1024 * 1024), 1)
+    except Exception:
+        memory_total_mb = None
+        process_rss_mb = None
+
     return {
         "date_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "platform": platform.platform(),
         "python": sys.version.split()[0],
         "processor": platform.processor() or platform.machine(),
+        "machine": platform.machine(),
+        "cpu_logical_cores": cpu_logical_cores,
+        "memory_total_mb": memory_total_mb,
+        "process_rss_mb": process_rss_mb,
     }
 
 

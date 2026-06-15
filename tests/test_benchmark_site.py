@@ -24,6 +24,7 @@ prerender_module = importlib.util.module_from_spec(PRERENDER_SPEC)
 sys.modules.setdefault("rtc_asr_prerender_benchmark_homepage", prerender_module)
 PRERENDER_SPEC.loader.exec_module(prerender_module)
 detail_page_path = prerender_module.detail_page_path
+render_detail_page = prerender_module.render_detail_page
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -407,6 +408,50 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
         assert "Artifact detail page" in detail_html
         assert "Back to benchmark homepage" in detail_html
         assert Path(track["artifact_path"]).name in detail_html
+
+
+def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
+    entry = {
+        'label': 'Parakeet MLX',
+        'status_detail': 'Local benchmark preview',
+        'lane': 'apple-silicon',
+        'backend': 'parakeet-mlx',
+        'model': 'mlx-community/parakeet-tdt-0.6b-v3',
+        'runtime': 'mlx',
+        'device': 'apple-silicon',
+        'status': 'validated',
+        'sample_count': 3,
+        'measured_at': '2026-06-13T22:55:00Z',
+        'artifact_path': 'benchmark-results/parakeet-mlx-2026-06-13.json',
+        'rest': {'mean_ms': 42.0, 'p95_ms': 55.0, 'rtf_mean': 0.2},
+        'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
+        'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'binary_frames': False},
+        'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
+    }
+    payload = {
+        'environment': {
+            'platform': 'macOS',
+            'processor': 'arm64',
+            'python': '3.14.5',
+            'cpu_logical_cores': 12,
+            'memory_total_mb': 16384.0,
+            'process_rss_mb': 23.6,
+        },
+        'metrics': {
+            'cpu_utilization_percent': 38.2,
+            'package_power_watts': 7.4,
+            'thermal_peak_celsius': 63.5,
+            'thermal_observation': 'Stable over 5 minutes.',
+        },
+    }
+
+    detail_html = render_detail_page(entry, payload)
+
+    assert 'System profile' in detail_html
+    assert 'Peak RSS 23.6 MB' in detail_html
+    assert 'Logical cores 12' in detail_html
+    assert 'System RAM 16384.0 MB' in detail_html
+    assert 'Stable over 5 minutes.' in detail_html
 
 
 def test_homepage_head_includes_launch_seo_metadata() -> None:

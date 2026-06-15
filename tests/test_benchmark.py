@@ -6,6 +6,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import numpy as np
@@ -122,6 +123,30 @@ def test_parse_args_rejects_zero_or_negative_runtime_values(monkeypatch: pytest.
     monkeypatch.setattr(sys, "argv", ["benchmark.py", "--request-retry-delay", "-0.5"])
     with pytest.raises(SystemExit):
         benchmark.parse_args()
+
+
+def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeProcess:
+        def memory_info(self) -> SimpleNamespace:
+            return SimpleNamespace(rss=256 * 1024 * 1024)
+
+    fake_psutil = SimpleNamespace(
+        virtual_memory=lambda: SimpleNamespace(total=16384 * 1024 * 1024),
+        Process=lambda: FakeProcess(),
+    )
+
+    monkeypatch.setattr(benchmark.platform, "platform", lambda: "TestOS")
+    monkeypatch.setattr(benchmark.platform, "processor", lambda: "TestCPU")
+    monkeypatch.setattr(benchmark.platform, "machine", lambda: "arm64")
+    monkeypatch.setattr(benchmark.os, "cpu_count", lambda: 12)
+    monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+
+    payload = benchmark.describe_environment()
+
+    assert payload["machine"] == "arm64"
+    assert payload["cpu_logical_cores"] == 12
+    assert payload["memory_total_mb"] == 16384.0
+    assert payload["process_rss_mb"] == 256.0
 
 
 def test_makefile_faster_whisper_benchmark_targets_use_shared_ten_sample_count_and_serialization() -> None:
