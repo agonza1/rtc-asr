@@ -37,6 +37,18 @@ def format_percent(value: float | None) -> str:
     return "n/a" if value is None else f"{value * 100:.1f}%"
 
 
+def format_mb(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.1f} MB"
+
+
+def format_watts(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.1f} W"
+
+
+def format_celsius(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.1f} C"
+
+
 def format_date(value: str | None) -> str:
     if not value:
         return "n/a"
@@ -138,6 +150,62 @@ def detail_output_path(detail_dir: Path, entry: dict[str, Any]) -> Path:
     return detail_dir / Path(detail_page_path(entry)).name
 
 
+def first_defined(*values: Any) -> Any:
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, str) and value == "":
+            continue
+        if isinstance(value, (list, dict)) and not value:
+            continue
+        return value
+    return None
+
+
+def format_system_text(value: Any) -> str:
+    return "n/a" if value is None else html.escape(str(value))
+
+
+def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str, Any]:
+    if artifact_payload is None:
+        return {}
+
+    environment = artifact_payload.get("environment", {})
+    system = artifact_payload.get("system", {})
+    metrics = artifact_payload.get("metrics", {})
+    return {
+        "platform": first_defined(environment.get("platform"), system.get("platform")),
+        "processor": first_defined(environment.get("processor"), environment.get("machine"), system.get("processor")),
+        "python": first_defined(environment.get("python"), system.get("python")),
+        "peak_rss_mb": first_defined(
+            environment.get("peak_rss_mb"),
+            environment.get("process_rss_mb"),
+            system.get("peak_rss_mb"),
+            metrics.get("peak_rss_mb"),
+        ),
+        "cpu_utilization_percent": first_defined(
+            environment.get("cpu_utilization_percent"),
+            system.get("cpu_utilization_percent"),
+            metrics.get("cpu_utilization_percent"),
+        ),
+        "package_power_watts": first_defined(
+            environment.get("package_power_watts"),
+            system.get("package_power_watts"),
+            metrics.get("package_power_watts"),
+        ),
+        "thermal_peak_celsius": first_defined(
+            environment.get("thermal_peak_celsius"),
+            system.get("thermal_peak_celsius"),
+            metrics.get("thermal_peak_celsius"),
+        ),
+        "thermal_observation": first_defined(
+            environment.get("thermal_observation"),
+            system.get("thermal_observation"),
+            metrics.get("thermal_observation"),
+        ),
+    }
+
+
 def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] | None) -> str:
     rest = entry.get("rest", {})
     streaming = entry.get("streaming", {})
@@ -150,6 +218,22 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     score = "n/a" if derived.get("overall_score") is None else f"{derived['overall_score']:.1f} / 100"
     confidence = "n/a" if derived.get("confidence_score") is None else f"{derived['confidence_score']:.1f} / 100"
     contract_value = "n/a" if contract.get("chunk_ms") is None else f"{contract['chunk_ms']} ms chunks"
+    system_signals = extract_system_signals(artifact_payload)
+    system_summary = " · ".join(
+        [
+            format_system_text(system_signals.get("platform")),
+            format_system_text(system_signals.get("processor")),
+            f"Python {format_system_text(system_signals.get('python'))}",
+        ]
+    )
+    efficiency_summary = " · ".join(
+        [
+            f"CPU {format_percent(system_signals.get('cpu_utilization_percent') / 100) if system_signals.get('cpu_utilization_percent') is not None else 'n/a'}",
+            f"Power {format_watts(system_signals.get('package_power_watts'))}",
+            f"Thermal {format_celsius(system_signals.get('thermal_peak_celsius'))}",
+        ]
+    )
+    thermal_note = format_system_text(system_signals.get("thermal_observation") or "Artifact does not record sustained thermal notes yet.")
     return f"""<!doctype html>
 <html lang="en">
   <head>
@@ -198,6 +282,8 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST mean</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
         <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
+        <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
+        <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
       </div>
       <div class="card" style="margin-top: 24px;">
         <span class="label">Raw artifact JSON</span>
