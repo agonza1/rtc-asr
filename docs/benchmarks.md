@@ -5,22 +5,47 @@ The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/man
 - benchmark artifacts under `docs/benchmark-results/*.json`
 - the tracked benchmark registry in `docs/benchmark-results/tracks.json`
 
-Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. The homepage stays latency-first, while this notes page can add official benchmark WER references once they are clearly labeled as upstream model-card data rather than repo-measured runs.
+Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. The homepage stays latency-first, and this notes page carries the issue #46 methodology decision about how reference WER should be labeled until the repo has its own reproducible quality track.
 
 ## Accuracy Publishing Policy
 
 Issue #46 resolves to a simple public-facing rule:
 
-- The homepage comparison stays latency-first. It should rank and compare only streaming/REST responsiveness, stability, and sample coverage from checked-in artifacts.
-- WER/CER should appear only when backed by an annotated, reproducible benchmark dataset. Local smoke clips and exploratory sweeps are useful for latency debugging, but they are not a publishable source of truth for accuracy.
-- When official accuracy coverage lands, keep it on a methodology/details surface first, with the homepage linking out rather than mixing unofficial and official quality numbers in the same primary table.
-- On this page, WER/CER can appear only as clearly labeled upstream benchmark references tied to a named Hugging Face model card, benchmark dataset, and source link. They are not substitutes for checked-in repo evaluation artifacts.
+- The homepage comparison stays latency-first and should not show reference WER in the primary ranking table.
+- WER/CER should appear only when backed by an annotated, reproducible benchmark dataset and a repo-owned evaluation recipe. Local smoke clips and exploratory sweeps are useful for latency debugging, but they are not a publishable source of truth for accuracy.
+- When official accuracy coverage lands, keep it on a separate methodology/details surface first instead of turning the latency ranking into an official repo accuracy claim.
+- Upstream model-card WER is useful as background research, but it is not an official rtc-asr measurement and should be labeled as external reference data that may vary slightly across hardware, runtime, quantization, decoding, and setup.
 
 Recommended source-of-truth path for this repo:
 
-- Start with reproducible clean/reference corpora such as Common Voice or FLEURS so runs can be repeated and labeled ground truth is explicit.
-- Treat telephony/noisy evaluation as a second methodology track. If we add codec/noise degradation, publish it as a separate benchmark lane with its own notes instead of blending it into the clean/reference leaderboard.
+- Start with reproducible clean/reference corpora such as FLEURS `en_us` and a pinned Common Voice English test split so runs can be repeated and labeled ground truth is explicit.
+- Treat telephony/noisy evaluation as a second methodology track. Candidate follow-ups that better reflect real-world degradation are Earnings-22 for accented long-form speech and CHiME-style noisy/far-field sets for robustness, but they should remain separate from the core latency matrix.
+- If codec/noise degradation is added, publish the augmentation recipe as its own benchmark lane instead of blending it into the clean/reference leaderboard.
 - Keep every published accuracy result tied to a named dataset, a checked-in run artifact, and documented preprocessing so readers can tell official benchmark runs apart from local preview experiments.
+
+## Recommended Quality Methodology
+
+Recommended publish order:
+
+1. Add a small, reproducible reference-quality track that reports WER only on annotated public test data, with the exact dataset version, split, text normalization rules, and scoring command checked into the repo.
+2. Keep the homepage ranking latency-first and publish reference WER only on the benchmark notes or artifact detail pages.
+3. Add robustness tracks only after the clean/reference track is stable and reproducible.
+
+Suggested datasets and boundaries:
+
+- Core reference track: FLEURS English plus a pinned Common Voice English test split. These are easy to name, version, rerun, and explain.
+- Real-world robustness track: Earnings-22 for accented long-form audio.
+- Noise and distant-speech track: CHiME-style official sets, published separately because far-field noise robustness is a different question than buffered websocket latency.
+- Telephony or codec degradation track: derived from an annotated source set with a checked-in degradation recipe, never mixed into the clean/reference score.
+
+Required methodology fields for any future published WER:
+
+- dataset name, version, split, and filtering rules
+- transcript normalization rules
+- segmentation policy for long-form audio
+- exact evaluation command and scorer
+- checked-in JSON artifact path and benchmark date
+- note that the result is a dataset evaluation, not a direct proxy for homepage latency behavior
 
 ## Benchmark Lane Registry
 
@@ -28,6 +53,7 @@ Recommended source-of-truth path for this repo:
 | --- | --- | --- | --- | --- | --- | --- |
 | `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` |
 | `pipecat-e2e-faster-whisper-base` | `faster-whisper` | `base.en` | Pipecat E2E Local Python CPU | `cpu / int8` | blocked integration artifact | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json` |
+| `faster-whisper-base-c80-w075-json-preview` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | legacy preview artifact | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
 | `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
 | `parakeet-compose` | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU | `cpu / float32` | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` |
 | `parakeet-nemo-compose` | `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU | `cpu / float32` | validated artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` |
@@ -41,6 +67,7 @@ Status details from the track registry:
 
 - `faster-whisper-base`: validated 10-sample local CPU baseline.
 - `pipecat-e2e-faster-whisper-base`: checked-in single-sample Pipecat E2E artifact using `20 ms` source frames bridged into `100 ms` websocket chunks; intentionally kept off the homepage until more E2E lanes exist.
+- `faster-whisper-base-c80-w075-json-preview`: exploratory 1-sample low-latency preview at `80 ms` chunks and a `0.75 s` partial window; first visible partial arrived at `1.7 s`, but finalization remained extremely slow at about `46.9 s`.
 - `faster-whisper-small`: validated 10-sample local CPU baseline using the default service model.
 - `parakeet-compose`: validated 10-sample Compose CPU artifact.
 - `parakeet-nemo-compose`: validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.
@@ -52,12 +79,13 @@ Status details from the track registry:
 
 ## Current Artifact-Backed Comparison
 
-These rows match the current manifest entries used on the homepage, plus two doc-only Parakeet MLX CLI preview artifacts. Every distinct runtime setup keeps its own row here, even when multiple lanes share the same underlying model or upstream WER reference. The latency and throughput fields come from checked-in repo artifacts. The `Official WER reference` column is different: it points to upstream Hugging Face benchmark/model-card numbers for the underlying model, not to repo-measured runs. That keeps local latency claims separate from external quality claims while still giving readers a public benchmark anchor. The new `parakeet-mlx-service-110m` row is the warmed service-style counterpart to the earlier cold CLI preview.
+These rows match the current manifest entries used on the homepage, plus two doc-only Parakeet MLX CLI preview artifacts. Every distinct runtime setup keeps its own row here, even when multiple lanes share the same underlying model or reference WER. The latency and throughput fields come from checked-in repo artifacts. The `Reference WER` column is different: it is external source data for the underlying model, not an official rtc-asr measurement, and it may vary slightly across hardware, runtime, quantization, decoding, and setup. The new `parakeet-mlx-service-110m` row is the warmed service-style counterpart to the earlier cold CLI preview.
 
-| Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Final Mean / P95 | Official WER reference | Artifact |
+| Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Final Mean / P95 | Reference WER | Artifact |
 | --- | ---: | --- | ---: | --- | --- | --- | --- |
 | `parakeet-mlx-service-110m` | 10 | 141.9 ms / 170.0 ms | 0.020 | 74.5 ms / 96.9 ms | 210.6 ms / 246.3 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
 | `parakeet-nemo-compose` | 10 | 331.4 ms / 511.5 ms | 0.046 | 148.5 ms / 245.8 ms | 379.0 ms / 633.5 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` |
+| `faster-whisper-base-c80-w075-json-preview` | 1 | 537.4 ms / 537.4 ms | 0.074 | 15.4 ms / 15.4 ms | 46867.0 ms / 46867.0 ms | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` ([HF discussion diff](https://huggingface.co/openai/whisper-base.en/discussions/18/files)) | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
 | `faster-whisper-base` | 10 | 573.3 ms / 741.1 ms | 0.079 | 553.0 ms / 2451.5 ms | 560.2 ms / 761.2 ms | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` ([HF discussion diff](https://huggingface.co/openai/whisper-base.en/discussions/18/files)) | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` |
 | `qwen-mps` | 10 | 1186.2 ms / 1261.2 ms | 0.163 | 352.0 ms / 445.5 ms | 1189.6 ms / 1248.2 ms | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` ([HF README](https://huggingface.co/Qwen/Qwen3-ASR-0.6B/blob/main/README.md)) | `docs/benchmark-results/qwen-mps-2026-06-10.json` |
 | `faster-whisper-small` | 10 | 1378.3 ms / 1531.1 ms | 0.189 | 1023.2 ms / 1202.4 ms | 1420.6 ms / 1514.0 ms | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` ([HF discussion diff](https://huggingface.co/openai/whisper-small.en/discussions/17/files)) | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
@@ -68,10 +96,11 @@ These rows match the current manifest entries used on the homepage, plus two doc
 
 Notes:
 
-- These WER references are model-level upstream benchmarks. They do not capture this repo's runtime choices such as CPU vs MPS, chunk/window cadence, websocket framing, warmup state, or transport overhead.
+- These WER references are external model-level benchmarks. They are not official rtc-asr measurements and may vary slightly across hardware, runtime, quantization, decoding, chunk/window cadence, websocket framing, warmup state, and transport overhead.
 - The `parakeet-mlx` and `parakeet-mlx-110m` rows are local CLI preview artifacts rather than running websocket service benchmarks, so only end-to-end latency is available today; the service-style RTF, partial, and final columns are intentionally left `n/a`, and those preview rows are still kept outside `docs/benchmark-results/manifest.json` and the homepage leaderboard.
 - The `parakeet-mlx-service-110m` row is the warmed service-style Apple Silicon MLX lane for the same 110M model, which makes it the right comparison point against `parakeet-nemo-compose` when you want steady-state runtime behavior instead of cold CLI startup cost.
-- The docs now surface official benchmark references only; local diagnostic WER from our small internal sample set remains intentionally unpublished.
+- The two `faster-whisper-base*` rows share the same external WER reference because they use the same `openai/whisper-base.en` backbone under different local serving settings.
+- local diagnostic WER from our small internal sample set remains intentionally unpublished.
 
 ## Pipecat E2E Integration Track
 
