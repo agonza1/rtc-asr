@@ -67,21 +67,21 @@ Status details from the track registry:
 
 - `faster-whisper-base`: validated 10-sample local CPU baseline.
 - `faster-whisper-base-c80-w075-json-preview`: preview low-latency sweep artifact for the `80 ms` chunk / `0.75 s` partial-window JSON framing variant.
-- `pipecat-e2e-faster-whisper-base`: checked-in single-sample Pipecat E2E artifact using `20 ms` source frames bridged into `100 ms` websocket chunks; intentionally kept off the homepage until more E2E lanes exist.
+- `pipecat-e2e-faster-whisper-base`: checked-in single-sample Pipecat E2E artifact using `20 ms` source frames bridged into `100 ms` websocket chunks; kept off the homepage until comparable E2E lanes exist.
 - `faster-whisper-small`: validated 10-sample local CPU baseline using the default service model.
 - `parakeet-compose`: validated 10-sample Compose CPU artifact.
 - `parakeet-nemo-compose`: validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.
-- `parakeet-mlx-service-110m`: validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness; its `141.9 ms` REST mean is faster than the `parakeet-nemo-compose` CPU lane (`331.4 ms`) and its `557.8 ms` first visible partial is the first apples-to-apples warmed MLX comparison for the 110M model.
-- `parakeet-mlx`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt-0.6b-v3`, documented here ahead of track registration; its `1971.9 ms` mean latency is faster than the `parakeet-compose` CPU lane (`2388.3 ms`) but slower than the `parakeet-nemo-compose` CPU lane (`331.4 ms`).
-- `parakeet-mlx-110m`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt_ctc-110m`, documented here ahead of track registration; its `1360.7 ms` mean latency is faster than both `parakeet-compose` CPU (`2388.3 ms`) and `parakeet-mlx` 0.6B MLX (`1971.9 ms`), but slower than the `parakeet-nemo-compose` CPU lane (`331.4 ms`).
+- `parakeet-mlx-service-110m`: validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.
+- `parakeet-mlx`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt-0.6b-v3`.
+- `parakeet-mlx-110m`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt_ctc-110m`.
 - `qwen-mps`: validated 10-sample local Apple Silicon MPS artifact.
-- `qwen-compose`: validated 5-sample Compose CPU artifact using `float16`, `3` REST runs per sample, and an `8`-chunk partial cadence so the constrained Qwen lane stays reproducible without carrying forward the broken legacy JSONs.
+- `qwen-compose`: validated 5-sample Compose CPU artifact using `float16`, `3` REST runs per sample, and an `8`-chunk partial cadence.
 
 ## Current Artifact-Backed Comparison
 
 These rows match the current manifest entries used on the homepage, plus two doc-only Parakeet MLX CLI preview artifacts. Every distinct runtime setup keeps its own row here, even when multiple lanes share the same underlying model or reference WER. Read the streaming fields first: first visible partial, partial cadence, and audio-end finalization are the operator-facing responsiveness signals. `REST Mean` and `REST RTF` stay here as throughput context for the same backend, but they are not the main live turn-taking score because total file time scales with clip duration. The `Reference WER` column is different: it is external source data for the underlying model, not an official rtc-asr measurement, and it may vary slightly across hardware, runtime, quantization, decoding, and setup. The new `parakeet-mlx-service-110m` row is the warmed service-style counterpart to the earlier cold CLI preview.
 
-| Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Final Mean / P95 | Reference WER | Artifact |
+| Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Audio-end Final / P95 | Reference WER | Artifact |
 | --- | ---: | --- | ---: | --- | --- | --- | --- |
 | `parakeet-mlx-service-110m` | 10 | 141.9 ms / 170.0 ms | 0.020 | 74.5 ms / 96.9 ms | 210.6 ms / 246.3 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
 | `parakeet-nemo-compose` | 10 | 331.4 ms / 511.5 ms | 0.046 | 148.5 ms / 245.8 ms | 379.0 ms / 633.5 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` |
@@ -96,6 +96,7 @@ These rows match the current manifest entries used on the homepage, plus two doc
 Notes:
 
 - Treat the homepage and detail pages as the primary place to judge streaming responsiveness: `first_partial_end_to_end_*`, `partial_gap_*`, and `time_to_final_from_audio_end_*` tell the real turn-taking story more directly than raw end-to-end file duration.
+- `Audio-end Final` is not TTFT and not total file transcription time. It is the delay from audio end (or `stop`) until the final transcript arrives.
 - These WER references are external model-level benchmarks. They are not official rtc-asr measurements and may vary slightly across hardware, runtime, quantization, decoding, chunk/window cadence, websocket framing, warmup state, and transport overhead.
 - The `parakeet-mlx` and `parakeet-mlx-110m` rows are local CLI preview artifacts rather than running websocket service benchmarks, so only end-to-end latency is available today; the service-style RTF, partial, and final columns are intentionally left `n/a`, and those preview rows are still kept outside `docs/benchmark-results/manifest.json` and the homepage leaderboard.
 - The `parakeet-mlx-service-110m` row is the warmed service-style Apple Silicon MLX lane for the same 110M model, which makes it the right comparison point against `parakeet-nemo-compose` when you want steady-state runtime behavior instead of cold CLI startup cost.
@@ -105,7 +106,7 @@ Notes:
 
 This repo now keeps Pipecat end-to-end results as a separate integration lane instead of mixing them into the backend-only homepage leaderboard. The checked-in artifact below uses a local `faster-whisper` base lane with `20 ms` Pipecat-style source frames aggregated into `100 ms` websocket chunks. That lets us capture metrics the homepage does not currently rank on its own: first useful partial timing, partial cadence/jitter, final closeout after audio end, and missing partial counts across the bridge.
 
-| Track | Samples | First Visible Partial | Partial Mean / P95 | Partial Gap Mean / P95 | Final Mean | Missing Partials | Artifact |
+| Track | Samples | First Visible Partial | Partial Mean / P95 | Partial Gap Mean / P95 | Audio-end Final | Missing Partials | Artifact |
 | --- | ---: | --- | --- | --- | --- | ---: | --- |
 | `pipecat-e2e-faster-whisper-base` | 1 | 564.8 ms | 29.7 ms / 64.8 ms | 367.9 ms / 658.9 ms | 22619.0 ms | 37 | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json` |
 
