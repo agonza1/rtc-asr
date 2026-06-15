@@ -25,7 +25,7 @@ The docs screen keeps the same reference WER values shown in the benchmark notes
 
 | Runtime lane | Reference WER |
 | --- | --- |
-| `faster-whisper-base` and `faster-whisper-base-c80-w075-json-preview` | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` |
+| `faster-whisper-base` | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` |
 | `faster-whisper-small` | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` |
 | `parakeet-mlx` and `parakeet-compose` | `1.93 / 3.59` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt-0.6b-v3` |
 | `parakeet-mlx-110m`, `parakeet-mlx-service-110m`, and `parakeet-nemo-compose` | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` |

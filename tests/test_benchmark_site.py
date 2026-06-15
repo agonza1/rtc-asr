@@ -40,10 +40,10 @@ def load_tracks() -> dict[str, object]:
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
-    assert manifest["summary"]["asr_count"] == 9
-    assert manifest["summary"]["tracked_count"] == 9
-    assert manifest["summary"]["validated_count"] == 6
-    assert manifest["summary"]["legacy_count"] == 2
+    assert manifest["summary"]["asr_count"] == 8
+    assert manifest["summary"]["tracked_count"] == 8
+    assert manifest["summary"]["validated_count"] == 7
+    assert manifest["summary"]["legacy_count"] == 0
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
@@ -51,11 +51,10 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
-    assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
-    assert "accuracy_score" not in tracks["faster-whisper-base-c80-w075-json-preview"]["derived"]
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
-    assert tracks["faster-whisper-base-c80-w075-json-preview"]["accuracy"]["word_error_rate_mean"] is None
-    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-08.json")
+    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
+    assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
+    assert tracks["qwen-compose"]["target_sample_count"] == 5
     assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
@@ -77,7 +76,7 @@ def test_manifest_prefers_explicit_track_artifact_for_same_runtime_family() -> N
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
 
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
-    assert tracks["faster-whisper-base-c80-w075-json-preview"]["artifact_path"].endswith("faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json")
+    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
 
 
 def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
@@ -289,20 +288,20 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
     assert 'if (status === "blocked") return "blocked";' in html
     assert "function formatPercent(value)" in html
-    assert "Finalization" in html
+    assert "Audio-end finalization" in html
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
     assert "const baselineEntries = comparableEntries(ranked);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
-    assert 'Partial response' in html
-    assert 'title="Time from audio end until the final transcript returns."' in html
-    assert 'title="Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial."' in html
+    assert 'Per-partial latency' in html
+    assert 'title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration."' in html
+    assert 'title="Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness."' in html
     assert 'title="Buffered audio window used when generating partial transcripts."' in html
     assert 'late_partial_ratio' in html
     assert 'partial_transcript_churn_word_mean' in html
     assert 'title="Share of partial events that arrived too late to be useful for the configured RTC-shaped cadence."' in html
     assert 'title="Average per-revision transcript change rate across visible partial updates; lower is steadier."' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
-    assert "safest latency bet" in html
+    assert "supporting context instead of the main live-score signal" in html
     assert "sample coverage" in html
     assert "The homepage stays latency-only." in html
     assert "benchmark notes and artifact detail pages" in html
@@ -313,7 +312,20 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
     assert 'if (entry.status === "validated") return 0;' in html
+    assert 'const scoreDelta = scoreRank(left) - scoreRank(right);' in html
+    assert 'return -overall;' in html
     assert 'const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);' in html
+
+
+def test_docs_index_live_labels_match_streaming_framing() -> None:
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert 'Median per-partial latency' in html
+    assert 'Median audio-end finalization' in html
+    assert 'Median REST throughput context' in html
+    assert 'data-label="Per-partial latency"' in html
+    assert 'data-label="Audio-end finalization"' in html
+    assert 'data-label="REST throughput context"' in html
 
 
 def test_docs_parakeet_mlx_row_matches_checked_in_artifact_summary() -> None:
@@ -518,7 +530,7 @@ def test_homepage_head_includes_launch_seo_metadata() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
     assert "<title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>" in homepage
-    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology."' in homepage
+    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications across first partial, partial cadence, audio-end finalization delay, throughput context, sample coverage, and benchmark methodology."' in homepage
     assert 'meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
     assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
     assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
@@ -571,7 +583,7 @@ def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
     expected_files = {
         f"benchmark-results/{path.name}"
         for path in RESULTS_DIR.glob("*.json")
-        if path.name not in {"manifest.json", "tracks.json", "qwen-compose-2026-06-07.json"}
+        if path.name not in {"manifest.json", "tracks.json"}
         and manifest_module.is_asr_payload(json.loads(path.read_text(encoding="utf-8")))
     }
 
@@ -720,7 +732,7 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
     assert "Benchmark content rendered into initial HTML" in homepage
-    assert "This prerender keeps the key comparison crawlable before JavaScript enhances the page." in homepage
+    assert "This prerender keeps live turn-taking metrics crawlable before JavaScript enhances the page and leaves REST numbers in their supporting throughput role." in homepage
     assert "Median first partial" in homepage
     assert "Reference WER" in homepage
     assert "open JSON" in homepage

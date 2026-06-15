@@ -25,21 +25,6 @@
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
     },
     {
-      "slug": "faster-whisper-base-c80-w075-json-preview",
-      "label": "Faster-Whisper Base 80ms Preview",
-      "backend": "faster-whisper",
-      "model": "base.en",
-      "device": "cpu",
-      "compute": "int8",
-      "lane": "Local Python CPU",
-      "status": "legacy",
-      "target_sample_count": 1,
-      "artifact": "faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json",
-      "status_detail": "Exploratory 1-sample low-latency preview at 80 ms chunks and a 0.75 s partial window. First visible partial arrived at 1.7 s, while finalization remained extremely slow (~46.9 s), and the binary-frame companion still hit a websocket keepalive close during stop/final.",
-      "run_command": "make benchmark-faster-whisper-base-low-latency-sweep LOW_LATENCY_SWEEP_CHUNK_MS=\"80\" LOW_LATENCY_SWEEP_PARTIAL_WINDOWS=\"0.75\" LOW_LATENCY_SWEEP_BINARY_FRAMES=\"false\"",
-      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
-    },
-    {
       "slug": "pipecat-e2e-faster-whisper-base",
       "label": "Pipecat E2E Faster-Whisper Base",
       "backend": "faster-whisper",
@@ -135,13 +120,13 @@
       "backend": "qwen-asr",
       "model": "Qwen/Qwen3-ASR-0.6B",
       "device": "cpu",
-      "compute": "float32",
+      "compute": "float16",
       "lane": "Docker Compose CPU",
-      "status": "legacy",
-      "target_sample_count": 10,
-      "artifact": "qwen-compose-2026-06-08.json",
-      "status_detail": "Single-sample legacy artifact remains published because the 2026-06-10 refresh restarted during first generation and REST warmup failed with httpx.ReadError.",
-      "run_command": "make benchmark-compose-qwen",
+      "status": "validated",
+      "target_sample_count": 5,
+      "artifact": "qwen-compose-2026-06-15.json",
+      "status_detail": "Validated 5-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
+      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     }
   ],
