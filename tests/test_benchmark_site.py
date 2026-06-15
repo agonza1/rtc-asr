@@ -288,20 +288,20 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? null" in html
     assert 'if (status === "blocked") return "blocked";' in html
     assert "function formatPercent(value)" in html
-    assert "Finalization" in html
+    assert "Audio-end finalization" in html
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
     assert "const baselineEntries = comparableEntries(ranked);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";' in html
-    assert 'Partial response' in html
-    assert 'title="Time from audio end until the final transcript returns."' in html
-    assert 'title="Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial."' in html
+    assert 'Per-partial latency' in html
+    assert 'title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration."' in html
+    assert 'title="Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness."' in html
     assert 'title="Buffered audio window used when generating partial transcripts."' in html
     assert 'late_partial_ratio' in html
     assert 'partial_transcript_churn_word_mean' in html
     assert 'title="Share of partial events that arrived too late to be useful for the configured RTC-shaped cadence."' in html
     assert 'title="Average per-revision transcript change rate across visible partial updates; lower is steadier."' in html
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
-    assert "safest latency bet" in html
+    assert "supporting context instead of the main live-score signal" in html
     assert "sample coverage" in html
     assert "The homepage stays latency-only." in html
     assert "benchmark notes and artifact detail pages" in html
@@ -517,7 +517,7 @@ def test_homepage_head_includes_launch_seo_metadata() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
     assert "<title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>" in homepage
-    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications, including first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology."' in homepage
+    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications across first partial, partial cadence, audio-end finalization delay, throughput context, sample coverage, and benchmark methodology."' in homepage
     assert 'meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
     assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
     assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
@@ -719,7 +719,7 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
     assert "Benchmark content rendered into initial HTML" in homepage
-    assert "This prerender keeps the key comparison crawlable before JavaScript enhances the page." in homepage
+    assert "This prerender keeps live turn-taking metrics crawlable before JavaScript enhances the page and leaves REST numbers in their supporting throughput role." in homepage
     assert "Median first partial" in homepage
     assert "Reference WER" in homepage
     assert "open JSON" in homepage

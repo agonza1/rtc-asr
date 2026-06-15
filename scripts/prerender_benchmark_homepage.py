@@ -290,9 +290,9 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <div class="grid">
         <article class="card"><span class="label">Overall score</span><div class="value">{score}</div><p>Confidence {confidence}</p></article>
         <article class="card"><span class="label">First visible partial</span><div class="value">{format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</div><p>P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</p></article>
-        <article class="card"><span class="label">Partial response</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
-        <article class="card"><span class="label">Finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
-        <article class="card"><span class="label">REST mean</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
+        <article class="card"><span class="label">Per-partial latency</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
+        <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
+        <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
         <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
@@ -356,9 +356,9 @@ def render_row(
             f'<td data-label="State"><span class="status status-{status}">{status}</span></td>',
             f'<td data-label="Score"><strong>{score}</strong><div class="tiny">Confidence {confidence_text}</div></td>',
             f'<td data-label="First partial"><strong>{format_ms(first_partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</div><div class="tiny">{delta_text(first_partial_delta)} {html.escape(baseline_label)}</div></td>',
-            f'<td data-label="Partial response"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs fastest</div></td>',
-            f'<td data-label="Final"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
-            f'<td data-label="REST"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
+            f'<td data-label="Per-partial latency"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs fastest</div></td>',
+            f'<td data-label="Audio-end finalization"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
+            f'<td data-label="REST throughput context"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
             f'<td data-label="Reference WER"><strong>{html.escape(entry.get("official_wer_reference") or "see notes")}</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td>',
             f'<td data-label="Samples"><strong>{entry.get("sample_count") or "n/a"}</strong><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
             f'<td data-label="Artifact"><a href="{html.escape(entry.get("artifact_path") or "#")}">open JSON</a><div class="tiny"><a href="{html.escape(detail_page_path(entry))}">open details</a></div></td>',
@@ -397,7 +397,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     <div class="section-kicker">Static summary</div>
     <h2>Benchmark content rendered into initial HTML</h2>
   </div>
-  <p class="subcopy">Published {len(entries)} visible ASR lanes from {summary.get('tracked_count', 0)} tracked runtime lanes. This prerender keeps the key comparison crawlable before JavaScript enhances the page.</p>
+  <p class="subcopy">Published {len(entries)} visible ASR lanes from {summary.get('tracked_count', 0)} tracked runtime lanes. This prerender keeps live turn-taking metrics crawlable before JavaScript enhances the page and leaves REST numbers in their supporting throughput role.</p>
 </section>
 <div class="snapshot-grid">
   <article class="snapshot-card">
@@ -406,19 +406,19 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     <p>Time until a caller could first see a useful partial in a real-time stream.</p>
   </article>
   <article class="snapshot-card">
-    <div class="section-kicker">Median partial response</div>
+    <div class="section-kicker">Median per-partial latency</div>
     <div class="headline-value">{format_ms(medians['partial'])}</div>
-    <p>Server response time after a partial trigger, separated from chunk and window cadence.</p>
+    <p>Latency for visible partial updates after a partial-triggering chunk, separated from cadence and buffering.</p>
   </article>
   <article class="snapshot-card">
-    <div class="section-kicker">Median finalization</div>
+    <div class="section-kicker">Median audio-end finalization</div>
     <div class="headline-value">{format_ms(medians['final'])}</div>
-    <p>How long a caller waits for completed transcript closure after speech ends.</p>
+    <p>How long a caller waits for transcript closure after speech ends.</p>
   </article>
   <article class="snapshot-card">
-    <div class="section-kicker">Median REST</div>
+    <div class="section-kicker">Median REST context</div>
     <div class="headline-value">{format_ms(medians['rest'])}</div>
-    <p>Batch-style request latency for the same published benchmark set.</p>
+    <p>Offline-style request latency for the same published benchmark set. Useful context, not the main live responsiveness score.</p>
   </article>
 </div>
 <div class="story-grid">
@@ -428,7 +428,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
   <div class="comparison-scroll">
     <table>
       <thead>
-        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial response', 'Server response time once a partial-triggering chunk has been sent; this is not time-to-first-partial.')}</th><th>{hint('Finalization', 'Time from audio end until the final transcript returns.')}</th><th>{hint('REST', 'Batch request latency for the same backend outside the streaming websocket path.')}</th><th>{hint('Reference WER', 'External reference WER for the underlying model, not an official rtc-asr measurement and it may vary by setup.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Per-partial latency', 'Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness.')}</th><th>{hint('Audio-end finalization', 'Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.')}</th><th>{hint('REST throughput context', 'Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.')}</th><th>{hint('Reference WER', 'External reference WER for the underlying model, not an official rtc-asr measurement and it may vary by setup.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Artifact</th></tr>
       </thead>
       <tbody>
 {rows}

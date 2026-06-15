@@ -79,7 +79,7 @@ Status details from the track registry:
 
 ## Current Artifact-Backed Comparison
 
-These rows match the current manifest entries used on the homepage, plus two doc-only Parakeet MLX CLI preview artifacts. Every distinct runtime setup keeps its own row here, even when multiple lanes share the same underlying model or reference WER. The latency and throughput fields come from checked-in repo artifacts. The `Reference WER` column is different: it is external source data for the underlying model, not an official rtc-asr measurement, and it may vary slightly across hardware, runtime, quantization, decoding, and setup. The new `parakeet-mlx-service-110m` row is the warmed service-style counterpart to the earlier cold CLI preview.
+These rows match the current manifest entries used on the homepage, plus two doc-only Parakeet MLX CLI preview artifacts. Every distinct runtime setup keeps its own row here, even when multiple lanes share the same underlying model or reference WER. Read the streaming fields first: first visible partial, partial cadence, and audio-end finalization are the operator-facing responsiveness signals. `REST Mean` and `REST RTF` stay here as throughput context for the same backend, but they are not the main live turn-taking score because total file time scales with clip duration. The `Reference WER` column is different: it is external source data for the underlying model, not an official rtc-asr measurement, and it may vary slightly across hardware, runtime, quantization, decoding, and setup. The new `parakeet-mlx-service-110m` row is the warmed service-style counterpart to the earlier cold CLI preview.
 
 | Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Final Mean / P95 | Reference WER | Artifact |
 | --- | ---: | --- | ---: | --- | --- | --- | --- |
@@ -95,6 +95,7 @@ These rows match the current manifest entries used on the homepage, plus two doc
 
 Notes:
 
+- Treat the homepage and detail pages as the primary place to judge streaming responsiveness: `first_partial_end_to_end_*`, `partial_gap_*`, and `time_to_final_from_audio_end_*` tell the real turn-taking story more directly than raw end-to-end file duration.
 - These WER references are external model-level benchmarks. They are not official rtc-asr measurements and may vary slightly across hardware, runtime, quantization, decoding, chunk/window cadence, websocket framing, warmup state, and transport overhead.
 - The `parakeet-mlx` and `parakeet-mlx-110m` rows are local CLI preview artifacts rather than running websocket service benchmarks, so only end-to-end latency is available today; the service-style RTF, partial, and final columns are intentionally left `n/a`, and those preview rows are still kept outside `docs/benchmark-results/manifest.json` and the homepage leaderboard.
 - The `parakeet-mlx-service-110m` row is the warmed service-style Apple Silicon MLX lane for the same 110M model, which makes it the right comparison point against `parakeet-nemo-compose` when you want steady-state runtime behavior instead of cold CLI startup cost.
