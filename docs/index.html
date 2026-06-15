@@ -346,6 +346,18 @@
       .snapshot-card {
         background: linear-gradient(180deg, rgba(255,255,255,0.74), rgba(255,255,255,0.48));
       }
+      .tone-moss {
+        background: linear-gradient(180deg, rgba(228, 244, 234, 0.95), rgba(240, 248, 241, 0.76));
+        border-color: rgba(53, 106, 73, 0.18);
+      }
+      .tone-sage {
+        background: linear-gradient(180deg, rgba(235, 247, 230, 0.95), rgba(245, 250, 242, 0.76));
+        border-color: rgba(84, 124, 63, 0.18);
+      }
+      .tone-olive {
+        background: linear-gradient(180deg, rgba(242, 248, 231, 0.95), rgba(248, 251, 242, 0.78));
+        border-color: rgba(112, 132, 56, 0.18);
+      }
       .story-card {
         display: grid;
         gap: 14px;
@@ -582,16 +594,15 @@
           <div>
             <div class="eyebrow">WebRTC.ventures benchmarks</div>
             <h1>Real-time ASR latency benchmarks for WebRTC voice AI.</h1>
-            <p class="lede">Compare low-latency ASR backends where turn-taking, barge-in, and transcript closeout matter most. This benchmark emphasizes first partial responsiveness, partial cadence, and audio-end finalization delay, while keeping REST throughput as supporting context instead of the main live-score signal.</p>
-            <p class="hero-copy">Built for WebRTC.ventures launch conversations, the comparison view stays focused on measured ASR lanes with committed JSON artifacts. Teams can use it to pressure-test barge-in feel, transcript closeout speed, and deployment tradeoffs without mixing in unpublished blockers or hand-wavy latency claims.</p>
+            <p class="lede">Compare low-latency ASR backends where turn-taking, barge-in, and transcript closeout matter most. The page now leads with a recommendation, keeps REST throughput in a supporting role, and separates incomplete lanes from the primary decision path.</p>
+            <p class="hero-copy">Built for WebRTC.ventures launch conversations, this benchmark is meant to help teams choose a realistic live-ASR starting point fast, then inspect supporting artifacts only when they need deeper validation.</p>
             <div class="hero-actions">
-              <a class="action-link primary" href="#comparison">Open comparison matrix</a>
+              <a class="action-link primary" href="#comparison">Open primary ranking</a>
               <a class="action-link" href="benchmarks.md">Benchmark notes</a>
-              <a class="action-link" href="benchmark-results/manifest.json">Manifest JSON</a>
               <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
             <p class="meta-line" id="generated-at"><!-- BEGIN GENERATED:generated-at -->
-Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
+Published Jun 15, 2026, 09:40 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
 <!-- END GENERATED:generated-at --></p>
           </div>
           <div class="hero-side" id="hero-side"></div>
@@ -602,44 +613,44 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         <!-- BEGIN GENERATED:static-summary -->
 <section class="section-head">
   <div>
-    <div class="section-kicker">Static summary</div>
-    <h2>Benchmark content rendered into initial HTML</h2>
+    <div class="section-kicker">Launch readout</div>
+    <h2>Start with Parakeet 110M NeMo MLX for live turn-taking.</h2>
   </div>
-  <p class="subcopy">Published 7 visible ASR lanes from 8 tracked runtime lanes. This prerender keeps live turn-taking metrics crawlable before JavaScript enhances the page and leaves REST numbers in their supporting throughput role.</p>
+  <p class="subcopy">Parakeet 110M NeMo MLX is the strongest publishable default right now: 74.5 ms per-partial latency, 210.6 ms audio-end finalization, and the only checked-in leader with a first-partial measurement in the main comparison. The main ranking now stays focused on fully comparable live lanes, while incomplete or differently scoped artifacts move into a labeled supporting section.</p>
 </section>
 <div class="snapshot-grid">
-  <article class="snapshot-card">
-    <div class="section-kicker">Median first partial</div>
-    <div class="headline-value">1961.4 ms</div>
-    <p>Time until a caller could first see a useful partial in a real-time stream.</p>
-  </article>
-  <article class="snapshot-card">
-    <div class="section-kicker">Median per-partial latency</div>
-    <div class="headline-value">553.0 ms</div>
-    <p>Latency for visible partial updates after a partial-triggering chunk, separated from cadence and buffering.</p>
-  </article>
-  <article class="snapshot-card">
-    <div class="section-kicker">Median audio-end finalization</div>
-    <div class="headline-value">1189.6 ms</div>
-    <p>How long a caller waits for transcript closure after speech ends.</p>
-  </article>
-  <article class="snapshot-card">
-    <div class="section-kicker">Median REST context</div>
-    <div class="headline-value">1186.2 ms</div>
-    <p>Offline-style request latency for the same published benchmark set. Useful context, not the main live responsiveness score.</p>
-  </article>
+  <article class="snapshot-card tone-moss"><div class="section-kicker">Recommended default</div><div class="headline-value">Parakeet 110M NeMo MLX</div><p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Alternative lane</div><div class="headline-value">Qwen Compose</div><p>Validated 5-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">2 fully comparable lanes</div><p>5 supporting lanes stay below the fold because they are missing at least one live metric, usually first-partial capture.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Best live numbers</div><div class="headline-value">74.5 ms</div><p>Fastest per-partial latency in the primary comparison. Best finalization is 210.6 ms.</p></article>
 </div>
 <div class="story-grid">
-<article class="story-card panel"><div class="section-kicker">Rank 1</div><div class="story-rank">Parakeet 110M NeMo MLX</div><div class="chip-row"><div class="chip"><strong>apple-silicon / auto</strong> runtime</div><div class="chip"><strong>Local Python Apple Silicon MLX Service</strong> lane</div></div><p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p></article><article class="story-card panel"><div class="section-kicker">Rank 2</div><div class="story-rank">Parakeet 110M NeMo</div><div class="chip-row"><div class="chip"><strong>cpu / float32</strong> runtime</div><div class="chip"><strong>Docker Compose CPU</strong> lane</div></div><p>Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.</p></article><article class="story-card panel"><div class="section-kicker">Rank 3</div><div class="story-rank">Qwen MPS</div><div class="chip-row"><div class="chip"><strong>mps / auto</strong> runtime</div><div class="chip"><strong>Local Python Apple Silicon</strong> lane</div></div><p>Validated 10-sample local Apple Silicon MPS artifact.</p></article>
+<article class="story-card panel tone-moss"><div class="section-kicker">Rank 1</div><div class="story-rank">Parakeet 110M NeMo MLX</div><div class="chip-row"><div class="chip"><strong>apple-silicon / auto</strong> runtime</div><div class="chip"><strong>Local Python Apple Silicon MLX Service</strong> lane</div></div><p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p></article><article class="story-card panel tone-sage"><div class="section-kicker">Rank 2</div><div class="story-rank">Qwen Compose</div><div class="chip-row"><div class="chip"><strong>cpu / float16</strong> runtime</div><div class="chip"><strong>Docker Compose CPU</strong> lane</div></div><p>Validated 5-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.</p></article>
 </div>
 <div class="comparison-wrap panel">
   <div class="comparison-scroll">
     <table>
       <thead>
-        <tr><th>Lane</th><th>State</th><th>Score</th><th><span class="hint" title="End-to-end time from stream start until the first visible partial transcript appears.">First partial</span></th><th><span class="hint" title="Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness.">Per-partial latency</span></th><th><span class="hint" title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.">Audio-end finalization</span></th><th><span class="hint" title="Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.">REST throughput context</span></th><th><span class="hint" title="External reference WER for the underlying model, not an official rtc-asr measurement and it may vary by setup.">Reference WER</span></th><th><span class="hint" title="How many benchmark samples were recorded for this published artifact.">Samples</span></th><th>Artifact</th></tr>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th><span class="hint" title="End-to-end time from stream start until the first visible partial transcript appears.">First partial</span></th><th><span class="hint" title="Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness.">Per-partial latency</span></th><th><span class="hint" title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.">Audio-end finalization</span></th><th><span class="hint" title="Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.">REST throughput context</span></th><th><span class="hint" title="How many benchmark samples were recorded for this published artifact.">Samples</span></th><th>Details</th></tr>
       </thead>
       <tbody>
-<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo MLX</strong><span>parakeet-mlx . mlx-community/parakeet-tdt_ctc-110m</span><div class="table-note">Local Python Apple Silicon MLX Service . apple-silicon / auto</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>98.7 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>557.4 ms</strong><div class="tiny">P95 565.0 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Per-partial latency"><strong>74.5 ms</strong><div class="tiny">P95 96.9 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Audio-end finalization"><strong>210.6 ms</strong><div class="tiny">P95 246.3 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="REST throughput context"><strong>141.9 ms</strong><div class="tiny">P95 170.0 ms . RTF 0.019</div><div class="metric-bar"><span style="width:6%"></span></div></td><td data-label="Reference WER"><strong>2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 13, 2026, 10:55 PM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/parakeet-mlx-110m-service-2026-06-13.json">open JSON</a><div class="tiny"><a href="benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html">open details</a></div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo</strong><span>parakeet-nemo . nvidia/parakeet-tdt_ctc-110m</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>95.8 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs fastest</div></td><td data-label="Per-partial latency"><strong>148.5 ms</strong><div class="tiny">P95 245.8 ms</div><div class="tiny">+74.0 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>379.0 ms</strong><div class="tiny">P95 633.5 ms</div><div class="tiny">+168.4 ms vs fastest</div></td><td data-label="REST throughput context"><strong>331.4 ms</strong><div class="tiny">P95 511.5 ms . RTF 0.046</div><div class="metric-bar"><span style="width:8.723348249539352%"></span></div></td><td data-label="Reference WER"><strong>2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 03:11 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json">open JSON</a><div class="tiny"><a href="benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-09.html">open details</a></div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen MPS</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Local Python Apple Silicon . mps / auto</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>88.7 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs fastest</div></td><td data-label="Per-partial latency"><strong>352.0 ms</strong><div class="tiny">P95 445.5 ms</div><div class="tiny">+277.5 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>1189.6 ms</strong><div class="tiny">P95 1248.2 ms</div><div class="tiny">+979.0 ms vs fastest</div></td><td data-label="REST throughput context"><strong>1186.2 ms</strong><div class="tiny">P95 1261.2 ms . RTF 0.163</div><div class="metric-bar"><span style="width:31.224006317451963%"></span></div></td><td data-label="Reference WER"><strong>2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 05:19 PM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/qwen-mps-2026-06-10.json">open JSON</a><div class="tiny"><a href="benchmark-results/pages/qwen-mps-2026-06-10.html">open details</a></div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Base</strong><span>faster-whisper . base.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>86.5 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs fastest</div></td><td data-label="Per-partial latency"><strong>553.0 ms</strong><div class="tiny">P95 2451.5 ms</div><div class="tiny">+478.5 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>560.2 ms</strong><div class="tiny">P95 761.2 ms</div><div class="tiny">+349.6 ms vs fastest</div></td><td data-label="REST throughput context"><strong>573.3 ms</strong><div class="tiny">P95 741.1 ms . RTF 0.079</div><div class="metric-bar"><span style="width:15.090813371939982%"></span></div></td><td data-label="Reference WER"><strong>4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 02:16 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/faster-whisper-base.en-int8-2026-06-10.json">open JSON</a><div class="tiny"><a href="benchmark-results/pages/faster-whisper-base.en-int8-2026-06-10.html">open details</a></div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Small</strong><span>faster-whisper . small.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>83.1 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs fastest</div></td><td data-label="Per-partial latency"><strong>1023.2 ms</strong><div class="tiny">P95 1202.4 ms</div><div class="tiny">+948.7 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>1420.6 ms</strong><div class="tiny">P95 1514.0 ms</div><div class="tiny">+1210.0 ms vs fastest</div></td><td data-label="REST throughput context"><strong>1378.3 ms</strong><div class="tiny">P95 1531.1 ms . RTF 0.189</div><div class="metric-bar"><span style="width:36.2806001579363%"></span></div></td><td data-label="Reference WER"><strong>3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 02:23 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/faster-whisper-small.en-int8-2026-06-10.json">open JSON</a><div class="tiny"><a href="benchmark-results/pages/faster-whisper-small.en-int8-2026-06-10.html">open details</a></div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 0.6B Compose</strong><span>parakeet . nvidia/parakeet-tdt-0.6b-v3</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>61.9 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>n/a</strong><div class="tiny">P95 n/a</div><div class="tiny">n/a vs fastest</div></td><td data-label="Per-partial latency"><strong>1715.1 ms</strong><div class="tiny">P95 2968.7 ms</div><div class="tiny">+1640.6 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>2215.8 ms</strong><div class="tiny">P95 3080.4 ms</div><div class="tiny">+2005.2 ms vs fastest</div></td><td data-label="REST throughput context"><strong>2388.3 ms</strong><div class="tiny">P95 4098.1 ms . RTF 0.328</div><div class="metric-bar"><span style="width:62.866543827322985%"></span></div></td><td data-label="Reference WER"><strong>1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 10, 2026, 01:41 AM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/parakeet-compose-2026-06-10.json">open JSON</a><div class="tiny"><a href="benchmark-results/pages/parakeet-compose-2026-06-10.html">open details</a></div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen Compose</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Docker Compose CPU . cpu / float16</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>38.3 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>3365.4 ms</strong><div class="tiny">P95 3537.3 ms</div><div class="tiny">+2808.0 ms vs fastest</div></td><td data-label="Per-partial latency"><strong>3118.4 ms</strong><div class="tiny">P95 4677.0 ms</div><div class="tiny">+3043.9 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>7318.6 ms</strong><div class="tiny">P95 8168.1 ms</div><div class="tiny">+7108.0 ms vs fastest</div></td><td data-label="REST throughput context"><strong>3799.0 ms</strong><div class="tiny">P95 4475.0 ms . RTF 0.522</div><div class="metric-bar"><span style="width:100.0%"></span></div></td><td data-label="Reference WER"><strong>2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)</strong><div class="tiny">External reference, not an official rtc-asr measurement</div></td><td data-label="Samples"><strong>5</strong><div class="tiny">Measured Jun 15, 2026, 08:09 PM UTC</div></td><td data-label="Artifact"><a href="benchmark-results/qwen-compose-2026-06-15.json">open JSON</a><div class="tiny"><a href="benchmark-results/pages/qwen-compose-2026-06-15.html">open details</a></div></td></tr>
+<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo MLX</strong><span>parakeet-mlx . mlx-community/parakeet-tdt_ctc-110m</span><div class="table-note">Local Python Apple Silicon MLX Service . apple-silicon / auto</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>98.7 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>557.4 ms</strong><div class="tiny">P95 565.0 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Per-partial latency"><strong>74.5 ms</strong><div class="tiny">P95 96.9 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Audio-end finalization"><strong>210.6 ms</strong><div class="tiny">P95 246.3 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="REST throughput context"><strong>141.9 ms</strong><div class="tiny">P95 170.0 ms . RTF 0.019</div><div class="metric-bar"><span style="width:6%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 13, 2026, 10:55 PM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen Compose</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Docker Compose CPU . cpu / float16</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>38.3 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>3365.4 ms</strong><div class="tiny">P95 3537.3 ms</div><div class="tiny">+2808.0 ms vs fastest</div></td><td data-label="Per-partial latency"><strong>3118.4 ms</strong><div class="tiny">P95 4677.0 ms</div><div class="tiny">+3043.9 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>7318.6 ms</strong><div class="tiny">P95 8168.1 ms</div><div class="tiny">+7108.0 ms vs fastest</div></td><td data-label="REST throughput context"><strong>3799.0 ms</strong><div class="tiny">P95 4475.0 ms . RTF 0.522</div><div class="metric-bar"><span style="width:100.0%"></span></div></td><td data-label="Samples"><strong>5</strong><div class="tiny">Measured Jun 15, 2026, 08:09 PM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-compose-2026-06-15.html">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="comparison-wrap panel" style="margin-top: 16px;">
+  <div class="section-head">
+    <div>
+      <div class="section-kicker">Supporting lanes</div>
+      <h2>Artifacts kept out of the primary ranking</h2>
+    </div>
+    <p class="subcopy">These lanes still add context, but they are missing at least one comparable live metric or were published for a narrower benchmarking purpose.</p>
+  </div>
+  <div class="comparison-scroll">
+    <table>
+      <thead>
+        <tr><th>Lane</th><th>Why it is secondary</th><th>Visible live metrics</th><th>Details</th></tr>
+      </thead>
+      <tbody>
+<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo</strong><span>parakeet-nemo . nvidia/parakeet-tdt_ctc-110m</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>148.5 ms</strong><div class="tiny">Finalization 379.0 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-09.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 03:11 AM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen MPS</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Local Python Apple Silicon . mps / auto</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>352.0 ms</strong><div class="tiny">Finalization 1189.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-mps-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 05:19 PM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Base</strong><span>faster-whisper . base.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>553.0 ms</strong><div class="tiny">Finalization 560.2 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-base.en-int8-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 02:16 AM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Small</strong><span>faster-whisper . small.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>1023.2 ms</strong><div class="tiny">Finalization 1420.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-small.en-int8-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 02:23 AM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 0.6B Compose</strong><span>parakeet . nvidia/parakeet-tdt-0.6b-v3</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>1715.1 ms</strong><div class="tiny">Finalization 2215.8 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-compose-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 01:41 AM UTC</div></td></tr>
       </tbody>
     </table>
   </div>
@@ -730,11 +741,12 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           </article>
           <article class="cta-card">
             <div class="section-kicker">For engineers</div>
-            <h3>Inspect the raw manifest</h3>
-            <p>Pull the generated manifest or track registry when you want the artifact-backed numbers directly for dashboards, downstream analysis, or release checklists.</p>
+            <h3>Open the operator appendix</h3>
+            <p>Use the notes, manifest, and track registry only after you have a shortlist and need reproduction details, auditability, or downstream automation.</p>
             <div class="contract-actions">
-              <a href="benchmark-results/manifest.json">Open manifest JSON</a>
-              <a href="benchmark-results/tracks.json">Open track registry</a>
+              <a href="benchmarks.md">Benchmark notes</a>
+              <a href="benchmark-results/manifest.json">Manifest JSON</a>
+              <a href="benchmark-results/tracks.json">Track registry</a>
             </div>
           </article>
           <article class="cta-card">
@@ -769,15 +781,15 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         <div class="section-head">
           <div>
             <div class="section-kicker">Archive</div>
-            <h2>Checked-in artifact log</h2>
+            <h2>Benchmark appendix</h2>
           </div>
-          <p class="subcopy">Use the artifacts for raw numbers and the notes page for benchmark setup, commands, and lane history.</p>
+          <p class="subcopy">Use this appendix only when you need lane history or machine-readable artifacts after the primary recommendation flow.</p>
         </div>
         <div class="archive-grid" id="archive-grid"></div>
       </section>
 
       <footer>
-        Built from <code>make benchmark-site</code> for the rtc-asr GitHub Pages homepage.
+        Built from <code>make benchmark-site</code> for a decision-first rtc-asr benchmark homepage.
       </footer>
     </main>
 
@@ -882,6 +894,20 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         const validated = entries.filter((entry) => entry.status === "validated");
         return validated.length ? validated : entries;
       }
+      function hasPrimaryLiveMetrics(entry) {
+        return firstVisiblePartial(entry) != null && entry.streaming.partial_mean_ms != null && entry.streaming.final_mean_ms != null;
+      }
+      function primaryEntries(entries) {
+        const primary = comparableEntries(entries).filter((entry) => hasPrimaryLiveMetrics(entry));
+        return primary.length ? primary : comparableEntries(entries);
+      }
+      function secondaryEntries(entries) {
+        const primarySlugs = new Set(primaryEntries(entries).map((entry) => entry.slug));
+        return sortEntries(entries).filter((entry) => !primarySlugs.has(entry.slug));
+      }
+      function toneClass(index) {
+        return ["tone-moss", "tone-sage", "tone-olive"][index % 3];
+      }
       function sortEntries(entries) {
         return [...entries].sort((left, right) => {
           const statusDelta = statusRank(left) - statusRank(right);
@@ -926,33 +952,41 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
       }
       function renderHero(summary, entries) {
         const target = document.getElementById("hero-side");
-        const contract = summary.sample_contract || {};
-        const publishedCount = entries.length;
-        const unpublishedCount = Math.max((summary.tracked_count || 0) - publishedCount, 0);
-        const cards = [
-          {
-            value: String(publishedCount),
-            title: "Published ASR lanes",
-            detail: `${summary.validated_count || 0} validated and ${summary.legacy_count || 0} legacy artifacts visible on the page`
-          },
-          {
-            value: String(summary.backend_count || 0),
-            title: "ASR backends represented",
-            detail: `${summary.lane_count || 0} tracked runtime lanes are registered in the manifest`
-          },
-          {
-            value: contract.default_sample_count ? `${contract.default_sample_count} samples` : "n/a",
-            title: "Default contract",
-            detail: `${contract.rest_runs_per_sample || "?"} REST runs, ${contract.chunk_ms || "?"} ms chunks, cadence ${contract.partial_interval_chunks || "?"}, ${contract.binary_frames ? "binary" : "json/base64"}`
-          },
-          {
-            value: unpublishedCount ? String(unpublishedCount) : "0",
-            title: "Unpublished tracked lanes",
-            detail: unpublishedCount ? "Tracked in the registry but intentionally excluded from the homepage comparison flow" : "Every tracked lane with an artifact is visible here"
-          }
-        ];
+        const primary = sortEntries(primaryEntries(entries));
+        const secondary = secondaryEntries(entries);
+        const winner = primary[0];
+        const runnerUp = primary[1] || secondary[0] || null;
+        const cards = [];
+        if (winner) {
+          cards.push({
+            tone: toneClass(0),
+            value: winner.label,
+            title: "Recommended live default",
+            detail: `${formatMs(winner.streaming.partial_mean_ms)} per-partial · ${formatMs(winner.streaming.final_mean_ms)} finalization`
+          });
+        }
+        if (runnerUp) {
+          cards.push({
+            tone: toneClass(1),
+            value: runnerUp.label,
+            title: primary[1] ? "Best alternative" : "Supporting alternative",
+            detail: primary[1] ? `${formatMs(runnerUp.streaming.partial_mean_ms)} per-partial in the same primary set` : "Useful context, but kept out of the main ranking until comparable live metrics exist"
+          });
+        }
+        cards.push({
+          tone: toneClass(2),
+          value: `${primary.length}`,
+          title: "Fully comparable lanes",
+          detail: `${secondary.length} supporting lanes are separated because they are missing at least one live metric`
+        });
+        cards.push({
+          tone: toneClass(0),
+          value: summary.latest_measured_at ? formatDate(summary.latest_measured_at) : "n/a",
+          title: "Latest published artifact",
+          detail: `${summary.validated_count || 0} validated lanes remain visible after the decision-first cleanup`
+        });
         target.innerHTML = cards.map((card) => `
-          <article class="hero-card">
+          <article class="hero-card ${card.tone}">
             <strong>${card.value}</strong>
             <div>${card.title}</div>
             <p>${card.detail}</p>
@@ -960,39 +994,52 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         `).join("");
       }
       function renderCoverage(summary, entries) {
-        const publishedCount = entries.length;
-        const unpublishedCount = Math.max((summary.tracked_count || 0) - publishedCount, 0);
+        const primary = sortEntries(primaryEntries(entries));
+        const secondary = secondaryEntries(entries);
+        const winner = primary[0];
+        const alternative = primary[1] || secondary[0] || null;
         document.getElementById("coverage-pills").innerHTML = `
-          <div class="chip"><strong>${publishedCount}</strong> visible lanes</div>
+          <div class="chip"><strong>${entries.length}</strong> visible lanes</div>
+          <div class="chip"><strong>${primary.length}</strong> primary</div>
+          <div class="chip"><strong>${secondary.length}</strong> supporting</div>
           <div class="chip"><strong>${summary.validated_count || 0}</strong> validated</div>
-          <div class="chip"><strong>${summary.legacy_count || 0}</strong> legacy</div>
-          <div class="chip"><strong>${unpublishedCount}</strong> unpublished</div>
           <div class="chip"><strong>${summary.latest_measured_at ? formatDate(summary.latest_measured_at) : "n/a"}</strong> latest artifact</div>
         `;
 
-        const medians = summarizeEntries(entries);
-        document.getElementById("snapshot-grid").innerHTML = `
-          <article class="snapshot-card">
-            <div class="section-kicker">Median first partial</div>
-            <div class="headline-value">${formatMs(medians.medianFirstPartial)}</div>
-            <p>Time until a caller could first see a useful partial in a real-time stream.</p>
+        const cards = [];
+        if (winner) {
+          cards.push(`
+            <article class="snapshot-card ${toneClass(0)}">
+              <div class="section-kicker">Recommended default</div>
+              <div class="headline-value">${winner.label}</div>
+              <p>${winner.status_detail}</p>
+            </article>
+          `);
+        }
+        if (alternative) {
+          cards.push(`
+            <article class="snapshot-card ${toneClass(1)}">
+              <div class="section-kicker">Alternative lane</div>
+              <div class="headline-value">${alternative.label}</div>
+              <p>${alternative.status_detail}</p>
+            </article>
+          `);
+        }
+        cards.push(`
+          <article class="snapshot-card ${toneClass(2)}">
+            <div class="section-kicker">Primary ranking scope</div>
+            <div class="headline-value">${primary.length} fully comparable lanes</div>
+            <p>${secondary.length} supporting lanes stay out of the main ranking because they are missing at least one live metric, usually first-partial capture.</p>
           </article>
-          <article class="snapshot-card">
-            <div class="section-kicker">Median per-partial latency</div>
-            <div class="headline-value">${formatMs(medians.medianPartial)}</div>
-            <p>Server response time after a partial trigger, separated from chunk/window cadence.</p>
+        `);
+        cards.push(`
+          <article class="snapshot-card ${toneClass(0)}">
+            <div class="section-kicker">Best live numbers</div>
+            <div class="headline-value">${winner ? formatMs(winner.streaming.partial_mean_ms) : "n/a"}</div>
+            <p>Fastest per-partial latency in the primary comparison. Best finalization is ${winner ? formatMs(winner.streaming.final_mean_ms) : "n/a"}.</p>
           </article>
-          <article class="snapshot-card">
-            <div class="section-kicker">Median audio-end finalization</div>
-            <div class="headline-value">${formatMs(medians.medianFinal)}</div>
-            <p>How long a caller waits for completed transcript closure after speech ends.</p>
-          </article>
-          <article class="snapshot-card">
-            <div class="section-kicker">Median REST throughput context</div>
-            <div class="headline-value">${formatMs(medians.medianRest)}</div>
-            <p>Batch-style request latency for the same published benchmark set.</p>
-          </article>
-        `;
+        `);
+        document.getElementById("snapshot-grid").innerHTML = cards.join("");
       }
       function renderSignals(summary, entries) {
         const signalCards = [];
@@ -1078,9 +1125,9 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
       }
       function renderStories(entries) {
         const target = document.getElementById("story-grid");
-        const ranked = sortEntries(comparableEntries(entries)).slice(0, 3);
+        const ranked = sortEntries(primaryEntries(entries)).slice(0, 3);
         target.innerHTML = ranked.map((entry, index) => `
-          <article class="story-card panel">
+          <article class="story-card panel ${toneClass(index)}">
             <div class="section-kicker">Rank ${index + 1}</div>
             <div class="story-rank">${entry.label}</div>
             <div class="chip-row">
@@ -1097,14 +1144,15 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           target.innerHTML = '<div class="empty">No published benchmark artifacts are available yet.</div>';
           return;
         }
-        const ranked = sortEntries(entries);
-        const baselineEntries = comparableEntries(ranked);
-        const firstPartialBaselineLabel = baselineEntries.length !== ranked.length ? "vs validated fastest" : "vs fastest";
+        const primary = sortEntries(primaryEntries(entries));
+        const secondary = secondaryEntries(entries);
+        const baselineEntries = comparableEntries(primary);
+        const firstPartialBaselineLabel = baselineEntries.length !== primary.length ? "vs validated fastest" : "vs fastest";
         const baselineFirstPartial = minDefined(baselineEntries.map((entry) => firstVisiblePartial(entry)));
-        const baselinePartial = minDefined(ranked.map((entry) => entry.streaming.partial_mean_ms));
-        const baselineFinal = minDefined(ranked.map((entry) => entry.streaming.final_mean_ms));
-        const maxRest = Math.max(...ranked.map((entry) => entry.rest.mean_ms || 0), 1);
-        const rows = ranked.map((entry) => {
+        const baselinePartial = minDefined(primary.map((entry) => entry.streaming.partial_mean_ms));
+        const baselineFinal = minDefined(primary.map((entry) => entry.streaming.final_mean_ms));
+        const maxRest = Math.max(...primary.map((entry) => entry.rest.mean_ms || 0), 1);
+        const primaryRows = primary.map((entry) => {
           const firstPartialValue = firstVisiblePartial(entry);
           const firstPartialDelta = firstPartialValue == null || baselineFirstPartial == null ? null : firstPartialValue - baselineFirstPartial;
           const partialDelta = entry.streaming.partial_mean_ms == null || baselinePartial == null ? null : entry.streaming.partial_mean_ms - baselinePartial;
@@ -1142,21 +1190,30 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
                 <div class="tiny">P95 ${formatMs(entry.rest.p95_ms)} · RTF ${formatRatio(entry.rest.rtf_mean)}</div>
                 <div class="metric-bar"><span style="width:${restWidth}%"></span></div>
               </td>
-              <td data-label="Reference WER">
-                <strong>${entry.official_wer_reference || "see notes"}</strong>
-                <div class="tiny">External reference, not an official rtc-asr measurement</div>
-              </td>
-                            <td data-label="Config">
-                <strong>${entry.contract?.chunk_ms == null ? "n/a" : `${entry.contract.chunk_ms} ms`}</strong>
-                <div class="tiny"><span class="hint" title="Buffered audio window used when generating partial transcripts.">partial_window_seconds</span> ${entry.contract?.partial_window_seconds ?? "n/a"} s · <span class="hint" title="How many streamed chunks must arrive between partial attempts.">partial_interval_chunks</span> ${entry.contract?.partial_interval_chunks ?? "?"}</div>
-                <div class="tiny"><span class="hint" title="Share of partial events that arrived too late to be useful for the configured RTC-shaped cadence.">late_partial_ratio</span> ${formatPercent(entry.streaming.late_partial_ratio)} · <span class="hint" title="Average per-revision transcript change rate across visible partial updates; lower is steadier.">partial_transcript_churn_word_mean</span> ${formatRatio(entry.streaming.partial_transcript_churn_word_mean)}</div>
-                <div class="tiny"><span class="hint" title="Whether websocket audio is sent as binary frames instead of JSON/base64 payloads.">binary_frames</span> ${entry.contract?.binary_frames ? "true" : "false"}</div>
-              </td>
               <td data-label="Samples">
                 <strong>${entry.sample_count ?? "n/a"}</strong>
                 <div class="tiny">Measured ${formatDate(entry.measured_at)}</div>
               </td>
-              <td data-label="Artifact"><a href="${entry.artifact_path}">open JSON</a><div class="tiny"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">open details</a></div></td>
+              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td>
+            </tr>
+          `;
+        }).join("");
+        const secondaryRows = secondary.map((entry) => {
+          const missing = [];
+          if (firstVisiblePartial(entry) == null) missing.push("first partial");
+          if (entry.streaming.partial_mean_ms == null) missing.push("per-partial");
+          if (entry.streaming.final_mean_ms == null) missing.push("finalization");
+          const why = missing.length ? `Missing comparable live metrics: ${missing.join(", ")}` : "Supporting artifact with a different contract or publication scope.";
+          return `
+            <tr>
+              <td data-label="Lane" class="leader-name">
+                <strong>${entry.label}</strong>
+                <span>${entry.backend} · ${entry.model}</span>
+                <div class="table-note">${entry.lane} · ${entry.runtime}</div>
+              </td>
+              <td data-label="Why it is secondary">${why}</td>
+              <td data-label="Visible live metrics"><strong>${formatMs(entry.streaming.partial_mean_ms)}</strong><div class="tiny">Finalization ${formatMs(entry.streaming.final_mean_ms)}</div></td>
+              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Measured ${formatDate(entry.measured_at)}</div></td>
             </tr>
           `;
         }).join("");
@@ -1171,14 +1228,27 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
                 <th>${hintLabel("Per-partial latency", "Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness.")}</th>
                 <th>${hintLabel("Audio-end finalization", "Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.")}</th>
                 <th>${hintLabel("REST throughput context", "Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.")}</th>
-                <th>${hintLabel("Reference WER", "External reference WER for the underlying model, not an official rtc-asr measurement and it may vary by setup.")}</th>
-                <th>Config</th>
                 <th>${hintLabel("Samples", "How many benchmark samples were recorded for this published artifact.")}</th>
-                <th>Artifact</th>
+                <th>Details</th>
               </tr>
             </thead>
-            <tbody>${rows}</tbody>
+            <tbody>${primaryRows}</tbody>
           </table>
+          ${secondaryRows ? `
+            <div class="section-head" style="margin-top: 20px;">
+              <div>
+                <div class="section-kicker">Supporting lanes</div>
+                <h2>Artifacts kept out of the primary ranking</h2>
+              </div>
+              <p class="subcopy">These lanes still add context, but they are missing at least one comparable live metric or were published for a narrower benchmarking purpose.</p>
+            </div>
+            <table>
+              <thead>
+                <tr><th>Lane</th><th>Why it is secondary</th><th>Visible live metrics</th><th>Details</th></tr>
+              </thead>
+              <tbody>${secondaryRows}</tbody>
+            </table>
+          ` : ""}
         `;
       }
       function renderLanes(entries) {
@@ -1271,16 +1341,19 @@ Published Jun 15, 2026, 08:09 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
       }
       function renderArchive(artifacts) {
         const target = document.getElementById("archive-grid");
-        target.innerHTML = artifacts.map((artifact) => `
-          <article class="archive-card">
-            <div class="section-kicker">${artifact.backend}</div>
-            <h3>${artifact.model}</h3>
-            <p>${formatDate(artifact.measured_at)} · ${artifact.sample_count} samples</p>
-            <div class="artifact-actions">
-              <a href="${artifact.artifact_path}">${artifact.artifact_path}</a>
-            </div>
-          </article>
-        `).join("");
+        target.innerHTML = artifacts.map((artifact) => {
+          const detailHref = artifact.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html");
+          return `
+            <article class="archive-card">
+              <div class="section-kicker">${artifact.backend}</div>
+              <h3>${artifact.model}</h3>
+              <p>${formatDate(artifact.measured_at)} · ${artifact.sample_count} samples</p>
+              <div class="artifact-actions">
+                <a href="${detailHref}">Open detail page</a>
+              </div>
+            </article>
+          `;
+        }).join("");
       }
       async function main() {
         const meta = document.getElementById("generated-at");

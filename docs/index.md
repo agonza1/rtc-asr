@@ -1,6 +1,6 @@
 # Documentation Index
 
-`rtc-asr` is a modular transcription service for RTC and voice-agent workloads. These docs focus on how to run the service, integrate it over the buffered websocket contract, and reproduce the current benchmark story without overstating the transport as a true frame-synchronous streaming decoder.
+`rtc-asr` is a modular transcription service for RTC and voice-agent workloads. Start with the benchmark notes when you need a decision on live-ASR tradeoffs, then drop into the API or integration guides only for implementation details.
 
 ## Quick Links
 
@@ -13,10 +13,9 @@
 
 ## Recommended Reading Order
 
-- Start with the [README](../../README.md) for local setup and operator defaults.
-- Use the [API Reference](./api-reference.md) when you need exact request and event shapes.
-- Use the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide when wiring a client.
-- Use [Benchmarks](./benchmarks.md) when you need current latency artifacts or reproduction commands.
+- Start with [Benchmarks](./benchmarks.md) if you are deciding which ASR lane deserves a closer look.
+- Use the [README](../../README.md) for local setup and operator defaults.
+- Use the [API Reference](./api-reference.md) plus the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide only when you are wiring a client.
 - Use [Troubleshooting](./troubleshooting.md) for preload, backend runtime, and streaming failure modes.
 
 ## Reference WER Notes
