@@ -81,10 +81,10 @@
               },
               {
                 "@type": "Question",
-                "name": "Does this page compare recognition accuracy too?",
+                "name": "Where should I look for recognition accuracy notes?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes, but only as clearly labeled reference WER sourced from upstream evaluations for the underlying model. Those figures are not official rtc-asr measurements and may vary slightly across hardware, runtime, quantization, decoding, and setup."
+                  "text": "The homepage stays latency-only. Reference WER and methodology notes live in the benchmark notes and artifact detail pages, where they stay clearly labeled as external context rather than official rtc-asr measurements."
                 }
               }
             ]
@@ -760,7 +760,7 @@ Published Jun 14, 2026, 08:39 PM UTC . 8 visible ASR lanes . 9 tracked lanes in 
         <div class="faq-grid">
           <article class="faq-card"><div class="section-kicker">Question 1</div><h3>What does this benchmark actually measure?</h3><p>It compares first visible partial timing, partial cadence, final transcript latency, REST latency, runtime profile, and sample coverage from checked-in artifacts so voice AI teams can judge turn-taking readiness instead of relying on anecdotal latency claims.</p></article>
           <article class="faq-card"><div class="section-kicker">Question 2</div><h3>Why are some tracked lanes missing from the comparison table?</h3><p>Only lanes with committed publishable JSON artifacts appear in the public ranking. Registry-only, blocked, or unpublished lanes stay documented in the track registry without polluting the homepage comparison flow.</p></article>
-          <article class="faq-card"><div class="section-kicker">Question 3</div><h3>Does this page compare recognition accuracy too?</h3><p>Yes, but only as clearly labeled reference WER sourced from upstream evaluations for the underlying model. Those figures are not official rtc-asr measurements and may vary slightly across hardware, runtime, quantization, decoding, and setup.</p></article>
+          <article class="faq-card"><div class="section-kicker">Question 3</div><h3>Where should I look for recognition accuracy notes?</h3><p>The homepage stays latency-only. Reference WER and methodology notes live in the benchmark notes and artifact detail pages, where they stay clearly labeled as external context rather than official rtc-asr measurements.</p></article>
           <article class="faq-card"><div class="section-kicker">Question 4</div><h3>How should a WebRTC or voice AI team use this before launch?</h3><p>Use the homepage to shortlist realistic ASR lanes, check the benchmark notes for reproduction details, and then validate the finalists against your own codec, interruption, and domain-specific traffic before changing production defaults.</p></article>
         </div>
       </section>
@@ -1233,7 +1233,7 @@ Published Jun 14, 2026, 08:39 PM UTC . 8 visible ASR lanes . 9 tracked lanes in 
             <div class="section-kicker">Publishing rule</div>
             <h3>What reaches the homepage</h3>
             <ul class="contract-list">
-              <li>Only checked-in JSON artifacts produce visible latency comparisons. Reference WER can still appear as clearly labeled external source data for the underlying model, not as an official rtc-asr measurement.</li>
+              <li>Only checked-in JSON artifacts produce visible latency comparisons on the homepage. Reference WER belongs in the benchmark notes and artifact detail pages, not in the primary ranking table.</li>
               <li>Legacy runs stay labeled so stale-but-inspectable baselines remain usable.</li>
               <li>Tracked lanes without publishable artifacts stay out of the front-end comparison flow.</li>
             </ul>

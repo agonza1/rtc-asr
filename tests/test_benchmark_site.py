@@ -292,8 +292,9 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
     assert "safest latency bet" in html
     assert "sample coverage" in html
-    assert "reference WER sourced from upstream evaluations" in html
-    assert "not official rtc-asr measurements" in html
+    assert "The homepage stays latency-only." in html
+    assert "benchmark notes and artifact detail pages" in html
+    assert "reference WER sourced from upstream evaluations" not in html
 
 
 def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
@@ -365,6 +366,7 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
     assert "qwen-compose-2026-06-07.json" not in docs_text
     assert "## Recommended Quality Methodology" in docs_text
     assert "Reference WER" in docs_text
+    assert "should not show reference WER in the primary ranking table" in docs_text
     assert "not an official rtc-asr measurement" in docs_text
     assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
 

@@ -11,7 +11,7 @@ Run `make benchmark-site` after changing either source so the homepage and this 
 
 Issue #46 resolves to a simple public-facing rule:
 
-- The homepage comparison stays latency-first, but it can still show clearly labeled reference WER for the underlying model.
+- The homepage comparison stays latency-first and should not show reference WER in the primary ranking table.
 - WER/CER should appear only when backed by an annotated, reproducible benchmark dataset and a repo-owned evaluation recipe. Local smoke clips and exploratory sweeps are useful for latency debugging, but they are not a publishable source of truth for accuracy.
 - When official accuracy coverage lands, keep it on a separate methodology/details surface first instead of turning the latency ranking into an official repo accuracy claim.
 - Upstream model-card WER is useful as background research, but it is not an official rtc-asr measurement and should be labeled as external reference data that may vary slightly across hardware, runtime, quantization, decoding, and setup.
@@ -28,7 +28,7 @@ Recommended source-of-truth path for this repo:
 Recommended publish order:
 
 1. Add a small, reproducible reference-quality track that reports WER only on annotated public test data, with the exact dataset version, split, text normalization rules, and scoring command checked into the repo.
-2. Keep the homepage ranking latency-first and label any visible WER as external reference data.
+2. Keep the homepage ranking latency-first and publish reference WER only on the benchmark notes or artifact detail pages.
 3. Add robustness tracks only after the clean/reference track is stable and reproducible.
 
 Suggested datasets and boundaries:
