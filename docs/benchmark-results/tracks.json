@@ -56,7 +56,7 @@
     },
     {
       "slug": "parakeet-compose",
-      "label": "Parakeet Compose",
+      "label": "Parakeet 0.6B Compose",
       "backend": "parakeet",
       "model": "nvidia/parakeet-tdt-0.6b-v3",
       "device": "cpu",
@@ -86,7 +86,7 @@
     },
     {
       "slug": "parakeet-mlx-service-110m",
-      "label": "Parakeet 110M MLX Service",
+      "label": "Parakeet 110M NeMo MLX",
       "backend": "parakeet-mlx",
       "model": "mlx-community/parakeet-tdt_ctc-110m",
       "device": "apple-silicon",
