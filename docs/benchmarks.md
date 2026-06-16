@@ -51,7 +51,7 @@ Required methodology fields for any future published WER:
 
 | Track | Backend | Model | Lane | Runtime | Status | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` |
+| `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-15.json` |
 | `faster-whisper-base-c80-w075-json-preview` | `faster-whisper` | `base.en` | Local Python CPU Sweep Preview | `cpu / int8` | preview artifact | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
 | `pipecat-e2e-faster-whisper-base` | `faster-whisper` | `base.en` | Pipecat E2E Local Python CPU | `cpu / int8` | blocked integration artifact | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json` |
 | `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
@@ -65,7 +65,7 @@ Required methodology fields for any future published WER:
 
 Status details from the track registry:
 
-- `faster-whisper-base`: validated 10-sample local CPU baseline.
+- `faster-whisper-base`: validated 10-sample local CPU baseline refreshed on `2026-06-15` with a preloaded model.
 - `faster-whisper-base-c80-w075-json-preview`: preview low-latency sweep artifact for the `80 ms` chunk / `0.75 s` partial-window JSON framing variant.
 - `pipecat-e2e-faster-whisper-base`: checked-in single-sample Pipecat E2E artifact using `20 ms` source frames bridged into `100 ms` websocket chunks; kept off the homepage until comparable E2E lanes exist.
 - `faster-whisper-small`: validated 10-sample local CPU baseline using the default service model.
@@ -85,7 +85,7 @@ These rows match the current manifest entries used on the homepage, plus two doc
 | --- | ---: | --- | ---: | --- | --- | --- | --- |
 | `parakeet-mlx-service-110m` | 10 | 141.9 ms / 170.0 ms | 0.020 | 74.5 ms / 96.9 ms | 210.6 ms / 246.3 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
 | `parakeet-nemo-compose` | 10 | 331.4 ms / 511.5 ms | 0.046 | 148.5 ms / 245.8 ms | 379.0 ms / 633.5 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` |
-| `faster-whisper-base` | 10 | 573.3 ms / 741.1 ms | 0.079 | 553.0 ms / 2451.5 ms | 560.2 ms / 761.2 ms | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` ([HF discussion diff](https://huggingface.co/openai/whisper-base.en/discussions/18/files)) | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json` |
+| `faster-whisper-base` | 10 | 558.4 ms / 726.1 ms | 0.077 | 12134.1 ms / 16250.0 ms | 13498.8 ms / 15429.3 ms | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` ([HF discussion diff](https://huggingface.co/openai/whisper-base.en/discussions/18/files)) | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-15.json` |
 | `qwen-mps` | 10 | 1186.2 ms / 1261.2 ms | 0.163 | 352.0 ms / 445.5 ms | 1189.6 ms / 1248.2 ms | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` ([HF README](https://huggingface.co/Qwen/Qwen3-ASR-0.6B/blob/main/README.md)) | `docs/benchmark-results/qwen-mps-2026-06-10.json` |
 | `faster-whisper-small` | 10 | 1378.3 ms / 1531.1 ms | 0.189 | 1023.2 ms / 1202.4 ms | 1420.6 ms / 1514.0 ms | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` ([HF discussion diff](https://huggingface.co/openai/whisper-small.en/discussions/17/files)) | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
 | `parakeet-mlx-110m` | 3 | 1360.7 ms / 1716.2 ms | n/a (CLI artifact) | n/a (CLI artifact) | n/a (CLI artifact) | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-2026-06-13.json` |
@@ -165,6 +165,8 @@ make benchmark-parakeet-mlx-110m
 make benchmark-parakeet-mlx-service-110m
 make benchmark-all-asr-low-latency-sweep
 ```
+
+All checked-in service benchmarks are expected to run with the model preloaded. The shared `tests/benchmark.py` harness now enforces that default in two ways: spawned local servers start with `ASR_PRELOAD_MODEL=true`, and external-service runs fail unless `/api/models` reports `preload_enabled=true`. Only use `--allow-unpreloaded-service` for intentional cold-start diagnostics that should stay out of the main comparison lanes.
 
 Run the Compose CPU baselines that currently have checked-in artifacts:
 

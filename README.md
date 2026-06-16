@@ -216,6 +216,8 @@ make benchmark-site-check
 
 For fair comparisons, benchmark the warmed service path when possible. One-shot runs mostly measure startup overhead, while the service harness reflects the latency users see after preload and warm-up.
 
+The benchmark harness now defaults to preloaded runs. Managed benchmark servers start with `ASR_PRELOAD_MODEL=true`, and benchmarks against an existing service fail by default unless `/api/models` reports `preload_enabled=true`. Use `--allow-unpreloaded-service` only when you intentionally want a cold-path diagnostic run.
+
 ## Documentation
 
 - [Docs Index](./docs/index.md)

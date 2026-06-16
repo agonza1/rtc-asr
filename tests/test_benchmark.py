@@ -323,7 +323,7 @@ def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
 
 def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> None:
     artifact_expectations = {
-        "faster-whisper-base.en-int8-2026-06-10.json": {
+        "faster-whisper-base.en-int8-2026-06-15.json": {
             "partial_interval_chunks": 1,
             "binary_frames": False,
             "partial_window_seconds": 2.0,
@@ -383,7 +383,7 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
 def test_checked_in_benchmark_artifacts_include_streaming_sample_binary_frame_metadata() -> None:
     results_dir = Path("docs") / "benchmark-results"
     validated_artifacts = [
-        "faster-whisper-base.en-int8-2026-06-10.json",
+        "faster-whisper-base.en-int8-2026-06-15.json",
         "faster-whisper-small.en-int8-2026-06-10.json",
         "parakeet-compose-2026-06-10.json",
         "parakeet-nemo-110m-compose-2026-06-09.json",
@@ -1279,6 +1279,8 @@ def test_async_main_preserves_partial_churn_precision(monkeypatch: pytest.Monkey
         partial_event_timeout=0.1,
         request_retries=1,
         request_retry_delay=0.1,
+        preload_model=True,
+        require_preloaded_service=False,
     )
 
     result = asyncio.run(benchmark.async_main(args))
@@ -1435,6 +1437,8 @@ def test_async_main_summarizes_final_metric_from_audio_end_delay(monkeypatch: py
         partial_event_timeout=0.1,
         request_retries=1,
         request_retry_delay=0.0,
+        preload_model=True,
+        require_preloaded_service=False,
     )
 
     result = asyncio.run(benchmark.async_main(args))
@@ -1548,6 +1552,8 @@ def test_async_main_uses_service_model_id_and_parakeet_mlx_dtype(monkeypatch: py
         partial_event_timeout=0.1,
         request_retries=1,
         request_retry_delay=0.0,
+        preload_model=True,
+        require_preloaded_service=False,
     )
 
     result = asyncio.run(benchmark.async_main(args))
