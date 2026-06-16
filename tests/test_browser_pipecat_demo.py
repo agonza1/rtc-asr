@@ -107,6 +107,14 @@ def test_offer_requires_sdp() -> None:
     assert response.status_code == 422
 
 
+def test_offer_rejects_empty_sdp() -> None:
+    client = TestClient(app)
+
+    response = client.post("/rtc-asr/offer", json={"type": "offer", "sdp": ""})
+
+    assert response.status_code == 422
+
+
 def test_offer_returns_structured_dependency_response() -> None:
     client = TestClient(app)
 
@@ -189,6 +197,41 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
 
     assert [len(chunk) for chunk in sent_chunks] == [3200, 3200]
     assert app_messages[0]["type"] == "status"
+
+
+@pytest.mark.anyio
+async def test_asr_relay_reports_websocket_start_failure() -> None:
+    app_messages: list[dict[str, object]] = []
+    failures: list[str] = []
+
+    class FailingASRClient:
+        def __init__(self, ws_url: str) -> None:
+            self.ws_url = ws_url
+
+        async def start(self, **kwargs: Any) -> dict[str, object]:
+            raise RuntimeError("connect failed")
+
+    relay = RTCASRAudioRelay(
+        session_id="session_1",
+        rtc_asr_ws_url="ws://example.test/ws",
+        chunk_ms=100,
+        send_app_message=app_messages.append,
+        mark_failed=failures.append,
+        asr_client_factory=FailingASRClient,
+    )
+    frame = FakeInputAudioRawFrame(audio=b"x" * 3200, sample_rate=16000, num_channels=1)
+
+    with pytest.raises(RuntimeError, match="connect failed"):
+        await relay.handle_audio_frame(frame)
+
+    assert failures == ["ASR websocket start failed: connect failed"]
+    assert app_messages == [
+        {
+            "type": "error",
+            "message": "ASR websocket start failed: connect failed",
+            "session_id": "session_1",
+        }
+    ]
 
 
 def test_unknown_session_returns_404() -> None:
