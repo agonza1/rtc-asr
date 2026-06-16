@@ -321,6 +321,7 @@ class ProcessPeakRSSMonitor:
         self.pid = pid
         self.interval_seconds = interval_seconds
         self.peak_rss_mb: float | None = None
+        self.cpu_utilization_percent: float | None = None
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -344,20 +345,34 @@ class ProcessPeakRSSMonitor:
         except Exception:
             return
 
+        cpu_samples: list[float] = []
+        try:
+            process.cpu_percent(interval=None)
+        except Exception:
+            return
+
         while not self._stop_event.is_set():
+            self._stop_event.wait(self.interval_seconds)
+            if self._stop_event.is_set():
+                break
             try:
                 rss_mb = round(process.memory_info().rss / (1024 * 1024), 1)
+                cpu_percent = float(process.cpu_percent(interval=None))
             except Exception:
                 return
             if self.peak_rss_mb is None or rss_mb > self.peak_rss_mb:
                 self.peak_rss_mb = rss_mb
-            self._stop_event.wait(self.interval_seconds)
+            cpu_samples.append(cpu_percent)
+
+        if cpu_samples:
+            self.cpu_utilization_percent = round(statistics.mean(cpu_samples), 1)
 
 
 def describe_environment(
     *,
     service_pid: int | None = None,
     peak_rss_mb: float | None = None,
+    cpu_utilization_percent: float | None = None,
 ) -> dict[str, object]:
     cpu_logical_cores = os.cpu_count()
     memory_total_mb: float | None = None
@@ -388,6 +403,7 @@ def describe_environment(
         "memory_total_mb": memory_total_mb,
         "process_rss_mb": process_rss_mb,
         "peak_rss_mb": measured_peak_rss_mb,
+        "cpu_utilization_percent": cpu_utilization_percent,
     }
 
 
@@ -1239,11 +1255,18 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         live_streaming_metrics_comparable = args.mode == "pipecat-e2e" and getattr(args, "simulate_realtime", False)
         partial_churn_char_summary = summarize_ratio_series(partial_churn_char_all) if partial_churn_char_all else None
         partial_churn_word_summary = summarize_ratio_series(partial_churn_word_all) if partial_churn_word_all else None
+        peak_rss_mb = None
+        cpu_utilization_percent = None
+        if process_rss_monitor is not None:
+            process_rss_monitor.stop()
+            peak_rss_mb = process_rss_monitor.peak_rss_mb
+            cpu_utilization_percent = process_rss_monitor.cpu_utilization_percent
 
         return {
             "environment": describe_environment(
                 service_pid=server.process.pid if server is not None and server.process is not None else None,
-                peak_rss_mb=process_rss_monitor.peak_rss_mb if process_rss_monitor is not None else None,
+                peak_rss_mb=peak_rss_mb,
+                cpu_utilization_percent=cpu_utilization_percent,
             ),
             "benchmark": {
                 "sample_count": sample_count,

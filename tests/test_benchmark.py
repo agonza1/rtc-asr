@@ -147,14 +147,186 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(benchmark.os, "cpu_count", lambda: 12)
     monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
 
-    payload = benchmark.describe_environment(service_pid=4321, peak_rss_mb=384.0)
+    payload = benchmark.describe_environment(
+        service_pid=4321,
+        peak_rss_mb=384.0,
+        cpu_utilization_percent=47.5,
+    )
 
     assert payload["machine"] == "arm64"
     assert payload["cpu_logical_cores"] == 12
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] == 256.0
     assert payload["peak_rss_mb"] == 384.0
+    assert payload["cpu_utilization_percent"] == 47.5
     assert requested_pids == [4321]
+
+
+def test_process_peak_rss_monitor_tracks_peak_rss_and_average_cpu() -> None:
+    class FakeStopEvent:
+        def __init__(self) -> None:
+            self.wait_calls = 0
+
+        def is_set(self) -> bool:
+            return self.wait_calls >= 3
+
+        def wait(self, _interval: float) -> None:
+            self.wait_calls += 1
+
+    class FakeProcess:
+        def __init__(self) -> None:
+            self.rss_values = iter([128, 256])
+            self.cpu_values = iter([0.0, 20.0, 40.0])
+
+        def memory_info(self) -> SimpleNamespace:
+            return SimpleNamespace(rss=next(self.rss_values) * 1024 * 1024)
+
+        def cpu_percent(self, interval: float | None = None) -> float:
+            assert interval is None
+            return next(self.cpu_values)
+
+    process = FakeProcess()
+    monitor = benchmark.ProcessPeakRSSMonitor(4321, interval_seconds=0.0)
+    monitor._stop_event = FakeStopEvent()
+
+    monitor._run(SimpleNamespace(Process=lambda pid: process if pid == 4321 else None))
+
+    assert monitor.peak_rss_mb == 256.0
+    assert monitor.cpu_utilization_percent == 30.0
+
+
+def test_async_main_stops_process_monitor_before_reporting_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeMonitor:
+        def __init__(self, pid: int) -> None:
+            assert pid == 4321
+            self.peak_rss_mb = None
+            self.cpu_utilization_percent = None
+            self.started = False
+            self.stop_calls = 0
+
+        def start(self) -> None:
+            self.started = True
+
+        def stop(self) -> None:
+            self.stop_calls += 1
+            self.peak_rss_mb = 384.0
+            self.cpu_utilization_percent = 47.5
+
+    class FakeManagedServer:
+        def __init__(self, *args, **kwargs) -> None:
+            self.process = SimpleNamespace(pid=4321)
+
+        def start(self) -> None:
+            return None
+
+        async def wait_ready(self) -> None:
+            return None
+
+        def stop(self) -> None:
+            return None
+
+    async def fake_fetch_service_metadata(_: str) -> dict[str, object]:
+        return {
+            "backend": "demo",
+            "models": ["demo-v1"],
+            "capabilities": {"device": "cpu", "compute_type": "int8"},
+        }
+
+    async def fake_run_rest_benchmark(*args, **kwargs) -> dict[str, object]:
+        return {
+            "durations_ms": [40.0],
+            "mean_ms": 40.0,
+            "p90_ms": 40.0,
+            "p95_ms": 40.0,
+            "min_ms": 40.0,
+            "max_ms": 40.0,
+            "rtf_mean": 0.1,
+            "transcript": "done",
+        }
+
+    async def fake_run_ws_benchmark(*args, **kwargs) -> dict[str, object]:
+        return {
+            "binary_frames": False,
+            "partial_latencies_ms": [20.0],
+            "partial_audio_offsets_ms": [250.0],
+            "partial_end_to_end_ms": [350.0],
+            "partial_gap_ms": [],
+            "partial_mean_ms": 20.0,
+            "partial_p90_ms": 20.0,
+            "partial_p95_ms": 20.0,
+            "partial_first_ms": 20.0,
+            "partial_last_ms": 20.0,
+            "first_partial_audio_ms": 250.0,
+            "first_partial_end_to_end_ms": 350.0,
+            "partial_gap_mean_ms": None,
+            "partial_gap_p95_ms": None,
+            "final_ms": 200.0,
+            "time_to_final_from_audio_end_ms": 300.0,
+            "ready": {"type": "ready"},
+            "last_partial": "p1",
+            "final_transcript": "done",
+            "expected_partial_events": 1,
+            "observed_partial_events": 1,
+            "missing_partial_events": 0,
+            "late_partial_events": 0,
+            "late_partial_ratio": 0.0,
+            "partial_revision_count": 0,
+            "partial_transcript_churn_char_mean": None,
+            "partial_transcript_churn_char_p95": None,
+            "partial_transcript_churn_word_mean": None,
+            "partial_transcript_churn_word_p95": None,
+            "bridge": None,
+            "final_event_received": True,
+            "closeout_event_type": "final",
+            "transport": "direct",
+            "source_frame_ms": None,
+            "source_frame_count": None,
+            "aggregation_frame_count": None,
+        }
+
+    monkeypatch.setattr(benchmark, "ManagedServer", FakeManagedServer)
+    monkeypatch.setattr(benchmark, "ProcessPeakRSSMonitor", FakeMonitor)
+    monkeypatch.setattr(benchmark, "benchmark_audio_path", lambda args: benchmark.FIXTURE_PATH)
+    monkeypatch.setattr(benchmark, "resolve_reference_text", lambda args, synthesized=False: None)
+    monkeypatch.setattr(benchmark, "load_audio", lambda path: (np.zeros(8, dtype=np.float32), 4))
+    monkeypatch.setattr(benchmark, "make_wav_bytes", lambda samples, sample_rate: b"wav")
+    monkeypatch.setattr(benchmark, "fetch_service_metadata", fake_fetch_service_metadata)
+    monkeypatch.setattr(benchmark, "run_rest_benchmark", fake_run_rest_benchmark)
+    monkeypatch.setattr(benchmark, "run_ws_benchmark", fake_run_ws_benchmark)
+
+    args = argparse.Namespace(
+        audio_file=None,
+        speech_text=benchmark.DEFAULT_TEXT,
+        reference_text=None,
+        reference_file=None,
+        spawn_server=True,
+        backend="demo",
+        model="demo-v1",
+        sample_count=1,
+        rest_runs=1,
+        chunk_ms=250,
+        partial_interval_chunks=1,
+        partial_window=2.0,
+        max_buffer=None,
+        binary_frames=False,
+        output=None,
+        device="cpu",
+        compute_type="int8",
+        qwen_dtype=None,
+        parakeet_dtype=None,
+        mode="direct",
+        url="http://127.0.0.1:8090",
+        ws_url="ws://127.0.0.1:8090/ws/stream",
+        pipecat_source_frame_ms=20,
+        partial_event_timeout=0.1,
+        request_retries=1,
+        request_retry_delay=0.0,
+    )
+
+    result = asyncio.run(benchmark.async_main(args))
+
+    assert result["environment"]["peak_rss_mb"] == 384.0
+    assert result["environment"]["cpu_utilization_percent"] == 47.5
 
 
 def test_describe_environment_omits_process_rss_without_managed_service_pid(monkeypatch: pytest.MonkeyPatch) -> None:
