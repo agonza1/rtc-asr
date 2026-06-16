@@ -230,6 +230,7 @@ def test_async_main_stops_process_monitor_before_reporting_environment(monkeypat
             "backend": "demo",
             "models": ["demo-v1"],
             "capabilities": {"device": "cpu", "compute_type": "int8"},
+            "preload_enabled": True,
         }
 
     async def fake_run_rest_benchmark(*args, **kwargs) -> dict[str, object]:
@@ -314,6 +315,9 @@ def test_async_main_stops_process_monitor_before_reporting_environment(monkeypat
         compute_type="int8",
         qwen_dtype=None,
         parakeet_dtype=None,
+        preload_model=True,
+        require_preloaded_service=False,
+        simulate_realtime=False,
         mode="direct",
         url="http://127.0.0.1:8090",
         ws_url="ws://127.0.0.1:8090/ws/stream",

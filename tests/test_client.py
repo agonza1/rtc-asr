@@ -186,6 +186,42 @@ def test_async_asr_client_rejects_invalid_optional_window_settings(param_name: s
     asyncio.run(scenario())
 
 
+def test_async_asr_client_invokes_on_sent_callback() -> None:
+    websocket = FakeWebSocket([
+        {
+            'type': 'ready',
+            'backend': 'fake-whisper',
+            'model': 'fixture-adapter',
+            'language': 'en',
+            'sample_rate': 16000,
+            'partial_interval_chunks': 1,
+        },
+        {
+            'type': 'partial',
+            'is_final': False,
+            'chunks_received': 1,
+            'buffered_bytes': 3,
+            'text': 'hel',
+        },
+    ])
+
+    async def fake_connect(_: str) -> FakeWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        client = AsyncASRClient('ws://example.test/ws/stream', connect_fn=fake_connect)
+        await client.start()
+        sent_markers: list[str] = []
+
+        partial_event = await client.send_audio(b'hel', on_sent=lambda: sent_markers.append('sent'))
+        await client.close()
+
+        assert partial_event is not None
+        assert sent_markers == ['sent']
+
+    asyncio.run(scenario())
+
+
 def test_async_asr_client_tolerates_missing_partial_event() -> None:
     class SlowPartialWebSocket(FakeWebSocket):
         def __init__(self) -> None:

@@ -107,6 +107,7 @@ class AsyncASRClient:
         binary: bool | None = None,
         expect_response: bool | None = None,
         response_timeout: float = 0.1,
+        on_sent: Callable[[], None] | None = None,
     ) -> TranscriptEvent | None:
         websocket = self._require_websocket()
         use_binary = self._send_binary_frames if binary is None else binary
@@ -118,6 +119,8 @@ class AsyncASRClient:
                 "audio_data": base64.b64encode(chunk).decode("ascii"),
             }))
         self._chunks_sent += 1
+        if on_sent is not None:
+            on_sent()
 
         if expect_response is None:
             expect_response = self._chunks_sent % self._partial_interval_chunks == 0
