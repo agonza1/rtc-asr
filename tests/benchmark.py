@@ -1165,14 +1165,18 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         final_summary = summarize_latencies(finalization_latencies_all)
         partial_churn_char_summary = summarize_ratio_series(partial_churn_char_all) if partial_churn_char_all else None
         partial_churn_word_summary = summarize_ratio_series(partial_churn_word_all) if partial_churn_word_all else None
+        peak_rss_mb = None
+        cpu_utilization_percent = None
+        if process_rss_monitor is not None:
+            process_rss_monitor.stop()
+            peak_rss_mb = process_rss_monitor.peak_rss_mb
+            cpu_utilization_percent = process_rss_monitor.cpu_utilization_percent
 
         return {
             "environment": describe_environment(
                 service_pid=server.process.pid if server is not None and server.process is not None else None,
-                peak_rss_mb=process_rss_monitor.peak_rss_mb if process_rss_monitor is not None else None,
-                cpu_utilization_percent=(
-                    process_rss_monitor.cpu_utilization_percent if process_rss_monitor is not None else None
-                ),
+                peak_rss_mb=peak_rss_mb,
+                cpu_utilization_percent=cpu_utilization_percent,
             ),
             "benchmark": {
                 "sample_count": sample_count,
