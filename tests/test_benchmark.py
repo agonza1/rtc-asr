@@ -146,14 +146,52 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(benchmark.os, "cpu_count", lambda: 12)
     monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
 
-    payload = benchmark.describe_environment(service_pid=4321, peak_rss_mb=384.0)
+    payload = benchmark.describe_environment(
+        service_pid=4321,
+        peak_rss_mb=384.0,
+        cpu_utilization_percent=47.5,
+    )
 
     assert payload["machine"] == "arm64"
     assert payload["cpu_logical_cores"] == 12
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] == 256.0
     assert payload["peak_rss_mb"] == 384.0
+    assert payload["cpu_utilization_percent"] == 47.5
     assert requested_pids == [4321]
+
+
+def test_process_peak_rss_monitor_tracks_peak_rss_and_average_cpu() -> None:
+    class FakeStopEvent:
+        def __init__(self) -> None:
+            self.wait_calls = 0
+
+        def is_set(self) -> bool:
+            return self.wait_calls >= 3
+
+        def wait(self, _interval: float) -> None:
+            self.wait_calls += 1
+
+    class FakeProcess:
+        def __init__(self) -> None:
+            self.rss_values = iter([128, 256])
+            self.cpu_values = iter([0.0, 20.0, 40.0])
+
+        def memory_info(self) -> SimpleNamespace:
+            return SimpleNamespace(rss=next(self.rss_values) * 1024 * 1024)
+
+        def cpu_percent(self, interval: float | None = None) -> float:
+            assert interval is None
+            return next(self.cpu_values)
+
+    process = FakeProcess()
+    monitor = benchmark.ProcessPeakRSSMonitor(4321, interval_seconds=0.0)
+    monitor._stop_event = FakeStopEvent()
+
+    monitor._run(SimpleNamespace(Process=lambda pid: process if pid == 4321 else None))
+
+    assert monitor.peak_rss_mb == 256.0
+    assert monitor.cpu_utilization_percent == 30.0
 
 
 def test_describe_environment_omits_process_rss_without_managed_service_pid(monkeypatch: pytest.MonkeyPatch) -> None:
