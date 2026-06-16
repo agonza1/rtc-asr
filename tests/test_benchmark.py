@@ -166,16 +166,14 @@ def test_process_peak_rss_monitor_tracks_peak_rss_and_average_cpu() -> None:
         def __init__(self) -> None:
             self.wait_calls = 0
 
-        def is_set(self) -> bool:
-            return self.wait_calls >= 3
-
-        def wait(self, _interval: float) -> None:
+        def wait(self, _interval: float) -> bool:
             self.wait_calls += 1
+            return self.wait_calls >= 3
 
     class FakeProcess:
         def __init__(self) -> None:
-            self.rss_values = iter([128, 256])
-            self.cpu_values = iter([0.0, 20.0, 40.0])
+            self.rss_values = iter([128, 256, 192])
+            self.cpu_values = iter([0.0, 20.0, 40.0, 10.0])
 
         def memory_info(self) -> SimpleNamespace:
             return SimpleNamespace(rss=next(self.rss_values) * 1024 * 1024)
@@ -191,7 +189,34 @@ def test_process_peak_rss_monitor_tracks_peak_rss_and_average_cpu() -> None:
     monitor._run(SimpleNamespace(Process=lambda pid: process if pid == 4321 else None))
 
     assert monitor.peak_rss_mb == 256.0
-    assert monitor.cpu_utilization_percent == 30.0
+    assert monitor.cpu_utilization_percent == 23.3
+
+
+def test_process_peak_rss_monitor_samples_once_when_stop_requested_during_first_wait() -> None:
+    class FakeStopEvent:
+        def wait(self, _interval: float) -> bool:
+            return True
+
+    class FakeProcess:
+        def __init__(self) -> None:
+            self.rss_values = iter([192])
+            self.cpu_values = iter([0.0, 12.5])
+
+        def memory_info(self) -> SimpleNamespace:
+            return SimpleNamespace(rss=next(self.rss_values) * 1024 * 1024)
+
+        def cpu_percent(self, interval: float | None = None) -> float:
+            assert interval is None
+            return next(self.cpu_values)
+
+    process = FakeProcess()
+    monitor = benchmark.ProcessPeakRSSMonitor(4321, interval_seconds=0.05)
+    monitor._stop_event = FakeStopEvent()
+
+    monitor._run(SimpleNamespace(Process=lambda pid: process if pid == 4321 else None))
+
+    assert monitor.peak_rss_mb == 192.0
+    assert monitor.cpu_utilization_percent == 12.5
 
 
 def test_async_main_stops_process_monitor_before_reporting_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -229,6 +254,7 @@ def test_async_main_stops_process_monitor_before_reporting_environment(monkeypat
             "backend": "demo",
             "models": ["demo-v1"],
             "capabilities": {"device": "cpu", "compute_type": "int8"},
+            "preload_enabled": True,
         }
 
     async def fake_run_rest_benchmark(*args, **kwargs) -> dict[str, object]:
@@ -320,6 +346,8 @@ def test_async_main_stops_process_monitor_before_reporting_environment(monkeypat
         partial_event_timeout=0.1,
         request_retries=1,
         request_retry_delay=0.0,
+        preload_model=True,
+        require_preloaded_service=True,
     )
 
     result = asyncio.run(benchmark.async_main(args))

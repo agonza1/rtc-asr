@@ -338,10 +338,8 @@ class ProcessPeakRSSMonitor:
         except Exception:
             return
 
-        while not self._stop_event.is_set():
-            self._stop_event.wait(self.interval_seconds)
-            if self._stop_event.is_set():
-                break
+        while True:
+            stop_requested = self._stop_event.wait(self.interval_seconds)
             try:
                 rss_mb = round(process.memory_info().rss / (1024 * 1024), 1)
                 cpu_percent = float(process.cpu_percent(interval=None))
@@ -350,6 +348,9 @@ class ProcessPeakRSSMonitor:
             if self.peak_rss_mb is None or rss_mb > self.peak_rss_mb:
                 self.peak_rss_mb = rss_mb
             cpu_samples.append(cpu_percent)
+
+            if stop_requested:
+                break
 
         if cpu_samples:
             self.cpu_utilization_percent = round(statistics.mean(cpu_samples), 1)
