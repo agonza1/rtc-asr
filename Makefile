@@ -33,11 +33,12 @@ BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 1
 PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS ?= 8
 BENCHMARK_PARTIAL_WINDOW ?= 2.0
 BENCHMARK_BINARY_FRAMES ?=
-BENCHMARK_PIPECAT_AUDIO_FILE ?= tests/fixtures/smoke.wav
+BENCHMARK_PIPECAT_AUDIO_FILE ?=
 BENCHMARK_PIPECAT_BACKEND ?= faster-whisper
 BENCHMARK_PIPECAT_MODEL ?= base.en
 BENCHMARK_PIPECAT_COMPUTE_TYPE ?= int8
 BENCHMARK_PIPECAT_SOURCE_FRAME_MS ?= 20
+BENCHMARK_PIPECAT_REALTIME_FLAG ?= --simulate-realtime
 BENCHMARK_REQUEST_RETRIES ?= 3
 BENCHMARK_REQUEST_RETRY_DELAY ?= 2.0
 FASTER_WHISPER_BASE_MODEL ?= base.en
@@ -388,8 +389,16 @@ benchmark-all-asr-low-latency-sweep: $(LOW_LATENCY_SWEEP_TARGETS)
 
 benchmark-pipecat-e2e: venv
 	@echo "Running Pipecat-style end-to-end benchmark..."
-	@test -n "$(BENCHMARK_PIPECAT_AUDIO_FILE)" || (echo "Set BENCHMARK_PIPECAT_AUDIO_FILE to a speech clip path." >&2; exit 1)
-	@PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --mode pipecat-e2e --backend $(BENCHMARK_PIPECAT_BACKEND) --model $(BENCHMARK_PIPECAT_MODEL) --compute-type $(BENCHMARK_PIPECAT_COMPUTE_TYPE) --audio-file $(BENCHMARK_PIPECAT_AUDIO_FILE) --sample-count 1 --rest-runs 1 --chunk-ms 100 --pipecat-source-frame-ms $(BENCHMARK_PIPECAT_SOURCE_FRAME_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json
+	@{ \
+		if [ -n "$(BENCHMARK_PIPECAT_AUDIO_FILE)" ]; then \
+			echo "  Using speech clip: $(BENCHMARK_PIPECAT_AUDIO_FILE)"; \
+			audio_flag="--audio-file $(BENCHMARK_PIPECAT_AUDIO_FILE)"; \
+		else \
+			echo "  No BENCHMARK_PIPECAT_AUDIO_FILE set; synthesizing a speech clip via the benchmark harness."; \
+			audio_flag=""; \
+		fi; \
+		PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --mode pipecat-e2e --backend $(BENCHMARK_PIPECAT_BACKEND) --model $(BENCHMARK_PIPECAT_MODEL) --compute-type $(BENCHMARK_PIPECAT_COMPUTE_TYPE) $$audio_flag --sample-count 1 --rest-runs 1 --chunk-ms 100 --pipecat-source-frame-ms $(BENCHMARK_PIPECAT_SOURCE_FRAME_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_PIPECAT_REALTIME_FLAG) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json; \
+	}
 
 benchmark-parakeet-mlx: mlx-venv
 	@echo "Benchmarking $(PARAKEET_MLX_MODEL) with parakeet-mlx on Apple Silicon..."

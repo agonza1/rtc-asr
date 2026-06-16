@@ -5,6 +5,7 @@ import asyncio
 import importlib.util
 import json
 import sys
+from itertools import chain, repeat
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -282,6 +283,7 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "benchmark-parakeet-mlx-110m:" in makefile
     assert "benchmark-parakeet-mlx-service: mlx-venv" in makefile
     assert "benchmark-parakeet-mlx-service-110m:" in makefile
+    assert "BENCHMARK_PIPECAT_REALTIME_FLAG ?= --simulate-realtime" in makefile
     assert "benchmark-pipecat-e2e: venv" in makefile
     assert "$(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json" in makefile
     assert '$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx psutil' in makefile
@@ -305,6 +307,21 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
         assert "--sample-count $(BENCHMARK_SAMPLE_COUNT)" in line
         assert "--request-retries $(BENCHMARK_REQUEST_RETRIES)" in line
         assert "--request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY)" in line
+
+
+def test_makefile_pipecat_target_synthesizes_speech_when_no_audio_file_is_configured() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    block = makefile.split("benchmark-pipecat-e2e: venv\n", 1)[1].split("\n\n", 1)[0]
+
+    assert "BENCHMARK_PIPECAT_AUDIO_FILE ?=" in makefile
+    assert "BENCHMARK_PIPECAT_REALTIME_FLAG ?= --simulate-realtime" in makefile
+    assert 'echo "  No BENCHMARK_PIPECAT_AUDIO_FILE set; synthesizing a speech clip via the benchmark harness."' in block
+    assert 'audio_flag="";' in block
+    assert 'echo "  Using speech clip: $(BENCHMARK_PIPECAT_AUDIO_FILE)";' in block
+    assert 'Set BENCHMARK_PIPECAT_AUDIO_FILE to a speech clip path.' not in block
+    assert '$$audio_flag' in block
+    assert '$(BENCHMARK_PIPECAT_REALTIME_FLAG)' in block
 
 
 def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
@@ -559,9 +576,9 @@ def test_run_ws_benchmark_reports_first_partial_and_gap_metrics(monkeypatch: pyt
         assert result["partial_end_to_end_ms"] == [300.0, 580.0]
         assert result["first_partial_audio_ms"] == 250
         assert result["first_partial_end_to_end_ms"] == 300.0
-        assert result["partial_gap_ms"] == [280.0]
-        assert result["partial_gap_mean_ms"] == 280.0
-        assert result["partial_gap_p95_ms"] == 280.0
+        assert result["partial_gap_ms"] == [1030.0]
+        assert result["partial_gap_mean_ms"] == 1030.0
+        assert result["partial_gap_p95_ms"] == 1030.0
         assert result["time_to_final_from_audio_end_ms"] == 1100.0
 
     asyncio.run(scenario())
@@ -595,7 +612,7 @@ def test_run_ws_benchmark_keeps_partial_end_to_end_monotonic_under_backlog(monke
 
         assert result["partial_audio_offsets_ms"] == [250, 500]
         assert result["partial_end_to_end_ms"] == [2750.0, 2770.0]
-        assert result["partial_gap_ms"] == [20.0]
+        assert result["partial_gap_ms"] == [520.0]
         assert result["first_partial_end_to_end_ms"] == 2750.0
 
     asyncio.run(scenario())
@@ -806,6 +823,117 @@ def test_run_ws_benchmark_records_late_partial_before_final(monkeypatch: pytest.
     asyncio.run(scenario())
 
 
+def test_run_pipecat_e2e_benchmark_simulates_realtime_frame_pacing(monkeypatch: pytest.MonkeyPatch) -> None:
+    sent_at: list[float] = []
+    sleep_calls: list[float] = []
+    clock = {"now": 0.0}
+
+    class FakeEvent:
+        def __init__(self, event_type: str, text: str) -> None:
+            self.type = event_type
+            self.text = text
+
+    class FakePipecatClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.ws_url = ws_url
+            self.connect_fn = connect_fn
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            return {"type": "ready", "stream_id": 9, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1, on_sent=None):
+            sent_at.append(round(clock["now"], 3))
+            if on_sent is not None:
+                on_sent()
+            return FakeEvent("partial", f"chunk-{len(sent_at)}")
+
+        async def stop(self) -> FakeEvent:
+            return FakeEvent("final", "done")
+
+        async def close(self) -> None:
+            return None
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(round(delay, 3))
+        clock["now"] += delay
+
+    monkeypatch.setattr(benchmark, "AsyncASRClient", FakePipecatClient)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: clock["now"])
+
+    async def scenario() -> None:
+        result = await benchmark.run_pipecat_e2e_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcdefgh",
+            8,
+            250,
+            source_frame_ms=125,
+            partial_interval_chunks=1,
+            simulate_realtime=True,
+            sleep_fn=fake_sleep,
+        )
+
+        assert sleep_calls == [0.125, 0.125, 0.125, 0.125]
+        assert sent_at == [0.25, 0.5]
+        assert result["simulate_realtime"] is True
+        assert result["bridge"]["simulate_realtime"] is True
+        assert result["partial_audio_offsets_ms"] == [250.0, 500.0]
+        assert result["partial_end_to_end_ms"] == [250.0, 500.0]
+        assert result["time_to_final_from_audio_end_ms"] == 0.0
+
+    asyncio.run(scenario())
+
+
+def test_run_pipecat_e2e_benchmark_marks_audio_end_when_last_chunk_is_sent(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = {"now": 0.0}
+
+    class FakeEvent:
+        def __init__(self, event_type: str, text: str) -> None:
+            self.type = event_type
+            self.text = text
+
+    class FakePipecatClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.ws_url = ws_url
+            self.connect_fn = connect_fn
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            return {"type": "ready", "stream_id": 9, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1, on_sent=None):
+            if on_sent is not None:
+                on_sent()
+            clock["now"] += 0.4
+            return None
+
+        async def _recv_json_with_timeout(self, timeout: float):
+            return None
+
+        async def stop(self) -> FakeEvent:
+            return FakeEvent("final", "done")
+
+        async def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(benchmark, "AsyncASRClient", FakePipecatClient)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: clock["now"])
+
+    async def scenario() -> None:
+        result = await benchmark.run_pipecat_e2e_benchmark(
+            "ws://example.test/ws/stream",
+            b"abcd",
+            4,
+            250,
+            source_frame_ms=125,
+            partial_interval_chunks=1,
+            partial_event_timeout_seconds=0.1,
+        )
+
+        assert result["time_to_final_from_audio_end_ms"] == 400.0
+        assert result["final_ms"] == 0.0
+
+    asyncio.run(scenario())
+
+
 def test_run_pipecat_e2e_benchmark_aggregates_source_frames_and_reports_end_to_end_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
     sent_chunks: list[bytes] = []
 
@@ -825,9 +953,11 @@ def test_run_pipecat_e2e_benchmark_aggregates_source_frames_and_reports_end_to_e
             assert kwargs["partial_window_seconds"] == 1.5
             return {"type": "ready", "stream_id": 9, **kwargs}
 
-        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1):
+        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1, on_sent=None):
             assert response_timeout == 0.5
             sent_chunks.append(chunk)
+            if on_sent is not None:
+                on_sent()
             if len(sent_chunks) == 1:
                 return None
             if len(sent_chunks) == 2:
@@ -840,7 +970,7 @@ def test_run_pipecat_e2e_benchmark_aggregates_source_frames_and_reports_end_to_e
         async def close(self) -> None:
             return None
 
-    perf_values = iter([1.0, 2.0, 2.03, 3.0, 3.0, 3.02, 4.0, 4.2])
+    perf_values = iter(chain([1.0, 1.0, 2.0, 2.03, 3.0, 3.0, 3.02, 4.0, 4.2], repeat(4.2)))
     monkeypatch.setattr(benchmark, "AsyncASRClient", FakePipecatClient)
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
@@ -862,8 +992,9 @@ def test_run_pipecat_e2e_benchmark_aggregates_source_frames_and_reports_end_to_e
         assert result["source_frame_count"] == 6
         assert result["aggregation_frame_count"] == 2
         assert result["partial_audio_offsets_ms"] == [400.0, 600.0]
-        assert result["partial_end_to_end_ms"] == [430.0, 620.0]
-        assert result["partial_gap_ms"] == [190.0]
+        assert result["partial_end_to_end_ms"] == [1370.0, 2550.0]
+        assert result["partial_gap_ms"] == [1200.0]
+        assert result["time_to_final_from_audio_end_ms"] == 200.0
         assert result["expected_partial_events"] == 3
         assert result["observed_partial_events"] == 2
         assert result["missing_partial_events"] == 1
@@ -890,9 +1021,11 @@ def test_run_pipecat_e2e_benchmark_counts_stale_send_audio_partial(monkeypatch: 
         async def start(self, **kwargs: object) -> dict[str, object]:
             return {"type": "ready", "stream_id": 9, **kwargs}
 
-        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1):
+        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1, on_sent=None):
             assert response_timeout == 0.5
             sent_chunks.append(chunk)
+            if on_sent is not None:
+                on_sent()
             if len(sent_chunks) == 1:
                 return None
             if len(sent_chunks) == 2:
@@ -909,7 +1042,7 @@ def test_run_pipecat_e2e_benchmark_counts_stale_send_audio_partial(monkeypatch: 
         async def close(self) -> None:
             return None
 
-    perf_values = iter([1.0, 1.05, 1.55, 2.0, 2.1, 2.2, 3.0, 3.02, 3.52, 4.0, 4.2])
+    perf_values = iter(chain([1.0, 1.0, 1.05, 1.55, 2.0, 2.1, 2.2, 3.0, 3.02, 3.52, 4.0, 4.2], repeat(4.2)))
     monkeypatch.setattr(benchmark, "AsyncASRClient", FakePipecatClient)
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
@@ -931,6 +1064,8 @@ def test_run_pipecat_e2e_benchmark_counts_stale_send_audio_partial(monkeypatch: 
         assert result["late_partial_ratio"] == 1.0
         assert result["partial_audio_offsets_ms"] == [200.0]
         assert result["last_partial"] == "stale"
+        assert result["time_to_final_from_audio_end_ms"] == 680.0
+        assert result["final_ms"] == 0.0
         assert result["final_transcript"] == "done"
 
     asyncio.run(scenario())
@@ -953,8 +1088,10 @@ def test_run_pipecat_e2e_benchmark_ignores_chunkless_send_audio_partial_for_late
         async def start(self, **kwargs: object) -> dict[str, object]:
             return {"type": "ready", "stream_id": 9, **kwargs}
 
-        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1):
+        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1, on_sent=None):
             sent_chunks.append(chunk)
+            if on_sent is not None:
+                on_sent()
             if len(sent_chunks) == 1:
                 return FakeEvent("partial", "legacy partial")
             return None
@@ -969,7 +1106,7 @@ def test_run_pipecat_e2e_benchmark_ignores_chunkless_send_audio_partial_for_late
         async def close(self) -> None:
             return None
 
-    perf_values = iter([1.0, 1.01, 2.0, 2.1, 3.0, 3.2, 4.0, 4.2])
+    perf_values = iter(chain([1.0, 1.0, 1.01, 2.0, 2.1, 3.0, 3.2, 4.0, 4.2], repeat(4.2)))
     monkeypatch.setattr(benchmark, "AsyncASRClient", FakePipecatClient)
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
@@ -990,6 +1127,8 @@ def test_run_pipecat_e2e_benchmark_ignores_chunkless_send_audio_partial_for_late
         assert result["late_partial_events"] == 0
         assert result["late_partial_ratio"] == 0.0
         assert result["last_partial"] == "legacy partial"
+        assert result["time_to_final_from_audio_end_ms"] == 1200.0
+        assert result["final_ms"] == 0.0
         assert result["final_transcript"] == "done"
 
     asyncio.run(scenario())
@@ -1013,8 +1152,10 @@ def test_run_pipecat_e2e_benchmark_ignores_chunkless_drained_partial_for_latenes
         async def start(self, **kwargs: object) -> dict[str, object]:
             return {"type": "ready", "stream_id": 9, **kwargs}
 
-        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1):
+        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1, on_sent=None):
             sent_chunks.append(chunk)
+            if on_sent is not None:
+                on_sent()
             return None
 
         async def _recv_json_with_timeout(self, timeout: float):
@@ -1029,7 +1170,7 @@ def test_run_pipecat_e2e_benchmark_ignores_chunkless_drained_partial_for_latenes
         async def close(self) -> None:
             return None
 
-    perf_values = iter([1.0, 1.01, 1.1, 1.2, 1.25, 2.0, 2.01, 2.1, 2.2, 3.0])
+    perf_values = iter(chain([1.0, 1.0, 1.01, 1.1, 1.2, 1.25, 2.0, 2.01, 2.1, 2.2, 3.0], repeat(3.0)))
     monkeypatch.setattr(benchmark, "AsyncASRClient", FakePipecatClient)
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
@@ -1050,6 +1191,8 @@ def test_run_pipecat_e2e_benchmark_ignores_chunkless_drained_partial_for_latenes
         assert result["late_partial_events"] == 0
         assert result["late_partial_ratio"] == 0.0
         assert result["last_partial"] == "legacy partial"
+        assert result["time_to_final_from_audio_end_ms"] == 990.0
+        assert result["final_ms"] == 0.0
         assert result["final_transcript"] == "done"
 
     asyncio.run(scenario())
@@ -1095,9 +1238,11 @@ def test_run_pipecat_e2e_benchmark_records_late_partial_before_final(monkeypatch
         async def start(self, **kwargs: object) -> dict[str, object]:
             return {"type": "ready", "stream_id": 9, **kwargs}
 
-        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1):
+        async def send_audio(self, chunk: bytes, *, response_timeout: float = 0.1, on_sent=None):
             assert response_timeout == 0.5
             sent_chunks.append(chunk)
+            if on_sent is not None:
+                on_sent()
             if len(sent_chunks) == 1:
                 return FakeEvent("partial", "first", chunks_received=1)
             return None
@@ -1115,7 +1260,7 @@ def test_run_pipecat_e2e_benchmark_records_late_partial_before_final(monkeypatch
         async def close(self) -> None:
             return None
 
-    perf_values = iter([1.0, 1.02, 2.0, 2.01, 2.02, 2.03, 2.1, 2.15, 3.0])
+    perf_values = iter(chain([1.0, 1.0, 1.02, 2.0, 2.01, 2.02, 2.03, 2.1, 2.15, 3.0], repeat(3.0)))
     monkeypatch.setattr(benchmark, "AsyncASRClient", FakePipecatClient)
     monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
 
@@ -1135,8 +1280,11 @@ def test_run_pipecat_e2e_benchmark_records_late_partial_before_final(monkeypatch
         assert result["missing_partial_events"] == 0
         assert result["late_partial_events"] == 0
         assert result["partial_audio_offsets_ms"] == [250.0, 500.0]
-        assert result["partial_end_to_end_ms"] == [270.0, 650.0]
+        assert result["partial_end_to_end_ms"] == [1250.0, 2240.0]
+        assert result["partial_gap_ms"] == [1000.0]
         assert result["last_partial"] == "late"
+        assert result["time_to_final_from_audio_end_ms"] == 980.0
+        assert result["final_ms"] == 850.0
         assert result["final_transcript"] == "done"
 
     asyncio.run(scenario())
@@ -1443,11 +1591,66 @@ def test_async_main_summarizes_final_metric_from_audio_end_delay(monkeypatch: py
 
     result = asyncio.run(benchmark.async_main(args))
 
+    assert result["streaming"]["live_metrics_comparable"] is False
+    assert result["streaming"]["partial_latencies_ms"] == [20.0, 30.0]
+    assert result["streaming"]["partial_mean_ms"] is None
     assert result["streaming"]["final_latencies_ms"] == [1100.0, 1500.0]
     assert result["streaming"]["stop_to_final_latencies_ms"] == [200.0, 300.0]
-    assert result["streaming"]["time_to_final_from_audio_end_mean_ms"] == 1300.0
-    assert result["streaming"]["final_mean_ms"] == 1300.0
-    assert result["streaming"]["final_p95_ms"] == 1500.0
+    assert result["streaming"]["time_to_final_from_audio_end_mean_ms"] is None
+    assert result["streaming"]["final_mean_ms"] is None
+    assert result["streaming"]["final_p95_ms"] is None
+    assert result["streaming"]["stop_to_final_mean_ms"] == 250.0
+    assert result["streaming"]["stop_to_final_p95_ms"] == 300.0
+
+
+def test_async_main_requires_explicit_preloaded_service_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_fetch_service_metadata(_: str) -> dict[str, object]:
+        return {
+            "backend": "demo",
+            "models": ["demo-v1"],
+            "capabilities": {"device": "cpu", "compute_type": "int8"},
+        }
+
+    monkeypatch.setattr(benchmark, "benchmark_audio_path", lambda args: benchmark.FIXTURE_PATH)
+    monkeypatch.setattr(benchmark, "resolve_reference_text", lambda args, synthesized=False: None)
+    monkeypatch.setattr(benchmark, "load_audio", lambda path: (np.zeros(8, dtype=np.float32), 4))
+    monkeypatch.setattr(benchmark, "make_wav_bytes", lambda samples, sample_rate: b"wav")
+    monkeypatch.setattr(benchmark, "fetch_service_metadata", fake_fetch_service_metadata)
+
+    args = argparse.Namespace(
+        audio_file=None,
+        speech_text=benchmark.DEFAULT_TEXT,
+        reference_text=None,
+        reference_file=None,
+        spawn_server=False,
+        backend="demo",
+        model="demo-v1",
+        sample_count=1,
+        rest_runs=1,
+        chunk_ms=250,
+        partial_interval_chunks=1,
+        partial_window=2.0,
+        max_buffer=None,
+        binary_frames=False,
+        output=None,
+        device="cpu",
+        compute_type="int8",
+        qwen_dtype=None,
+        parakeet_dtype=None,
+        mode="direct",
+        url="http://127.0.0.1:8090",
+        ws_url="ws://127.0.0.1:8090/ws/stream",
+        pipecat_source_frame_ms=20,
+        simulate_realtime=True,
+        partial_event_timeout=0.1,
+        request_retries=1,
+        request_retry_delay=0.0,
+        preload_model=True,
+        require_preloaded_service=True,
+    )
+
+    with pytest.raises(RuntimeError, match="must report preload_enabled=true"):
+        asyncio.run(benchmark.async_main(args))
 
 
 def test_async_main_uses_service_model_id_and_parakeet_mlx_dtype(monkeypatch: pytest.MonkeyPatch) -> None:

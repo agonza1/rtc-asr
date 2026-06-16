@@ -64,6 +64,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark the realtime ASR service")
     preload_group = parser.add_mutually_exclusive_group()
     require_preloaded_group = parser.add_mutually_exclusive_group()
+    simulate_realtime_group = parser.add_mutually_exclusive_group()
     parser.add_argument(
         "--mode",
         choices=("direct", "pipecat-e2e"),
@@ -116,6 +117,18 @@ def parse_args() -> argparse.Namespace:
         default=20,
         help="Pipecat-style source frame duration in milliseconds before bridge aggregation",
     )
+    simulate_realtime_group.add_argument(
+        "--simulate-realtime",
+        dest="simulate_realtime",
+        action="store_true",
+        help="Pace Pipecat source frames against wall clock time so streaming metrics reflect live speech cadence (default)",
+    )
+    simulate_realtime_group.add_argument(
+        "--no-simulate-realtime",
+        dest="simulate_realtime",
+        action="store_false",
+        help="Send Pipecat source frames as fast as possible for stress or catch-up measurements",
+    )
     require_preloaded_group.add_argument(
         "--require-preloaded-service",
         dest="require_preloaded_service",
@@ -129,7 +142,7 @@ def parse_args() -> argparse.Namespace:
         help="Allow benchmarking an external service even when it reports preload_enabled=false",
     )
     parser.add_argument("--output", type=Path, help="Optional path for the benchmark JSON artifact")
-    parser.set_defaults(preload_model=True, require_preloaded_service=True)
+    parser.set_defaults(preload_model=True, require_preloaded_service=True, simulate_realtime=True)
     return parser.parse_args()
 
 
@@ -618,7 +631,9 @@ async def run_ws_benchmark(
     partial_latencies = []
     partial_audio_offsets_ms = []
     partial_end_to_end_ms = []
+    partial_gap_ms: list[float] = []
     last_partial_visible_ms = 0.0
+    last_recorded_partial_received_at: float | None = None
     partial_text = ""
     partial_texts: list[str] = []
     late_partial_events = 0
@@ -632,7 +647,7 @@ async def run_ws_benchmark(
         *,
         fallback_chunk_index: int,
     ) -> int | None:
-        nonlocal last_partial_visible_ms, partial_text
+        nonlocal last_partial_visible_ms, last_recorded_partial_received_at, partial_text
 
         chunk_index = event.get("chunks_received")
         if not isinstance(chunk_index, int) or isinstance(chunk_index, bool) or chunk_index < 1:
@@ -653,7 +668,10 @@ async def run_ws_benchmark(
         visible_elapsed_ms = max(audio_offset_ms, last_partial_visible_ms) + response_latency_ms
         visible_elapsed_ms = round(visible_elapsed_ms, 1)
         partial_end_to_end_ms.append(visible_elapsed_ms)
+        if last_recorded_partial_received_at is not None:
+            partial_gap_ms.append(round((received_at - last_recorded_partial_received_at) * 1000, 1))
         last_partial_visible_ms = visible_elapsed_ms
+        last_recorded_partial_received_at = received_at
         recorded_partial_chunks.add(chunk_index)
         return chunk_index
 
@@ -735,10 +753,6 @@ async def run_ws_benchmark(
             break
         final_ms = (final_received_at - stop_started_at) * 1000
         time_to_final_from_audio_end_ms = (final_received_at - (audio_finished_at or stop_started_at)) * 1000
-    partial_gap_ms = [
-        round(current - previous, 1)
-        for previous, current in zip(partial_end_to_end_ms, partial_end_to_end_ms[1:])
-    ]
     partial_summary = {
         "partial_mean_ms": round(statistics.mean(partial_latencies), 1) if partial_latencies else None,
         "partial_p95_ms": round(percentile(partial_latencies, 0.95), 1) if partial_latencies else None,
@@ -789,38 +803,30 @@ async def run_pipecat_e2e_benchmark(
     partial_window_seconds: float | None = None,
     max_buffer_seconds: float | None = None,
     partial_event_timeout_seconds: float = 0.1,
+    simulate_realtime: bool = False,
+    sleep_fn=None,
     connect_fn=None,
 ) -> dict[str, object]:
     source_frames = chunk_pcm(raw_pcm, sample_rate, source_frame_ms)
     aggregation_bytes = pcm_chunk_size(sample_rate, chunk_ms)
-    chunks: list[bytes] = []
-    chunk_audio_offsets_ms: list[float] = []
-    buffer = bytearray()
-    source_audio_ms = 0.0
     total_audio_ms = round((len(raw_pcm) / max(sample_rate * 2, 1)) * 1000, 1)
-    for frame in source_frames:
-        buffer.extend(frame)
-        source_audio_ms = min(round(source_audio_ms + source_frame_ms, 1), total_audio_ms)
-        if len(buffer) < aggregation_bytes:
-            continue
-        chunks.append(bytes(buffer))
-        chunk_audio_offsets_ms.append(source_audio_ms)
-        buffer.clear()
-    if buffer:
-        chunks.append(bytes(buffer))
-        chunk_audio_offsets_ms.append(total_audio_ms)
+    sleep = sleep_fn or asyncio.sleep
 
     partial_latencies = []
     partial_audio_offsets_ms = []
     partial_end_to_end_ms = []
     partial_gap_ms: list[float] = []
+    chunk_audio_offsets_ms: list[float] = []
     last_partial_visible_ms = 0.0
+    last_recorded_partial_received_at: float | None = None
     last_partial_text = ""
     partial_texts: list[str] = []
     observed_partial_events = 0
     late_partial_events = 0
     pending_partial_started_at: dict[int, float] = {}
     recorded_partial_chunks: set[int] = set()
+    chunk_count = 0
+    source_audio_ms = 0.0
 
     def record_partial_event(
         event: TranscriptEvent,
@@ -828,7 +834,7 @@ async def run_pipecat_e2e_benchmark(
         *,
         fallback_chunk_index: int,
     ) -> int | None:
-        nonlocal last_partial_visible_ms, last_partial_text, observed_partial_events
+        nonlocal last_partial_visible_ms, last_recorded_partial_received_at, last_partial_text, observed_partial_events
 
         chunk_index = getattr(event, "chunks_received", 0)
         if chunk_index < 1:
@@ -849,9 +855,10 @@ async def run_pipecat_e2e_benchmark(
         partial_latencies.append(response_latency_ms)
         partial_audio_offsets_ms.append(audio_offset_ms)
         partial_end_to_end_ms.append(visible_elapsed_ms)
-        if len(partial_end_to_end_ms) > 1:
-            partial_gap_ms.append(round(partial_end_to_end_ms[-1] - partial_end_to_end_ms[-2], 1))
+        if last_recorded_partial_received_at is not None:
+            partial_gap_ms.append(round((received_at - last_recorded_partial_received_at) * 1000, 1))
         last_partial_visible_ms = visible_elapsed_ms
+        last_recorded_partial_received_at = received_at
         observed_partial_events += 1
         recorded_partial_chunks.add(chunk_index)
         return chunk_index
@@ -895,14 +902,41 @@ async def run_pipecat_e2e_benchmark(
     final_event = None
     audio_finished_at: float | None = None
     try:
-        for chunk_index, chunk in enumerate(chunks, start=1):
+        stream_started_at = time.perf_counter()
+        buffer = bytearray()
+        for frame_index, frame in enumerate(source_frames, start=1):
+            if simulate_realtime:
+                target_elapsed_s = (frame_index * source_frame_ms) / 1000.0
+                delay_s = target_elapsed_s - (time.perf_counter() - stream_started_at)
+                if delay_s > 0:
+                    await sleep(delay_s)
+            buffer.extend(frame)
+            source_audio_ms = min(round(source_audio_ms + source_frame_ms, 1), total_audio_ms)
+            if len(buffer) < aggregation_bytes and frame_index != len(source_frames):
+                continue
+
+            chunk = bytes(buffer)
+            buffer.clear()
+            chunk_count += 1
+            chunk_index = chunk_count
+            chunk_audio_offsets_ms.append(source_audio_ms)
             started = time.perf_counter()
-            partial_event = await client.send_audio(chunk, response_timeout=partial_event_timeout_seconds)
-            if chunk_index == len(chunks):
-                audio_finished_at = time.perf_counter()
+            sent_at: float | None = None
+
+            def mark_sent() -> None:
+                nonlocal sent_at
+                sent_at = time.perf_counter()
+
+            partial_event = await client.send_audio(
+                chunk,
+                response_timeout=partial_event_timeout_seconds,
+                on_sent=mark_sent,
+            )
+            pending_partial_started_at[chunk_index] = started
+            if frame_index == len(source_frames):
+                audio_finished_at = sent_at if sent_at is not None else time.perf_counter()
             if chunk_index % partial_interval_chunks != 0:
                 continue
-            pending_partial_started_at[chunk_index] = started
             if partial_event is None:
                 if hasattr(client, "_recv_json_with_timeout"):
                     await collect_partial_events(chunk_index)
@@ -925,7 +959,7 @@ async def run_pipecat_e2e_benchmark(
                 event = TranscriptEvent.from_payload(await client._recv_json(allow_error=True))
                 received_at = time.perf_counter()
                 if event.type == "partial":
-                    fallback_chunk_index = event.chunks_received if event.chunks_received > 0 else len(chunks)
+                    fallback_chunk_index = event.chunks_received if event.chunks_received > 0 else chunk_count
                     record_partial_event(event, received_at, fallback_chunk_index=fallback_chunk_index)
                     continue
                 final_event = event
@@ -950,14 +984,15 @@ async def run_pipecat_e2e_benchmark(
         "partial_gap_p95_ms": round(percentile(partial_gap_ms, 0.95), 1) if partial_gap_ms else None,
     }
     partial_churn = summarize_partial_churn(partial_texts)
-    expected_partial_events = len(chunks) // partial_interval_chunks
+    expected_partial_events = chunk_count // partial_interval_chunks
     return {
-        "chunks": len(chunks),
+        "chunks": chunk_count,
         "chunk_ms": chunk_ms,
         "binary_frames": send_binary_frames,
         "transport": "pipecat-e2e",
         "source_frame_ms": source_frame_ms,
         "source_frame_count": len(source_frames),
+        "simulate_realtime": simulate_realtime,
         "aggregation_frame_count": max(int(round(chunk_ms / max(source_frame_ms, 1))), 1),
         "partial_latencies_ms": [round(value, 1) for value in partial_latencies],
         "partial_audio_offsets_ms": partial_audio_offsets_ms,
@@ -978,9 +1013,10 @@ async def run_pipecat_e2e_benchmark(
         "bridge": {
             "source_frame_ms": source_frame_ms,
             "source_frame_count": len(source_frames),
-            "chunk_count": len(chunks),
+            "chunk_count": chunk_count,
             "aggregation_frame_count": max(int(round(chunk_ms / max(source_frame_ms, 1))), 1),
             "source_frames_dropped": 0,
+            "simulate_realtime": simulate_realtime,
         },
         "final_event_received": final_event is not None and final_event.type == "final",
         "closeout_event_type": None if final_event is None else final_event.type,
@@ -1018,9 +1054,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 process_rss_monitor.start()
         service = await fetch_service_metadata(args.url)
         preload_enabled = service_preload_enabled(service)
-        if args.require_preloaded_service and preload_enabled is False:
+        if args.require_preloaded_service and preload_enabled is not True:
             raise RuntimeError(
-                "Benchmark target reports preload_enabled=false. Restart the service with ASR_PRELOAD_MODEL=true "
+                "Benchmark target must report preload_enabled=true. Restart the service with ASR_PRELOAD_MODEL=true "
                 "or rerun with --allow-unpreloaded-service if you intentionally want a cold-path measurement."
             )
         if server is not None and args.preload_model and preload_enabled is not True:
@@ -1067,6 +1103,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                     partial_window_seconds=args.partial_window,
                     max_buffer_seconds=args.max_buffer,
                     partial_event_timeout_seconds=args.partial_event_timeout,
+                    simulate_realtime=args.simulate_realtime,
                 )
             else:
                 ws = await run_ws_benchmark(
@@ -1121,6 +1158,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "source_frame_count": ws.get("source_frame_count"),
                 "aggregation_frame_count": ws.get("aggregation_frame_count"),
                 "binary_frames": ws["binary_frames"],
+                "simulate_realtime": ws.get("simulate_realtime"),
                 "partial_mean_ms": ws["partial_mean_ms"],
                 "partial_p90_ms": ws["partial_p90_ms"],
                 "partial_p95_ms": ws["partial_p95_ms"],
@@ -1197,6 +1235,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         first_partial_summary = summarize_latencies(first_partial_end_to_end_all) if first_partial_end_to_end_all else None
         partial_gap_summary = summarize_latencies(partial_gap_all) if partial_gap_all else None
         final_summary = summarize_latencies(finalization_latencies_all)
+        stop_to_final_summary = summarize_latencies(final_latencies_all)
+        live_streaming_metrics_comparable = args.mode == "pipecat-e2e" and getattr(args, "simulate_realtime", False)
         partial_churn_char_summary = summarize_ratio_series(partial_churn_char_all) if partial_churn_char_all else None
         partial_churn_word_summary = summarize_ratio_series(partial_churn_word_all) if partial_churn_word_all else None
 
@@ -1213,6 +1253,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "partial_interval_chunks": args.partial_interval_chunks,
                 "binary_frames": args.binary_frames,
                 "source_frame_ms": args.pipecat_source_frame_ms if args.mode == "pipecat-e2e" else None,
+                "simulate_realtime": args.simulate_realtime if args.mode == "pipecat-e2e" else None,
                 "partial_window_seconds": args.partial_window,
                 "max_buffer_seconds": args.max_buffer,
                 "partial_event_timeout_seconds": args.partial_event_timeout,
@@ -1229,6 +1270,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "source_frame_ms": args.pipecat_source_frame_ms if args.mode == "pipecat-e2e" else None,
                 "bridge_chunk_ms": args.chunk_ms if args.mode == "pipecat-e2e" else None,
                 "send_binary_frames": args.binary_frames if args.mode == "pipecat-e2e" else None,
+                "simulate_realtime": args.simulate_realtime if args.mode == "pipecat-e2e" else None,
             } if args.mode == "pipecat-e2e" else None,
             "audio": {
                 "path": str(audio_path),
@@ -1265,38 +1307,45 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "partial_interval_chunks": args.partial_interval_chunks,
                 "binary_frames": args.binary_frames,
                 "source_frame_ms": args.pipecat_source_frame_ms if args.mode == "pipecat-e2e" else None,
+                "simulate_realtime": args.simulate_realtime if args.mode == "pipecat-e2e" else None,
                 "partial_window_seconds": args.partial_window,
                 "max_buffer_seconds": args.max_buffer,
                 "partial_event_timeout_seconds": args.partial_event_timeout,
                 "request_retries": args.request_retries,
                 "request_retry_delay": args.request_retry_delay,
+                "live_metrics_comparable": live_streaming_metrics_comparable,
                 "partial_latencies_ms": [round(value, 1) for value in partial_latencies_all],
                 "first_partial_end_to_end_latencies_ms": [round(value, 1) for value in first_partial_end_to_end_all],
                 "partial_gap_latencies_ms": [round(value, 1) for value in partial_gap_all],
                 "final_latencies_ms": [round(value, 1) for value in finalization_latencies_all],
                 "stop_to_final_latencies_ms": [round(value, 1) for value in final_latencies_all],
                 "binary_frames": args.binary_frames,
-                "partial_mean_ms": streaming_summary["mean_ms"] if streaming_summary else None,
-                "partial_p90_ms": streaming_summary["p90_ms"] if streaming_summary else None,
-                "partial_p95_ms": streaming_summary["p95_ms"] if streaming_summary else None,
-                "partial_min_ms": streaming_summary["min_ms"] if streaming_summary else None,
-                "partial_max_ms": streaming_summary["max_ms"] if streaming_summary else None,
-                "first_partial_end_to_end_mean_ms": first_partial_summary["mean_ms"] if first_partial_summary else None,
-                "first_partial_end_to_end_p90_ms": first_partial_summary["p90_ms"] if first_partial_summary else None,
-                "first_partial_end_to_end_p95_ms": first_partial_summary["p95_ms"] if first_partial_summary else None,
-                "partial_gap_mean_ms": partial_gap_summary["mean_ms"] if partial_gap_summary else None,
-                "partial_gap_p90_ms": partial_gap_summary["p90_ms"] if partial_gap_summary else None,
-                "partial_gap_p95_ms": partial_gap_summary["p95_ms"] if partial_gap_summary else None,
-                "time_to_final_from_audio_end_mean_ms": final_summary["mean_ms"],
-                "time_to_final_from_audio_end_p90_ms": final_summary["p90_ms"],
-                "time_to_final_from_audio_end_p95_ms": final_summary["p95_ms"],
-                "time_to_final_from_audio_end_min_ms": final_summary["min_ms"],
-                "time_to_final_from_audio_end_max_ms": final_summary["max_ms"],
-                "final_mean_ms": final_summary["mean_ms"],
-                "final_p90_ms": final_summary["p90_ms"],
-                "final_p95_ms": final_summary["p95_ms"],
-                "final_min_ms": final_summary["min_ms"],
-                "final_max_ms": final_summary["max_ms"],
+                "partial_mean_ms": streaming_summary["mean_ms"] if live_streaming_metrics_comparable and streaming_summary else None,
+                "partial_p90_ms": streaming_summary["p90_ms"] if live_streaming_metrics_comparable and streaming_summary else None,
+                "partial_p95_ms": streaming_summary["p95_ms"] if live_streaming_metrics_comparable and streaming_summary else None,
+                "partial_min_ms": streaming_summary["min_ms"] if live_streaming_metrics_comparable and streaming_summary else None,
+                "partial_max_ms": streaming_summary["max_ms"] if live_streaming_metrics_comparable and streaming_summary else None,
+                "first_partial_end_to_end_mean_ms": first_partial_summary["mean_ms"] if live_streaming_metrics_comparable and first_partial_summary else None,
+                "first_partial_end_to_end_p90_ms": first_partial_summary["p90_ms"] if live_streaming_metrics_comparable and first_partial_summary else None,
+                "first_partial_end_to_end_p95_ms": first_partial_summary["p95_ms"] if live_streaming_metrics_comparable and first_partial_summary else None,
+                "partial_gap_mean_ms": partial_gap_summary["mean_ms"] if live_streaming_metrics_comparable and partial_gap_summary else None,
+                "partial_gap_p90_ms": partial_gap_summary["p90_ms"] if live_streaming_metrics_comparable and partial_gap_summary else None,
+                "partial_gap_p95_ms": partial_gap_summary["p95_ms"] if live_streaming_metrics_comparable and partial_gap_summary else None,
+                "time_to_final_from_audio_end_mean_ms": final_summary["mean_ms"] if live_streaming_metrics_comparable else None,
+                "time_to_final_from_audio_end_p90_ms": final_summary["p90_ms"] if live_streaming_metrics_comparable else None,
+                "time_to_final_from_audio_end_p95_ms": final_summary["p95_ms"] if live_streaming_metrics_comparable else None,
+                "time_to_final_from_audio_end_min_ms": final_summary["min_ms"] if live_streaming_metrics_comparable else None,
+                "time_to_final_from_audio_end_max_ms": final_summary["max_ms"] if live_streaming_metrics_comparable else None,
+                "final_mean_ms": final_summary["mean_ms"] if live_streaming_metrics_comparable else None,
+                "final_p90_ms": final_summary["p90_ms"] if live_streaming_metrics_comparable else None,
+                "final_p95_ms": final_summary["p95_ms"] if live_streaming_metrics_comparable else None,
+                "final_min_ms": final_summary["min_ms"] if live_streaming_metrics_comparable else None,
+                "final_max_ms": final_summary["max_ms"] if live_streaming_metrics_comparable else None,
+                "stop_to_final_mean_ms": stop_to_final_summary["mean_ms"],
+                "stop_to_final_p90_ms": stop_to_final_summary["p90_ms"],
+                "stop_to_final_p95_ms": stop_to_final_summary["p95_ms"],
+                "stop_to_final_min_ms": stop_to_final_summary["min_ms"],
+                "stop_to_final_max_ms": stop_to_final_summary["max_ms"],
                 "ready": streaming_samples[0]["ready"] if streaming_samples else None,
                 "last_partial": streaming_samples[0]["last_partial"] if streaming_samples else "",
                 "final_transcript": streaming_samples[0]["final_transcript"] if streaming_samples else "",
