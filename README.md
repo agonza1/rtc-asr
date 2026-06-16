@@ -152,17 +152,7 @@ rtc-asr /ws/stream
 Voice agent pipeline
 ```
 
-Why aggregate `20` ms frames before sending them to `rtc-asr`?
-
-| Chunk duration | RTC frames | Payload size at 16 kHz mono PCM16 |
-| --- | --- | --- |
-| `20` ms | `1` | `640` bytes |
-| `80` ms | `4` | `2560` bytes |
-| `100` ms | `5` | `3200` bytes |
-| `160` ms | `8` | `5120` bytes |
-| `200` ms | `10` | `6400` bytes |
-
-`80` to `160` ms is a good compromise because it preserves user-perceived responsiveness, reduces websocket overhead, gives the backend enough audio for more stable partials, maps cleanly from RTC frame cadence, and keeps CPU load lower on small devices.
+Why aggregate `20` ms frames before sending them to `rtc-asr`? Sending every RTC frame directly is responsive in theory, but it creates unnecessary websocket and CPU overhead while giving the backend very little audio context per partial. Aggregating roughly `4` to `8` RTC frames into `80` to `160` ms websocket chunks keeps transcription responsive, produces steadier partials, maps cleanly from RTC frame cadence, and avoids excessive message rates on smaller devices. Larger chunks can be useful for benchmarking, but they start to trade away live interaction latency.
 
 ## Warm-Up And Keep-Warm
 
