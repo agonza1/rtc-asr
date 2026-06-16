@@ -1,0 +1,2 @@
+"""Browser Pipecat demo service."""
+

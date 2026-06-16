@@ -13,3 +13,6 @@ config
 .env
 
 .cache/
+
+# Compounds local session data
+.compounds/
