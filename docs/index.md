@@ -18,20 +18,6 @@
 - Use the [API Reference](./api-reference.md) plus the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide only when you are wiring a client.
 - Use [Troubleshooting](./troubleshooting.md) for preload, backend runtime, and streaming failure modes.
 
-## Reference WER Notes
-
-The docs screen keeps the same reference WER values shown in the benchmark notes. These are upstream benchmark or model-card values for the underlying models, not official rtc-asr measurements, and they may vary slightly across hardware, runtime, quantization, decoding, and setup.
-
-| Runtime lane | Reference WER |
-| --- | --- |
-| `faster-whisper-base` | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` |
-| `faster-whisper-small` | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` |
-| `parakeet-mlx` and `parakeet-compose` | `1.93 / 3.59` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt-0.6b-v3` |
-| `parakeet-mlx-110m`, `parakeet-mlx-service-110m`, and `parakeet-nemo-compose` | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` |
-| `qwen-mps` and `qwen-compose` | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` |
-
-Use [Benchmarks](./benchmarks.md) for the full artifact-backed comparison matrix, source links, and the methodology note that keeps these external WER references separate from local latency measurements. Distinct runtime setups stay split into separate rows there even when they share the same upstream model benchmark reference.
-
 ## Architecture Snapshot
 
 - FastAPI exposes health, readiness, model metadata, file/REST transcription, and websocket streaming routes.
@@ -80,3 +66,17 @@ pytest tests/test_client.py tests/test_smoke.py -v
 ## Repo
 
 - GitHub: [agonza1/rtc-asr](https://github.com/agonza1/rtc-asr)
+
+## Appendix: Reference WER Notes
+
+The docs screen keeps the same reference WER values shown in the benchmark notes. These are upstream benchmark or model-card values for the underlying models, not official rtc-asr measurements, and they may vary slightly across hardware, runtime, quantization, decoding, and setup.
+
+| Runtime lane | Reference WER |
+| --- | --- |
+| `faster-whisper-base` | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` |
+| `faster-whisper-small` | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` |
+| `parakeet-mlx` and `parakeet-compose` | `1.93 / 3.59` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt-0.6b-v3` |
+| `parakeet-mlx-110m`, `parakeet-mlx-service-110m`, and `parakeet-nemo-compose` | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` |
+| `qwen-mps` and `qwen-compose` | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` |
+
+Use [Benchmarks](./benchmarks.md) for the full artifact-backed comparison matrix, source links, and the methodology note that keeps these external WER references separate from local latency measurements. Distinct runtime setups stay split into separate rows there even when they share the same upstream model benchmark reference.
