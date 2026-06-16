@@ -62,6 +62,8 @@ class BenchmarkRequestError(RuntimeError):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark the realtime ASR service")
+    preload_group = parser.add_mutually_exclusive_group()
+    require_preloaded_group = parser.add_mutually_exclusive_group()
     parser.add_argument(
         "--mode",
         choices=("direct", "pipecat-e2e"),
@@ -86,6 +88,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--compute-type", default="int8", help="Compute type for faster-whisper when spawning a local server")
     parser.add_argument("--qwen-dtype", default="auto", help="Dtype for qwen-asr when spawning a local server")
     parser.add_argument("--parakeet-dtype", default="auto", help="Dtype for parakeet when spawning a local server")
+    preload_group.add_argument(
+        "--preload-model",
+        dest="preload_model",
+        action="store_true",
+        help="Preload the model before a managed benchmark server starts accepting traffic (default)",
+    )
+    preload_group.add_argument(
+        "--no-preload-model",
+        dest="preload_model",
+        action="store_false",
+        help="Allow managed benchmark servers to lazy-load the model on first request",
+    )
     parser.add_argument("--partial-window", type=non_negative_float, default=2.0, help="Partial transcription window in seconds when spawning a local server")
     parser.add_argument("--max-buffer", type=non_negative_float, help="Optional stream buffer cap in seconds for websocket benchmarking")
     parser.add_argument(
@@ -102,7 +116,20 @@ def parse_args() -> argparse.Namespace:
         default=20,
         help="Pipecat-style source frame duration in milliseconds before bridge aggregation",
     )
+    require_preloaded_group.add_argument(
+        "--require-preloaded-service",
+        dest="require_preloaded_service",
+        action="store_true",
+        help="Fail when benchmarking an external service that does not report preload_enabled=true (default)",
+    )
+    require_preloaded_group.add_argument(
+        "--allow-unpreloaded-service",
+        dest="require_preloaded_service",
+        action="store_false",
+        help="Allow benchmarking an external service even when it reports preload_enabled=false",
+    )
     parser.add_argument("--output", type=Path, help="Optional path for the benchmark JSON artifact")
+    parser.set_defaults(preload_model=True, require_preloaded_service=True)
     return parser.parse_args()
 
 
@@ -365,6 +392,15 @@ async def fetch_service_metadata(base_url: str) -> dict[str, object] | None:
     return payload
 
 
+def service_preload_enabled(service: dict[str, object] | None) -> bool | None:
+    if not isinstance(service, dict):
+        return None
+    preload_enabled = service.get("preload_enabled")
+    if isinstance(preload_enabled, bool):
+        return preload_enabled
+    return None
+
+
 def resolve_service_model(service: dict[str, object] | None, fallback_model: str) -> str:
     if not isinstance(service, dict):
         return fallback_model
@@ -399,6 +435,7 @@ class ManagedServer:
         compute_type: str,
         qwen_dtype: str,
         parakeet_dtype: str,
+        preload_model: bool,
     ) -> None:
         self.url = url
         self.model = model
@@ -408,6 +445,7 @@ class ManagedServer:
         self.compute_type = compute_type
         self.qwen_dtype = qwen_dtype
         self.parakeet_dtype = parakeet_dtype
+        self.preload_model = preload_model
         self.process: subprocess.Popen[str] | None = None
 
     def start(self) -> None:
@@ -418,7 +456,7 @@ class ManagedServer:
         env.setdefault("HUGGINGFACE_HUB_CACHE", str(CACHE_ROOT / "hub"))
         env.setdefault("ASR_BACKEND", self.backend)
         env.setdefault("ASR_DEVICE", self.device)
-        env.setdefault("ASR_PRELOAD_MODEL", "true")
+        env["ASR_PRELOAD_MODEL"] = "true" if self.preload_model else "false"
         env.setdefault("ASR_STREAM_PARTIAL_WINDOW_SECONDS", str(self.partial_window))
         if self.backend == "qwen-asr":
             env.setdefault("ASR_QWEN_MODEL", self.model)
@@ -967,6 +1005,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         compute_type=args.compute_type,
         qwen_dtype=args.qwen_dtype,
         parakeet_dtype=args.parakeet_dtype,
+        preload_model=args.preload_model,
     ) if args.spawn_server else None
     process_rss_monitor: ProcessPeakRSSMonitor | None = None
 
@@ -978,6 +1017,17 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 process_rss_monitor = ProcessPeakRSSMonitor(server.process.pid)
                 process_rss_monitor.start()
         service = await fetch_service_metadata(args.url)
+        preload_enabled = service_preload_enabled(service)
+        if args.require_preloaded_service and preload_enabled is False:
+            raise RuntimeError(
+                "Benchmark target reports preload_enabled=false. Restart the service with ASR_PRELOAD_MODEL=true "
+                "or rerun with --allow-unpreloaded-service if you intentionally want a cold-path measurement."
+            )
+        if server is not None and args.preload_model and preload_enabled is not True:
+            raise RuntimeError(
+                "Managed benchmark server did not report preload_enabled=true after startup. "
+                "This run would not be comparable to the warmed benchmark lanes."
+            )
 
         sample_count = max(args.sample_count, 1)
         rest_samples: list[dict[str, object]] = []
@@ -1169,6 +1219,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "request_retries": args.request_retries,
                 "request_retry_delay": args.request_retry_delay,
                 "pipecat_source_frame_ms": args.pipecat_source_frame_ms if args.mode == "pipecat-e2e" else None,
+                "preload_model": args.preload_model,
+                "require_preloaded_service": args.require_preloaded_service,
+                "spawn_server": args.spawn_server,
             },
             "integration": {
                 "name": "pipecat" if args.mode == "pipecat-e2e" else None,

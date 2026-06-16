@@ -50,7 +50,7 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["parakeet-mlx-service-110m"]["artifact_path"].endswith("parakeet-mlx-110m-service-2026-06-13.json")
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
     assert tracks["qwen-mps"]["status"] == "validated"
-    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
+    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-15.json")
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
     assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
@@ -75,7 +75,7 @@ def test_manifest_prefers_explicit_track_artifact_for_same_runtime_family() -> N
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
 
-    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-10.json")
+    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-15.json")
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
 
 
@@ -159,8 +159,8 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
 
 
 def test_manifest_skips_non_asr_artifacts(tmp_path: Path) -> None:
-    payload = json.loads((RESULTS_DIR / "faster-whisper-base.en-int8-2026-06-10.json").read_text(encoding="utf-8"))
-    (tmp_path / "faster-whisper-base.en-int8-2026-06-10.json").write_text(json.dumps(payload), encoding="utf-8")
+    payload = json.loads((RESULTS_DIR / "faster-whisper-base.en-int8-2026-06-15.json").read_text(encoding="utf-8"))
+    (tmp_path / "faster-whisper-base.en-int8-2026-06-15.json").write_text(json.dumps(payload), encoding="utf-8")
     (tmp_path / "parakeet-mlx-2026-06-13.json").write_text(
         json.dumps({
             "kind": "mlx-asr-benchmark",
@@ -409,7 +409,7 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
 def test_docs_index_surfaces_reference_wer_notes() -> None:
     docs_index_text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
 
-    assert "## Reference WER Notes" in docs_index_text
+    assert "## Appendix: Reference WER Notes" in docs_index_text
     assert "not official rtc-asr measurements" in docs_index_text
     assert "parakeet-mlx-service-110m" in docs_index_text
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
@@ -590,6 +590,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
     tracked_artifacts = {track["artifact_path"] for track in manifest["tracks"] if track["artifact_path"]}
+    manifest_artifacts = {artifact["artifact_path"] for artifact in manifest["artifacts"] if artifact["artifact_path"]}
     expected_files = {
         f"benchmark-results/{path.name}"
         for path in RESULTS_DIR.glob("*.json")
@@ -597,7 +598,8 @@ def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
         and manifest_module.is_asr_payload(json.loads(path.read_text(encoding="utf-8")))
     }
 
-    assert tracked_artifacts == expected_files
+    assert tracked_artifacts <= expected_files
+    assert manifest_artifacts == expected_files
 
 
 def test_render_manifest_matches_checked_in_output() -> None:

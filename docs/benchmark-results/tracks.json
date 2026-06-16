@@ -19,8 +19,8 @@
       "lane": "Local Python CPU",
       "status": "validated",
       "target_sample_count": 10,
-      "artifact": "faster-whisper-base.en-int8-2026-06-10.json",
-      "status_detail": "Validated 10-sample local CPU baseline.",
+      "artifact": "faster-whisper-base.en-int8-2026-06-15.json",
+      "status_detail": "Validated 10-sample local CPU baseline refreshed on 2026-06-15 with a preloaded model.",
       "run_command": "make benchmark-faster-whisper-base",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
     },
