@@ -1,0 +1,3 @@
+-r ../../requirements.txt
+
+pipecat-ai[webrtc]>=0.0.86
