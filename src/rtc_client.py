@@ -6,6 +6,15 @@ import json
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Protocol
 
+from .protocols import (
+    HOT_PATH_BYTES_PER_FRAME,
+    HOT_PATH_CHANNELS,
+    HOT_PATH_FRAME_MS,
+    HOT_PATH_PCM_FORMAT,
+    HOT_PATH_SAMPLE_RATE,
+    PROTOCOL_VERSION,
+)
+
 
 class WebSocketConnection(Protocol):
     async def send(self, data: str | bytes) -> None: ...
@@ -27,18 +36,33 @@ class TranscriptEvent:
     chunks_received: int
     buffered_bytes: int
     remaining_buffer_bytes: int
-    raw: dict[str, Any]
+    speech_final: bool = False
+    revision: int | None = None
+    audio_received_ms: int | None = None
+    audio_transcribed_ms: int | None = None
+    metadata: dict[str, Any] | None = None
+    raw: dict[str, Any] | None = None
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> "TranscriptEvent":
+        metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+        payload_type = str(payload.get("type", ""))
+        is_final = bool(payload.get("is_final", False))
+        if payload_type == "transcript":
+            payload_type = "final" if is_final else "partial"
         return cls(
-            type=str(payload.get("type", "")),
+            type=payload_type,
             text=str(payload.get("text", payload.get("message", ""))),
-            stream_id=_maybe_int(payload.get("stream_id")),
-            is_final=bool(payload.get("is_final", False)),
-            chunks_received=_maybe_int(payload.get("chunks_received")) or 0,
-            buffered_bytes=_maybe_int(payload.get("buffered_bytes")) or 0,
-            remaining_buffer_bytes=_maybe_int(payload.get("remaining_buffer_bytes")) or 0,
+            stream_id=_maybe_int(payload.get("stream_id")) or _maybe_int(metadata.get("stream_id")),
+            is_final=is_final,
+            chunks_received=_maybe_int(payload.get("chunks_received")) or _maybe_int(metadata.get("chunks_received")) or 0,
+            buffered_bytes=_maybe_int(payload.get("buffered_bytes")) or _maybe_int(metadata.get("buffered_bytes")) or 0,
+            remaining_buffer_bytes=_maybe_int(payload.get("remaining_buffer_bytes")) or _maybe_int(metadata.get("remaining_buffer_bytes")) or 0,
+            speech_final=bool(payload.get("speech_final", is_final)),
+            revision=_maybe_int(payload.get("revision")),
+            audio_received_ms=_maybe_int(payload.get("audio_received_ms")),
+            audio_transcribed_ms=_maybe_int(payload.get("audio_transcribed_ms")),
+            metadata=metadata or None,
             raw=payload,
         )
 
@@ -166,16 +190,148 @@ class AsyncASRClient:
             raise RuntimeError(str(payload.get("message", "Unknown ASR websocket error")))
         return payload
 
-
     async def _recv_json_with_timeout(self, timeout: float) -> dict[str, Any] | None:
         try:
-            return await asyncio.wait_for(self._recv_json(), timeout=timeout)
+            return await asyncio.wait_for(self._recv_json(), timeout)
         except TimeoutError:
             return None
 
     def _require_websocket(self) -> WebSocketConnection:
         if self._websocket is None:
             raise RuntimeError("Call connect() or start() before using the ASR client")
+        return self._websocket
+
+
+class AsyncLocalSttClient:
+    def __init__(
+        self,
+        ws_url: str,
+        *,
+        connect_fn: ConnectFn | None = None,
+    ) -> None:
+        self.ws_url = ws_url
+        self._connect_fn = connect_fn
+        self._websocket: WebSocketConnection | None = None
+
+    async def connect(self) -> WebSocketConnection:
+        if self._websocket is not None:
+            return self._websocket
+        connect_fn = self._connect_fn or _default_connect
+        self._websocket = await connect_fn(self.ws_url)
+        return self._websocket
+
+    async def start(
+        self,
+        *,
+        language: str | None = "en",
+        sample_rate: int = HOT_PATH_SAMPLE_RATE,
+        interim_results: bool = True,
+        partial_interval_ms: int = HOT_PATH_FRAME_MS,
+        client_stream_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if sample_rate != HOT_PATH_SAMPLE_RATE:
+            raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
+        if partial_interval_ms < 1:
+            raise ValueError("partial_interval_ms must be a positive integer")
+        websocket = await self.connect()
+        payload: dict[str, Any] = {
+            "type": "start",
+            "version": PROTOCOL_VERSION,
+            "audio": {
+                "sample_rate": HOT_PATH_SAMPLE_RATE,
+                "channels": HOT_PATH_CHANNELS,
+                "format": HOT_PATH_PCM_FORMAT,
+                "frame_ms": HOT_PATH_FRAME_MS,
+                "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+            },
+            "language": language,
+            "interim_results": interim_results,
+            "partial_interval_ms": partial_interval_ms,
+        }
+        if client_stream_id is not None:
+            payload["client_stream_id"] = client_stream_id
+        if metadata:
+            payload["metadata"] = dict(metadata)
+        await websocket.send(json.dumps(payload))
+        ready_event = await self._recv_json()
+        if ready_event.get("type") != "ready":
+            raise RuntimeError(f"Expected ready event, got: {ready_event}")
+        return ready_event
+
+    async def send_audio(self, chunk: bytes, *, on_sent: Callable[[], None] | None = None) -> None:
+        websocket = self._require_websocket()
+        await websocket.send(chunk)
+        if on_sent is not None:
+            on_sent()
+
+    async def finalize(self) -> None:
+        websocket = self._require_websocket()
+        await websocket.send(json.dumps({"type": "finalize"}))
+
+    async def cancel(self) -> None:
+        websocket = self._require_websocket()
+        await websocket.send(json.dumps({"type": "cancel"}))
+
+    async def ping(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> dict[str, Any]:
+        websocket = self._require_websocket()
+        payload: dict[str, Any] = {"type": "ping"}
+        if ping_id is not None:
+            payload["ping_id"] = ping_id
+        if timestamp_ms is not None:
+            payload["timestamp_ms"] = timestamp_ms
+        await websocket.send(json.dumps(payload))
+        pong_event = await self._recv_json()
+        if pong_event.get("type") != "pong":
+            raise RuntimeError(f"Expected pong event, got: {pong_event}")
+        return pong_event
+
+    async def recv_event(
+        self,
+        *,
+        timeout: float | None = None,
+        allow_error: bool = True,
+    ) -> TranscriptEvent | None:
+        if timeout is None:
+            payload = await self._recv_json(allow_error=allow_error)
+        else:
+            payload = await self._recv_json_with_timeout(timeout, allow_error=allow_error)
+            if payload is None:
+                return None
+        return TranscriptEvent.from_payload(payload)
+
+    async def close(self, *, graceful: bool = True) -> dict[str, Any] | None:
+        if self._websocket is None:
+            return None
+
+        closed_event: dict[str, Any] | None = None
+        if graceful:
+            websocket = self._require_websocket()
+            await websocket.send(json.dumps({"type": "close"}))
+            closed_event = await self._recv_json(allow_error=True)
+            if closed_event.get("type") != "closed":
+                raise RuntimeError(f"Expected closed event, got: {closed_event}")
+
+        await self._websocket.close(code=1000)
+        self._websocket = None
+        return closed_event
+
+    async def _recv_json(self, *, allow_error: bool = False) -> dict[str, Any]:
+        websocket = self._require_websocket()
+        payload = json.loads(await websocket.recv())
+        if payload.get("type") == "error" and not allow_error:
+            raise RuntimeError(str(payload.get("message", "Unknown Local STT websocket error")))
+        return payload
+
+    async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False) -> dict[str, Any] | None:
+        try:
+            return await asyncio.wait_for(self._recv_json(allow_error=allow_error), timeout)
+        except TimeoutError:
+            return None
+
+    def _require_websocket(self) -> WebSocketConnection:
+        if self._websocket is None:
+            raise RuntimeError("Call connect() or start() before using the Local STT client")
         return self._websocket
 
 

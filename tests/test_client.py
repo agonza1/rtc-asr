@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from src.rtc_client import AsyncASRClient
+from src.rtc_client import AsyncASRClient, AsyncLocalSttClient
 
 
 class FakeWebSocket:
@@ -40,6 +40,7 @@ def test_importing_rtc_client_does_not_load_main_module() -> None:
     rtc_client = importlib.import_module("src.rtc_client")
 
     assert rtc_client.AsyncASRClient is not None
+    assert rtc_client.AsyncLocalSttClient is not None
     assert "src.main" not in sys.modules
 
 
@@ -167,6 +168,139 @@ def test_async_asr_client_can_send_binary_audio_frames() -> None:
             },
             b'hel',
             {'type': 'stop'},
+        ]
+        assert websocket.closed_with == 1000
+
+    asyncio.run(scenario())
+
+
+def test_async_local_stt_client_stream_flow() -> None:
+    websocket = FakeWebSocket([
+        {
+            "type": "ready",
+            "version": "local-stt.v1",
+            "metadata": {"stream_id": 7},
+        },
+        {
+            "type": "pong",
+            "ping_id": "heartbeat-1",
+            "timestamp_ms": 1234,
+            "metadata": {},
+        },
+        {
+            "type": "transcript",
+            "text": "hel",
+            "is_final": False,
+            "speech_final": False,
+            "revision": 1,
+            "audio_received_ms": 120,
+            "audio_transcribed_ms": 120,
+            "metadata": {"stream_id": 7, "chunks_received": 1},
+        },
+        {
+            "type": "warning",
+            "code": "stream_canceled",
+            "message": "Active utterance canceled",
+            "metadata": {"stream_id": 7, "chunks_received": 2},
+            "retryable": False,
+        },
+        {
+            "type": "ready",
+            "version": "local-stt.v1",
+            "metadata": {"stream_id": 8},
+        },
+        {
+            "type": "transcript",
+            "text": "hello",
+            "is_final": True,
+            "speech_final": True,
+            "revision": 1,
+            "audio_received_ms": 120,
+            "audio_transcribed_ms": 120,
+            "metadata": {"stream_id": 8, "chunks_received": 1},
+        },
+        {
+            "type": "closed",
+            "reason": "client_close",
+            "metadata": {},
+        },
+    ])
+
+    async def fake_connect(_: str) -> FakeWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fake_connect)
+        ready_event = await client.start(
+            client_stream_id="turn-1",
+            partial_interval_ms=100,
+            metadata={"turn_id": "turn-1", "tenant": "demo"},
+        )
+        pong_event = await client.ping(ping_id="heartbeat-1", timestamp_ms=1234)
+        await client.send_audio(b"hel")
+        partial_event = await client.recv_event()
+        await client.send_audio(b"lo")
+        await client.cancel()
+        canceled_event = await client.recv_event()
+        second_ready_event = await client.start()
+        await client.send_audio(b"lo")
+        await client.finalize()
+        final_event = await client.recv_event()
+        closed_event = await client.close()
+
+        assert ready_event["type"] == "ready"
+        assert closed_event == {"type": "closed", "reason": "client_close", "metadata": {}}
+        assert pong_event == {"type": "pong", "ping_id": "heartbeat-1", "timestamp_ms": 1234, "metadata": {}}
+        assert partial_event is not None
+        assert partial_event.type == "partial"
+        assert partial_event.stream_id == 7
+        assert partial_event.revision == 1
+        assert canceled_event is not None
+        assert canceled_event.type == "warning"
+        assert canceled_event.stream_id == 7
+        assert second_ready_event["metadata"]["stream_id"] == 8
+        assert final_event is not None
+        assert final_event.type == "final"
+        assert final_event.speech_final is True
+        assert final_event.stream_id == 8
+        assert websocket.sent == [
+            {
+                "type": "start",
+                "version": "local-stt.v1",
+                "audio": {
+                    "sample_rate": 16000,
+                    "channels": 1,
+                    "format": "pcm_s16le",
+                    "frame_ms": 20,
+                    "bytes_per_frame": 640,
+                },
+                "language": "en",
+                "interim_results": True,
+                "partial_interval_ms": 100,
+                "client_stream_id": "turn-1",
+                "metadata": {"turn_id": "turn-1", "tenant": "demo"},
+            },
+            {"type": "ping", "ping_id": "heartbeat-1", "timestamp_ms": 1234},
+            b"hel",
+            b"lo",
+            {"type": "cancel"},
+            {
+                "type": "start",
+                "version": "local-stt.v1",
+                "audio": {
+                    "sample_rate": 16000,
+                    "channels": 1,
+                    "format": "pcm_s16le",
+                    "frame_ms": 20,
+                    "bytes_per_frame": 640,
+                },
+                "language": "en",
+                "interim_results": True,
+                "partial_interval_ms": 20,
+            },
+            b"lo",
+            {"type": "finalize"},
+            {"type": "close"},
         ]
         assert websocket.closed_with == 1000
 
