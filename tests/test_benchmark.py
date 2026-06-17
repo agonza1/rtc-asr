@@ -1796,12 +1796,13 @@ def test_async_main_summarizes_final_metric_from_audio_end_delay(monkeypatch: py
 
     assert result["streaming"]["live_metrics_comparable"] is False
     assert result["streaming"]["partial_latencies_ms"] == [20.0, 30.0]
-    assert result["streaming"]["partial_mean_ms"] == 25.0
+    assert result["streaming"]["partial_mean_ms"] is None
     assert result["streaming"]["final_latencies_ms"] == [1100.0, 1500.0]
     assert result["streaming"]["stop_to_final_latencies_ms"] == [200.0, 300.0]
-    assert result["streaming"]["time_to_final_from_audio_end_mean_ms"] == 1300.0
-    assert result["streaming"]["final_mean_ms"] == 1300.0
-    assert result["streaming"]["final_p95_ms"] == 1500.0
+    assert result["streaming"]["time_to_final_from_audio_end_mean_ms"] is None
+    assert result["streaming"]["final_mean_ms"] is None
+    assert result["streaming"]["final_p95_ms"] is None
+
     assert result["streaming"]["stop_to_final_mean_ms"] == 250.0
     assert result["streaming"]["stop_to_final_p95_ms"] == 300.0
 

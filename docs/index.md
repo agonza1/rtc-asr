@@ -6,6 +6,7 @@
 
 - [Overview & Installation](../../README.md)
 - [API Reference](./api-reference.md)
+- [Local STT v1](./local-stt-v1.md)
 - [Pipecat Integration](./pipecat-integration.md)
 - [LiveKit Integration](./livekit-integration.md)
 - [Benchmarks](./benchmarks.md)
@@ -15,7 +16,8 @@
 
 - Start with [Benchmarks](./benchmarks.md) if you are deciding which ASR lane deserves a closer look.
 - Use the [README](../../README.md) for local setup and operator defaults.
-- Use the [API Reference](./api-reference.md) plus the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide only when you are wiring a client.
+- Use the [API Reference](./api-reference.md) for the current service contract, and [Local STT v1](./local-stt-v1.md) when you need the shared next-step websocket protocol for colocated plugins or sidecars.
+- Use the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide when you are wiring an RTC client around that service contract.
 - Use [Troubleshooting](./troubleshooting.md) for preload, backend runtime, and streaming failure modes.
 
 ## Architecture Snapshot
@@ -52,6 +54,7 @@ pytest tests/test_client.py tests/test_smoke.py -v
 - `src/audio_processor.py`: decode and resample logic
 - `src/rtc_client.py`: async websocket helper for integrations
 - `src/streaming.py`: reusable higher-level streaming helpers
+- `src/protocols/local_stt_v1.py`: vendor-neutral Local STT message schema and validators
 - `docs/benchmarks.md`: checked-in latency artifacts and reproduction flow
 
 ## External References

@@ -140,13 +140,16 @@ That avoids turning `rtc-asr` into a media server. Pipecat handles WebRTC, jitte
 
 ## Local Benchmark
 
-Run the Pipecat-style end-to-end benchmark harness against a local backend with a real speech clip:
+Run the Pipecat-style end-to-end benchmark harness against a local backend. By default it synthesizes a speech clip through the benchmark harness so the lane always exercises real spoken audio; you can still override it with a specific file when needed:
 
 ```bash
+make benchmark-pipecat-e2e
 make benchmark-pipecat-e2e BENCHMARK_PIPECAT_AUDIO_FILE=/absolute/path/to/speech.wav
 ```
 
-That command captures a checked-in JSON artifact contract with Pipecat source-frame cadence, bridge chunk size, framing mode, first visible partial timing, partial cadence or jitter, final closeout after audio end, and missing partial counts. The repo keeps these artifacts as a separate integration track instead of mixing them into the homepage leaderboard until there are comparable E2E artifacts across multiple backends.
+`make benchmark-pipecat-e2e` now enables `--simulate-realtime` by default so the harness sleeps between source frames instead of blasting the full clip as fast as Python can enqueue websocket writes. That keeps first-partial and post-audio finalization numbers closer to what a Pipecat bridge sees during a real call.
+
+The benchmark client also timestamps audio-end from the last websocket chunk send rather than from the later `stop` response. That means the checked-in JSON artifact contract captures Pipecat source-frame cadence, real-time pacing, bridge chunk size, framing mode, first visible partial timing, partial cadence or jitter, final closeout after audio end, and missing partial counts. The repo keeps these artifacts as a separate integration track instead of mixing them into the homepage leaderboard until there are comparable E2E artifacts across multiple backends.
 
 ## Local Verification
 

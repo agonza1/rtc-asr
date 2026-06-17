@@ -55,7 +55,7 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
     assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
     assert tracks["qwen-compose"]["target_sample_count"] == 5
-    assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json")
+    assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
 
@@ -409,6 +409,9 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
 def test_docs_index_surfaces_reference_wer_notes() -> None:
     docs_index_text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
 
+    assert "[Local STT v1](./local-stt-v1.md)" in docs_index_text
+    assert "shared next-step websocket protocol" in docs_index_text
+    assert "src/protocols/local_stt_v1.py" in docs_index_text
     assert "## Appendix: Reference WER Notes" in docs_index_text
     assert "not official rtc-asr measurements" in docs_index_text
     assert "parakeet-mlx-service-110m" in docs_index_text

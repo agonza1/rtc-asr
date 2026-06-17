@@ -173,6 +173,49 @@ def test_async_asr_client_can_send_binary_audio_frames() -> None:
     asyncio.run(scenario())
 
 
+def test_async_asr_client_invokes_on_sent_callback_before_waiting_for_response() -> None:
+    websocket = FakeWebSocket([
+        {
+            'type': 'ready',
+            'backend': 'fake-whisper',
+            'model': 'fixture-adapter',
+            'language': 'en',
+            'sample_rate': 16000,
+            'partial_interval_chunks': 1,
+        },
+        {
+            'type': 'partial',
+            'is_final': False,
+            'chunks_received': 1,
+            'buffered_bytes': 3,
+            'text': 'hel',
+        },
+    ])
+    sent_lengths: list[int] = []
+
+    async def fake_connect(_: str) -> FakeWebSocket:
+        return websocket
+
+    def record_sent() -> None:
+        sent_lengths.append(len(websocket.sent))
+
+    async def scenario() -> None:
+        client = AsyncASRClient('ws://example.test/ws/stream', connect_fn=fake_connect)
+        await client.start()
+        partial_event = await client.send_audio(b'hel', on_sent=record_sent)
+        await client.close()
+
+        assert partial_event is not None
+        assert partial_event.text == 'hel'
+        assert sent_lengths == [2]
+        assert websocket.sent[1] == {
+            'type': 'audio',
+            'audio_data': base64.b64encode(b'hel').decode('ascii'),
+        }
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize(
     ("param_name", "param_value"),
     [("partial_window_seconds", 0), ("max_buffer_seconds", -1), ("partial_window_seconds", True)],

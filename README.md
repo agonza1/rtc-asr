@@ -222,6 +222,7 @@ The benchmark harness now defaults to preloaded runs. Managed benchmark servers 
 
 - [Docs Index](./docs/index.md)
 - [API Reference](./docs/api-reference.md)
+- [Local STT v1](./docs/local-stt-v1.md)
 - [Pipecat Integration](./docs/pipecat-integration.md)
 - [LiveKit Integration](./docs/livekit-integration.md)
 - [Benchmarks](./docs/benchmarks.md)
