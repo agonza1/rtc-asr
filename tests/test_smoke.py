@@ -1019,6 +1019,39 @@ def test_local_stt_v1_stream_accepts_flat_start_binary_audio_and_finalize() -> N
             assert second_ready["metadata"]["stream_id"] == 2
 
 
+def test_local_stt_v1_stream_ignores_extra_top_level_fields_on_nested_start() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "version": PROTOCOL_VERSION,
+                    "audio": {
+                        "sample_rate": HOT_PATH_SAMPLE_RATE,
+                        "channels": HOT_PATH_CHANNELS,
+                        "format": HOT_PATH_PCM_FORMAT,
+                        "frame_ms": HOT_PATH_FRAME_MS,
+                        "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+                    },
+                    "sample_rate": 8000,
+                    "channels": 1,
+                    "format": "pcm_s16le",
+                    "frame_ms": 40,
+                    "protocol": "not-local-stt-v1",
+                    "metadata": {"turn_id": "nested-extra"},
+                }
+            )
+            ready = parse_server_message(websocket.receive_json())
+
+    assert ready.type == "ready"
+    assert ready.audio.sample_rate == HOT_PATH_SAMPLE_RATE
+    assert ready.audio.frame_ms == HOT_PATH_FRAME_MS
+    assert ready.metadata["client_metadata"] == {"turn_id": "nested-extra"}
+    assert transcriber.calls == []
+
+
 def test_local_stt_v1_stream_stop_is_a_finalize_alias() -> None:
     transcriber = FakeTranscriber()
     chunk = b"steady"

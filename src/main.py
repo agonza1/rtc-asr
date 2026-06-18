@@ -651,7 +651,10 @@ def _create_local_stt_stream_session(
 
 
 def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConfig:
-    is_flat_start = any(key in payload for key in {"protocol", "sample_rate", "channels", "format", "frame_ms"})
+    has_nested_v1_shape = "audio" in payload or "version" in payload
+    is_flat_start = not has_nested_v1_shape and any(
+        key in payload for key in {"protocol", "sample_rate", "channels", "format", "frame_ms"}
+    )
     translated_payload = payload
 
     if is_flat_start:
