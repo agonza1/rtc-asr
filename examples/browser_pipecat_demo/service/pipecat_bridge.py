@@ -203,7 +203,14 @@ class RTCASRAudioRelay:
             if callable(finalize):
                 await finalize()
                 if self._final_event is not None:
-                    await asyncio.wait_for(asyncio.shield(self._final_event), timeout=5.0)
+                    try:
+                        await asyncio.wait_for(asyncio.shield(self._final_event), timeout=5.0)
+                    except Exception as exc:
+                        if self._receiver_task is None or not self._receiver_task.done() or self._receiver_task.cancelled():
+                            raise
+                        receiver_exc = self._receiver_task.exception()
+                        if receiver_exc is None or receiver_exc is not exc:
+                            raise
             else:
                 final_event = await self._client.stop()
                 self._send_transcript_event(final_event)
@@ -214,7 +221,7 @@ class RTCASRAudioRelay:
                 self._receiver_task.cancel()
                 try:
                     await self._receiver_task
-                except asyncio.CancelledError:
+                except (asyncio.CancelledError, Exception):
                     pass
                 self._receiver_task = None
             await self._client.close()

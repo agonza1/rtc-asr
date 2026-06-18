@@ -260,6 +260,65 @@ async def test_asr_relay_reports_websocket_start_failure() -> None:
     ]
 
 
+@pytest.mark.anyio
+async def test_asr_relay_close_swallows_receiver_failure_and_closes_client() -> None:
+    app_messages: list[dict[str, object]] = []
+    failures: list[str] = []
+    client_closed = False
+
+    class FakeASRClient:
+        def __init__(self, ws_url: str) -> None:
+            self.ws_url = ws_url
+
+        async def start(self, **kwargs: Any) -> dict[str, object]:
+            return {"type": "ready"}
+
+        async def send_audio(self, chunk: bytes, **kwargs: Any) -> None:
+            return None
+
+        async def finalize(self) -> Any:
+            return type(
+                "FakeEvent",
+                (),
+                {
+                    "type": "final",
+                    "text": "done",
+                    "is_final": True,
+                    "chunks_received": 1,
+                },
+            )()
+
+        async def recv_event(self) -> Any:
+            raise RuntimeError("receiver failed")
+
+        async def close(self) -> None:
+            nonlocal client_closed
+            client_closed = True
+            return None
+
+    relay = RTCASRAudioRelay(
+        session_id="session_1",
+        rtc_asr_ws_url="ws://example.test/ws",
+        chunk_ms=100,
+        send_app_message=app_messages.append,
+        mark_failed=failures.append,
+        asr_client_factory=FakeASRClient,
+    )
+    frame = FakeInputAudioRawFrame(audio=b"x" * 3200, sample_rate=16000, num_channels=1)
+
+    await relay.handle_audio_frame(frame)
+    await relay.close()
+
+    assert client_closed is True
+    assert relay._client is None
+    assert failures == ["ASR websocket receive failed: receiver failed"]
+    assert app_messages[-1] == {
+        "type": "error",
+        "message": "ASR websocket receive failed: receiver failed",
+        "session_id": "session_1",
+    }
+
+
 def test_unknown_session_returns_404() -> None:
     client = TestClient(app)
 
