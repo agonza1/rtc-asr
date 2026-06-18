@@ -134,6 +134,43 @@ class FinalizeWaitWebSocket:
         return None
 
 
+class AlwaysFailSendWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str) and json.loads(data)["type"] == "start":
+            await self.incoming.put(json.dumps({"type": "ready"}))
+            return
+        if isinstance(data, bytes):
+            raise RuntimeError("simulated permanent send failure")
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
+class HealthySendWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str) and json.loads(data)["type"] == "start":
+            await self.incoming.put(json.dumps({"type": "ready"}))
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
 def capture_pushed_frames(service: LocalStreamingSTTService) -> list[tuple[Any, FrameDirection]]:
     frames: list[tuple[Any, FrameDirection]] = []
     original_push_frame = service.push_frame
@@ -281,4 +318,55 @@ async def _test_send_loop_exits_after_reconnect_replaces_task() -> None:
     await eventually(lambda: sum(1 for item in second.sent if isinstance(item, bytes)) == 2)
 
     assert original_send_task is not None and original_send_task.done()
+    await service.cleanup()
+
+
+def test_block_policy_does_not_deadlock_on_oversized_chunk() -> None:
+    asyncio.run(_test_block_policy_does_not_deadlock_on_oversized_chunk())
+
+
+async def _test_block_policy_does_not_deadlock_on_oversized_chunk() -> None:
+    websocket = SlowSendWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", max_send_queue_ms=20, drop_policy="block"),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    oversized_audio = b"o" * 3200
+    await asyncio.wait_for(
+        service.process_frame(AudioRawFrame(audio=oversized_audio, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM),
+        timeout=0.1,
+    )
+
+    await eventually(lambda: any(item == oversized_audio for item in websocket.sent if isinstance(item, bytes)))
+    websocket.release_binary_send.set()
+    await service.cleanup()
+
+
+def test_unrecoverable_send_failure_disconnects_and_allows_reconnect() -> None:
+    asyncio.run(_test_unrecoverable_send_failure_disconnects_and_allows_reconnect())
+
+
+async def _test_unrecoverable_send_failure_disconnects_and_allows_reconnect() -> None:
+    first = AlwaysFailSendWebSocket()
+    second = HealthySendWebSocket()
+    websockets = [first, second]
+
+    async def connect(_url: str) -> AlwaysFailSendWebSocket | HealthySendWebSocket:
+        return websockets.pop(0)
+
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=False),
+        connect_fn=connect,
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: service._websocket is None)
+
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
+
+    assert service.metrics.local_stt_protocol_errors_total >= 1
     await service.cleanup()

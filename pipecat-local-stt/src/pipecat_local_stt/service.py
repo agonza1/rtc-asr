@@ -155,6 +155,8 @@ class LocalStreamingSTTService(STTService):
         )
         if self.config.drop_policy == "block":
             while self._queued_audio_ms + chunk.duration_ms > self.config.max_send_queue_ms:
+                if self._send_queue.empty() and chunk.duration_ms > self.config.max_send_queue_ms:
+                    break
                 await asyncio.sleep(self.config.frame_ms / 1000.0)
             await self._put_chunk(chunk)
             return
@@ -223,7 +225,13 @@ class LocalStreamingSTTService(STTService):
                 self._update_queue_depth_metric()
                 if chunk.generation != self._generation:
                     continue
-                await self._send_binary(chunk.data)
+                try:
+                    await self._send_binary(chunk.data)
+                except Exception as exc:
+                    self.metrics.local_stt_protocol_errors_total += 1
+                    logger.warning("Local STT send loop error: %s", exc)
+                    await self._disconnect()
+                    return
                 self.metrics.local_stt_audio_frames_sent_total += 1
                 if self._send_task is not current_task:
                     return
