@@ -12,7 +12,7 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
-from src.main import _receive_stream_event, _seconds_to_buffer_bytes, create_app
+from src.main import StreamSession, _receive_stream_event, _seconds_to_buffer_bytes, create_app
 from src.model_loader import ASRUnavailableError
 from src.protocols.local_stt_v1 import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_CHANNELS, HOT_PATH_FRAME_MS, HOT_PATH_PCM_FORMAT, HOT_PATH_SAMPLE_RATE, PROTOCOL_VERSION, parse_server_message
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
@@ -146,6 +146,11 @@ class RecoveringPreloadTranscriber(FakeTranscriber):
 class BrokenLazyLoadTranscriber(FakeTranscriber):
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
         raise RuntimeError("invalid device")
+
+
+class UnavailableLazyLoadTranscriber(FakeTranscriber):
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
+        raise ASRUnavailableError("backend unavailable")
 
 
 class SleepingTranscriber(FakeTranscriber):
@@ -963,6 +968,28 @@ def test_local_stt_v1_partial_interval_chunks_remains_supported() -> None:
     ]
 
 
+def test_local_stt_v1_partial_interval_chunks_still_emit_after_batched_audio() -> None:
+    session = StreamSession(
+        stream_id=1,
+        language=None,
+        sample_rate=HOT_PATH_SAMPLE_RATE,
+        max_buffer_bytes=HOT_PATH_BYTES_PER_FRAME * 8,
+        partial_interval_chunks=2,
+    )
+    chunk = b"z" * HOT_PATH_BYTES_PER_FRAME
+
+    session.append_audio(chunk)
+    session.append_audio(chunk)
+    session.append_audio(chunk)
+
+    assert session.should_emit_partial() is True
+
+    session.record_partial({"text": "steady partial"})
+    session.append_audio(chunk)
+
+    assert session.should_emit_partial() is False
+
+
 def test_local_stt_v1_partial_interval_ms_takes_priority_over_chunks() -> None:
     transcriber = FakeTranscriber()
     chunk = b"y" * HOT_PATH_BYTES_PER_FRAME
@@ -1217,6 +1244,41 @@ def test_local_stt_v1_stream_cancel_clears_buffer_and_suppresses_final_transcrip
     assert transcriber.calls == [
         {"audio_size": len(chunk), "language": None, "sample_rate": HOT_PATH_SAMPLE_RATE, "prefix": chunk[:4]}
     ]
+
+
+def test_local_stt_v1_closes_when_worker_lazy_load_fails() -> None:
+    transcriber = UnavailableLazyLoadTranscriber()
+    chunk = b"u" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "partial_interval_chunks": 1,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(chunk)
+            assert websocket.receive_json() == {
+                "type": "error",
+                "code": "backend_unavailable",
+                "message": "backend unavailable",
+                "metadata": {},
+                "retryable": False,
+                "fatal": True,
+            }
+
+            with pytest.raises(WebSocketDisconnect) as exc_info:
+                websocket.receive_json()
+
+    assert exc_info.value.code == 1011
+    assert transcriber.calls == []
 
 
 def test_local_stt_v1_receive_loop_accepts_audio_while_partial_decode_runs() -> None:

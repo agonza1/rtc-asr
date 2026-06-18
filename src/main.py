@@ -176,7 +176,7 @@ class StreamSession:
 
     def should_emit_partial(self) -> bool:
         if self.partial_interval_audio_ms is None:
-            return self.chunks_received % self.partial_interval_chunks == 0
+            return (self.chunks_received - self.last_partial_chunks_received) >= self.partial_interval_chunks
         elapsed_audio_ms = self.audio_received_ms() - self.last_partial_audio_received_ms
         return elapsed_audio_ms >= self.partial_interval_audio_ms
 
@@ -489,13 +489,29 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         await task
                     except asyncio.CancelledError:
                         pass
+                    except Exception:
+                        pass
             runtime = None
             worker_task = None
             send_task = None
 
         try:
             while True:
-                payload, event_type = await _receive_local_stt_event(websocket)
+                receive_task = asyncio.create_task(_receive_local_stt_event(websocket))
+                wait_tasks: set[asyncio.Task[object]] = {receive_task}
+                if worker_task is not None:
+                    wait_tasks.add(worker_task)
+                done, _pending = await asyncio.wait(wait_tasks, return_when=asyncio.FIRST_COMPLETED)
+
+                if worker_task is not None and worker_task in done:
+                    receive_task.cancel()
+                    try:
+                        await receive_task
+                    except asyncio.CancelledError:
+                        pass
+                    await worker_task
+
+                payload, event_type = await receive_task
 
                 if event_type == "start":
                     if runtime is not None:
