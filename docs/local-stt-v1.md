@@ -222,3 +222,5 @@ Use protocol `error` events for invalid control messages, unsupported required f
   "type": "closed",
   "reason": "client_close",
   "metadata": {}
+}
+```
