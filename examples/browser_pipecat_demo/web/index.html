@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>rtc-asr Browser Pipecat Demo</title>
+    <link rel="stylesheet" href="/rtc-asr/assets/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to demo</a>
+    <main id="main" class="shell">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">rtc-asr example</p>
+        <h1 id="page-title">Browser WebRTC to local Pipecat edge</h1>
+        <p>
+          This demo keeps the browser dependency-free: native microphone capture
+          and WebRTC signaling go to a local Pipecat-facing service at
+          <code>/rtc-asr</code>.
+        </p>
+      </section>
+
+      <section class="workspace" aria-label="Demo workspace">
+        <section class="panel status-panel" aria-labelledby="status-title">
+          <h2 id="status-title">Status</h2>
+          <dl class="status-list">
+            <div>
+              <dt>Service</dt>
+              <dd id="service-status">checking</dd>
+            </div>
+            <div>
+              <dt>WebRTC</dt>
+              <dd id="webrtc-status">idle</dd>
+            </div>
+            <div>
+              <dt>Bridge</dt>
+              <dd id="bridge-status">unknown</dd>
+            </div>
+            <div>
+              <dt>ASR target</dt>
+              <dd id="asr-target">unknown</dd>
+            </div>
+          </dl>
+          <fieldset class="source-panel">
+            <legend>Audio source</legend>
+            <label class="source-option">
+              <input id="source-mic" type="radio" name="audio-source" value="mic" checked>
+              <span>Live microphone</span>
+            </label>
+            <label class="source-option">
+              <input id="source-file" type="radio" name="audio-source" value="file">
+              <span>Uploaded audio file</span>
+            </label>
+            <label class="file-picker" for="audio-file-input">
+              <span>Audio file</span>
+              <input id="audio-file-input" type="file" accept="audio/*">
+            </label>
+            <p id="source-help" class="source-help">
+              Use a microphone for live speech or upload a clip to stream real-time browser audio over WebRTC.
+            </p>
+          </fieldset>
+          <div class="actions">
+            <button id="start-button" type="button">Start stream</button>
+            <button id="stop-button" type="button" disabled>Stop</button>
+          </div>
+          <p id="error-message" class="error" role="alert" hidden></p>
+        </section>
+
+        <section class="panel transcript-panel" aria-labelledby="transcript-title">
+          <h2 id="transcript-title">Transcript</h2>
+          <div class="transcript" aria-live="polite" aria-atomic="false">
+            <p id="partial-text" class="partial">Waiting for a Pipecat bridge.</p>
+            <ol id="final-log" class="final-log"></ol>
+          </div>
+        </section>
+      </section>
+
+      <section class="panel event-panel" aria-labelledby="event-title">
+        <h2 id="event-title">Event log</h2>
+        <ol id="event-log" class="event-log" aria-live="polite"></ol>
+      </section>
+    </main>
+    <script src="/rtc-asr/assets/app.js" type="module"></script>
+  </body>
+</html>
+

@@ -12,10 +12,38 @@ from starlette.websockets import WebSocketDisconnect
 from src.config import AppConfig
 from src.main import _receive_stream_event, _seconds_to_buffer_bytes, create_app
 from src.model_loader import ASRUnavailableError
+from src.protocols.local_stt_v1 import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_CHANNELS, HOT_PATH_FRAME_MS, HOT_PATH_PCM_FORMAT, HOT_PATH_SAMPLE_RATE, PROTOCOL_VERSION, parse_server_message
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 DEFAULT_MAX_BUFFER_BYTES = AppConfig().stream_max_buffer_bytes
+
+
+DEFAULT_PROTOCOLS = [
+    {
+        "id": "rtc-asr-stream.v1",
+        "transport": "websocket",
+        "path": "/ws/stream",
+        "docs": "/docs/api-reference.md#websocket-streaming",
+        "status": "stable",
+        "message_format": "json-control-plus-binary-audio",
+    },
+    {
+        "id": PROTOCOL_VERSION,
+        "transport": "websocket",
+        "path": "/v1/stt/stream",
+        "docs": "/docs/local-stt-v1.md",
+        "status": "preview",
+        "message_format": "json-control-plus-binary-pcm16",
+        "audio": {
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "channels": HOT_PATH_CHANNELS,
+            "format": HOT_PATH_PCM_FORMAT,
+            "frame_ms": HOT_PATH_FRAME_MS,
+            "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+        },
+    },
+]
 
 
 class FakeIncomingWebSocket:
@@ -137,6 +165,7 @@ def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
         "model_loaded": False,
         "preload_enabled": False,
         "preload_error": None,
+        "protocols": DEFAULT_PROTOCOLS,
     }
     assert ready.status_code == 200
     assert ready.json() == health.json()
@@ -167,6 +196,7 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "model_loaded": True,
         "preload_enabled": True,
         "preload_error": None,
+        "protocols": DEFAULT_PROTOCOLS,
     }
     assert ready.status_code == 200
     assert ready.json() == {
@@ -178,6 +208,7 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "model_loaded": True,
         "preload_enabled": True,
         "preload_error": None,
+        "protocols": DEFAULT_PROTOCOLS,
     }
     assert models.status_code == 200
     assert models.json() == {
@@ -188,6 +219,7 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "ready": True,
         "preload_enabled": True,
         "preload_error": None,
+        "protocols": DEFAULT_PROTOCOLS,
         "streaming": {
             "transport": "websocket",
             "path": "/ws/stream",
@@ -281,6 +313,7 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
         "model_loaded": False,
         "preload_enabled": True,
         "preload_error": "backend unavailable",
+        "protocols": DEFAULT_PROTOCOLS,
     }
     assert ready.status_code == 503
     assert ready.json() == {
@@ -292,6 +325,7 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
         "model_loaded": False,
         "preload_enabled": True,
         "preload_error": "backend unavailable",
+        "protocols": DEFAULT_PROTOCOLS,
     }
     assert models.status_code == 200
     assert models.json()["status"] == "degraded"
@@ -721,7 +755,7 @@ def test_websocket_stream_reuses_connection_for_multiple_utterances() -> None:
 
 def test_websocket_stream_cancel_resets_state_without_transcribing() -> None:
     transcriber = FakeTranscriber()
-    chunk = b"first"
+    chunk = b"first!"
 
     with TestClient(create_app(transcriber=transcriber)) as client:
         with client.websocket_connect("/ws/stream") as websocket:
@@ -869,6 +903,258 @@ def test_websocket_stream_retranscribes_on_stop_when_partial_interval_skips_late
             "prefix": first_chunk[:4],
         },
     ]
+
+
+def test_local_stt_v1_partial_interval_uses_audio_duration_for_batched_frames() -> None:
+    transcriber = FakeTranscriber()
+    hundred_ms_pcm = b"x" * (HOT_PATH_BYTES_PER_FRAME * 5)
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                    "partial_interval_ms": 100,
+                }
+            )
+            websocket.receive_json()
+
+            websocket.send_bytes(hundred_ms_pcm)
+            partial_message = parse_server_message(websocket.receive_json())
+
+            assert partial_message.type == "transcript"
+            assert partial_message.is_final is False
+            assert partial_message.audio_received_ms == 100
+            assert partial_message.audio_transcribed_ms == 100
+            assert partial_message.metadata["chunks_received"] == 1
+
+    assert transcriber.calls == [
+        {
+            "audio_size": len(hundred_ms_pcm),
+            "language": None,
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "prefix": hundred_ms_pcm[:4],
+        }
+    ]
+
+
+def test_local_stt_v1_stream_accepts_flat_start_binary_audio_and_finalize() -> None:
+    transcriber = FakeTranscriber()
+    chunk = b"f" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                    "partial_interval_ms": HOT_PATH_FRAME_MS,
+                    "client_stream_id": "turn-1",
+                    "metadata": {"turn_id": "turn-1", "tenant": "demo"},
+                }
+            )
+            ready = websocket.receive_json()
+            ready_message = parse_server_message(ready)
+            assert ready_message.type == "ready"
+            assert ready_message.version == PROTOCOL_VERSION
+            assert ready_message.audio.bytes_per_frame == HOT_PATH_BYTES_PER_FRAME
+            assert ready_message.metadata == {
+                "stream_id": 1,
+                "backend": "fake-whisper",
+                "model": "fixture-adapter",
+                "max_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
+                "client_stream_id": "turn-1",
+                "client_metadata": {"turn_id": "turn-1", "tenant": "demo"},
+            }
+
+            websocket.send_bytes(chunk)
+            partial = websocket.receive_json()
+            partial_message = parse_server_message(partial)
+            assert partial_message.type == "transcript"
+            assert partial_message.is_final is False
+            assert partial_message.speech_final is False
+            assert partial_message.revision == 1
+            assert partial_message.audio_received_ms == round((len(chunk) / 2) * 1000 / HOT_PATH_SAMPLE_RATE)
+            assert partial_message.audio_transcribed_ms == partial_message.audio_received_ms
+            assert partial_message.metadata["stream_id"] == 1
+            assert partial_message.metadata["client_stream_id"] == "turn-1"
+            assert partial_message.metadata["client_metadata"] == {"turn_id": "turn-1", "tenant": "demo"}
+
+            websocket.send_json({"type": "finalize"})
+            final_event = websocket.receive_json()
+            final_message = parse_server_message(final_event)
+            assert final_message.type == "transcript"
+            assert final_message.is_final is True
+            assert final_message.speech_final is True
+            assert final_message.revision == 2
+            assert final_message.text == "fixture transcription 1"
+            assert final_message.metadata["stream_id"] == 1
+            assert final_message.metadata["client_stream_id"] == "turn-1"
+            assert final_message.metadata["client_metadata"] == {"turn_id": "turn-1", "tenant": "demo"}
+
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "version": PROTOCOL_VERSION,
+                    "audio": {
+                        "sample_rate": HOT_PATH_SAMPLE_RATE,
+                        "channels": HOT_PATH_CHANNELS,
+                        "format": HOT_PATH_PCM_FORMAT,
+                        "frame_ms": HOT_PATH_FRAME_MS,
+                        "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+                    },
+                }
+            )
+            second_ready = websocket.receive_json()
+            assert second_ready["type"] == "ready"
+            assert second_ready["metadata"]["stream_id"] == 2
+
+
+def test_local_stt_v1_stream_stop_is_a_finalize_alias() -> None:
+    transcriber = FakeTranscriber()
+    chunk = b"steady"
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(chunk)
+            assert websocket.receive_json()["type"] == "transcript"
+
+            websocket.send_json({"type": "stop"})
+            final_event = websocket.receive_json()
+
+    assert final_event["type"] == "transcript"
+    assert final_event["is_final"] is True
+    assert transcriber.calls == [
+        {"audio_size": len(chunk), "language": None, "sample_rate": HOT_PATH_SAMPLE_RATE, "prefix": chunk[:4]}
+    ]
+
+
+def test_local_stt_v1_stream_cancel_clears_buffer_and_suppresses_final_transcription() -> None:
+    transcriber = FakeTranscriber()
+    chunk = b"first!"
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(chunk)
+            assert websocket.receive_json()["type"] == "transcript"
+
+            websocket.send_json({"type": "cancel"})
+            warning = websocket.receive_json()
+            assert warning == {
+                "type": "warning",
+                "code": "stream_canceled",
+                "message": "Active utterance canceled",
+                "metadata": {
+                    "stream_id": 1,
+                    "chunks_received": 1,
+                    "buffered_bytes": len(chunk),
+                    "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(chunk),
+                },
+                "retryable": False,
+            }
+
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                }
+            )
+            second_ready = websocket.receive_json()
+
+    assert second_ready["metadata"]["stream_id"] == 2
+    assert transcriber.calls == [
+        {"audio_size": len(chunk), "language": None, "sample_rate": HOT_PATH_SAMPLE_RATE, "prefix": chunk[:4]}
+    ]
+
+
+def test_local_stt_v1_stream_pong_and_close_semantics() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json({"type": "ping", "ping_id": "heartbeat-1", "timestamp_ms": 1234})
+            assert websocket.receive_json() == {
+                "type": "pong",
+                "metadata": {},
+                "ping_id": "heartbeat-1",
+                "timestamp_ms": 1234,
+            }
+
+            websocket.send_json({"type": "close"})
+            assert websocket.receive_json() == {
+                "type": "closed",
+                "reason": "client_close",
+                "metadata": {},
+            }
+
+            with pytest.raises(WebSocketDisconnect) as exc_info:
+                websocket.receive_json()
+
+    assert exc_info.value.code == 1000
+    assert transcriber.calls == []
+
+
+def test_local_stt_v1_stream_emits_json_error_before_close() -> None:
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                }
+            )
+            assert websocket.receive_json() == {
+                "type": "error",
+                "code": "invalid_message",
+                "message": "protocol must be local-stt-v1",
+                "metadata": {},
+                "retryable": False,
+                "fatal": True,
+            }
+
+            with pytest.raises(WebSocketDisconnect) as exc_info:
+                websocket.receive_json()
+
+    assert exc_info.value.code == 1003
+    assert transcriber.calls == []
 
 
 def test_legacy_env_aliases_and_cuda_detection(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1071,7 +1071,10 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 process_rss_monitor.start()
         service = await fetch_service_metadata(args.url)
         preload_enabled = service_preload_enabled(service)
-        if args.require_preloaded_service and preload_enabled is not True:
+        require_preloaded_service = args.require_preloaded_service
+        if server is not None and not args.preload_model:
+            require_preloaded_service = False
+        if require_preloaded_service and preload_enabled is not True:
             raise RuntimeError(
                 "Benchmark target must report preload_enabled=true. Restart the service with ASR_PRELOAD_MODEL=true "
                 "or rerun with --allow-unpreloaded-service if you intentionally want a cold-path measurement."
@@ -1365,6 +1368,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "final_p95_ms": final_summary["p95_ms"],
                 "final_min_ms": final_summary["min_ms"],
                 "final_max_ms": final_summary["max_ms"],
+
                 "stop_to_final_mean_ms": stop_to_final_summary["mean_ms"],
                 "stop_to_final_p90_ms": stop_to_final_summary["p90_ms"],
                 "stop_to_final_p95_ms": stop_to_final_summary["p95_ms"],

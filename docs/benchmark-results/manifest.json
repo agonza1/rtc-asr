@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-16T03:08:23Z",
+  "generated_at": "2026-06-17T17:25:01Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
-    "artifact_file_count": 9,
+    "artifact_file_count": 13,
     "validated_count": 7,
     "legacy_count": 0,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-16T03:03:27Z",
+    "latest_measured_at": "2026-06-16T03:51:29Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -25,8 +25,8 @@
         "max": 3799.0
       },
       "partial_mean_ms": {
-        "min": 29.7,
-        "max": 12134.1
+        "min": 74.5,
+        "max": 15441.5
       },
       "first_partial_end_to_end_mean_ms": {
         "min": 557.4,
@@ -38,15 +38,15 @@
       },
       "final_mean_ms": {
         "min": 210.6,
-        "max": 22619.0
+        "max": 16492.0
       },
       "rtf_mean": {
         "min": 0.019,
         "max": 0.522
       },
       "overall_score": {
-        "min": 38.3,
-        "max": 98.7
+        "min": 40.2,
+        "max": 97.2
       }
     },
     "highlights": {
@@ -58,8 +58,8 @@
         "value": 141.9,
         "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
       },
-      "fastest_partial": {
-        "label": "Fastest streaming partial mean",
+      "lowest_partial_backlog": {
+        "label": "Lowest partial backlog latency",
         "slug": "parakeet-mlx-service-110m",
         "backend": "parakeet-mlx",
         "model": "mlx-community/parakeet-tdt_ctc-110m",
@@ -82,6 +82,14 @@
         "value": 244.2,
         "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
       },
+      "lowest_late_partial_ratio": {
+        "label": "Lowest late partial ratio",
+        "slug": "qwen-compose",
+        "backend": "qwen-asr",
+        "model": "Qwen/Qwen3-ASR-0.6B",
+        "value": 0.0,
+        "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json"
+      },
       "fastest_final": {
         "label": "Fastest streaming finalization delay",
         "slug": "parakeet-mlx-service-110m",
@@ -95,16 +103,24 @@
         "slug": "parakeet-mlx-service-110m",
         "backend": "parakeet-mlx",
         "model": "mlx-community/parakeet-tdt_ctc-110m",
-        "value": 98.7,
+        "value": 97.2,
         "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
       },
       "best_live_caption": {
-        "label": "Best live caption score",
-        "slug": "parakeet-nemo-compose",
-        "backend": "parakeet-nemo",
-        "model": "nvidia/parakeet-tdt_ctc-110m",
-        "value": 98.7,
-        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json"
+        "label": "Best live turn-taking score",
+        "slug": "parakeet-mlx-service-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "value": 91.0,
+        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
+      },
+      "best_partial_backlog": {
+        "label": "Best partial backlog score",
+        "slug": "parakeet-mlx-service-110m",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "value": 100.0,
+        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
       }
     }
   },
@@ -170,11 +186,12 @@
       },
       "derived": {
         "latency_score": 100.0,
-        "live_caption_score": 97.8,
+        "live_caption_score": 91.0,
+        "partial_backlog_score": 100.0,
         "finalization_score": 99.9,
         "stability_score": 94.9,
         "efficiency_score": 100.0,
-        "overall_score": 98.7,
+        "overall_score": 97.2,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.198,
@@ -242,11 +259,12 @@
       },
       "derived": {
         "latency_score": 98.1,
-        "live_caption_score": 98.7,
+        "live_caption_score": null,
+        "partial_backlog_score": 98.7,
         "finalization_score": 95.7,
         "stability_score": 85.5,
         "efficiency_score": 98.4,
-        "overall_score": 95.8,
+        "overall_score": 95.0,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.543,
@@ -314,11 +332,12 @@
       },
       "derived": {
         "latency_score": 85.0,
-        "live_caption_score": 94.4,
+        "live_caption_score": null,
+        "partial_backlog_score": 94.4,
         "finalization_score": 82.6,
         "stability_score": 97.3,
         "efficiency_score": 86.3,
-        "overall_score": 88.7,
+        "overall_score": 87.0,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.063,
@@ -386,88 +405,17 @@
       },
       "derived": {
         "latency_score": 81.3,
-        "live_caption_score": 79.8,
+        "live_caption_score": null,
+        "partial_backlog_score": 79.8,
         "finalization_score": 78.2,
         "stability_score": 97.4,
         "efficiency_score": 83.6,
-        "overall_score": 83.1,
+        "overall_score": 84.1,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.111,
         "partial_jitter_ratio": 1.175,
         "final_jitter_ratio": 1.066
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "parakeet-compose",
-      "label": "Parakeet 0.6B Compose",
-      "backend": "parakeet",
-      "model": "nvidia/parakeet-tdt-0.6b-v3",
-      "lane": "Docker Compose CPU",
-      "runtime": "cpu / float32",
-      "status": "validated",
-      "status_detail": "Validated 10-sample Compose CPU artifact.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-compose-parakeet",
-      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)",
-      "measured_at": "2026-06-10T01:41:11Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.13.12",
-        "cpu_logical_cores": null,
-        "memory_total_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 1,
-        "partial_window_seconds": 2,
-        "binary_frames": false,
-        "sample_rate": 22050
-      },
-      "rest": {
-        "mean_ms": 2388.3,
-        "p95_ms": 4098.1,
-        "rtf_mean": 0.328
-      },
-      "streaming": {
-        "partial_mean_ms": 1715.1,
-        "partial_p95_ms": 2968.7,
-        "first_partial_end_to_end_mean_ms": null,
-        "first_partial_end_to_end_p95_ms": null,
-        "partial_gap_mean_ms": null,
-        "partial_gap_p95_ms": null,
-        "partial_transcript_churn_char_mean": null,
-        "partial_transcript_churn_word_mean": null,
-        "late_partial_events": null,
-        "late_partial_ratio": null,
-        "final_mean_ms": 2215.8,
-        "final_p95_ms": 3080.4
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 53.2,
-        "live_caption_score": 57.1,
-        "finalization_score": 58.2,
-        "stability_score": 85.9,
-        "efficiency_score": 69.3,
-        "overall_score": 61.9,
-        "confidence_score": 100.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.716,
-        "partial_jitter_ratio": 1.731,
-        "final_jitter_ratio": 1.39
       }
     },
     {
@@ -531,16 +479,90 @@
       },
       "derived": {
         "latency_score": 94.4,
-        "live_caption_score": 20.4,
+        "live_caption_score": 51.5,
+        "partial_backlog_score": 31.1,
         "finalization_score": 0.0,
         "stability_score": 94.0,
         "efficiency_score": 95.2,
-        "overall_score": 59.1,
+        "overall_score": 66.0,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.3,
         "partial_jitter_ratio": 1.339,
         "final_jitter_ratio": 1.143
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "parakeet-compose",
+      "label": "Parakeet 0.6B Compose",
+      "backend": "parakeet",
+      "model": "nvidia/parakeet-tdt-0.6b-v3",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "validated",
+      "status_detail": "Validated 10-sample Compose CPU artifact.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet",
+      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)",
+      "measured_at": "2026-06-10T01:41:11Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
+        "cpu_logical_cores": null,
+        "memory_total_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2,
+        "binary_frames": false,
+        "sample_rate": 22050
+      },
+      "rest": {
+        "mean_ms": 2388.3,
+        "p95_ms": 4098.1,
+        "rtf_mean": 0.328
+      },
+      "streaming": {
+        "partial_mean_ms": 1715.1,
+        "partial_p95_ms": 2968.7,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
+        "partial_transcript_churn_char_mean": null,
+        "partial_transcript_churn_word_mean": null,
+        "late_partial_events": null,
+        "late_partial_ratio": null,
+        "final_mean_ms": 2215.8,
+        "final_p95_ms": 3080.4
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 53.2,
+        "live_caption_score": null,
+        "partial_backlog_score": 57.1,
+        "finalization_score": 58.2,
+        "stability_score": 85.9,
+        "efficiency_score": 69.3,
+        "overall_score": 63.3,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.716,
+        "partial_jitter_ratio": 1.731,
+        "final_jitter_ratio": 1.39
       }
     },
     {
@@ -604,11 +626,12 @@
       },
       "derived": {
         "latency_score": 38.1,
-        "live_caption_score": 28.6,
+        "live_caption_score": 44.8,
+        "partial_backlog_score": 50.4,
         "finalization_score": 0.0,
         "stability_score": 94.2,
         "efficiency_score": 49.3,
-        "overall_score": 38.3,
+        "overall_score": 41.9,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.178,
@@ -625,20 +648,89 @@
       "lane": "Pipecat E2E Local Python CPU",
       "runtime": "cpu / int8",
       "status": "blocked",
-      "status_detail": "Checked-in single-sample Pipecat E2E artifact using 20 ms source frames bridged into 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
+      "status_detail": "Checked-in single-sample Pipecat E2E artifact refreshed on 2026-06-16 using synthesized real-time speech, 20 ms source frames, and 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
       "target_sample_count": 1,
-      "run_command": "make benchmark-pipecat-e2e BENCHMARK_PIPECAT_AUDIO_FILE=/absolute/path/to/speech.wav",
+      "run_command": "make benchmark-pipecat-e2e",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
-      "measured_at": "2026-06-13T03:44:05Z",
+      "measured_at": "2026-06-16T03:51:29Z",
       "sample_count": 1,
-      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 1096.8,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 22050,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 551.1,
+        "p95_ms": 551.1,
+        "rtf_mean": 0.076
+      },
+      "streaming": {
+        "partial_mean_ms": 15441.5,
+        "partial_p95_ms": 21110.8,
+        "first_partial_end_to_end_mean_ms": 1412.8,
+        "first_partial_end_to_end_p95_ms": 1412.8,
+        "partial_gap_mean_ms": 408.0,
+        "partial_gap_p95_ms": 1911.3,
+        "partial_transcript_churn_char_mean": 0.138,
+        "partial_transcript_churn_word_mean": 0.228,
+        "late_partial_events": 6,
+        "late_partial_ratio": 0.085,
+        "final_mean_ms": 16492.0,
+        "final_p95_ms": 16492.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 95.9,
+        "live_caption_score": 78.5,
+        "partial_backlog_score": 27.7,
+        "finalization_score": 0.0,
+        "stability_score": 97.6,
+        "efficiency_score": 95.3,
+        "overall_score": 40.2,
+        "confidence_score": 62.5,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 1.367,
+        "final_jitter_ratio": 1.0
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-17T17:15:19Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17-cate-blanch.json",
       "system": {
         "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
         "processor": "aarch64",
         "python": "3.11.2",
-        "cpu_logical_cores": null,
-        "memory_total_mb": null,
-        "peak_rss_mb": null,
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 7936.0,
+        "peak_rss_mb": 1271.7,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
         "thermal_peak_celsius": null,
@@ -654,44 +746,192 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 443.1,
-        "p95_ms": 443.1,
-        "rtf_mean": 0.112
+        "mean_ms": 564.8,
+        "p95_ms": 564.8,
+        "rtf_mean": 0.072
       },
       "streaming": {
-        "partial_mean_ms": 29.7,
-        "partial_p95_ms": 64.8,
-        "first_partial_end_to_end_mean_ms": 564.8,
-        "first_partial_end_to_end_p95_ms": 564.8,
-        "partial_gap_mean_ms": 367.9,
-        "partial_gap_p95_ms": 658.9,
-        "partial_transcript_churn_char_mean": null,
-        "partial_transcript_churn_word_mean": null,
-        "late_partial_events": null,
-        "late_partial_ratio": null,
-        "final_mean_ms": 22619.0,
-        "final_p95_ms": 22619.0
+        "partial_mean_ms": 20400.1,
+        "partial_p95_ms": 27286.3,
+        "first_partial_end_to_end_mean_ms": 2368.4,
+        "first_partial_end_to_end_p95_ms": 2368.4,
+        "partial_gap_mean_ms": 483.1,
+        "partial_gap_p95_ms": 0.7,
+        "partial_transcript_churn_char_mean": 0.249,
+        "partial_transcript_churn_word_mean": 0.321,
+        "late_partial_events": 9,
+        "late_partial_ratio": 0.118,
+        "final_mean_ms": 24382.3,
+        "final_p95_ms": 24382.3
       },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
-      "derived": {
-        "latency_score": 97.6,
-        "live_caption_score": 97.8,
-        "finalization_score": 0.0,
-        "stability_score": 92.1,
-        "efficiency_score": 91.5,
-        "overall_score": 42.1,
-        "confidence_score": 62.5,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.0,
-        "partial_jitter_ratio": 2.182,
-        "final_jitter_ratio": 1.0
-      }
-    }
-  ],
-  "artifacts": [
+      "label": "base.en"
+    },
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-17T17:11:26Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17.json",
+      "system": {
+        "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+        "processor": "aarch64",
+        "python": "3.11.2",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 7936.0,
+        "peak_rss_mb": 789.5,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 16000,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 1.8,
+        "p95_ms": 1.8,
+        "rtf_mean": 0.014
+      },
+      "streaming": {
+        "partial_mean_ms": null,
+        "partial_p95_ms": null,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
+        "partial_transcript_churn_char_mean": null,
+        "partial_transcript_churn_word_mean": null,
+        "late_partial_events": 0,
+        "late_partial_ratio": null,
+        "final_mean_ms": 205.0,
+        "final_p95_ms": 205.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "label": "base.en"
+    },
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-16T03:51:29Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 1096.8,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 22050,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 551.1,
+        "p95_ms": 551.1,
+        "rtf_mean": 0.076
+      },
+      "streaming": {
+        "partial_mean_ms": 15441.5,
+        "partial_p95_ms": 21110.8,
+        "first_partial_end_to_end_mean_ms": 1412.8,
+        "first_partial_end_to_end_p95_ms": 1412.8,
+        "partial_gap_mean_ms": 408.0,
+        "partial_gap_p95_ms": 1911.3,
+        "partial_transcript_churn_char_mean": 0.138,
+        "partial_transcript_churn_word_mean": 0.228,
+        "late_partial_events": 6,
+        "late_partial_ratio": 0.085,
+        "final_mean_ms": 16492.0,
+        "final_p95_ms": 16492.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "base.en"
+    },
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-16T03:29:41Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-15.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 1156.6,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 22050,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 488.8,
+        "p95_ms": 488.8,
+        "rtf_mean": 0.067
+      },
+      "streaming": {
+        "partial_mean_ms": 22042.2,
+        "partial_p95_ms": 30215.2,
+        "first_partial_end_to_end_mean_ms": 2345.6,
+        "first_partial_end_to_end_p95_ms": 2345.6,
+        "partial_gap_mean_ms": 22327.9,
+        "partial_gap_p95_ms": 30418.3,
+        "partial_transcript_churn_char_mean": 0.138,
+        "partial_transcript_churn_word_mean": 0.228,
+        "late_partial_events": 11,
+        "late_partial_ratio": 0.155,
+        "final_mean_ms": 25446.8,
+        "final_p95_ms": 25446.8
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "base.en"
+    },
     {
       "kind": "asr",
       "backend": "faster-whisper",
@@ -1228,11 +1468,12 @@
       },
       "derived": {
         "latency_score": 100.0,
-        "live_caption_score": 97.8,
+        "live_caption_score": 91.0,
+        "partial_backlog_score": 100.0,
         "finalization_score": 99.9,
         "stability_score": 94.9,
         "efficiency_score": 100.0,
-        "overall_score": 98.7,
+        "overall_score": 97.2,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.198,
@@ -1300,11 +1541,12 @@
       },
       "derived": {
         "latency_score": 98.1,
-        "live_caption_score": 98.7,
+        "live_caption_score": null,
+        "partial_backlog_score": 98.7,
         "finalization_score": 95.7,
         "stability_score": 85.5,
         "efficiency_score": 98.4,
-        "overall_score": 95.8,
+        "overall_score": 95.0,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.543,
@@ -1372,11 +1614,12 @@
       },
       "derived": {
         "latency_score": 85.0,
-        "live_caption_score": 94.4,
+        "live_caption_score": null,
+        "partial_backlog_score": 94.4,
         "finalization_score": 82.6,
         "stability_score": 97.3,
         "efficiency_score": 86.3,
-        "overall_score": 88.7,
+        "overall_score": 87.0,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.063,
@@ -1444,88 +1687,17 @@
       },
       "derived": {
         "latency_score": 81.3,
-        "live_caption_score": 79.8,
+        "live_caption_score": null,
+        "partial_backlog_score": 79.8,
         "finalization_score": 78.2,
         "stability_score": 97.4,
         "efficiency_score": 83.6,
-        "overall_score": 83.1,
+        "overall_score": 84.1,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.111,
         "partial_jitter_ratio": 1.175,
         "final_jitter_ratio": 1.066
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "parakeet-compose",
-      "label": "Parakeet 0.6B Compose",
-      "backend": "parakeet",
-      "model": "nvidia/parakeet-tdt-0.6b-v3",
-      "lane": "Docker Compose CPU",
-      "runtime": "cpu / float32",
-      "status": "validated",
-      "status_detail": "Validated 10-sample Compose CPU artifact.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-compose-parakeet",
-      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)",
-      "measured_at": "2026-06-10T01:41:11Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.13.12",
-        "cpu_logical_cores": null,
-        "memory_total_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 1,
-        "partial_window_seconds": 2,
-        "binary_frames": false,
-        "sample_rate": 22050
-      },
-      "rest": {
-        "mean_ms": 2388.3,
-        "p95_ms": 4098.1,
-        "rtf_mean": 0.328
-      },
-      "streaming": {
-        "partial_mean_ms": 1715.1,
-        "partial_p95_ms": 2968.7,
-        "first_partial_end_to_end_mean_ms": null,
-        "first_partial_end_to_end_p95_ms": null,
-        "partial_gap_mean_ms": null,
-        "partial_gap_p95_ms": null,
-        "partial_transcript_churn_char_mean": null,
-        "partial_transcript_churn_word_mean": null,
-        "late_partial_events": null,
-        "late_partial_ratio": null,
-        "final_mean_ms": 2215.8,
-        "final_p95_ms": 3080.4
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 53.2,
-        "live_caption_score": 57.1,
-        "finalization_score": 58.2,
-        "stability_score": 85.9,
-        "efficiency_score": 69.3,
-        "overall_score": 61.9,
-        "confidence_score": 100.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.716,
-        "partial_jitter_ratio": 1.731,
-        "final_jitter_ratio": 1.39
       }
     },
     {
@@ -1589,11 +1761,12 @@
       },
       "derived": {
         "latency_score": 94.4,
-        "live_caption_score": 20.4,
+        "live_caption_score": 51.5,
+        "partial_backlog_score": 31.1,
         "finalization_score": 0.0,
         "stability_score": 94.0,
         "efficiency_score": 95.2,
-        "overall_score": 59.1,
+        "overall_score": 66.0,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.3,
@@ -1603,24 +1776,24 @@
     },
     {
       "kind": "asr",
-      "slug": "pipecat-e2e-faster-whisper-base",
-      "label": "Pipecat E2E Faster-Whisper Base",
-      "backend": "faster-whisper",
-      "model": "base.en",
-      "lane": "Pipecat E2E Local Python CPU",
-      "runtime": "cpu / int8",
-      "status": "blocked",
-      "status_detail": "Checked-in single-sample Pipecat E2E artifact using 20 ms source frames bridged into 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
-      "target_sample_count": 1,
-      "run_command": "make benchmark-pipecat-e2e BENCHMARK_PIPECAT_AUDIO_FILE=/absolute/path/to/speech.wav",
-      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
-      "measured_at": "2026-06-13T03:44:05Z",
-      "sample_count": 1,
-      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "slug": "parakeet-compose",
+      "label": "Parakeet 0.6B Compose",
+      "backend": "parakeet",
+      "model": "nvidia/parakeet-tdt-0.6b-v3",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "validated",
+      "status_detail": "Validated 10-sample Compose CPU artifact.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet",
+      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)",
+      "measured_at": "2026-06-10T01:41:11Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
       "system": {
-        "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
-        "processor": "aarch64",
-        "python": "3.11.2",
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.12",
         "cpu_logical_cores": null,
         "memory_total_mb": null,
         "peak_rss_mb": null,
@@ -1630,49 +1803,48 @@
         "thermal_observation": null
       },
       "contract": {
-        "chunk_ms": 100,
+        "chunk_ms": 250,
         "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
+        "partial_window_seconds": 2,
         "binary_frames": false,
-        "sample_rate": 32000,
-        "source_frame_ms": 20,
-        "partial_event_timeout_seconds": 0.1
+        "sample_rate": 22050
       },
       "rest": {
-        "mean_ms": 443.1,
-        "p95_ms": 443.1,
-        "rtf_mean": 0.112
+        "mean_ms": 2388.3,
+        "p95_ms": 4098.1,
+        "rtf_mean": 0.328
       },
       "streaming": {
-        "partial_mean_ms": 29.7,
-        "partial_p95_ms": 64.8,
-        "first_partial_end_to_end_mean_ms": 564.8,
-        "first_partial_end_to_end_p95_ms": 564.8,
-        "partial_gap_mean_ms": 367.9,
-        "partial_gap_p95_ms": 658.9,
+        "partial_mean_ms": 1715.1,
+        "partial_p95_ms": 2968.7,
+        "first_partial_end_to_end_mean_ms": null,
+        "first_partial_end_to_end_p95_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
         "partial_transcript_churn_char_mean": null,
         "partial_transcript_churn_word_mean": null,
         "late_partial_events": null,
         "late_partial_ratio": null,
-        "final_mean_ms": 22619.0,
-        "final_p95_ms": 22619.0
+        "final_mean_ms": 2215.8,
+        "final_p95_ms": 3080.4
       },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 97.6,
-        "live_caption_score": 97.8,
-        "finalization_score": 0.0,
-        "stability_score": 92.1,
-        "efficiency_score": 91.5,
-        "overall_score": 42.1,
-        "confidence_score": 62.5,
+        "latency_score": 53.2,
+        "live_caption_score": null,
+        "partial_backlog_score": 57.1,
+        "finalization_score": 58.2,
+        "stability_score": 85.9,
+        "efficiency_score": 69.3,
+        "overall_score": 63.3,
+        "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.0,
-        "partial_jitter_ratio": 2.182,
-        "final_jitter_ratio": 1.0
+        "rest_jitter_ratio": 1.716,
+        "partial_jitter_ratio": 1.731,
+        "final_jitter_ratio": 1.39
       }
     },
     {
@@ -1736,16 +1908,92 @@
       },
       "derived": {
         "latency_score": 38.1,
-        "live_caption_score": 28.6,
+        "live_caption_score": 44.8,
+        "partial_backlog_score": 50.4,
         "finalization_score": 0.0,
         "stability_score": 94.2,
         "efficiency_score": 49.3,
-        "overall_score": 38.3,
+        "overall_score": 41.9,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.178,
         "partial_jitter_ratio": 1.5,
         "final_jitter_ratio": 1.116
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "pipecat-e2e-faster-whisper-base",
+      "label": "Pipecat E2E Faster-Whisper Base",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "lane": "Pipecat E2E Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "blocked",
+      "status_detail": "Checked-in single-sample Pipecat E2E artifact refreshed on 2026-06-16 using synthesized real-time speech, 20 ms source frames, and 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
+      "target_sample_count": 1,
+      "run_command": "make benchmark-pipecat-e2e",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "measured_at": "2026-06-16T03:51:29Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.5",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 1096.8,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 22050,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 551.1,
+        "p95_ms": 551.1,
+        "rtf_mean": 0.076
+      },
+      "streaming": {
+        "partial_mean_ms": 15441.5,
+        "partial_p95_ms": 21110.8,
+        "first_partial_end_to_end_mean_ms": 1412.8,
+        "first_partial_end_to_end_p95_ms": 1412.8,
+        "partial_gap_mean_ms": 408.0,
+        "partial_gap_p95_ms": 1911.3,
+        "partial_transcript_churn_char_mean": 0.138,
+        "partial_transcript_churn_word_mean": 0.228,
+        "late_partial_events": 6,
+        "late_partial_ratio": 0.085,
+        "final_mean_ms": 16492.0,
+        "final_p95_ms": 16492.0
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 95.9,
+        "live_caption_score": 78.5,
+        "partial_backlog_score": 27.7,
+        "finalization_score": 0.0,
+        "stability_score": 97.6,
+        "efficiency_score": 95.3,
+        "overall_score": 40.2,
+        "confidence_score": 62.5,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 1.367,
+        "final_jitter_ratio": 1.0
       }
     }
   ]

@@ -55,7 +55,7 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
     assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
     assert tracks["qwen-compose"]["target_sample_count"] == 5
-    assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json")
+    assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
 
@@ -185,7 +185,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     derived = qwen_mps["derived"]
 
     assert derived["overall_score"] is not None
-    assert derived["live_caption_score"] is not None
+    assert derived["partial_backlog_score"] is not None
     assert derived["confidence_score"] == 100.0
     assert derived["sample_coverage_pct"] == 100.0
 
@@ -267,6 +267,7 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
     assert track["streaming"]["partial_gap_mean_ms"] == 95
     assert manifest["summary"]["highlights"]["fastest_first_partial"]["slug"] == "demo-track"
     assert manifest["summary"]["highlights"]["tightest_partial_cadence"]["slug"] == "demo-track"
+    assert manifest["summary"]["highlights"]["lowest_partial_backlog"]["slug"] == "demo-track"
     assert manifest["summary"]["highlights"]["fastest_final"]["label"] == "Fastest streaming finalization delay"
 
 
@@ -292,9 +293,9 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
     assert "const baselineEntries = comparableEntries(primary);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== primary.length ? "vs validated fastest" : "vs fastest";' in html
-    assert 'Per-partial latency' in html
+    assert 'Partial backlog latency' in html
     assert 'title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration."' in html
-    assert 'title="Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness."' in html
+    assert 'title="Diagnostic latency for chunk-triggered partial updates after streaming is already underway; this is not perceived first-response latency, so read it alongside partial gap and late partial ratio."' in html
     assert 'title="Buffered audio window used when generating partial transcripts."' in html
     assert 'late_partial_ratio' in html
     assert 'partial_transcript_churn_word_mean' in html
@@ -325,7 +326,7 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'Recommended default' in html
     assert 'Primary ranking scope' in html
     assert 'Best live numbers' in html
-    assert 'data-label="Per-partial latency"' in html
+    assert 'data-label="Partial backlog latency"' in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html
 
@@ -409,6 +410,9 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
 def test_docs_index_surfaces_reference_wer_notes() -> None:
     docs_index_text = DOCS_INDEX_PATH.read_text(encoding="utf-8")
 
+    assert "[Local STT v1](./local-stt-v1.md)" in docs_index_text
+    assert "shared next-step websocket protocol" in docs_index_text
+    assert "src/protocols/local_stt_v1.py" in docs_index_text
     assert "## Appendix: Reference WER Notes" in docs_index_text
     assert "not official rtc-asr measurements" in docs_index_text
     assert "parakeet-mlx-service-110m" in docs_index_text
@@ -578,7 +582,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Benchmark appendix" in homepage
     assert "benchmark-results/manifest.json" in homepage
     assert "WebRTC.ventures benchmarks" in homepage
-    assert "Built for WebRTC.ventures launch conversations" in homepage
+    assert "Built by WebRTC.ventures" in homepage
     assert "Reference WER" in homepage
     assert "external context rather than official rtc-asr measurements" in homepage
     assert "Open detail page" in homepage

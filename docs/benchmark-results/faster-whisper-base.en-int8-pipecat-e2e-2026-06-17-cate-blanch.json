@@ -1,0 +1,562 @@
+{
+  "environment": {
+    "date_utc": "2026-06-17T17:15:19Z",
+    "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+    "python": "3.11.2",
+    "processor": "aarch64",
+    "machine": "aarch64",
+    "cpu_logical_cores": 10,
+    "memory_total_mb": 7936.0,
+    "process_rss_mb": 1134.3,
+    "peak_rss_mb": 1271.7
+  },
+  "benchmark": {
+    "sample_count": 1,
+    "mode": "pipecat-e2e",
+    "rest_runs_per_sample": 1,
+    "chunk_ms": 100,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "source_frame_ms": 20,
+    "simulate_realtime": true,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
+    "partial_event_timeout_seconds": 0.1,
+    "request_retries": 3,
+    "request_retry_delay": 2.0,
+    "pipecat_source_frame_ms": 20,
+    "preload_model": true,
+    "require_preloaded_service": true,
+    "spawn_server": true
+  },
+  "integration": {
+    "name": "pipecat",
+    "transport": "pipecat-e2e",
+    "source_frame_ms": 20,
+    "bridge_chunk_ms": 100,
+    "send_binary_frames": false,
+    "simulate_realtime": true
+  },
+  "audio": {
+    "path": ".venv/lib/python3.11/site-packages/gradio/media_assets/audio/cate_blanch.mp3",
+    "duration_s": 7.884,
+    "sample_rate": 32000,
+    "synthesized": false,
+    "reference_text": null
+  },
+  "backend": {
+    "name": "faster-whisper",
+    "model": "base.en",
+    "device": "cpu",
+    "compute_type": "int8",
+    "qwen_dtype": null,
+    "parakeet_dtype": null
+  },
+  "service": {
+    "backend": "faster-whisper",
+    "model": "base.en",
+    "sample_rate": 16000,
+    "status": "ready",
+    "ready": true,
+    "preload_enabled": true,
+    "preload_error": null,
+    "protocols": [
+      {
+        "id": "rtc-asr-stream.v1",
+        "transport": "websocket",
+        "path": "/ws/stream",
+        "docs": "/docs/api-reference.md#websocket-streaming",
+        "status": "stable",
+        "message_format": "json-control-plus-binary-audio"
+      },
+      {
+        "id": "local-stt.v1",
+        "transport": "websocket",
+        "path": "/v1/stt/stream",
+        "docs": "/docs/local-stt-v1.md",
+        "status": "preview",
+        "message_format": "json-control-plus-binary-pcm16",
+        "audio": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "format": "pcm_s16le",
+          "frame_ms": 20,
+          "bytes_per_frame": 640
+        }
+      }
+    ],
+    "streaming": {
+      "transport": "websocket",
+      "path": "/ws/stream",
+      "reusable_connection": true,
+      "message_types": [
+        "start",
+        "audio",
+        "stop",
+        "cancel"
+      ],
+      "audio_frame_formats": [
+        "json-base64",
+        "binary"
+      ],
+      "event_types": [
+        "ready",
+        "partial",
+        "final",
+        "canceled",
+        "error"
+      ]
+    },
+    "audio": {
+      "target_sample_rate": 16000,
+      "channels": 1,
+      "accepted_formats": [
+        "wav",
+        "pcm16",
+        "other formats supported by soundfile when installed"
+      ]
+    },
+    "models": [
+      {
+        "id": "base.en",
+        "backend": "faster-whisper",
+        "model": "base.en",
+        "loaded": true,
+        "streaming": {
+          "transport": "websocket",
+          "path": "/ws/stream",
+          "reusable_connection": true,
+          "message_types": [
+            "start",
+            "audio",
+            "stop",
+            "cancel"
+          ],
+          "audio_frame_formats": [
+            "json-base64",
+            "binary"
+          ],
+          "event_types": [
+            "ready",
+            "partial",
+            "final",
+            "canceled",
+            "error"
+          ]
+        },
+        "audio": {
+          "target_sample_rate": 16000,
+          "channels": 1,
+          "accepted_formats": [
+            "wav",
+            "pcm16",
+            "other formats supported by soundfile when installed"
+          ]
+        },
+        "capabilities": {
+          "backend": "faster-whisper",
+          "model": "base.en",
+          "device": "cpu",
+          "compute_type": "int8",
+          "loaded": true,
+          "streaming": {
+            "transport": "websocket",
+            "path": "/ws/stream",
+            "reusable_connection": true,
+            "message_types": [
+              "start",
+              "audio",
+              "stop",
+              "cancel"
+            ],
+            "audio_frame_formats": [
+              "json-base64",
+              "binary"
+            ],
+            "event_types": [
+              "ready",
+              "partial",
+              "final",
+              "canceled",
+              "error"
+            ]
+          },
+          "audio": {
+            "target_sample_rate": 16000,
+            "channels": 1,
+            "accepted_formats": [
+              "wav",
+              "pcm16",
+              "other formats supported by soundfile when installed"
+            ]
+          }
+        }
+      }
+    ],
+    "capabilities": {
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "loaded": true,
+      "streaming": {
+        "transport": "websocket",
+        "path": "/ws/stream",
+        "reusable_connection": true,
+        "message_types": [
+          "start",
+          "audio",
+          "stop",
+          "cancel"
+        ],
+        "audio_frame_formats": [
+          "json-base64",
+          "binary"
+        ],
+        "event_types": [
+          "ready",
+          "partial",
+          "final",
+          "canceled",
+          "error"
+        ]
+      },
+      "audio": {
+        "target_sample_rate": 16000,
+        "channels": 1,
+        "accepted_formats": [
+          "wav",
+          "pcm16",
+          "other formats supported by soundfile when installed"
+        ]
+      }
+    }
+  },
+  "samples": {
+    "rest": [
+      {
+        "sample": 1,
+        "mean_ms": 564.8,
+        "p90_ms": 564.8,
+        "p95_ms": 564.8,
+        "min_ms": 564.8,
+        "max_ms": 564.8,
+        "rtf_mean": 0.072,
+        "transcript": "I sleep with the dagger. If you so much as move to touch me, I will serve you a manhood. You understand?",
+        "accuracy": null
+      }
+    ],
+    "streaming": [
+      {
+        "sample": 1,
+        "transport": "pipecat-e2e",
+        "source_frame_ms": 20,
+        "source_frame_count": 395,
+        "aggregation_frame_count": 5,
+        "binary_frames": false,
+        "simulate_realtime": true,
+        "partial_mean_ms": 20400.1,
+        "partial_p90_ms": 27052.3,
+        "partial_p95_ms": 27286.3,
+        "partial_first_ms": 2268.4,
+        "partial_last_ms": 24383.0,
+        "first_partial_audio_ms": 100.0,
+        "first_partial_end_to_end_ms": 2368.4,
+        "partial_gap_mean_ms": 483.1,
+        "partial_gap_p95_ms": 0.7,
+        "time_to_final_from_audio_end_ms": 24382.3,
+        "final_ms": 24173.7,
+        "ready": {
+          "type": "ready",
+          "stream_id": 1,
+          "backend": "faster-whisper",
+          "model": "base.en",
+          "language": "en",
+          "sample_rate": 32000,
+          "partial_interval_chunks": 1,
+          "max_buffer_bytes": 1048576,
+          "partial_window_seconds": 2.0
+        },
+        "last_partial": "understand",
+        "final_transcript": "I sleep with the dagger. If you so much as move to touch me, I will serve you a manhood. You understand?",
+        "expected_partial_events": 79,
+        "observed_partial_events": 76,
+        "missing_partial_events": 3,
+        "late_partial_events": 9,
+        "late_partial_ratio": 0.118,
+        "partial_revision_count": 75,
+        "partial_transcript_churn_char_mean": 0.249,
+        "partial_transcript_churn_char_p95": 0.625,
+        "partial_transcript_churn_word_mean": 0.321,
+        "partial_transcript_churn_word_p95": 0.833,
+        "bridge": {
+          "source_frame_ms": 20,
+          "source_frame_count": 395,
+          "chunk_count": 79,
+          "aggregation_frame_count": 5,
+          "source_frames_dropped": 0,
+          "simulate_realtime": true
+        },
+        "final_event_received": true,
+        "closeout_event_type": "final",
+        "accuracy": null
+      }
+    ]
+  },
+  "rest": {
+    "sample_count": 1,
+    "runs_per_sample": 1,
+    "durations_ms": [
+      564.8
+    ],
+    "mean_ms": 564.8,
+    "p90_ms": 564.8,
+    "p95_ms": 564.8,
+    "min_ms": 564.8,
+    "max_ms": 564.8,
+    "rtf_mean": 0.072,
+    "accuracy": null,
+    "transcript": "I sleep with the dagger. If you so much as move to touch me, I will serve you a manhood. You understand?"
+  },
+  "streaming": {
+    "sample_count": 1,
+    "transport": "pipecat-e2e",
+    "chunk_ms": 100,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "source_frame_ms": 20,
+    "simulate_realtime": true,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
+    "partial_event_timeout_seconds": 0.1,
+    "request_retries": 3,
+    "request_retry_delay": 2.0,
+    "live_metrics_comparable": true,
+    "partial_latencies_ms": [
+      2268.4,
+      9021.3,
+      8819.0,
+      8615.1,
+      8408.1,
+      8205.6,
+      8002.0,
+      7797.9,
+      7594.1,
+      21095.0,
+      20892.5,
+      20689.6,
+      20484.3,
+      20281.6,
+      20078.0,
+      19873.5,
+      19670.1,
+      19461.6,
+      19257.3,
+      19053.8,
+      18847.5,
+      18643.6,
+      18441.3,
+      18238.7,
+      18035.3,
+      17832.7,
+      17629.6,
+      17426.5,
+      17223.7,
+      17016.6,
+      16813.8,
+      16610.8,
+      16407.5,
+      16202.8,
+      15998.5,
+      15794.8,
+      15591.6,
+      15388.7,
+      15185.6,
+      14981.9,
+      14777.8,
+      28095.3,
+      27893.3,
+      27691.3,
+      27488.8,
+      27286.3,
+      27083.2,
+      27053.0,
+      27052.3,
+      27051.8,
+      27051.2,
+      27050.7,
+      27050.2,
+      27049.6,
+      27049.1,
+      26846.4,
+      26643.4,
+      26440.2,
+      26236.4,
+      26032.1,
+      25827.5,
+      25624.9,
+      25419.4,
+      25215.2,
+      25010.4,
+      24808.2,
+      24605.4,
+      24399.4,
+      24194.0,
+      23989.2,
+      23786.3,
+      23584.1,
+      23379.8,
+      24793.1,
+      24588.1,
+      24383.0
+    ],
+    "first_partial_end_to_end_latencies_ms": [
+      2368.4
+    ],
+    "partial_gap_latencies_ms": [
+      7562.8,
+      0.7,
+      0.5,
+      0.6,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      13528.3,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      13520.5,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1618.9,
+      0.0,
+      0.0
+    ],
+    "final_latencies_ms": [
+      24382.3
+    ],
+    "stop_to_final_latencies_ms": [
+      24173.7
+    ],
+    "partial_mean_ms": 20400.1,
+    "partial_p90_ms": 27052.3,
+    "partial_p95_ms": 27286.3,
+    "partial_min_ms": 2268.4,
+    "partial_max_ms": 28095.3,
+    "first_partial_end_to_end_mean_ms": 2368.4,
+    "first_partial_end_to_end_p90_ms": 2368.4,
+    "first_partial_end_to_end_p95_ms": 2368.4,
+    "partial_gap_mean_ms": 483.1,
+    "partial_gap_p90_ms": 0.5,
+    "partial_gap_p95_ms": 0.7,
+    "time_to_final_from_audio_end_mean_ms": 24382.3,
+    "time_to_final_from_audio_end_p90_ms": 24382.3,
+    "time_to_final_from_audio_end_p95_ms": 24382.3,
+    "time_to_final_from_audio_end_min_ms": 24382.3,
+    "time_to_final_from_audio_end_max_ms": 24382.3,
+    "final_mean_ms": 24382.3,
+    "final_p90_ms": 24382.3,
+    "final_p95_ms": 24382.3,
+    "final_min_ms": 24382.3,
+    "final_max_ms": 24382.3,
+    "stop_to_final_mean_ms": 24173.7,
+    "stop_to_final_p90_ms": 24173.7,
+    "stop_to_final_p95_ms": 24173.7,
+    "stop_to_final_min_ms": 24173.7,
+    "stop_to_final_max_ms": 24173.7,
+    "ready": {
+      "type": "ready",
+      "stream_id": 1,
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "language": "en",
+      "sample_rate": 32000,
+      "partial_interval_chunks": 1,
+      "max_buffer_bytes": 1048576,
+      "partial_window_seconds": 2.0
+    },
+    "last_partial": "understand",
+    "final_transcript": "I sleep with the dagger. If you so much as move to touch me, I will serve you a manhood. You understand?",
+    "expected_partial_events": 79,
+    "observed_partial_events": 76,
+    "missing_partial_events": 3,
+    "late_partial_events": 9,
+    "late_partial_ratio": 0.118,
+    "partial_revision_count": 75,
+    "partial_transcript_churn_char_mean": 0.249,
+    "partial_transcript_churn_char_p95": 0.249,
+    "partial_transcript_churn_word_mean": 0.321,
+    "partial_transcript_churn_word_p95": 0.321,
+    "bridge": {
+      "source_frame_ms": 20,
+      "source_frame_count": 395,
+      "chunk_count": 79,
+      "aggregation_frame_count": 5,
+      "source_frames_dropped": 0,
+      "simulate_realtime": true
+    },
+    "final_event_received_count": 1,
+    "closeout_event_types": [
+      "final"
+    ],
+    "accuracy": null
+  }
+}

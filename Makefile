@@ -389,7 +389,7 @@ benchmark-all-asr-low-latency-sweep: $(LOW_LATENCY_SWEEP_TARGETS)
 
 benchmark-pipecat-e2e: venv
 	@echo "Running Pipecat-style end-to-end benchmark..."
-	@{ \
+	@{ set -e; \
 		if [ -n "$(BENCHMARK_PIPECAT_AUDIO_FILE)" ]; then \
 			echo "  Using speech clip: $(BENCHMARK_PIPECAT_AUDIO_FILE)"; \
 			audio_flag="--audio-file $(BENCHMARK_PIPECAT_AUDIO_FILE)"; \

@@ -602,7 +602,7 @@
               <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
             <p class="meta-line" id="generated-at"><!-- BEGIN GENERATED:generated-at -->
-Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
+Published Jun 17, 2026, 05:25 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
 <!-- END GENERATED:generated-at --></p>
           </div>
           <div class="hero-side" id="hero-side"></div>
@@ -616,10 +616,10 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
     <div class="section-kicker">Launch readout</div>
     <h2>Start with Parakeet 110M NeMo MLX for live turn-taking.</h2>
   </div>
-  <p class="subcopy">Parakeet 110M NeMo MLX is the strongest publishable default right now: 74.5 ms per-partial latency, 210.6 ms audio-end finalization, and the only checked-in leader with a first-partial measurement in the main comparison. The main ranking now stays focused on fully comparable live lanes, while incomplete or differently scoped artifacts move into a labeled supporting section.</p>
+  <p class="subcopy">Parakeet 110M NeMo MLX is the strongest publishable default right now: 557.4 ms first visible partial, 210.6 ms audio-end finalization, and backlog diagnostics that stay separated from perceived latency. The main ranking now stays focused on fully comparable live lanes, while incomplete or differently scoped artifacts move into a labeled supporting section.</p>
 </section>
 <div class="snapshot-grid">
-  <article class="snapshot-card tone-moss"><div class="section-kicker">Recommended default</div><div class="headline-value">Parakeet 110M NeMo MLX</div><p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Alternative lane</div><div class="headline-value">Faster-Whisper Base</div><p>Validated 10-sample local CPU baseline refreshed on 2026-06-15 with a preloaded model.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">3 fully comparable lanes</div><p>4 supporting lanes stay below the fold because they are missing at least one live metric, usually first-partial capture.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Best live numbers</div><div class="headline-value">74.5 ms</div><p>Fastest per-partial latency in the primary comparison. Best finalization is 210.6 ms.</p></article>
+  <article class="snapshot-card tone-moss"><div class="section-kicker">Recommended default</div><div class="headline-value">Parakeet 110M NeMo MLX</div><p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Alternative lane</div><div class="headline-value">Faster-Whisper Base</div><p>Validated 10-sample local CPU baseline refreshed on 2026-06-15 with a preloaded model.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">3 fully comparable lanes</div><p>4 supporting lanes stay below the fold because they are missing at least one live metric, usually first-partial capture.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Best live numbers</div><div class="headline-value">557.4 ms</div><p>Fastest first visible partial in the primary comparison. Best finalization is 210.6 ms.</p></article>
 </div>
 <div class="story-grid">
 <article class="story-card panel tone-moss"><div class="section-kicker">Rank 1</div><div class="story-rank">Parakeet 110M NeMo MLX</div><div class="chip-row"><div class="chip"><strong>apple-silicon / auto</strong> runtime</div><div class="chip"><strong>Local Python Apple Silicon MLX Service</strong> lane</div></div><p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p></article><article class="story-card panel tone-sage"><div class="section-kicker">Rank 2</div><div class="story-rank">Faster-Whisper Base</div><div class="chip-row"><div class="chip"><strong>cpu / int8</strong> runtime</div><div class="chip"><strong>Local Python CPU</strong> lane</div></div><p>Validated 10-sample local CPU baseline refreshed on 2026-06-15 with a preloaded model.</p></article><article class="story-card panel tone-olive"><div class="section-kicker">Rank 3</div><div class="story-rank">Qwen Compose</div><div class="chip-row"><div class="chip"><strong>cpu / float16</strong> runtime</div><div class="chip"><strong>Docker Compose CPU</strong> lane</div></div><p>Validated 5-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.</p></article>
@@ -628,10 +628,10 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
   <div class="comparison-scroll">
     <table>
       <thead>
-        <tr><th>Lane</th><th>State</th><th>Score</th><th><span class="hint" title="End-to-end time from stream start until the first visible partial transcript appears.">First partial</span></th><th><span class="hint" title="Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness.">Per-partial latency</span></th><th><span class="hint" title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.">Audio-end finalization</span></th><th><span class="hint" title="Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.">REST throughput context</span></th><th><span class="hint" title="How many benchmark samples were recorded for this published artifact.">Samples</span></th><th>Details</th></tr>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th><span class="hint" title="End-to-end time from stream start until the first visible partial transcript appears.">First partial</span></th><th><span class="hint" title="Diagnostic latency for chunk-triggered partial updates after streaming is already underway; this is not perceived first-response latency, so read it alongside partial gap and late partial ratio.">Partial backlog latency</span></th><th><span class="hint" title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.">Audio-end finalization</span></th><th><span class="hint" title="Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.">REST throughput context</span></th><th><span class="hint" title="How many benchmark samples were recorded for this published artifact.">Samples</span></th><th>Details</th></tr>
       </thead>
       <tbody>
-<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo MLX</strong><span>parakeet-mlx . mlx-community/parakeet-tdt_ctc-110m</span><div class="table-note">Local Python Apple Silicon MLX Service . apple-silicon / auto</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>98.7 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>557.4 ms</strong><div class="tiny">P95 565.0 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Per-partial latency"><strong>74.5 ms</strong><div class="tiny">P95 96.9 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Audio-end finalization"><strong>210.6 ms</strong><div class="tiny">P95 246.3 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="REST throughput context"><strong>141.9 ms</strong><div class="tiny">P95 170.0 ms . RTF 0.019</div><div class="metric-bar"><span style="width:6%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 13, 2026, 10:55 PM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Base</strong><span>faster-whisper . base.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>59.1 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>2100.1 ms</strong><div class="tiny">P95 3230.7 ms</div><div class="tiny">+1542.7 ms vs fastest</div></td><td data-label="Per-partial latency"><strong>12134.1 ms</strong><div class="tiny">P95 16250.0 ms</div><div class="tiny">+12059.6 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>13498.8 ms</strong><div class="tiny">P95 15429.3 ms</div><div class="tiny">+13288.2 ms vs fastest</div></td><td data-label="REST throughput context"><strong>558.4 ms</strong><div class="tiny">P95 726.1 ms . RTF 0.077</div><div class="metric-bar"><span style="width:14.69860489602527%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 16, 2026, 03:03 AM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-base.en-int8-2026-06-15.html">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen Compose</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Docker Compose CPU . cpu / float16</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>38.3 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>3365.4 ms</strong><div class="tiny">P95 3537.3 ms</div><div class="tiny">+2808.0 ms vs fastest</div></td><td data-label="Per-partial latency"><strong>3118.4 ms</strong><div class="tiny">P95 4677.0 ms</div><div class="tiny">+3043.9 ms vs fastest</div></td><td data-label="Audio-end finalization"><strong>7318.6 ms</strong><div class="tiny">P95 8168.1 ms</div><div class="tiny">+7108.0 ms vs fastest</div></td><td data-label="REST throughput context"><strong>3799.0 ms</strong><div class="tiny">P95 4475.0 ms . RTF 0.522</div><div class="metric-bar"><span style="width:100.0%"></span></div></td><td data-label="Samples"><strong>5</strong><div class="tiny">Measured Jun 15, 2026, 08:09 PM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-compose-2026-06-15.html">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td></tr>
+<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo MLX</strong><span>parakeet-mlx . mlx-community/parakeet-tdt_ctc-110m</span><div class="table-note">Local Python Apple Silicon MLX Service . apple-silicon / auto</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>97.2 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>557.4 ms</strong><div class="tiny">P95 565.0 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Partial backlog latency"><strong>74.5 ms</strong><div class="tiny">P95 96.9 ms</div><div class="tiny">best baseline vs lowest diagnostic</div></td><td data-label="Audio-end finalization"><strong>210.6 ms</strong><div class="tiny">P95 246.3 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="REST throughput context"><strong>141.9 ms</strong><div class="tiny">P95 170.0 ms . RTF 0.019</div><div class="metric-bar"><span style="width:6%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 13, 2026, 10:55 PM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Base</strong><span>faster-whisper . base.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>66.0 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>2100.1 ms</strong><div class="tiny">P95 3230.7 ms</div><div class="tiny">+1542.7 ms vs fastest</div></td><td data-label="Partial backlog latency"><strong>12134.1 ms</strong><div class="tiny">P95 16250.0 ms</div><div class="tiny">+12059.6 ms vs lowest diagnostic</div></td><td data-label="Audio-end finalization"><strong>13498.8 ms</strong><div class="tiny">P95 15429.3 ms</div><div class="tiny">+13288.2 ms vs fastest</div></td><td data-label="REST throughput context"><strong>558.4 ms</strong><div class="tiny">P95 726.1 ms . RTF 0.077</div><div class="metric-bar"><span style="width:14.69860489602527%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 16, 2026, 03:03 AM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-base.en-int8-2026-06-15.html">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen Compose</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Docker Compose CPU . cpu / float16</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>41.9 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>3365.4 ms</strong><div class="tiny">P95 3537.3 ms</div><div class="tiny">+2808.0 ms vs fastest</div></td><td data-label="Partial backlog latency"><strong>3118.4 ms</strong><div class="tiny">P95 4677.0 ms</div><div class="tiny">+3043.9 ms vs lowest diagnostic</div></td><td data-label="Audio-end finalization"><strong>7318.6 ms</strong><div class="tiny">P95 8168.1 ms</div><div class="tiny">+7108.0 ms vs fastest</div></td><td data-label="REST throughput context"><strong>3799.0 ms</strong><div class="tiny">P95 4475.0 ms . RTF 0.522</div><div class="metric-bar"><span style="width:100.0%"></span></div></td><td data-label="Samples"><strong>5</strong><div class="tiny">Measured Jun 15, 2026, 08:09 PM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-compose-2026-06-15.html">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td></tr>
       </tbody>
     </table>
   </div>
@@ -650,7 +650,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         <tr><th>Lane</th><th>Why it is secondary</th><th>Visible live metrics</th><th>Details</th></tr>
       </thead>
       <tbody>
-<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo</strong><span>parakeet-nemo . nvidia/parakeet-tdt_ctc-110m</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>148.5 ms</strong><div class="tiny">Finalization 379.0 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-09.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 03:11 AM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen MPS</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Local Python Apple Silicon . mps / auto</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>352.0 ms</strong><div class="tiny">Finalization 1189.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-mps-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 05:19 PM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Small</strong><span>faster-whisper . small.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>1023.2 ms</strong><div class="tiny">Finalization 1420.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-small.en-int8-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 02:23 AM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 0.6B Compose</strong><span>parakeet . nvidia/parakeet-tdt-0.6b-v3</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>1715.1 ms</strong><div class="tiny">Finalization 2215.8 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-compose-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 01:41 AM UTC</div></td></tr>
+<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo</strong><span>parakeet-nemo . nvidia/parakeet-tdt_ctc-110m</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>First partial n/a</strong><div class="tiny">Finalization 379.0 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-09.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 03:11 AM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen MPS</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Local Python Apple Silicon . mps / auto</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>First partial n/a</strong><div class="tiny">Finalization 1189.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-mps-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 05:19 PM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Small</strong><span>faster-whisper . small.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>First partial n/a</strong><div class="tiny">Finalization 1420.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-small.en-int8-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 02:23 AM UTC</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 0.6B Compose</strong><span>parakeet . nvidia/parakeet-tdt-0.6b-v3</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>First partial n/a</strong><div class="tiny">Finalization 2215.8 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-compose-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 01:41 AM UTC</div></td></tr>
       </tbody>
     </table>
   </div>
@@ -895,7 +895,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         return validated.length ? validated : entries;
       }
       function hasPrimaryLiveMetrics(entry) {
-        return firstVisiblePartial(entry) != null && entry.streaming.partial_mean_ms != null && entry.streaming.final_mean_ms != null;
+        return firstVisiblePartial(entry) != null && entry.streaming.partial_gap_mean_ms != null && entry.streaming.final_mean_ms != null;
       }
       function primaryEntries(entries) {
         const primary = comparableEntries(entries).filter((entry) => hasPrimaryLiveMetrics(entry));
@@ -916,7 +916,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           if (scoreDelta !== 0) return scoreDelta;
           const firstPartial = numeric(firstVisiblePartial(left)) - numeric(firstVisiblePartial(right));
           if (firstPartial !== 0) return firstPartial;
-          const partial = numeric(left.streaming.partial_mean_ms) - numeric(right.streaming.partial_mean_ms);
+          const partial = numeric(left.streaming.partial_gap_mean_ms) - numeric(right.streaming.partial_gap_mean_ms);
           if (partial !== 0) return partial;
           const final = numeric(left.streaming.final_mean_ms) - numeric(right.streaming.final_mean_ms);
           if (final !== 0) return final;
@@ -962,7 +962,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
             tone: toneClass(0),
             value: winner.label,
             title: "Recommended live default",
-            detail: `${formatMs(winner.streaming.partial_mean_ms)} per-partial · ${formatMs(winner.streaming.final_mean_ms)} finalization`
+            detail: `${formatMs(firstVisiblePartial(winner))} first partial · ${formatMs(winner.streaming.final_mean_ms)} finalization`
           });
         }
         if (runnerUp) {
@@ -970,7 +970,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
             tone: toneClass(1),
             value: runnerUp.label,
             title: primary[1] ? "Best alternative" : "Supporting alternative",
-            detail: primary[1] ? `${formatMs(runnerUp.streaming.partial_mean_ms)} per-partial in the same primary set` : "Useful context, but kept out of the main ranking until comparable live metrics exist"
+            detail: primary[1] ? `${formatMs(firstVisiblePartial(runnerUp))} first partial in the same primary set` : "Useful context, but kept out of the main ranking until comparable live metrics exist"
           });
         }
         cards.push({
@@ -1035,8 +1035,8 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         cards.push(`
           <article class="snapshot-card ${toneClass(0)}">
             <div class="section-kicker">Best live numbers</div>
-            <div class="headline-value">${winner ? formatMs(winner.streaming.partial_mean_ms) : "n/a"}</div>
-            <p>Fastest per-partial latency in the primary comparison. Best finalization is ${winner ? formatMs(winner.streaming.final_mean_ms) : "n/a"}.</p>
+            <div class="headline-value">${winner ? formatMs(firstVisiblePartial(winner)) : "n/a"}</div>
+            <p>Fastest first visible partial in the primary comparison. Best finalization is ${winner ? formatMs(winner.streaming.final_mean_ms) : "n/a"}.</p>
           </article>
         `);
         document.getElementById("snapshot-grid").innerHTML = cards.join("");
@@ -1054,7 +1054,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         const bestLiveCaption = summary.highlights?.best_live_caption;
         if (bestLiveCaption) {
           signalCards.push({
-            title: "Best live caption score",
+            title: "Best live turn-taking score",
             value: `${bestLiveCaption.value.toFixed(1)} / 100`,
             detail: `${bestLiveCaption.backend} · ${bestLiveCaption.model}`
           });
@@ -1067,12 +1067,20 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
             detail: `${fastestFirstPartial.backend} · ${fastestFirstPartial.model}`
           });
         }
-        const fastestPartial = summary.highlights?.fastest_partial;
-        if (fastestPartial) {
+        const lowestPartialBacklog = summary.highlights?.lowest_partial_backlog;
+        if (lowestPartialBacklog) {
           signalCards.push({
-            title: "Turn-taking leader",
-            value: formatMs(fastestPartial.value),
-            detail: `${fastestPartial.backend} · ${fastestPartial.model}`
+            title: "Lowest partial backlog",
+            value: formatMs(lowestPartialBacklog.value),
+            detail: `${lowestPartialBacklog.backend} · ${lowestPartialBacklog.model}`
+          });
+        }
+        const lowestLatePartialRatio = summary.highlights?.lowest_late_partial_ratio;
+        if (lowestLatePartialRatio) {
+          signalCards.push({
+            title: "Lowest late partial ratio",
+            value: formatPercent(lowestLatePartialRatio.value),
+            detail: `${lowestLatePartialRatio.backend} · ${lowestLatePartialRatio.model}`
           });
         }
         const fastestFinal = summary.highlights?.fastest_final;
@@ -1175,10 +1183,10 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
                 <div class="tiny">P95 ${formatMs(entry.streaming.first_partial_end_to_end_p95_ms)}</div>
                 <div class="tiny ${deltaClass(firstPartialDelta)}">${signedDelta(firstPartialDelta)} ${firstPartialBaselineLabel}</div>
               </td>
-              <td data-label="Per-partial latency">
+              <td data-label="Partial backlog latency">
                 <strong>${formatMs(entry.streaming.partial_mean_ms)}</strong>
                 <div class="tiny">P95 ${formatMs(entry.streaming.partial_p95_ms)}</div>
-                <div class="tiny ${deltaClass(partialDelta)}">${signedDelta(partialDelta)} vs fastest</div>
+                <div class="tiny ${deltaClass(partialDelta)}">${signedDelta(partialDelta)} vs lowest diagnostic</div>
               </td>
               <td data-label="Audio-end finalization">
                 <strong>${formatMs(entry.streaming.final_mean_ms)}</strong>
@@ -1201,7 +1209,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         const secondaryRows = secondary.map((entry) => {
           const missing = [];
           if (firstVisiblePartial(entry) == null) missing.push("first partial");
-          if (entry.streaming.partial_mean_ms == null) missing.push("per-partial");
+          if (entry.streaming.partial_gap_mean_ms == null) missing.push("partial cadence");
           if (entry.streaming.final_mean_ms == null) missing.push("finalization");
           const why = missing.length ? `Missing comparable live metrics: ${missing.join(", ")}` : "Supporting artifact with a different contract or publication scope.";
           return `
@@ -1212,7 +1220,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
                 <div class="table-note">${entry.lane} · ${entry.runtime}</div>
               </td>
               <td data-label="Why it is secondary">${why}</td>
-              <td data-label="Visible live metrics"><strong>${formatMs(entry.streaming.partial_mean_ms)}</strong><div class="tiny">Finalization ${formatMs(entry.streaming.final_mean_ms)}</div></td>
+              <td data-label="Visible live metrics"><strong>First partial ${formatMs(firstVisiblePartial(entry))}</strong><div class="tiny">Finalization ${formatMs(entry.streaming.final_mean_ms)}</div></td>
               <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Measured ${formatDate(entry.measured_at)}</div></td>
             </tr>
           `;
@@ -1225,7 +1233,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
                 <th>State</th>
                 <th>Score</th>
                 <th>${hintLabel("First partial", "End-to-end time from stream start until the first visible partial transcript appears.")}</th>
-                <th>${hintLabel("Per-partial latency", "Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness.")}</th>
+                <th>${hintLabel("Partial backlog latency", "Diagnostic latency for chunk-triggered partial updates after streaming is already underway; this is not perceived first-response latency, so read it alongside partial gap and late partial ratio.")}</th>
                 <th>${hintLabel("Audio-end finalization", "Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.")}</th>
                 <th>${hintLabel("REST throughput context", "Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.")}</th>
                 <th>${hintLabel("Samples", "How many benchmark samples were recorded for this published artifact.")}</th>
@@ -1276,7 +1284,7 @@ Published Jun 16, 2026, 03:08 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
               <div class="metric-row"><span>${hintLabel("Overall score", "Composite benchmark score across latency, stability, and sample coverage.")}</span><strong>${track.derived?.overall_score == null ? "n/a" : `${track.derived.overall_score.toFixed(1)} / 100`}</strong></div>
               <div class="metric-row"><span>${hintLabel("Confidence", "How trustworthy the published score is given artifact freshness and sample coverage.")}</span><strong>${track.derived?.confidence_score == null ? "n/a" : `${track.derived.confidence_score.toFixed(1)} / 100`}</strong></div>
               <div class="metric-row"><span>${hintLabel("First visible partial", "End-to-end time from stream start until the first visible partial transcript appears.")}</span><strong>${formatMs(firstVisiblePartial(track))}</strong></div>
-              <div class="metric-row"><span>${hintLabel("Per-partial latency", "Latency for visible partial updates after a partial-triggering chunk has been sent; use this with partial gap to judge streaming responsiveness.")}</span><strong>${formatMs(track.streaming.partial_mean_ms)}</strong></div>
+              <div class="metric-row"><span>${hintLabel("Partial backlog latency", "Diagnostic latency for chunk-triggered partial updates after streaming is already underway; this is not perceived first-response latency, so read it alongside partial gap and late partial ratio.")}</span><strong>${formatMs(track.streaming.partial_mean_ms)}</strong></div>
               <div class="metric-row"><span>${hintLabel("Partial cadence", "Time gap between successive partial transcript events after streaming is underway.")}</span><strong>${formatMs(track.streaming.partial_gap_mean_ms)}</strong></div>
               <div class="metric-row"><span>${hintLabel("Late partial ratio", "Share of partial events that arrived too late to be useful for the configured RTC-shaped cadence.")}</span><strong>${formatPercent(track.streaming.late_partial_ratio)}</strong></div>
               <div class="metric-row"><span>${hintLabel("Word churn", "Average per-revision transcript change rate across visible partial updates; lower is steadier.")}</span><strong>${formatRatio(track.streaming.partial_transcript_churn_word_mean)}</strong></div>

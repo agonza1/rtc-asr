@@ -1,0 +1,553 @@
+{
+  "environment": {
+    "date_utc": "2026-06-16T03:51:29Z",
+    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "python": "3.14.5",
+    "processor": "arm",
+    "machine": "arm64",
+    "cpu_logical_cores": 10,
+    "memory_total_mb": 24576.0,
+    "process_rss_mb": 988.0,
+    "peak_rss_mb": 1096.8
+  },
+  "benchmark": {
+    "sample_count": 1,
+    "mode": "pipecat-e2e",
+    "rest_runs_per_sample": 1,
+    "chunk_ms": 100,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "source_frame_ms": 20,
+    "simulate_realtime": true,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
+    "partial_event_timeout_seconds": 0.1,
+    "request_retries": 3,
+    "request_retry_delay": 2.0,
+    "pipecat_source_frame_ms": 20,
+    "preload_model": true,
+    "require_preloaded_service": true,
+    "spawn_server": true
+  },
+  "integration": {
+    "name": "pipecat",
+    "transport": "pipecat-e2e",
+    "source_frame_ms": 20,
+    "bridge_chunk_ms": 100,
+    "send_binary_frames": false,
+    "simulate_realtime": true
+  },
+  "audio": {
+    "path": "/Users/alberto/.openclaw/tmp/rtc_asr_bench_kaonp6iq.aiff",
+    "duration_s": 7.28,
+    "sample_rate": 22050,
+    "synthesized": true,
+    "reference_text": "The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service."
+  },
+  "backend": {
+    "name": "faster-whisper",
+    "model": "base.en",
+    "device": "cpu",
+    "compute_type": "int8",
+    "qwen_dtype": null,
+    "parakeet_dtype": null
+  },
+  "service": {
+    "backend": "faster-whisper",
+    "model": "base.en",
+    "sample_rate": 16000,
+    "status": "ready",
+    "ready": true,
+    "preload_enabled": true,
+    "preload_error": null,
+    "streaming": {
+      "transport": "websocket",
+      "path": "/ws/stream",
+      "reusable_connection": true,
+      "message_types": [
+        "start",
+        "audio",
+        "stop",
+        "cancel"
+      ],
+      "audio_frame_formats": [
+        "json-base64",
+        "binary"
+      ],
+      "event_types": [
+        "ready",
+        "partial",
+        "final",
+        "canceled",
+        "error"
+      ]
+    },
+    "audio": {
+      "target_sample_rate": 16000,
+      "channels": 1,
+      "accepted_formats": [
+        "wav",
+        "pcm16",
+        "other formats supported by soundfile when installed"
+      ]
+    },
+    "models": [
+      {
+        "id": "base.en",
+        "backend": "faster-whisper",
+        "model": "base.en",
+        "loaded": true,
+        "streaming": {
+          "transport": "websocket",
+          "path": "/ws/stream",
+          "reusable_connection": true,
+          "message_types": [
+            "start",
+            "audio",
+            "stop",
+            "cancel"
+          ],
+          "audio_frame_formats": [
+            "json-base64",
+            "binary"
+          ],
+          "event_types": [
+            "ready",
+            "partial",
+            "final",
+            "canceled",
+            "error"
+          ]
+        },
+        "audio": {
+          "target_sample_rate": 16000,
+          "channels": 1,
+          "accepted_formats": [
+            "wav",
+            "pcm16",
+            "other formats supported by soundfile when installed"
+          ]
+        },
+        "capabilities": {
+          "backend": "faster-whisper",
+          "model": "base.en",
+          "device": "cpu",
+          "compute_type": "int8",
+          "loaded": true,
+          "streaming": {
+            "transport": "websocket",
+            "path": "/ws/stream",
+            "reusable_connection": true,
+            "message_types": [
+              "start",
+              "audio",
+              "stop",
+              "cancel"
+            ],
+            "audio_frame_formats": [
+              "json-base64",
+              "binary"
+            ],
+            "event_types": [
+              "ready",
+              "partial",
+              "final",
+              "canceled",
+              "error"
+            ]
+          },
+          "audio": {
+            "target_sample_rate": 16000,
+            "channels": 1,
+            "accepted_formats": [
+              "wav",
+              "pcm16",
+              "other formats supported by soundfile when installed"
+            ]
+          }
+        }
+      }
+    ],
+    "capabilities": {
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "loaded": true,
+      "streaming": {
+        "transport": "websocket",
+        "path": "/ws/stream",
+        "reusable_connection": true,
+        "message_types": [
+          "start",
+          "audio",
+          "stop",
+          "cancel"
+        ],
+        "audio_frame_formats": [
+          "json-base64",
+          "binary"
+        ],
+        "event_types": [
+          "ready",
+          "partial",
+          "final",
+          "canceled",
+          "error"
+        ]
+      },
+      "audio": {
+        "target_sample_rate": 16000,
+        "channels": 1,
+        "accepted_formats": [
+          "wav",
+          "pcm16",
+          "other formats supported by soundfile when installed"
+        ]
+      }
+    }
+  },
+  "samples": {
+    "rest": [
+      {
+        "sample": 1,
+        "mean_ms": 551.1,
+        "p90_ms": 551.1,
+        "p95_ms": 551.1,
+        "min_ms": 551.1,
+        "max_ms": 551.1,
+        "rtf_mean": 0.076,
+        "transcript": "The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.",
+        "accuracy": {
+          "reference_text": "The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.",
+          "normalized_reference": "the quick brown fox jumps over the lazy dog this is a realtime asr latency benchmark for the rtc asr service",
+          "normalized_hypothesis": "the quick brown fox jumps over the lazy dog this is a real time asr latency benchmark for the rtc asr service",
+          "exact_match": false,
+          "word_error_rate": 0.095,
+          "character_error_rate": 0.0,
+          "reference_word_count": 21,
+          "hypothesis_word_count": 22
+        }
+      }
+    ],
+    "streaming": [
+      {
+        "sample": 1,
+        "transport": "pipecat-e2e",
+        "source_frame_ms": 20,
+        "source_frame_count": 364,
+        "aggregation_frame_count": 5,
+        "binary_frames": false,
+        "simulate_realtime": true,
+        "partial_mean_ms": 15441.5,
+        "partial_p90_ms": 20497.7,
+        "partial_p95_ms": 21110.8,
+        "partial_first_ms": 1112.8,
+        "partial_last_ms": 16492.7,
+        "first_partial_audio_ms": 300.0,
+        "first_partial_end_to_end_ms": 1412.8,
+        "partial_gap_mean_ms": 408.0,
+        "partial_gap_p95_ms": 1911.3,
+        "time_to_final_from_audio_end_ms": 16492.0,
+        "final_ms": 16287.7,
+        "ready": {
+          "type": "ready",
+          "stream_id": 1,
+          "backend": "faster-whisper",
+          "model": "base.en",
+          "language": "en",
+          "sample_rate": 22050,
+          "partial_interval_chunks": 1,
+          "max_buffer_bytes": 1048576,
+          "partial_window_seconds": 2.0
+        },
+        "last_partial": "for the RT-CASR service.",
+        "final_transcript": "The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.",
+        "expected_partial_events": 73,
+        "observed_partial_events": 71,
+        "missing_partial_events": 2,
+        "late_partial_events": 6,
+        "late_partial_ratio": 0.085,
+        "partial_revision_count": 70,
+        "partial_transcript_churn_char_mean": 0.138,
+        "partial_transcript_churn_char_p95": 0.364,
+        "partial_transcript_churn_word_mean": 0.228,
+        "partial_transcript_churn_word_p95": 0.6,
+        "bridge": {
+          "source_frame_ms": 20,
+          "source_frame_count": 364,
+          "chunk_count": 73,
+          "aggregation_frame_count": 5,
+          "source_frames_dropped": 0,
+          "simulate_realtime": true
+        },
+        "final_event_received": true,
+        "closeout_event_type": "final",
+        "accuracy": {
+          "reference_text": "The quick brown fox jumps over the lazy dog. This is a realtime ASR latency benchmark for the rtc asr service.",
+          "normalized_reference": "the quick brown fox jumps over the lazy dog this is a realtime asr latency benchmark for the rtc asr service",
+          "normalized_hypothesis": "the quick brown fox jumps over the lazy dog this is a real time asr latency benchmark for the rtc asr service",
+          "exact_match": false,
+          "word_error_rate": 0.095,
+          "character_error_rate": 0.0,
+          "reference_word_count": 21,
+          "hypothesis_word_count": 22
+        }
+      }
+    ]
+  },
+  "rest": {
+    "sample_count": 1,
+    "runs_per_sample": 1,
+    "durations_ms": [
+      551.1
+    ],
+    "mean_ms": 551.1,
+    "p90_ms": 551.1,
+    "p95_ms": 551.1,
+    "min_ms": 551.1,
+    "max_ms": 551.1,
+    "rtf_mean": 0.076,
+    "accuracy": {
+      "sample_count": 1,
+      "exact_match_rate": 0.0,
+      "word_error_rate_mean": 0.095,
+      "word_error_rate_p90": 0.095,
+      "character_error_rate_mean": 0.0,
+      "character_error_rate_p90": 0.0
+    },
+    "transcript": "The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service."
+  },
+  "streaming": {
+    "sample_count": 1,
+    "transport": "pipecat-e2e",
+    "chunk_ms": 100,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "source_frame_ms": 20,
+    "simulate_realtime": true,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
+    "partial_event_timeout_seconds": 0.1,
+    "request_retries": 3,
+    "request_retry_delay": 2.0,
+    "partial_latencies_ms": [
+      1112.8,
+      911.6,
+      6041.4,
+      5839.3,
+      5634.6,
+      5431.8,
+      16406.4,
+      16405.6,
+      16201.0,
+      15997.9,
+      15792.8,
+      15588.0,
+      15383.3,
+      15180.7,
+      14976.8,
+      14773.2,
+      14568.6,
+      14363.5,
+      14158.8,
+      13954.0,
+      13749.4,
+      13545.4,
+      13340.8,
+      13136.2,
+      12931.3,
+      12726.3,
+      12522.5,
+      12319.1,
+      12115.6,
+      11912.7,
+      11709.1,
+      11504.2,
+      11302.1,
+      11097.9,
+      21316.5,
+      21315.8,
+      21315.5,
+      21315.2,
+      21110.8,
+      20907.5,
+      20702.5,
+      20497.7,
+      20294.2,
+      20090.9,
+      19886.2,
+      19683.5,
+      19479.7,
+      19276.6,
+      19071.6,
+      18866.6,
+      18661.7,
+      18458.7,
+      18254.0,
+      18048.9,
+      17845.4,
+      17640.5,
+      17437.2,
+      17233.4,
+      17028.4,
+      16825.0,
+      16620.1,
+      16416.4,
+      16211.6,
+      16006.6,
+      15803.0,
+      15598.0,
+      17304.6,
+      17101.0,
+      16899.1,
+      16694.4,
+      16492.7
+    ],
+    "first_partial_end_to_end_latencies_ms": [
+      1412.8
+    ],
+    "partial_gap_latencies_ms": [
+      0.8,
+      5332.9,
+      0.7,
+      0.3,
+      0.3,
+      11071.3,
+      0.0,
+      0.0,
+      0.0,
+      0.1,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      10243.5,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1911.3,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "final_latencies_ms": [
+      16492.0
+    ],
+    "stop_to_final_latencies_ms": [
+      16287.7
+    ],
+    "partial_mean_ms": 15441.5,
+    "partial_p90_ms": 20497.7,
+    "partial_p95_ms": 21110.8,
+    "partial_min_ms": 911.6,
+    "partial_max_ms": 21316.5,
+    "first_partial_end_to_end_mean_ms": 1412.8,
+    "first_partial_end_to_end_p90_ms": 1412.8,
+    "first_partial_end_to_end_p95_ms": 1412.8,
+    "partial_gap_mean_ms": 408.0,
+    "partial_gap_p90_ms": 0.3,
+    "partial_gap_p95_ms": 1911.3,
+    "time_to_final_from_audio_end_mean_ms": 16492.0,
+    "time_to_final_from_audio_end_p90_ms": 16492.0,
+    "time_to_final_from_audio_end_p95_ms": 16492.0,
+    "time_to_final_from_audio_end_min_ms": 16492.0,
+    "time_to_final_from_audio_end_max_ms": 16492.0,
+    "final_mean_ms": 16492.0,
+    "final_p90_ms": 16492.0,
+    "final_p95_ms": 16492.0,
+    "final_min_ms": 16492.0,
+    "final_max_ms": 16492.0,
+    "ready": {
+      "type": "ready",
+      "stream_id": 1,
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "language": "en",
+      "sample_rate": 22050,
+      "partial_interval_chunks": 1,
+      "max_buffer_bytes": 1048576,
+      "partial_window_seconds": 2.0
+    },
+    "last_partial": "for the RT-CASR service.",
+    "final_transcript": "The quick brown fox jumps over the lazy dog, this is a real-time ASR latency benchmark for the RTC ASR service.",
+    "expected_partial_events": 73,
+    "observed_partial_events": 71,
+    "missing_partial_events": 2,
+    "late_partial_events": 6,
+    "late_partial_ratio": 0.085,
+    "partial_revision_count": 70,
+    "partial_transcript_churn_char_mean": 0.138,
+    "partial_transcript_churn_char_p95": 0.138,
+    "partial_transcript_churn_word_mean": 0.228,
+    "partial_transcript_churn_word_p95": 0.228,
+    "bridge": {
+      "source_frame_ms": 20,
+      "source_frame_count": 364,
+      "chunk_count": 73,
+      "aggregation_frame_count": 5,
+      "source_frames_dropped": 0,
+      "simulate_realtime": true
+    },
+    "final_event_received_count": 1,
+    "closeout_event_types": [
+      "final"
+    ],
+    "accuracy": {
+      "sample_count": 1,
+      "exact_match_rate": 0.0,
+      "word_error_rate_mean": 0.095,
+      "word_error_rate_p90": 0.095,
+      "character_error_rate_mean": 0.0,
+      "character_error_rate_p90": 0.0
+    }
+  }
+}

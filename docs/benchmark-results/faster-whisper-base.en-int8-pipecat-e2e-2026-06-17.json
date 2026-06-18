@@ -1,0 +1,407 @@
+{
+  "environment": {
+    "date_utc": "2026-06-17T17:11:26Z",
+    "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
+    "python": "3.11.2",
+    "processor": "aarch64",
+    "machine": "aarch64",
+    "cpu_logical_cores": 10,
+    "memory_total_mb": 7936.0,
+    "process_rss_mb": 789.5,
+    "peak_rss_mb": 789.5
+  },
+  "benchmark": {
+    "sample_count": 1,
+    "mode": "pipecat-e2e",
+    "rest_runs_per_sample": 1,
+    "chunk_ms": 100,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "source_frame_ms": 20,
+    "simulate_realtime": true,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
+    "partial_event_timeout_seconds": 0.1,
+    "request_retries": 3,
+    "request_retry_delay": 2.0,
+    "pipecat_source_frame_ms": 20,
+    "preload_model": true,
+    "require_preloaded_service": true,
+    "spawn_server": true
+  },
+  "integration": {
+    "name": "pipecat",
+    "transport": "pipecat-e2e",
+    "source_frame_ms": 20,
+    "bridge_chunk_ms": 100,
+    "send_binary_frames": false,
+    "simulate_realtime": true
+  },
+  "audio": {
+    "path": "/workspace/projects/rtc-asr/tests/fixtures/smoke.wav",
+    "duration_s": 0.125,
+    "sample_rate": 16000,
+    "synthesized": false,
+    "reference_text": null
+  },
+  "backend": {
+    "name": "faster-whisper",
+    "model": "base.en",
+    "device": "cpu",
+    "compute_type": "int8",
+    "qwen_dtype": null,
+    "parakeet_dtype": null
+  },
+  "service": {
+    "backend": "faster-whisper",
+    "model": "base.en",
+    "sample_rate": 16000,
+    "status": "ready",
+    "ready": true,
+    "preload_enabled": true,
+    "preload_error": null,
+    "protocols": [
+      {
+        "id": "rtc-asr-stream.v1",
+        "transport": "websocket",
+        "path": "/ws/stream",
+        "docs": "/docs/api-reference.md#websocket-streaming",
+        "status": "stable",
+        "message_format": "json-control-plus-binary-audio"
+      },
+      {
+        "id": "local-stt.v1",
+        "transport": "websocket",
+        "path": "/v1/stt/stream",
+        "docs": "/docs/local-stt-v1.md",
+        "status": "preview",
+        "message_format": "json-control-plus-binary-pcm16",
+        "audio": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "format": "pcm_s16le",
+          "frame_ms": 20,
+          "bytes_per_frame": 640
+        }
+      }
+    ],
+    "streaming": {
+      "transport": "websocket",
+      "path": "/ws/stream",
+      "reusable_connection": true,
+      "message_types": [
+        "start",
+        "audio",
+        "stop",
+        "cancel"
+      ],
+      "audio_frame_formats": [
+        "json-base64",
+        "binary"
+      ],
+      "event_types": [
+        "ready",
+        "partial",
+        "final",
+        "canceled",
+        "error"
+      ]
+    },
+    "audio": {
+      "target_sample_rate": 16000,
+      "channels": 1,
+      "accepted_formats": [
+        "wav",
+        "pcm16",
+        "other formats supported by soundfile when installed"
+      ]
+    },
+    "models": [
+      {
+        "id": "base.en",
+        "backend": "faster-whisper",
+        "model": "base.en",
+        "loaded": true,
+        "streaming": {
+          "transport": "websocket",
+          "path": "/ws/stream",
+          "reusable_connection": true,
+          "message_types": [
+            "start",
+            "audio",
+            "stop",
+            "cancel"
+          ],
+          "audio_frame_formats": [
+            "json-base64",
+            "binary"
+          ],
+          "event_types": [
+            "ready",
+            "partial",
+            "final",
+            "canceled",
+            "error"
+          ]
+        },
+        "audio": {
+          "target_sample_rate": 16000,
+          "channels": 1,
+          "accepted_formats": [
+            "wav",
+            "pcm16",
+            "other formats supported by soundfile when installed"
+          ]
+        },
+        "capabilities": {
+          "backend": "faster-whisper",
+          "model": "base.en",
+          "device": "cpu",
+          "compute_type": "int8",
+          "loaded": true,
+          "streaming": {
+            "transport": "websocket",
+            "path": "/ws/stream",
+            "reusable_connection": true,
+            "message_types": [
+              "start",
+              "audio",
+              "stop",
+              "cancel"
+            ],
+            "audio_frame_formats": [
+              "json-base64",
+              "binary"
+            ],
+            "event_types": [
+              "ready",
+              "partial",
+              "final",
+              "canceled",
+              "error"
+            ]
+          },
+          "audio": {
+            "target_sample_rate": 16000,
+            "channels": 1,
+            "accepted_formats": [
+              "wav",
+              "pcm16",
+              "other formats supported by soundfile when installed"
+            ]
+          }
+        }
+      }
+    ],
+    "capabilities": {
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "loaded": true,
+      "streaming": {
+        "transport": "websocket",
+        "path": "/ws/stream",
+        "reusable_connection": true,
+        "message_types": [
+          "start",
+          "audio",
+          "stop",
+          "cancel"
+        ],
+        "audio_frame_formats": [
+          "json-base64",
+          "binary"
+        ],
+        "event_types": [
+          "ready",
+          "partial",
+          "final",
+          "canceled",
+          "error"
+        ]
+      },
+      "audio": {
+        "target_sample_rate": 16000,
+        "channels": 1,
+        "accepted_formats": [
+          "wav",
+          "pcm16",
+          "other formats supported by soundfile when installed"
+        ]
+      }
+    }
+  },
+  "samples": {
+    "rest": [
+      {
+        "sample": 1,
+        "mean_ms": 1.8,
+        "p90_ms": 1.8,
+        "p95_ms": 1.8,
+        "min_ms": 1.8,
+        "max_ms": 1.8,
+        "rtf_mean": 0.015,
+        "transcript": "",
+        "accuracy": null
+      }
+    ],
+    "streaming": [
+      {
+        "sample": 1,
+        "transport": "pipecat-e2e",
+        "source_frame_ms": 20,
+        "source_frame_count": 7,
+        "aggregation_frame_count": 5,
+        "binary_frames": false,
+        "simulate_realtime": true,
+        "partial_mean_ms": null,
+        "partial_p90_ms": null,
+        "partial_p95_ms": null,
+        "partial_first_ms": null,
+        "partial_last_ms": null,
+        "first_partial_audio_ms": null,
+        "first_partial_end_to_end_ms": null,
+        "partial_gap_mean_ms": null,
+        "partial_gap_p95_ms": null,
+        "time_to_final_from_audio_end_ms": 205.0,
+        "final_ms": 1.7,
+        "ready": {
+          "type": "ready",
+          "stream_id": 1,
+          "backend": "faster-whisper",
+          "model": "base.en",
+          "language": "en",
+          "sample_rate": 16000,
+          "partial_interval_chunks": 1,
+          "max_buffer_bytes": 1048576,
+          "partial_window_seconds": 2.0
+        },
+        "last_partial": "",
+        "final_transcript": "",
+        "expected_partial_events": 2,
+        "observed_partial_events": 0,
+        "missing_partial_events": 2,
+        "late_partial_events": 0,
+        "late_partial_ratio": null,
+        "partial_revision_count": 0,
+        "partial_transcript_churn_char_mean": null,
+        "partial_transcript_churn_char_p95": null,
+        "partial_transcript_churn_word_mean": null,
+        "partial_transcript_churn_word_p95": null,
+        "bridge": {
+          "source_frame_ms": 20,
+          "source_frame_count": 7,
+          "chunk_count": 2,
+          "aggregation_frame_count": 5,
+          "source_frames_dropped": 0,
+          "simulate_realtime": true
+        },
+        "final_event_received": true,
+        "closeout_event_type": "final",
+        "accuracy": null
+      }
+    ]
+  },
+  "rest": {
+    "sample_count": 1,
+    "runs_per_sample": 1,
+    "durations_ms": [
+      1.8
+    ],
+    "mean_ms": 1.8,
+    "p90_ms": 1.8,
+    "p95_ms": 1.8,
+    "min_ms": 1.8,
+    "max_ms": 1.8,
+    "rtf_mean": 0.014,
+    "accuracy": null,
+    "transcript": ""
+  },
+  "streaming": {
+    "sample_count": 1,
+    "transport": "pipecat-e2e",
+    "chunk_ms": 100,
+    "partial_interval_chunks": 1,
+    "binary_frames": false,
+    "source_frame_ms": 20,
+    "simulate_realtime": true,
+    "partial_window_seconds": 2.0,
+    "max_buffer_seconds": null,
+    "partial_event_timeout_seconds": 0.1,
+    "request_retries": 3,
+    "request_retry_delay": 2.0,
+    "live_metrics_comparable": true,
+    "partial_latencies_ms": [],
+    "first_partial_end_to_end_latencies_ms": [],
+    "partial_gap_latencies_ms": [],
+    "final_latencies_ms": [
+      205.0
+    ],
+    "stop_to_final_latencies_ms": [
+      1.7
+    ],
+    "partial_mean_ms": null,
+    "partial_p90_ms": null,
+    "partial_p95_ms": null,
+    "partial_min_ms": null,
+    "partial_max_ms": null,
+    "first_partial_end_to_end_mean_ms": null,
+    "first_partial_end_to_end_p90_ms": null,
+    "first_partial_end_to_end_p95_ms": null,
+    "partial_gap_mean_ms": null,
+    "partial_gap_p90_ms": null,
+    "partial_gap_p95_ms": null,
+    "time_to_final_from_audio_end_mean_ms": 205.0,
+    "time_to_final_from_audio_end_p90_ms": 205.0,
+    "time_to_final_from_audio_end_p95_ms": 205.0,
+    "time_to_final_from_audio_end_min_ms": 205.0,
+    "time_to_final_from_audio_end_max_ms": 205.0,
+    "final_mean_ms": 205.0,
+    "final_p90_ms": 205.0,
+    "final_p95_ms": 205.0,
+    "final_min_ms": 205.0,
+    "final_max_ms": 205.0,
+    "stop_to_final_mean_ms": 1.7,
+    "stop_to_final_p90_ms": 1.7,
+    "stop_to_final_p95_ms": 1.7,
+    "stop_to_final_min_ms": 1.7,
+    "stop_to_final_max_ms": 1.7,
+    "ready": {
+      "type": "ready",
+      "stream_id": 1,
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "language": "en",
+      "sample_rate": 16000,
+      "partial_interval_chunks": 1,
+      "max_buffer_bytes": 1048576,
+      "partial_window_seconds": 2.0
+    },
+    "last_partial": "",
+    "final_transcript": "",
+    "expected_partial_events": 2,
+    "observed_partial_events": 0,
+    "missing_partial_events": 2,
+    "late_partial_events": 0,
+    "late_partial_ratio": null,
+    "partial_revision_count": 0,
+    "partial_transcript_churn_char_mean": null,
+    "partial_transcript_churn_char_p95": null,
+    "partial_transcript_churn_word_mean": null,
+    "partial_transcript_churn_word_p95": null,
+    "bridge": {
+      "source_frame_ms": 20,
+      "source_frame_count": 7,
+      "chunk_count": 2,
+      "aggregation_frame_count": 5,
+      "source_frames_dropped": 0,
+      "simulate_realtime": true
+    },
+    "final_event_received_count": 1,
+    "closeout_event_types": [
+      "final"
+    ],
+    "accuracy": null
+  }
+}
