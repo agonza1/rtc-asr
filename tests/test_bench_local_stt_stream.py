@@ -43,6 +43,18 @@ class FakeLocalSttClient:
                     remaining_buffer_bytes=0,
                 )
             )
+        if len(self.sent) == 2:
+            await self._events.put(
+                TranscriptEvent(
+                    type="partial",
+                    text="hello",
+                    stream_id=None,
+                    is_final=False,
+                    chunks_received=2,
+                    buffered_bytes=len(chunk),
+                    remaining_buffer_bytes=0,
+                )
+            )
 
     async def finalize(self) -> None:
         self.finalized = True
@@ -109,8 +121,10 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     }
     assert sample["audio_frames_sent"] == 2
     assert sample["audio_frames_dropped"] == 0
-    assert sample["interim_events_received"] == 1
+    assert sample["interim_events_received"] == 2
+    assert sample["interim_transcript_changes"] == 1
     assert sample["final_events_received"] == 1
+    assert sample["final_transcript"] == "hello"
     assert sample["protocol_errors"] == 0
     assert sample["time_to_first_interim_ms"] is not None
     assert sample["time_to_final_after_finalize_ms"] is not None

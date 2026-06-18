@@ -183,6 +183,9 @@ async def _run_once(
     final_after_finalize_ms: float | None = None
     interim_events = 0
     final_events = 0
+    interim_transcript_changes = 0
+    previous_interim_text: str | None = None
+    final_transcript: str | None = None
     protocol_errors = 0
     reconnects = 0
     receive_latencies: list[float] = []
@@ -191,7 +194,7 @@ async def _run_once(
     receive_done = asyncio.Event()
 
     async def receive_loop() -> None:
-        nonlocal first_interim_ms, final_after_finalize_ms, interim_events, final_events, protocol_errors
+        nonlocal first_interim_ms, final_after_finalize_ms, interim_events, final_events, interim_transcript_changes, previous_interim_text, final_transcript, protocol_errors
         while not receive_done.is_set():
             wait_started = time.perf_counter()
             event = await client.recv_event(timeout=0.05, allow_error=True)
@@ -204,10 +207,14 @@ async def _run_once(
                 return
             if event.type == "partial":
                 interim_events += 1
+                if previous_interim_text is not None and event.text != previous_interim_text:
+                    interim_transcript_changes += 1
+                previous_interim_text = event.text
                 if first_interim_ms is None and first_audio_sent_at is not None:
                     first_interim_ms = (time.perf_counter() - first_audio_sent_at) * 1000
             if event.is_final or event.type == "final":
                 final_events += 1
+                final_transcript = event.text
                 if final_requested_at is not None:
                     final_after_finalize_ms = (time.perf_counter() - final_requested_at) * 1000
                 receive_done.set()
@@ -248,7 +255,9 @@ async def _run_once(
         "audio_frames_sent": frames_sent,
         "audio_frames_dropped": max(0, len(audio.frames) - frames_sent),
         "interim_events_received": interim_events,
+        "interim_transcript_changes": interim_transcript_changes,
         "final_events_received": final_events,
+        "final_transcript": final_transcript,
         "reconnects": reconnects,
         "protocol_errors": protocol_errors,
     }
