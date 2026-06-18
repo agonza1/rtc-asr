@@ -7,7 +7,12 @@ import time
 import wave
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 from typing import Any, Callable, Protocol
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src.protocols import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_FRAME_MS, HOT_PATH_SAMPLE_RATE
 from src.rtc_client import AsyncLocalSttClient, TranscriptEvent
