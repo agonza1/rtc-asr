@@ -582,7 +582,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Benchmark appendix" in homepage
     assert "benchmark-results/manifest.json" in homepage
     assert "WebRTC.ventures benchmarks" in homepage
-    assert "Built for WebRTC.ventures launch conversations" in homepage
+    assert "Built by WebRTC.ventures" in homepage
     assert "Reference WER" in homepage
     assert "external context rather than official rtc-asr measurements" in homepage
     assert "Open detail page" in homepage
