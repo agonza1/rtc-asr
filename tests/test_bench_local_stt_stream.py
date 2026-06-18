@@ -108,7 +108,20 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["protocol_errors"] == 0
     assert sample["time_to_first_interim_ms"] is not None
     assert sample["time_to_final_after_finalize_ms"] is not None
+    assert sample["audio_send_queue_depth_p95_ms"] is None
+    assert sample["asr_queue_delay_p95_ms"] is None
+    assert sample["asr_decode_p95_ms"] is None
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
+    assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
+
+
+def test_receive_latency_ignores_empty_poll_timeouts() -> None:
+    assert benchmark_module.percentile([], 0.95) is None
+    assert benchmark_module.summarize_samples([{"websocket_roundtrip_p95_ms": None}])["websocket_roundtrip_p95_ms"] == {
+        "p50": None,
+        "p95": None,
+        "p99": None,
+    }
 
 
 def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> None:

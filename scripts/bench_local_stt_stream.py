@@ -83,15 +83,15 @@ def split_pcm_frames(pcm_bytes: bytes, *, sample_rate: int, frame_ms: int) -> li
     return [pcm_bytes[index : index + bytes_per_frame] for index in range(0, len(pcm_bytes), bytes_per_frame) if pcm_bytes[index : index + bytes_per_frame]]
 
 
-def percentile(values: list[float], q: float) -> float:
+def percentile(values: list[float], q: float) -> float | None:
     if not values:
-        return 0.0
+        return None
     ordered = sorted(values)
     index = min(len(ordered) - 1, max(0, round((len(ordered) - 1) * q)))
     return round(ordered[index], 1)
 
 
-def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, float | None]]:
     keys = [
         "time_to_first_interim_ms",
         "time_to_final_after_finalize_ms",
@@ -180,9 +180,9 @@ async def _run_once(
         while not receive_done.is_set():
             wait_started = time.perf_counter()
             event = await client.recv_event(timeout=0.05, allow_error=True)
-            receive_latencies.append((time.perf_counter() - wait_started) * 1000)
             if event is None:
                 continue
+            receive_latencies.append((time.perf_counter() - wait_started) * 1000)
             if event.type == "error":
                 protocol_errors += 1
                 receive_done.set()
@@ -225,10 +225,10 @@ async def _run_once(
         "index": index,
         "time_to_first_interim_ms": _rounded_or_none(first_interim_ms),
         "time_to_final_after_finalize_ms": _rounded_or_none(final_after_finalize_ms),
-        "audio_send_queue_depth_p95_ms": 0.0,
+        "audio_send_queue_depth_p95_ms": None,
         "asr_receive_loop_append_p95_ms": receive_p95,
-        "asr_queue_delay_p95_ms": 0.0,
-        "asr_decode_p95_ms": 0.0,
+        "asr_queue_delay_p95_ms": None,
+        "asr_decode_p95_ms": None,
         "websocket_roundtrip_p95_ms": receive_p95,
         "audio_frames_sent": frames_sent,
         "audio_frames_dropped": max(0, len(audio.frames) - frames_sent),
@@ -255,7 +255,11 @@ def _rounded_or_none(value: float | None) -> float | None:
 
 def print_summary(payload: dict[str, Any]) -> None:
     for metric, values in payload["summary"].items():
-        print(f"{metric}: p50={values['p50']}ms p95={values['p95']}ms p99={values['p99']}ms")
+        print(f"{metric}: p50={_format_ms(values['p50'])} p95={_format_ms(values['p95'])} p99={_format_ms(values['p99'])}")
+
+
+def _format_ms(value: float | None) -> str:
+    return "n/a" if value is None else f"{value}ms"
 
 
 def main(argv: list[str] | None = None) -> int:
