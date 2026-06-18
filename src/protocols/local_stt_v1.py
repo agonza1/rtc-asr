@@ -195,6 +195,54 @@ def parse_server_message(payload: Any) -> ServerMessage:
     return _validate_message(payload, adapter=_SERVER_ADAPTER)
 
 
+def build_hot_path_audio_format() -> AudioFormat:
+    return AudioFormat(
+        sample_rate=HOT_PATH_SAMPLE_RATE,
+        channels=HOT_PATH_CHANNELS,
+        format=HOT_PATH_PCM_FORMAT,
+        frame_ms=HOT_PATH_FRAME_MS,
+        bytes_per_frame=HOT_PATH_BYTES_PER_FRAME,
+    )
+
+
+def build_start_message(
+    *,
+    language: str | None = "en",
+    interim_results: bool = True,
+    partial_interval_ms: int | None = None,
+    partial_window_seconds: float | None = None,
+    max_buffer_seconds: float | None = None,
+    client_stream_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> StartMessage:
+    return StartMessage(
+        type="start",
+        version=PROTOCOL_VERSION,
+        audio=build_hot_path_audio_format(),
+        language=language,
+        interim_results=interim_results,
+        partial_interval_ms=partial_interval_ms,
+        partial_window_seconds=partial_window_seconds,
+        max_buffer_seconds=max_buffer_seconds,
+        client_stream_id=client_stream_id,
+        metadata=metadata or {},
+    )
+
+
+def build_ready_message(
+    *,
+    interim_results: bool = True,
+    metadata: dict[str, Any] | None = None,
+) -> ReadyMessage:
+    return ReadyMessage(
+        type="ready",
+        version=PROTOCOL_VERSION,
+        audio=build_hot_path_audio_format(),
+        interim_results=interim_results,
+        metadata=metadata or {},
+    )
+
+
 def validate_audio_chunk(chunk: Any) -> bytes:
     if isinstance(chunk, str):
         raise LocalSttProtocolError(
