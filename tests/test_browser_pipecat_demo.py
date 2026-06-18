@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -64,6 +65,17 @@ def fake_runtime_loader() -> PipecatRuntime:
         pipeline_params_cls=object,
         worker_runner_cls=object,
     )
+
+
+def test_pipecat_demo_requirements_match_worker_api_minimum() -> None:
+    requirements = (
+        Path("examples")
+        / "browser_pipecat_demo"
+        / "requirements.txt"
+    ).read_text(encoding="utf-8")
+
+    assert "pipecat-ai[webrtc]>=1.3.0" in requirements
+    assert "pipecat-ai[webrtc]>=0.0.86" not in requirements
 
 
 def test_demo_page_serves_static_app() -> None:

@@ -141,6 +141,7 @@ class StreamSession:
     sample_rate: int
     max_buffer_bytes: int
     partial_interval_chunks: int = 1
+    partial_interval_audio_ms: int | None = None
     partial_window_seconds: float | None = None
     max_buffer_seconds: float | None = None
     partial_window_bytes: int | None = None
@@ -150,6 +151,7 @@ class StreamSession:
     audio_buffer: bytearray = field(default_factory=bytearray, repr=False)
     chunks_received: int = 0
     last_partial_chunks_received: int = 0
+    last_partial_audio_received_ms: int = 0
     last_partial_result: dict[str, object] | None = None
     transcript_revision: int = 0
 
@@ -166,6 +168,16 @@ class StreamSession:
     def record_partial(self, transcript: dict[str, object]) -> None:
         self.last_partial_result = transcript
         self.last_partial_chunks_received = self.chunks_received
+        self.last_partial_audio_received_ms = self.audio_received_ms()
+
+    def audio_received_ms(self) -> int:
+        return _audio_bytes_to_duration_ms(len(self.audio_buffer), self.sample_rate)
+
+    def should_emit_partial(self) -> bool:
+        if self.partial_interval_audio_ms is None:
+            return self.chunks_received % self.partial_interval_chunks == 0
+        elapsed_audio_ms = self.audio_received_ms() - self.last_partial_audio_received_ms
+        return elapsed_audio_ms >= self.partial_interval_audio_ms
 
     def partial_audio_bytes(self) -> bytes:
         if self.partial_window_bytes is None or len(self.audio_buffer) <= self.partial_window_bytes:
@@ -181,6 +193,7 @@ class StreamSession:
 class LocalSttStartConfig:
     start: StartMessage
     partial_interval_chunks: int = 1
+    partial_interval_audio_ms: int | None = None
     partial_window_seconds: float | None = None
     max_buffer_seconds: float | None = None
     client_stream_id: str | None = None
@@ -463,7 +476,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                             metadata={"max_buffer_bytes": session.max_buffer_bytes},
                         ) from exc
 
-                    if not session.interim_results or session.chunks_received % session.partial_interval_chunks != 0:
+                    if not session.interim_results or not session.should_emit_partial():
                         continue
 
                     partial_audio_bytes = session.partial_audio_bytes()
@@ -627,6 +640,7 @@ def _create_local_stt_stream_session(
         sample_rate=sample_rate,
         max_buffer_bytes=max_buffer_bytes,
         partial_interval_chunks=payload.partial_interval_chunks,
+        partial_interval_audio_ms=payload.partial_interval_audio_ms,
         partial_window_seconds=payload.partial_window_seconds,
         max_buffer_seconds=payload.max_buffer_seconds,
         partial_window_bytes=partial_window_bytes,
@@ -671,8 +685,10 @@ def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConf
 
     partial_interval_ms = start.partial_interval_ms
     partial_interval_chunks = 1
+    partial_interval_audio_ms = None
     if partial_interval_ms is not None:
         partial_interval_chunks = max(1, math.ceil(partial_interval_ms / start.audio.frame_ms))
+        partial_interval_audio_ms = partial_interval_chunks * start.audio.frame_ms
 
     partial_window_seconds = start.partial_window_seconds
     max_buffer_seconds = start.max_buffer_seconds
@@ -680,6 +696,7 @@ def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConf
     return LocalSttStartConfig(
         start=start,
         partial_interval_chunks=partial_interval_chunks,
+        partial_interval_audio_ms=partial_interval_audio_ms,
         partial_window_seconds=partial_window_seconds,
         max_buffer_seconds=max_buffer_seconds,
         client_stream_id=client_stream_id,

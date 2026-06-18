@@ -63,7 +63,7 @@ That example requirements file includes `pipecat-ai[webrtc]`. The dependency is 
 Example:
 
 ```bash
-export RTC_ASR_WS_URL="ws://127.0.0.1:8080/ws/stream"
+export RTC_ASR_WS_URL="ws://127.0.0.1:8080/v1/stt/stream"
 export RTC_ASR_CHUNK_MS="100"
 ```
 
