@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 import json
@@ -187,6 +188,39 @@ class StreamSession:
     def next_transcript_revision(self) -> int:
         self.transcript_revision += 1
         return self.transcript_revision
+
+
+@dataclass(slots=True)
+class StreamRuntime:
+    stream_id: int
+    client_stream_id: str | None
+    session: StreamSession
+    services: AppServices
+    audio_updated: asyncio.Event = field(default_factory=asyncio.Event)
+    finalize_requested: asyncio.Event = field(default_factory=asyncio.Event)
+    cancel_requested: asyncio.Event = field(default_factory=asyncio.Event)
+    outgoing_events: asyncio.Queue[dict[str, Any]] = field(default_factory=asyncio.Queue)
+    latest_revision: int = 0
+    decode_in_flight: bool = False
+    dirty: bool = False
+    closed: bool = False
+    final_emitted: bool = False
+
+    def note_audio(self) -> None:
+        self.dirty = True
+        self.audio_updated.set()
+
+    def request_finalize(self) -> None:
+        self.finalize_requested.set()
+        self.audio_updated.set()
+
+    def request_cancel(self) -> None:
+        self.cancel_requested.set()
+        self.audio_updated.set()
+
+    def close(self) -> None:
+        self.closed = True
+        self.audio_updated.set()
 
 
 @dataclass(slots=True)
@@ -437,15 +471,34 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
     async def websocket_stream_v1(websocket: WebSocket) -> None:
         await websocket.accept()
         services = app.state.services
-        session: StreamSession | None = None
+        runtime: StreamRuntime | None = None
+        worker_task: asyncio.Task[None] | None = None
+        send_task: asyncio.Task[None] | None = None
         next_stream_id = 1
+
+        async def stop_runtime() -> None:
+            nonlocal runtime, worker_task, send_task
+            if runtime is not None:
+                runtime.close()
+            for task in (worker_task, send_task):
+                if task is not None and not task.done():
+                    task.cancel()
+            for task in (worker_task, send_task):
+                if task is not None:
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+            runtime = None
+            worker_task = None
+            send_task = None
 
         try:
             while True:
                 payload, event_type = await _receive_local_stt_event(websocket)
 
                 if event_type == "start":
-                    if session is not None:
+                    if runtime is not None:
                         raise LocalSttProtocolError(
                             "Finish the active stream before starting a new one",
                             code="invalid_state",
@@ -457,6 +510,14 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         stream_id=next_stream_id,
                     )
                     next_stream_id += 1
+                    runtime = StreamRuntime(
+                        stream_id=session.stream_id,
+                        client_stream_id=session.client_stream_id,
+                        session=session,
+                        services=services,
+                    )
+                    worker_task = asyncio.create_task(_local_stt_asr_worker(runtime))
+                    send_task = asyncio.create_task(_send_queued_events(websocket, runtime))
                     await websocket.send_json(
                         _local_stt_ready_event(
                             session,
@@ -467,84 +528,74 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     continue
 
                 if event_type == "audio":
-                    if session is None:
+                    if runtime is None:
                         raise LocalSttProtocolError(
                             "Send a start event before audio chunks",
                             code="invalid_state",
                         )
 
                     try:
-                        session.append_audio(payload)
+                        runtime.session.append_audio(payload)
                     except StreamClientError as exc:
                         raise LocalSttProtocolError(
                             str(exc),
                             code="buffer_limit_exceeded",
-                            metadata={"max_buffer_bytes": session.max_buffer_bytes},
+                            metadata={"max_buffer_bytes": runtime.session.max_buffer_bytes},
                         ) from exc
 
-                    if not session.interim_results or not session.should_emit_partial():
-                        continue
-
-                    partial_audio_bytes = session.partial_audio_bytes()
-                    partial = _run_transcription(
-                        services,
-                        audio_bytes=partial_audio_bytes,
-                        language=session.language,
-                        sample_rate=session.sample_rate,
-                    )
-                    session.record_partial(partial)
-                    partial_text = str(partial.get("text", "")).strip()
-                    if partial_text:
-                        await websocket.send_json(
-                            _local_stt_transcript_event(
-                                session,
-                                partial,
-                                is_final=False,
-                                transcribed_audio_bytes=len(partial_audio_bytes),
-                            )
-                        )
+                    runtime.note_audio()
                     continue
 
                 if event_type == "finalize":
-                    if session is None:
+                    if runtime is None:
                         raise LocalSttProtocolError(
                             "Send a start event before finalizing the stream",
                             code="invalid_state",
                         )
-                    if not session.audio_buffer:
+                    if not runtime.session.audio_buffer:
                         raise LocalSttProtocolError(
                             "No audio chunks received for this stream",
                             code="invalid_state",
                         )
 
-                    final_result = _resolve_final_result(session, services)
-                    await websocket.send_json(
-                        _local_stt_transcript_event(
-                            session,
-                            final_result,
-                            is_final=True,
-                            transcribed_audio_bytes=len(session.audio_buffer),
-                        )
-                    )
-                    session = None
+                    runtime.request_finalize()
+                    assert worker_task is not None
+                    await worker_task
+                    await runtime.outgoing_events.join()
+                    if send_task is not None:
+                        send_task.cancel()
+                        try:
+                            await send_task
+                        except asyncio.CancelledError:
+                            pass
+                    runtime = None
+                    worker_task = None
+                    send_task = None
                     continue
 
                 if event_type == "cancel":
-                    if session is None:
+                    if runtime is None:
                         raise LocalSttProtocolError(
                             "Send a start event before canceling the stream",
                             code="invalid_state",
                         )
 
-                    await websocket.send_json(_local_stt_cancel_warning_event(session))
-                    session = None
+                    runtime.request_cancel()
+                    await runtime.outgoing_events.put(_local_stt_cancel_warning_event(runtime.session))
+                    await runtime.outgoing_events.join()
+                    await stop_runtime()
                     continue
 
                 if event_type == "ping":
-                    await websocket.send_json(_local_stt_pong_event(payload))
+                    if runtime is None or send_task is None:
+                        await websocket.send_json(_local_stt_pong_event(payload))
+                    else:
+                        await runtime.outgoing_events.put(_local_stt_pong_event(payload))
                     continue
 
                 if event_type == "close":
+                    if runtime is not None:
+                        await stop_runtime()
                     await websocket.send_json({"type": "closed", "reason": "client_close", "metadata": {}})
                     await websocket.close(code=1000)
                     return
@@ -554,18 +605,22 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     code="unsupported_message_type",
                 )
         except WebSocketDisconnect:
+            await stop_runtime()
             return
         except ASRUnavailableError as exc:
             services.preload_error = str(exc)
+            await stop_runtime()
             await _close_local_stt_error(
                 websocket,
                 ErrorMessage(type="error", code="backend_unavailable", message=str(exc)),
                 close_code=1011,
             )
         except LocalSttProtocolError as exc:
+            await stop_runtime()
             await _close_local_stt_error(websocket, exc.as_event(), close_code=1003)
         except Exception as exc:  # pragma: no cover - defensive websocket boundary
             _record_lazy_load_failure(services, exc)
+            await stop_runtime()
             logger.exception("Unexpected Local STT v1 websocket stream error")
             await _close_local_stt_error(
                 websocket,
@@ -574,6 +629,85 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             )
 
     return app
+
+
+async def _send_queued_events(websocket: WebSocket, runtime: StreamRuntime) -> None:
+    while not runtime.closed or not runtime.outgoing_events.empty():
+        try:
+            event = await asyncio.wait_for(runtime.outgoing_events.get(), timeout=0.1)
+        except TimeoutError:
+            continue
+        try:
+            await websocket.send_json(event)
+        finally:
+            runtime.outgoing_events.task_done()
+
+
+async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
+    session = runtime.session
+    while True:
+        await runtime.audio_updated.wait()
+        runtime.audio_updated.clear()
+
+        if runtime.cancel_requested.is_set():
+            return
+        if runtime.final_emitted or runtime.closed:
+            return
+
+        if runtime.finalize_requested.is_set():
+            final_audio = bytes(session.audio_buffer)
+            final_result = await _resolve_final_result_async(session, runtime.services)
+            if runtime.cancel_requested.is_set() or runtime.closed:
+                return
+            await runtime.outgoing_events.put(
+                _local_stt_transcript_event(
+                    session,
+                    final_result,
+                    is_final=True,
+                    transcribed_audio_bytes=len(final_audio),
+                )
+            )
+            runtime.final_emitted = True
+            runtime.closed = True
+            return
+
+        if not session.interim_results or not session.should_emit_partial():
+            runtime.dirty = False
+            continue
+
+        runtime.dirty = False
+        partial_audio_bytes = session.partial_audio_bytes()
+        runtime.decode_in_flight = True
+        partial = await _run_transcription_async(
+            runtime.services,
+            audio_bytes=partial_audio_bytes,
+            language=session.language,
+            sample_rate=session.sample_rate,
+        )
+        runtime.decode_in_flight = False
+
+        if runtime.cancel_requested.is_set() or runtime.final_emitted or runtime.closed:
+            return
+        if runtime.finalize_requested.is_set():
+            runtime.audio_updated.set()
+            continue
+        if runtime.dirty:
+            runtime.audio_updated.set()
+            continue
+
+        session.record_partial(partial)
+        partial_text = str(partial.get("text", "")).strip()
+        if partial_text:
+            await runtime.outgoing_events.put(
+                _local_stt_transcript_event(
+                    session,
+                    partial,
+                    is_final=False,
+                    transcribed_audio_bytes=len(partial_audio_bytes),
+                )
+            )
+
+
 
 
 def _create_stream_session(
@@ -686,6 +820,8 @@ def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConf
             "metadata": payload.get("metadata", {}),
         }
 
+    legacy_partial_interval_chunks = payload.get("partial_interval_chunks")
+
     start = parse_client_message(translated_payload)
     if not isinstance(start, StartMessage):
         raise LocalSttProtocolError("Expected a start message")
@@ -698,6 +834,10 @@ def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConf
     if partial_interval_ms is not None:
         partial_interval_chunks = max(1, math.ceil(partial_interval_ms / start.audio.frame_ms))
         partial_interval_audio_ms = partial_interval_chunks * start.audio.frame_ms
+    elif legacy_partial_interval_chunks is not None:
+        if not isinstance(legacy_partial_interval_chunks, int) or legacy_partial_interval_chunks < 1:
+            raise LocalSttProtocolError("partial_interval_chunks must be a positive integer")
+        partial_interval_chunks = legacy_partial_interval_chunks
 
     partial_window_seconds = start.partial_window_seconds
     max_buffer_seconds = start.max_buffer_seconds
@@ -933,11 +1073,8 @@ def _stream_event(event_type: str, session: StreamSession, transcript: dict[str,
 
 
 def _resolve_final_result(session: StreamSession, services: AppServices) -> dict[str, object]:
-    if (
-        session.last_partial_result is not None
-        and session.last_partial_chunks_received == session.chunks_received
-        and (session.partial_window_bytes is None or len(session.audio_buffer) <= session.partial_window_bytes)
-    ):
+    if _can_reuse_last_partial(session):
+        assert session.last_partial_result is not None
         return session.last_partial_result
 
     return _run_transcription(
@@ -945,6 +1082,27 @@ def _resolve_final_result(session: StreamSession, services: AppServices) -> dict
         audio_bytes=bytes(session.audio_buffer),
         language=session.language,
         sample_rate=session.sample_rate,
+    )
+
+
+async def _resolve_final_result_async(session: StreamSession, services: AppServices) -> dict[str, object]:
+    if _can_reuse_last_partial(session):
+        assert session.last_partial_result is not None
+        return session.last_partial_result
+
+    return await _run_transcription_async(
+        services,
+        audio_bytes=bytes(session.audio_buffer),
+        language=session.language,
+        sample_rate=session.sample_rate,
+    )
+
+
+def _can_reuse_last_partial(session: StreamSession) -> bool:
+    return (
+        session.last_partial_result is not None
+        and session.last_partial_chunks_received == session.chunks_received
+        and (session.partial_window_bytes is None or len(session.audio_buffer) <= session.partial_window_bytes)
     )
 
 
@@ -962,6 +1120,22 @@ def _run_transcription(
     )
     services.preload_error = None
     return result
+
+
+async def _run_transcription_async(
+    services: AppServices,
+    *,
+    audio_bytes: bytes,
+    language: str | None,
+    sample_rate: int | None,
+) -> dict[str, object]:
+    return await asyncio.to_thread(
+        _run_transcription,
+        services,
+        audio_bytes=audio_bytes,
+        language=language,
+        sample_rate=sample_rate,
+    )
 
 
 def _transcribe_bytes(

@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import threading
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -144,6 +146,26 @@ class RecoveringPreloadTranscriber(FakeTranscriber):
 class BrokenLazyLoadTranscriber(FakeTranscriber):
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
         raise RuntimeError("invalid device")
+
+
+class SleepingTranscriber(FakeTranscriber):
+    def __init__(self, *, delay_seconds: float = 0.2) -> None:
+        super().__init__()
+        self.delay_seconds = delay_seconds
+        self.active_calls = 0
+        self.max_active_calls = 0
+        self._lock = threading.Lock()
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
+        with self._lock:
+            self.active_calls += 1
+            self.max_active_calls = max(self.max_active_calls, self.active_calls)
+        try:
+            time.sleep(self.delay_seconds)
+            return super().transcribe(audio_data, language=language, sample_rate=sample_rate)
+        finally:
+            with self._lock:
+                self.active_calls -= 1
 
 
 def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
@@ -905,6 +927,69 @@ def test_websocket_stream_retranscribes_on_stop_when_partial_interval_skips_late
     ]
 
 
+def test_local_stt_v1_partial_interval_chunks_remains_supported() -> None:
+    transcriber = FakeTranscriber()
+    chunk = b"x" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                    "partial_interval_chunks": 2,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(chunk)
+            websocket.send_bytes(chunk)
+            partial_message = parse_server_message(websocket.receive_json())
+
+    assert partial_message.type == "transcript"
+    assert partial_message.is_final is False
+    assert partial_message.metadata["chunks_received"] == 2
+    assert transcriber.calls == [
+        {
+            "audio_size": len(chunk) * 2,
+            "language": None,
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "prefix": chunk[:4],
+        }
+    ]
+
+
+def test_local_stt_v1_partial_interval_ms_takes_priority_over_chunks() -> None:
+    transcriber = FakeTranscriber()
+    chunk = b"y" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                    "partial_interval_ms": HOT_PATH_FRAME_MS,
+                    "partial_interval_chunks": 10,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(chunk)
+            partial_message = parse_server_message(websocket.receive_json())
+
+    assert partial_message.type == "transcript"
+    assert partial_message.metadata["chunks_received"] == 1
+
+
 def test_local_stt_v1_partial_interval_uses_audio_duration_for_batched_frames() -> None:
     transcriber = FakeTranscriber()
     hundred_ms_pcm = b"x" * (HOT_PATH_BYTES_PER_FRAME * 5)
@@ -1132,6 +1217,96 @@ def test_local_stt_v1_stream_cancel_clears_buffer_and_suppresses_final_transcrip
     assert transcriber.calls == [
         {"audio_size": len(chunk), "language": None, "sample_rate": HOT_PATH_SAMPLE_RATE, "prefix": chunk[:4]}
     ]
+
+
+def test_local_stt_v1_receive_loop_accepts_audio_while_partial_decode_runs() -> None:
+    transcriber = SleepingTranscriber(delay_seconds=0.2)
+    chunk = b"a" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "partial_interval_ms": HOT_PATH_FRAME_MS,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            send_started = time.perf_counter()
+            for _ in range(10):
+                websocket.send_bytes(chunk)
+            send_elapsed = time.perf_counter() - send_started
+
+            websocket.send_json({"type": "finalize"})
+            final_event = parse_server_message(websocket.receive_json())
+
+    assert send_elapsed < 0.15
+    assert final_event.type == "transcript"
+    assert final_event.is_final is True
+    assert final_event.audio_received_ms == HOT_PATH_FRAME_MS * 10
+    assert final_event.audio_transcribed_ms == HOT_PATH_FRAME_MS * 10
+    assert transcriber.max_active_calls == 1
+    assert transcriber.calls[-1]["audio_size"] == len(chunk) * 10
+
+
+def test_local_stt_v1_finalize_suppresses_inflight_stale_partial() -> None:
+    transcriber = SleepingTranscriber(delay_seconds=0.05)
+    chunk = b"b" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "partial_interval_ms": HOT_PATH_FRAME_MS,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(chunk)
+            websocket.send_json({"type": "finalize"})
+            final_event = parse_server_message(websocket.receive_json())
+
+    assert final_event.type == "transcript"
+    assert final_event.is_final is True
+    assert final_event.revision == 1
+    assert transcriber.max_active_calls == 1
+
+
+def test_local_stt_v1_cancel_suppresses_inflight_partial_result() -> None:
+    transcriber = SleepingTranscriber(delay_seconds=0.1)
+    chunk = b"c" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "partial_interval_ms": HOT_PATH_FRAME_MS,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(chunk)
+            websocket.send_json({"type": "cancel"})
+            warning = websocket.receive_json()
+
+    assert warning["type"] == "warning"
+    assert warning["code"] == "stream_canceled"
+    assert transcriber.max_active_calls == 1
 
 
 def test_local_stt_v1_stream_pong_and_close_semantics() -> None:
