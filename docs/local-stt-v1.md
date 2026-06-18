@@ -28,6 +28,8 @@ Rules:
 
 - Binary audio MUST NOT be base64-wrapped.
 - Audio payloads SHOULD contain an even number of bytes.
+- A single 20 ms mono 16 kHz PCM16 frame is 640 bytes.
+- Servers default to `LOCAL_STT_ENABLE_PCM16_FAST_PATH=true`, `LOCAL_STT_REQUIRE_TARGET_SAMPLE_RATE=true`, and `LOCAL_STT_TARGET_SAMPLE_RATE=16000` so raw PCM16 frames bypass WAV/soundfile probing.
 - Control messages MUST stay JSON objects.
 
 ## Connection Lifecycle

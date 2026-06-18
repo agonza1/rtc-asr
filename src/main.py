@@ -202,7 +202,13 @@ class LocalSttStartConfig:
 
 def create_app(config: AppConfig | None = None, transcriber: Transcriber | None = None) -> FastAPI:
     runtime_config = config or AppConfig.from_env()
-    audio_processor = AudioProcessor(AudioConfig(sample_rate=runtime_config.sample_rate))
+    audio_processor = AudioProcessor(
+        AudioConfig(
+            sample_rate=runtime_config.local_stt_target_sample_rate,
+            enable_pcm16_fast_path=runtime_config.local_stt_enable_pcm16_fast_path,
+            require_target_sample_rate=runtime_config.local_stt_require_target_sample_rate,
+        )
+    )
     runtime_transcriber = transcriber or build_transcriber(runtime_config, audio_processor)
     services = AppServices(
         config=runtime_config,

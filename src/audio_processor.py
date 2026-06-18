@@ -12,6 +12,8 @@ import numpy as np
 @dataclass(slots=True, frozen=True)
 class AudioConfig:
     sample_rate: int = 16000
+    enable_pcm16_fast_path: bool = True
+    require_target_sample_rate: bool = True
 
 
 @dataclass(slots=True, frozen=True)
@@ -35,6 +37,12 @@ class AudioProcessor:
     def load_audio(self, audio_data: bytes, sample_rate: int | None = None) -> DecodedAudio:
         if not audio_data:
             raise ValueError("No audio data provided")
+
+        if self._should_use_pcm16_fast_path(audio_data, sample_rate):
+            return DecodedAudio(
+                samples=self._decode_pcm16(audio_data),
+                sample_rate=sample_rate or self.config.sample_rate,
+            )
 
         try:
             samples, detected_rate = self._decode_wav(audio_data)
@@ -99,6 +107,15 @@ class AudioProcessor:
         if len(audio_data) % 2 != 0:
             raise ValueError("Raw PCM16 audio must contain an even number of bytes")
         return np.frombuffer(audio_data, dtype="<i2").astype(np.float32) / 32768.0
+
+    def _should_use_pcm16_fast_path(self, audio_data: bytes, sample_rate: int | None) -> bool:
+        if not self.config.enable_pcm16_fast_path or sample_rate is None:
+            return False
+        if self.config.require_target_sample_rate and sample_rate != self.config.sample_rate:
+            raise ValueError(f"Raw PCM16 audio sample_rate must be {self.config.sample_rate}")
+        if audio_data.startswith(b"RIFF") or audio_data.startswith(b"FORM"):
+            return False
+        return True
 
     def _resample(self, samples: np.ndarray, source_rate: int, target_rate: int) -> np.ndarray:
         if samples.size == 0:
