@@ -59,6 +59,9 @@ class AppConfig:
     cors_origins: tuple[str, ...] = ("*",)
     sample_rate: int = 16000
     stream_max_buffer_bytes: int = 1024 * 1024
+    local_stt_enable_pcm16_fast_path: bool = True
+    local_stt_require_target_sample_rate: bool = True
+    local_stt_target_sample_rate: int = 16000
     asr_backend: str = "faster-whisper"
     asr_model_size: str = "base.en"
     asr_device: str = "cpu"
@@ -91,6 +94,18 @@ class AppConfig:
             cors_origins=_cors_origins(os.getenv("CORS_ORIGINS"), defaults.cors_origins),
             sample_rate=int(_first_env("SAMPLE_RATE", "AUDIO_SAMPLE_RATE") or str(defaults.sample_rate)),
             stream_max_buffer_bytes=stream_max_buffer_bytes,
+            local_stt_enable_pcm16_fast_path=_env_flag(
+                "LOCAL_STT_ENABLE_PCM16_FAST_PATH",
+                defaults.local_stt_enable_pcm16_fast_path,
+            ),
+            local_stt_require_target_sample_rate=_env_flag(
+                "LOCAL_STT_REQUIRE_TARGET_SAMPLE_RATE",
+                defaults.local_stt_require_target_sample_rate,
+            ),
+            local_stt_target_sample_rate=_positive_int_env(
+                "LOCAL_STT_TARGET_SAMPLE_RATE",
+                defaults.local_stt_target_sample_rate,
+            ),
             asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
             asr_device=_default_asr_device(defaults.asr_device),
