@@ -101,6 +101,12 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     sample = payload["samples"][0]
     assert payload["kind"] == "local-stt-v1-latency-benchmark"
     assert payload["audio"]["bytes_per_frame"] == 640
+    assert payload["audio"]["duration_ms"] == 40
+    assert payload["settings"] == {
+        "partial_interval_ms": 100,
+        "receive_timeout_seconds": 5,
+        "realtime_pace": False,
+    }
     assert sample["audio_frames_sent"] == 2
     assert sample["audio_frames_dropped"] == 0
     assert sample["interim_events_received"] == 1
@@ -135,6 +141,7 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
         return {
             "kind": "local-stt-v1-latency-benchmark",
             "samples": [],
+            "settings": {"receive_timeout_seconds": kwargs["receive_timeout_seconds"]},
             "summary": {
                 "time_to_first_interim_ms": {"p50": 1.0, "p95": 1.0, "p99": 1.0},
                 "time_to_final_after_finalize_ms": {"p50": 2.0, "p95": 2.0, "p99": 2.0},
@@ -151,10 +158,14 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
             "1",
             "--output",
             str(output_path),
+            "--receive-timeout-seconds",
+            "7",
             "--no-realtime-pace",
         ]
     )
 
     assert exit_code == 0
-    assert json.loads(output_path.read_text(encoding="utf-8"))["kind"] == "local-stt-v1-latency-benchmark"
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    assert written["kind"] == "local-stt-v1-latency-benchmark"
+    assert written["settings"]["receive_timeout_seconds"] == 7
     assert audio_seen["audio"].frames == [b"a" * 640]

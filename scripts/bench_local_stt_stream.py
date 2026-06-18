@@ -54,6 +54,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--frame-ms", type=positive_int, default=HOT_PATH_FRAME_MS)
     parser.add_argument("--partial-interval-ms", type=positive_int, default=100)
     parser.add_argument("--runs", type=positive_int, default=3)
+    parser.add_argument(
+        "--receive-timeout-seconds",
+        type=positive_int,
+        default=5,
+        help="Seconds to wait for a final transcript after finalize",
+    )
     parser.add_argument("--output", type=Path)
     parser.add_argument("--no-realtime-pace", action="store_true", help="Send frames without sleeping between frames")
     return parser.parse_args(argv)
@@ -119,6 +125,7 @@ async def run_benchmark(
     partial_interval_ms: int,
     runs: int,
     realtime_pace: bool = True,
+    receive_timeout_seconds: int = 5,
     client_factory: ClientFactory | None = None,
 ) -> dict[str, Any]:
     factory = client_factory or (lambda ws_url: AsyncLocalSttClient(ws_url))
@@ -131,6 +138,7 @@ async def run_benchmark(
                 audio=audio,
                 partial_interval_ms=partial_interval_ms,
                 realtime_pace=realtime_pace,
+                receive_timeout_seconds=receive_timeout_seconds,
                 client_factory=factory,
             )
         )
@@ -145,6 +153,12 @@ async def run_benchmark(
             "frame_ms": audio.frame_ms,
             "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME if audio.sample_rate == HOT_PATH_SAMPLE_RATE and audio.frame_ms == HOT_PATH_FRAME_MS else len(audio.frames[0]) if audio.frames else 0,
             "frames": len(audio.frames),
+            "duration_ms": len(audio.frames) * audio.frame_ms,
+        },
+        "settings": {
+            "partial_interval_ms": partial_interval_ms,
+            "receive_timeout_seconds": receive_timeout_seconds,
+            "realtime_pace": realtime_pace,
         },
         "runs": runs,
         "samples": samples,
@@ -159,6 +173,7 @@ async def _run_once(
     audio: AudioInput,
     partial_interval_ms: int,
     realtime_pace: bool,
+    receive_timeout_seconds: int,
     client_factory: ClientFactory,
 ) -> dict[str, Any]:
     client = client_factory(url)
@@ -212,7 +227,7 @@ async def _run_once(
         final_requested_at = time.perf_counter()
         await client.finalize()
         try:
-            await asyncio.wait_for(receive_done.wait(), timeout=5)
+            await asyncio.wait_for(receive_done.wait(), timeout=receive_timeout_seconds)
         except TimeoutError:
             protocol_errors += 1
     finally:
@@ -271,6 +286,7 @@ def main(argv: list[str] | None = None) -> int:
             audio=audio,
             partial_interval_ms=args.partial_interval_ms,
             runs=args.runs,
+            receive_timeout_seconds=args.receive_timeout_seconds,
             realtime_pace=not args.no_realtime_pace,
         )
     )
