@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from examples.browser_pipecat_demo.service import app as app_module
 from examples.browser_pipecat_demo.service.app import app
 from examples.browser_pipecat_demo.service.pipecat_bridge import (
+    PipecatDependencyMissingError,
     PipecatDemoBridge,
     PipecatRuntime,
     RTCASRAudioRelay,
@@ -72,11 +73,22 @@ def test_demo_page_serves_static_app() -> None:
 
     assert response.status_code == 200
     assert "Browser WebRTC to local Pipecat edge" in response.text
+    assert "Uploaded audio file" in response.text
     assert "/rtc-asr/assets/app.js" in response.text
 
 
-def test_demo_config_reports_dependency_status() -> None:
-    client = TestClient(app)
+def missing_runtime_loader() -> PipecatRuntime:
+    raise PipecatDependencyMissingError(
+        "Install the demo WebRTC extras with "
+        "`pip install -r examples/browser_pipecat_demo/requirements.txt` "
+        "to enable Pipecat SmallWebRTC."
+    )
+
+
+def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_bridge = PipecatDemoBridge(runtime_loader=missing_runtime_loader)
+    monkeypatch.setattr(app_module, "bridge", fake_bridge)
+    client = TestClient(app_module.app)
 
     response = client.get("/rtc-asr/config")
 
@@ -85,7 +97,7 @@ def test_demo_config_reports_dependency_status() -> None:
         "service": "browser-pipecat-demo",
         "route": "/rtc-asr",
         "pipecat_transport": "smallwebrtc",
-        "rtc_asr_ws_url": "ws://127.0.0.1:8080/ws/stream",
+        "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
         "bridge_status": "dependency_missing",
     }
@@ -115,8 +127,10 @@ def test_offer_rejects_empty_sdp() -> None:
     assert response.status_code == 422
 
 
-def test_offer_returns_structured_dependency_response() -> None:
-    client = TestClient(app)
+def test_offer_returns_structured_dependency_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_bridge = PipecatDemoBridge(runtime_loader=missing_runtime_loader)
+    monkeypatch.setattr(app_module, "bridge", fake_bridge)
+    client = TestClient(app_module.app)
 
     response = client.post("/rtc-asr/offer", json={"type": "offer", "sdp": "v=0"})
 
@@ -168,7 +182,7 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
             sent_chunks.append(chunk)
             return None
 
-        async def stop(self) -> Any:
+        async def finalize(self) -> Any:
             return type(
                 "FakeEvent",
                 (),

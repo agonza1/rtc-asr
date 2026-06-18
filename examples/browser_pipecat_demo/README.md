@@ -7,7 +7,7 @@ Browser microphone
   -> native browser WebRTC
   -> local Pipecat SmallWebRTC service at /rtc-asr
   -> decoded PCM batches
-  -> rtc-asr /ws/stream
+  -> rtc-asr /v1/stt/stream
   -> transcript events back over a WebRTC data channel
 ```
 
@@ -16,10 +16,10 @@ The browser stays dependency-free. It owns microphone permission, native `RTCPee
 ## Current Scope
 
 - Serves a static single-page app at `GET /rtc-asr`
-- Uses native browser APIs: `getUserMedia`, `RTCPeerConnection`, and `RTCDataChannel`
+- Uses native browser APIs: `getUserMedia`, `RTCPeerConnection`, `RTCDataChannel`, and browser-managed audio playback for repeatable file streaming
 - Posts a browser SDP offer to `POST /rtc-asr/offer`
 - Uses Pipecat's SmallWebRTC transport when `pipecat-ai[webrtc]` is installed
-- Relays decoded PCM to `rtc-asr` over `/ws/stream` in configurable low-latency chunks
+- Relays decoded PCM to `rtc-asr` over `/v1/stt/stream` in configurable low-latency chunks
 - Sends partial, final, status, and error messages back to the browser over the data channel
 - Returns a structured dependency error when the optional Pipecat WebRTC runtime is not installed
 
@@ -56,7 +56,7 @@ That example requirements file includes `pipecat-ai[webrtc]`. The dependency is 
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `RTC_ASR_WS_URL` | `ws://127.0.0.1:8080/ws/stream` | `rtc-asr` websocket target for transcript streaming |
+| `RTC_ASR_WS_URL` | `ws://127.0.0.1:8080/v1/stt/stream` | `rtc-asr` websocket target for transcript streaming |
 | `RTC_ASR_CHUNK_MS` | `100` | PCM batch duration sent to `rtc-asr`; must be between `80` and `160` |
 | `PIPECAT_ICE_SERVERS` | unset | Reserved for future STUN/TURN configuration; local `127.0.0.1` testing usually does not need it |
 
@@ -94,16 +94,17 @@ Open:
 http://127.0.0.1:8090/rtc-asr
 ```
 
-Click **Start mic**. The browser will:
+Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, then click **Start mic** or **Start file stream**. The browser will:
 
-1. Request microphone permission
+1. Request microphone permission or load the selected audio clip into a browser audio graph
 2. Create a native `RTCPeerConnection`
 3. Create a transcript data channel
-4. Add the microphone audio track
+4. Add the microphone track or the browser playback track
 5. Create a local SDP offer and wait briefly for ICE gathering
 6. Send the offer to `/rtc-asr/offer`
 7. Apply the Pipecat SDP answer with `setRemoteDescription()`
-8. Render transcript events received over the data channel
+8. Stream live speech or real-time file playback through Pipecat into `rtc-asr`
+9. Render transcript events received over the data channel
 
 ## Troubleshooting
 
@@ -136,3 +137,7 @@ This example is optimized for colocated local development. Remote browser-to-ser
 - Browser owns microphone permission, native WebRTC capture, and transcript display.
 - Pipecat owns WebRTC session handling, jitter, decode, and audio frame timing.
 - `rtc-asr` owns normalized audio ingestion and buffered partial/final transcript events.
+
+## Repeatable Browser Benchmarking
+
+When you need a real browser-originated stream instead of the synthetic websocket benchmark, switch the demo to *Uploaded audio file* and select a speech clip such as `tests/fixtures/smoke.wav`. The browser plays the file in real time, routes it through a WebRTC track, and sends it through the same Pipecat bridge path as live microphone capture.

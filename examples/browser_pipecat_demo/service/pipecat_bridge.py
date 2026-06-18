@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from src.rtc_client import AsyncASRClient, TranscriptEvent
+from src.rtc_client import AsyncLocalSttClient, TranscriptEvent
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class PipecatRuntime:
     worker_runner_cls: type
 
 
-ASRClientFactory = Callable[[str], AsyncASRClient]
+ASRClientFactory = Callable[[str], Any]
 PipecatRuntimeLoader = Callable[[], PipecatRuntime]
 AppMessageSender = Callable[[dict[str, object]], None]
 ErrorCallback = Callable[[str], None]
@@ -119,7 +119,6 @@ def load_pipecat_runtime() -> PipecatRuntime:
         from pipecat.pipeline.pipeline import Pipeline
         from pipecat.pipeline.worker import PipelineParams, PipelineWorker
         from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-        from pipecat.runner.runner import WorkerRunner
         from pipecat.transports.base_transport import TransportParams
         from pipecat.transports.smallwebrtc.request_handler import (
             SmallWebRTCRequest,
@@ -132,6 +131,11 @@ def load_pipecat_runtime() -> PipecatRuntime:
             "`pip install -r examples/browser_pipecat_demo/requirements.txt` "
             "to enable Pipecat SmallWebRTC."
         ) from exc
+
+    try:
+        from pipecat.workers.runner import WorkerRunner
+    except ModuleNotFoundError:
+        from pipecat.pipeline.runner import WorkerRunner
 
     return PipecatRuntime(
         request_cls=SmallWebRTCRequest,
@@ -157,7 +161,7 @@ class RTCASRAudioRelay:
         chunk_ms: int,
         send_app_message: AppMessageSender,
         mark_failed: ErrorCallback,
-        asr_client_factory: ASRClientFactory = AsyncASRClient,
+        asr_client_factory: ASRClientFactory = AsyncLocalSttClient,
     ) -> None:
         self.session_id = session_id
         self.rtc_asr_ws_url = rtc_asr_ws_url
@@ -166,9 +170,11 @@ class RTCASRAudioRelay:
         self._mark_failed = mark_failed
         self._asr_client_factory = asr_client_factory
         self._buffer = bytearray()
-        self._client: AsyncASRClient | None = None
+        self._client: Any | None = None
         self._sample_rate: int | None = None
         self._num_channels: int | None = None
+        self._final_event: asyncio.Future[TranscriptEvent] | None = None
+        self._receiver_task: asyncio.Task[None] | None = None
 
     async def handle_audio_frame(self, frame: Any) -> None:
         audio = bytes(getattr(frame, "audio", b""))
@@ -193,13 +199,27 @@ class RTCASRAudioRelay:
             if self._buffer:
                 await self._send_chunk(bytes(self._buffer))
                 self._buffer.clear()
-            final_event = await self._client.stop()
-            self._send_transcript_event(final_event)
+            finalize = getattr(self._client, "finalize", None)
+            if callable(finalize):
+                await finalize()
+                if self._final_event is not None:
+                    await asyncio.wait_for(asyncio.shield(self._final_event), timeout=5.0)
+            else:
+                final_event = await self._client.stop()
+                self._send_transcript_event(final_event)
         except Exception as exc:
             self._send_error(f"ASR relay shutdown failed: {exc}")
         finally:
+            if self._receiver_task is not None:
+                self._receiver_task.cancel()
+                try:
+                    await self._receiver_task
+                except asyncio.CancelledError:
+                    pass
+                self._receiver_task = None
             await self._client.close()
             self._client = None
+            self._final_event = None
 
     async def _ensure_client(self, *, sample_rate: int, num_channels: int) -> None:
         if self._client is not None:
@@ -207,19 +227,23 @@ class RTCASRAudioRelay:
         self._sample_rate = sample_rate
         self._num_channels = num_channels
         self._client = self._asr_client_factory(self.rtc_asr_ws_url)
+        self._final_event = asyncio.get_running_loop().create_future()
         try:
             await asyncio.wait_for(
                 self._client.start(
                     sample_rate=sample_rate,
-                    partial_interval_chunks=1,
-                    send_binary_frames=True,
+                    partial_interval_ms=self.chunk_ms,
+                    client_stream_id=self.session_id,
                 ),
                 timeout=5.0,
             )
         except Exception as exc:
             self._client = None
+            self._final_event = None
             self._send_error(f"ASR websocket start failed: {exc}")
             raise
+        if hasattr(self._client, "recv_event"):
+            self._receiver_task = asyncio.create_task(self._pump_events())
         self._send_app_message({
             "type": "status",
             "message": "ASR websocket connected.",
@@ -233,17 +257,34 @@ class RTCASRAudioRelay:
         if self._client is None:
             raise RuntimeError("ASR client is not started")
         try:
-            event = await self._client.send_audio(
-                chunk,
-                binary=True,
-                expect_response=True,
-                response_timeout=0.1,
-            )
+            await self._client.send_audio(chunk)
         except Exception as exc:
             self._send_error(f"ASR websocket send failed: {exc}")
             raise
-        if event is not None:
-            self._send_transcript_event(event)
+
+    async def _pump_events(self) -> None:
+        assert self._client is not None
+        try:
+            while True:
+                event = await self._client.recv_event()
+                if event is None:
+                    continue
+                self._send_transcript_event(event)
+                if event.is_final:
+                    if self._final_event is not None and not self._final_event.done():
+                        self._final_event.set_result(event)
+                    return
+                if event.type == "error":
+                    if self._final_event is not None and not self._final_event.done():
+                        self._final_event.set_exception(RuntimeError(event.text or "ASR websocket error"))
+                    return
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            if self._final_event is not None and not self._final_event.done():
+                self._final_event.set_exception(exc)
+            self._send_error(f"ASR websocket receive failed: {exc}")
+            raise
 
     def _send_transcript_event(self, event: TranscriptEvent) -> None:
         event_type = "final" if event.is_final or event.type == "final" else event.type
@@ -296,12 +337,12 @@ class PipecatDemoBridge:
         rtc_asr_ws_url: str | None = None,
         chunk_ms: int | None = None,
         runtime_loader: PipecatRuntimeLoader = load_pipecat_runtime,
-        asr_client_factory: ASRClientFactory = AsyncASRClient,
+        asr_client_factory: ASRClientFactory = AsyncLocalSttClient,
         request_handler: Any | None = None,
     ) -> None:
         self.rtc_asr_ws_url = rtc_asr_ws_url or os.getenv(
             "RTC_ASR_WS_URL",
-            "ws://127.0.0.1:8080/ws/stream",
+            "ws://127.0.0.1:8080/v1/stt/stream",
         )
         self.chunk_ms = chunk_ms if chunk_ms is not None else _chunk_ms_from_env(
             os.getenv("RTC_ASR_CHUNK_MS")

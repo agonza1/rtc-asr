@@ -6,6 +6,7 @@ import base64
 import binascii
 import json
 import logging
+import math
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -19,6 +20,22 @@ import uvicorn
 from .audio_processor import AudioConfig, AudioProcessor
 from .config import AppConfig
 from .model_loader import ASRUnavailableError, Transcriber, build_transcriber
+from .protocols import (
+    HOT_PATH_BYTES_PER_FRAME,
+    HOT_PATH_FRAME_MS,
+    HOT_PATH_PCM_FORMAT,
+    PROTOCOL_VERSION,
+    AudioFormat,
+    ErrorMessage,
+    FinalizeMessage,
+    LocalSttProtocolError,
+    ReadyMessage,
+    StartMessage,
+    TranscriptMessage,
+    WarningMessage,
+    parse_client_message,
+    validate_audio_chunk,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -73,7 +90,36 @@ def _health_payload(services: AppServices) -> dict[str, object]:
         "model_loaded": services.transcriber.is_loaded(),
         "preload_enabled": services.config.asr_preload_model,
         "preload_error": services.preload_error,
+        "protocols": _protocol_catalog(),
     }
+
+
+def _protocol_catalog() -> list[dict[str, object]]:
+    return [
+        {
+            "id": "rtc-asr-stream.v1",
+            "transport": "websocket",
+            "path": "/ws/stream",
+            "docs": "/docs/api-reference.md#websocket-streaming",
+            "status": "stable",
+            "message_format": "json-control-plus-binary-audio",
+        },
+        {
+            "id": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+            "docs": "/docs/local-stt-v1.md",
+            "status": "preview",
+            "message_format": "json-control-plus-binary-pcm16",
+            "audio": {
+                "sample_rate": 16000,
+                "channels": 1,
+                "format": HOT_PATH_PCM_FORMAT,
+                "frame_ms": HOT_PATH_FRAME_MS,
+                "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+            },
+        },
+    ]
 
 
 def _record_lazy_load_failure(services: AppServices, exc: Exception) -> None:
@@ -98,10 +144,14 @@ class StreamSession:
     partial_window_seconds: float | None = None
     max_buffer_seconds: float | None = None
     partial_window_bytes: int | None = None
+    interim_results: bool = True
+    client_stream_id: str | None = None
+    client_metadata: dict[str, Any] = field(default_factory=dict)
     audio_buffer: bytearray = field(default_factory=bytearray, repr=False)
     chunks_received: int = 0
     last_partial_chunks_received: int = 0
     last_partial_result: dict[str, object] | None = None
+    transcript_revision: int = 0
 
     def append_audio(self, chunk: bytes) -> None:
         next_size = len(self.audio_buffer) + len(chunk)
@@ -121,6 +171,20 @@ class StreamSession:
         if self.partial_window_bytes is None or len(self.audio_buffer) <= self.partial_window_bytes:
             return bytes(self.audio_buffer)
         return bytes(self.audio_buffer[-self.partial_window_bytes :])
+
+    def next_transcript_revision(self) -> int:
+        self.transcript_revision += 1
+        return self.transcript_revision
+
+
+@dataclass(slots=True)
+class LocalSttStartConfig:
+    start: StartMessage
+    partial_interval_chunks: int = 1
+    partial_window_seconds: float | None = None
+    max_buffer_seconds: float | None = None
+    client_stream_id: str | None = None
+    client_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def create_app(config: AppConfig | None = None, transcriber: Transcriber | None = None) -> FastAPI:
@@ -194,6 +258,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             "ready": _accepting_traffic(current),
             "preload_enabled": current.config.asr_preload_model,
             "preload_error": current.preload_error,
+            "protocols": _protocol_catalog(),
             "streaming": streaming,
             "audio": audio,
             "models": [
@@ -349,6 +414,146 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             logger.exception("Unexpected websocket stream error")
             await _close_websocket_error(websocket, "Unexpected streaming error", code=1011)
 
+    @app.websocket("/v1/stt/stream")
+    async def websocket_stream_v1(websocket: WebSocket) -> None:
+        await websocket.accept()
+        services = app.state.services
+        session: StreamSession | None = None
+        next_stream_id = 1
+
+        try:
+            while True:
+                payload, event_type = await _receive_local_stt_event(websocket)
+
+                if event_type == "start":
+                    if session is not None:
+                        raise LocalSttProtocolError(
+                            "Finish the active stream before starting a new one",
+                            code="invalid_state",
+                        )
+                    assert isinstance(payload, LocalSttStartConfig)
+                    session = _create_local_stt_stream_session(
+                        payload,
+                        services.config,
+                        stream_id=next_stream_id,
+                    )
+                    next_stream_id += 1
+                    await websocket.send_json(
+                        _local_stt_ready_event(
+                            session,
+                            backend=services.transcriber.backend_name,
+                            model=services.transcriber.model_name,
+                        )
+                    )
+                    continue
+
+                if event_type == "audio":
+                    if session is None:
+                        raise LocalSttProtocolError(
+                            "Send a start event before audio chunks",
+                            code="invalid_state",
+                        )
+
+                    try:
+                        session.append_audio(payload)
+                    except StreamClientError as exc:
+                        raise LocalSttProtocolError(
+                            str(exc),
+                            code="buffer_limit_exceeded",
+                            metadata={"max_buffer_bytes": session.max_buffer_bytes},
+                        ) from exc
+
+                    if not session.interim_results or session.chunks_received % session.partial_interval_chunks != 0:
+                        continue
+
+                    partial_audio_bytes = session.partial_audio_bytes()
+                    partial = _run_transcription(
+                        services,
+                        audio_bytes=partial_audio_bytes,
+                        language=session.language,
+                        sample_rate=session.sample_rate,
+                    )
+                    session.record_partial(partial)
+                    partial_text = str(partial.get("text", "")).strip()
+                    if partial_text:
+                        await websocket.send_json(
+                            _local_stt_transcript_event(
+                                session,
+                                partial,
+                                is_final=False,
+                                transcribed_audio_bytes=len(partial_audio_bytes),
+                            )
+                        )
+                    continue
+
+                if event_type == "finalize":
+                    if session is None:
+                        raise LocalSttProtocolError(
+                            "Send a start event before finalizing the stream",
+                            code="invalid_state",
+                        )
+                    if not session.audio_buffer:
+                        raise LocalSttProtocolError(
+                            "No audio chunks received for this stream",
+                            code="invalid_state",
+                        )
+
+                    final_result = _resolve_final_result(session, services)
+                    await websocket.send_json(
+                        _local_stt_transcript_event(
+                            session,
+                            final_result,
+                            is_final=True,
+                            transcribed_audio_bytes=len(session.audio_buffer),
+                        )
+                    )
+                    session = None
+                    continue
+
+                if event_type == "cancel":
+                    if session is None:
+                        raise LocalSttProtocolError(
+                            "Send a start event before canceling the stream",
+                            code="invalid_state",
+                        )
+
+                    await websocket.send_json(_local_stt_cancel_warning_event(session))
+                    session = None
+                    continue
+
+                if event_type == "ping":
+                    await websocket.send_json(_local_stt_pong_event(payload))
+                    continue
+
+                if event_type == "close":
+                    await websocket.send_json({"type": "closed", "reason": "client_close", "metadata": {}})
+                    await websocket.close(code=1000)
+                    return
+
+                raise LocalSttProtocolError(
+                    f"Unsupported Local STT v1 message type: {event_type}",
+                    code="unsupported_message_type",
+                )
+        except WebSocketDisconnect:
+            return
+        except ASRUnavailableError as exc:
+            services.preload_error = str(exc)
+            await _close_local_stt_error(
+                websocket,
+                ErrorMessage(type="error", code="backend_unavailable", message=str(exc)),
+                close_code=1011,
+            )
+        except LocalSttProtocolError as exc:
+            await _close_local_stt_error(websocket, exc.as_event(), close_code=1003)
+        except Exception as exc:  # pragma: no cover - defensive websocket boundary
+            _record_lazy_load_failure(services, exc)
+            logger.exception("Unexpected Local STT v1 websocket stream error")
+            await _close_local_stt_error(
+                websocket,
+                ErrorMessage(type="error", code="internal_error", message="Unexpected streaming error"),
+                close_code=1011,
+            )
+
     return app
 
 
@@ -397,11 +602,235 @@ def _create_stream_session(
     )
 
 
-def _coerce_positive_seconds(value: Any, *, field_name: str) -> float | None:
+def _create_local_stt_stream_session(
+    payload: LocalSttStartConfig,
+    config: AppConfig,
+    *,
+    stream_id: int,
+) -> StreamSession:
+    partial_window_bytes = None
+    max_buffer_bytes = config.stream_max_buffer_bytes
+    sample_rate = payload.start.audio.sample_rate
+
+    if payload.max_buffer_seconds is not None:
+        max_buffer_bytes = min(max_buffer_bytes, _seconds_to_buffer_bytes(payload.max_buffer_seconds, sample_rate))
+
+    if payload.partial_window_seconds is not None:
+        partial_window_bytes = min(
+            max_buffer_bytes,
+            _seconds_to_buffer_bytes(payload.partial_window_seconds, sample_rate),
+        )
+
+    return StreamSession(
+        stream_id=stream_id,
+        language=payload.start.language,
+        sample_rate=sample_rate,
+        max_buffer_bytes=max_buffer_bytes,
+        partial_interval_chunks=payload.partial_interval_chunks,
+        partial_window_seconds=payload.partial_window_seconds,
+        max_buffer_seconds=payload.max_buffer_seconds,
+        partial_window_bytes=partial_window_bytes,
+        interim_results=payload.start.interim_results,
+        client_stream_id=payload.client_stream_id,
+        client_metadata=dict(payload.client_metadata),
+    )
+
+
+def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConfig:
+    is_flat_start = any(key in payload for key in {"protocol", "sample_rate", "channels", "format", "frame_ms"})
+    translated_payload = payload
+
+    if is_flat_start:
+        protocol = payload.get("protocol")
+        if protocol != "local-stt-v1":
+            raise LocalSttProtocolError("protocol must be local-stt-v1")
+        translated_payload = {
+            "type": "start",
+            "version": PROTOCOL_VERSION,
+            "audio": {
+                "sample_rate": payload.get("sample_rate"),
+                "channels": payload.get("channels"),
+                "format": payload.get("format"),
+                "frame_ms": payload.get("frame_ms", HOT_PATH_FRAME_MS),
+                "bytes_per_frame": payload.get("bytes_per_frame"),
+            },
+            "language": payload.get("language"),
+            "interim_results": payload.get("interim_results", True),
+            "partial_interval_ms": payload.get("partial_interval_ms"),
+            "partial_window_seconds": payload.get("partial_window_seconds"),
+            "max_buffer_seconds": payload.get("max_buffer_seconds"),
+            "client_stream_id": payload.get("client_stream_id"),
+            "metadata": payload.get("metadata", {}),
+        }
+
+    start = parse_client_message(translated_payload)
+    if not isinstance(start, StartMessage):
+        raise LocalSttProtocolError("Expected a start message")
+
+    client_stream_id = start.client_stream_id
+
+    partial_interval_ms = start.partial_interval_ms
+    partial_interval_chunks = 1
+    if partial_interval_ms is not None:
+        partial_interval_chunks = max(1, math.ceil(partial_interval_ms / start.audio.frame_ms))
+
+    partial_window_seconds = start.partial_window_seconds
+    max_buffer_seconds = start.max_buffer_seconds
+
+    return LocalSttStartConfig(
+        start=start,
+        partial_interval_chunks=partial_interval_chunks,
+        partial_window_seconds=partial_window_seconds,
+        max_buffer_seconds=max_buffer_seconds,
+        client_stream_id=client_stream_id,
+        client_metadata=dict(start.metadata),
+    )
+
+
+def _parse_local_stt_client_event(payload: dict[str, Any]) -> tuple[object, str]:
+    event_type = str(payload.get("type", "")).strip().lower()
+    if event_type == "start":
+        return _parse_local_stt_start_message(payload), "start"
+    if event_type == "stop":
+        return FinalizeMessage(type="finalize"), "finalize"
+
+    message = parse_client_message(payload)
+    return message, str(message.type)
+
+
+async def _receive_local_stt_event(websocket: WebSocket) -> tuple[object, str]:
+    message = await websocket.receive()
+    if message["type"] == "websocket.disconnect":
+        raise WebSocketDisconnect(message["code"], message.get("reason"))
+
+    binary_audio = message.get("bytes")
+    if binary_audio is not None:
+        return validate_audio_chunk(binary_audio), "audio"
+
+    raw_text = message.get("text")
+    if raw_text is None:
+        raise LocalSttProtocolError("Local STT v1 events must be JSON objects or binary PCM16 frames")
+
+    try:
+        payload = json.loads(raw_text)
+    except json.JSONDecodeError as exc:
+        raise LocalSttProtocolError("Local STT v1 messages must be valid JSON objects") from exc
+
+    if not isinstance(payload, dict):
+        raise LocalSttProtocolError("Local STT v1 messages must be JSON objects")
+
+    return _parse_local_stt_client_event(payload)
+
+
+def _local_stt_ready_event(session: StreamSession, *, backend: str, model: str) -> dict[str, object]:
+    metadata: dict[str, object] = {
+        "stream_id": session.stream_id,
+        "backend": backend,
+        "model": model,
+        "max_buffer_bytes": session.max_buffer_bytes,
+    }
+    if session.client_stream_id is not None:
+        metadata["client_stream_id"] = session.client_stream_id
+    if session.client_metadata:
+        metadata["client_metadata"] = dict(session.client_metadata)
+    if session.partial_window_seconds is not None:
+        metadata["partial_window_seconds"] = session.partial_window_seconds
+    if session.max_buffer_seconds is not None:
+        metadata["max_buffer_seconds"] = session.max_buffer_seconds
+
+    return ReadyMessage(
+        type="ready",
+        version=PROTOCOL_VERSION,
+        audio=AudioFormat(
+            sample_rate=session.sample_rate,
+            channels=1,
+            format=HOT_PATH_PCM_FORMAT,
+            frame_ms=HOT_PATH_FRAME_MS,
+            bytes_per_frame=HOT_PATH_BYTES_PER_FRAME,
+        ),
+        interim_results=session.interim_results,
+        metadata=metadata,
+    ).model_dump()
+
+
+def _local_stt_transcript_event(
+    session: StreamSession,
+    transcript: dict[str, object],
+    *,
+    is_final: bool,
+    transcribed_audio_bytes: int,
+) -> dict[str, object]:
+    metadata: dict[str, object] = {
+        "stream_id": session.stream_id,
+        "chunks_received": session.chunks_received,
+        "buffered_bytes": len(session.audio_buffer),
+        "remaining_buffer_bytes": session.max_buffer_bytes - len(session.audio_buffer),
+    }
+    backend = transcript.get("backend")
+    if isinstance(backend, str):
+        metadata["backend"] = backend
+    model = transcript.get("model")
+    if isinstance(model, str):
+        metadata["model"] = model
+    if session.client_stream_id is not None:
+        metadata["client_stream_id"] = session.client_stream_id
+    if session.client_metadata:
+        metadata["client_metadata"] = dict(session.client_metadata)
+
+    return TranscriptMessage(
+        type="transcript",
+        text=str(transcript.get("text", "")).strip(),
+        is_final=is_final,
+        speech_final=is_final,
+        revision=session.next_transcript_revision(),
+        audio_received_ms=_audio_bytes_to_duration_ms(len(session.audio_buffer), session.sample_rate),
+        audio_transcribed_ms=_audio_bytes_to_duration_ms(transcribed_audio_bytes, session.sample_rate),
+        metadata=metadata,
+        language=transcript.get("language") if isinstance(transcript.get("language"), str) else session.language,
+    ).model_dump()
+
+
+def _local_stt_cancel_warning_event(session: StreamSession) -> dict[str, object]:
+    metadata: dict[str, object] = {
+        "stream_id": session.stream_id,
+        "chunks_received": session.chunks_received,
+        "buffered_bytes": len(session.audio_buffer),
+        "remaining_buffer_bytes": session.max_buffer_bytes - len(session.audio_buffer),
+    }
+    if session.client_stream_id is not None:
+        metadata["client_stream_id"] = session.client_stream_id
+    if session.client_metadata:
+        metadata["client_metadata"] = dict(session.client_metadata)
+    return WarningMessage(
+        type="warning",
+        code="stream_canceled",
+        message="Active utterance canceled",
+        metadata=metadata,
+    ).model_dump()
+
+
+def _local_stt_pong_event(message: object) -> dict[str, object]:
+    ping_id = getattr(message, "ping_id", None)
+    timestamp_ms = getattr(message, "timestamp_ms", None)
+    payload: dict[str, object] = {"type": "pong", "metadata": {}}
+    if ping_id is not None:
+        payload["ping_id"] = ping_id
+    if timestamp_ms is not None:
+        payload["timestamp_ms"] = timestamp_ms
+    return payload
+
+
+def _audio_bytes_to_duration_ms(byte_count: int, sample_rate: int) -> int:
+    if sample_rate < 1:
+        return 0
+    return max(0, round((byte_count / 2) * 1000 / sample_rate))
+
+
+def _coerce_positive_seconds(value: Any, *, field_name: str, error_cls: type[ValueError] = StreamClientError) -> float | None:
     if value is None:
         return None
     if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
-        raise StreamClientError(f"{field_name} must be a positive number")
+        raise error_cls(f"{field_name} must be a positive number")
     return float(value)
 
 
@@ -532,6 +961,14 @@ def _transcribe_bytes(
         _record_lazy_load_failure(services, exc)
         logger.exception("Unexpected transcription error")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+async def _close_local_stt_error(websocket: WebSocket, message: ErrorMessage, *, close_code: int) -> None:
+    try:
+        await websocket.send_json(message.model_dump())
+        await websocket.close(code=close_code)
+    except RuntimeError:
+        return
 
 
 async def _close_websocket_error(websocket: WebSocket, message: str, *, code: int) -> None:

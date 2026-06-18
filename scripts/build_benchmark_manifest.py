@@ -340,8 +340,13 @@ def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
     )
     live_caption_score = average_scores(
         invert_score(streaming.get("first_partial_end_to_end_mean_ms"), 250, 5000),
+        invert_score(streaming.get("partial_gap_mean_ms"), 80, 1500),
+        invert_score(streaming.get("late_partial_ratio"), 0.0, 0.5),
+    )
+    partial_backlog_score = average_scores(
         invert_score(streaming.get("partial_mean_ms"), 100, 4000),
         invert_score(streaming.get("partial_p95_ms"), 150, 6500),
+        invert_score(streaming.get("late_partial_ratio"), 0.0, 0.5),
     )
     finalization_score = average_scores(
         invert_score(streaming.get("final_mean_ms"), 200, 5000),
@@ -379,6 +384,7 @@ def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
     return {
         "latency_score": latency_score,
         "live_caption_score": live_caption_score,
+        "partial_backlog_score": partial_backlog_score,
         "finalization_score": finalization_score,
         "stability_score": stability_score,
         "efficiency_score": efficiency_score,
@@ -434,6 +440,8 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
             "first_partial_end_to_end_p95_ms": None,
             "partial_gap_mean_ms": None,
             "partial_gap_p95_ms": None,
+            "late_partial_events": None,
+            "late_partial_ratio": None,
             "final_mean_ms": None,
             "final_p95_ms": None,
         },
@@ -582,8 +590,8 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "ranges": ranges,
         "highlights": {
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),
-            "fastest_partial": build_highlight(
-                "Fastest streaming partial mean", ("streaming", "partial_mean_ms"), highlight_entries
+            "lowest_partial_backlog": build_highlight(
+                "Lowest partial backlog latency", ("streaming", "partial_mean_ms"), highlight_entries
             ),
             "fastest_first_partial": build_highlight(
                 "Fastest first visible partial", ("streaming", "first_partial_end_to_end_mean_ms"), highlight_entries
@@ -591,12 +599,18 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
             "tightest_partial_cadence": build_highlight(
                 "Tightest partial cadence", ("streaming", "partial_gap_mean_ms"), highlight_entries
             ),
+            "lowest_late_partial_ratio": build_highlight(
+                "Lowest late partial ratio", ("streaming", "late_partial_ratio"), highlight_entries
+            ),
             "fastest_final": build_highlight(
                 "Fastest streaming finalization delay", ("streaming", "final_mean_ms"), highlight_entries
             ),
             "best_overall": build_derived_highlight("Best overall benchmark balance", "overall_score", highlight_entries),
             "best_live_caption": build_derived_highlight(
-                "Best live caption score", "live_caption_score", highlight_entries
+                "Best live turn-taking score", "live_caption_score", highlight_entries
+            ),
+            "best_partial_backlog": build_derived_highlight(
+                "Best partial backlog score", "partial_backlog_score", highlight_entries
             ),
         },
     }

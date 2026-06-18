@@ -9,6 +9,10 @@ const elements = {
   partialText: document.querySelector("#partial-text"),
   finalLog: document.querySelector("#final-log"),
   eventLog: document.querySelector("#event-log"),
+  sourceMic: document.querySelector("#source-mic"),
+  sourceFile: document.querySelector("#source-file"),
+  audioFileInput: document.querySelector("#audio-file-input"),
+  sourceHelp: document.querySelector("#source-help"),
 };
 
 const state = {
@@ -18,6 +22,9 @@ const state = {
   sessionId: null,
   pcId: null,
   isStarting: false,
+  audioContext: null,
+  audioElement: null,
+  audioObjectUrl: null,
 };
 
 function setText(node, value) {
@@ -48,16 +55,53 @@ function clearError() {
   setText(elements.errorMessage, "");
 }
 
+function currentSourceMode() {
+  return elements.sourceFile.checked ? "file" : "mic";
+}
+
+function selectedAudioFile() {
+  return elements.audioFileInput.files?.[0] || null;
+}
+
+function updateSourceHelp() {
+  if (currentSourceMode() === "file") {
+    const file = selectedAudioFile();
+    setText(
+      elements.sourceHelp,
+      file
+        ? `Uploaded clip: ${file.name}. This will play in real time from the browser over WebRTC.`
+        : "Choose an audio clip to stream real-time browser audio over WebRTC without using a live microphone."
+    );
+    return;
+  }
+
+  setText(
+    elements.sourceHelp,
+    "Use a microphone for live speech or switch to an uploaded clip for repeatable real-time browser playback."
+  );
+}
+
 function renderControls() {
-  elements.startButton.disabled = state.isStarting || Boolean(state.localStream);
-  elements.stopButton.disabled = !state.localStream && !state.peerConnection;
+  const hasSourceFile = Boolean(selectedAudioFile());
+  const sourceMode = currentSourceMode();
+  const isStreaming = Boolean(state.localStream) || Boolean(state.peerConnection);
+
+  elements.audioFileInput.disabled = sourceMode !== "file" || state.isStarting || isStreaming;
+  elements.sourceMic.disabled = state.isStarting || isStreaming;
+  elements.sourceFile.disabled = state.isStarting || isStreaming;
+  elements.startButton.disabled =
+    state.isStarting || isStreaming || (sourceMode === "file" && !hasSourceFile);
+  elements.stopButton.disabled = !isStreaming;
+  elements.startButton.textContent = sourceMode === "file" ? "Start file stream" : "Start mic";
+  updateSourceHelp();
 }
 
 function hasWebRTCSupport() {
   return Boolean(
     navigator.mediaDevices?.getUserMedia &&
       window.RTCPeerConnection &&
-      window.RTCSessionDescription
+      window.RTCSessionDescription &&
+      window.AudioContext
   );
 }
 
@@ -160,6 +204,85 @@ function waitForIceGatheringComplete(peerConnection, timeoutMs = 3000) {
   });
 }
 
+function waitForAudioReadiness(audioElement) {
+  if (audioElement.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    function cleanup() {
+      audioElement.removeEventListener("canplaythrough", handleReady);
+      audioElement.removeEventListener("error", handleError);
+    }
+
+    function handleReady() {
+      cleanup();
+      resolve();
+    }
+
+    function handleError() {
+      cleanup();
+      reject(new Error("The selected audio file could not be decoded for playback."));
+    }
+
+    audioElement.addEventListener("canplaythrough", handleReady, { once: true });
+    audioElement.addEventListener("error", handleError, { once: true });
+  });
+}
+
+async function buildFileStream() {
+  const file = selectedAudioFile();
+  if (!file) {
+    throw new Error("Choose an audio file before starting file playback.");
+  }
+
+  const audioContext = new AudioContext();
+  const destination = audioContext.createMediaStreamDestination();
+  const audioElement = new Audio();
+  const objectUrl = URL.createObjectURL(file);
+
+  audioElement.src = objectUrl;
+  audioElement.preload = "auto";
+  audioElement.playsInline = true;
+  audioElement.addEventListener("ended", () => {
+    setText(elements.bridgeStatus, "playback complete");
+    setText(elements.partialText, "Playback finished. If no final transcript appears automatically, click Stop to close the session.");
+    logEvent("Uploaded file playback finished.");
+  });
+
+  const sourceNode = audioContext.createMediaElementSource(audioElement);
+  sourceNode.connect(destination);
+
+  await waitForAudioReadiness(audioElement);
+
+  state.audioContext = audioContext;
+  state.audioElement = audioElement;
+  state.audioObjectUrl = objectUrl;
+  return destination.stream;
+}
+
+async function startSourceStream() {
+  if (currentSourceMode() === "file") {
+    setText(elements.webrtcStatus, "preparing file playback");
+    logEvent("Preparing uploaded audio file for browser playback.");
+    return buildFileStream();
+  }
+
+  setText(elements.webrtcStatus, "requesting microphone");
+  logEvent("Requesting microphone permission.");
+  return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+}
+
+async function startPlaybackIfNeeded() {
+  if (currentSourceMode() !== "file" || !state.audioElement || !state.audioContext) {
+    return;
+  }
+
+  await state.audioContext.resume();
+  await state.audioElement.play();
+  logEvent("Started uploaded audio playback through the browser WebRTC track.");
+}
+
 async function loadConfig() {
   try {
     const response = await fetch("/rtc-asr/config");
@@ -189,11 +312,9 @@ async function startDemo() {
 
   state.isStarting = true;
   renderControls();
-  setText(elements.webrtcStatus, "requesting microphone");
-  logEvent("Requesting microphone permission.");
 
   try {
-    state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    state.localStream = await startSourceStream();
     state.peerConnection = new RTCPeerConnection();
     setupDataChannel(state.peerConnection);
 
@@ -235,6 +356,7 @@ async function startDemo() {
       setText(elements.bridgeStatus, detail.bridge_status || "error");
       showError(message);
       logEvent(`${detail.error || "SIGNALING_ERROR"}: ${message}`);
+      stopDemo(true);
       return;
     }
 
@@ -243,22 +365,51 @@ async function startDemo() {
     await peerConnection.setRemoteDescription(
       new RTCSessionDescription({ type: payload.type, sdp: payload.sdp })
     );
+    await startPlaybackIfNeeded();
     setText(elements.webrtcStatus, "connected");
     setText(elements.bridgeStatus, payload.state);
-    setText(elements.partialText, "Connected. Waiting for transcript events.");
+    setText(
+      elements.partialText,
+      currentSourceMode() === "file"
+        ? "Connected. Uploaded audio is now streaming through the browser WebRTC track."
+        : "Connected. Waiting for transcript events."
+    );
     logEvent(`Applied remote SDP answer for session ${state.sessionId}.`);
   } catch (error) {
     setText(elements.webrtcStatus, "error");
     showError(error.message);
     logEvent(`Start failed: ${error.message}`);
+    stopDemo(true);
+    return;
   } finally {
     state.isStarting = false;
     renderControls();
   }
 }
 
-function stopDemo() {
-  clearError();
+function resetPlaybackState() {
+  if (state.audioElement) {
+    state.audioElement.pause();
+    state.audioElement.src = "";
+    state.audioElement.load();
+    state.audioElement = null;
+  }
+
+  if (state.audioContext) {
+    state.audioContext.close().catch(() => undefined);
+    state.audioContext = null;
+  }
+
+  if (state.audioObjectUrl) {
+    URL.revokeObjectURL(state.audioObjectUrl);
+    state.audioObjectUrl = null;
+  }
+}
+
+function stopDemo(preserveError = false) {
+  if (!preserveError) {
+    clearError();
+  }
 
   if (state.dataChannel) {
     state.dataChannel.close();
@@ -277,6 +428,7 @@ function stopDemo() {
     state.localStream = null;
   }
 
+  resetPlaybackState();
   state.sessionId = null;
   state.pcId = null;
   setText(elements.webrtcStatus, "idle");
@@ -288,6 +440,12 @@ function stopDemo() {
 
 elements.startButton.addEventListener("click", startDemo);
 elements.stopButton.addEventListener("click", stopDemo);
+elements.sourceMic.addEventListener("change", renderControls);
+elements.sourceFile.addEventListener("change", renderControls);
+elements.audioFileInput.addEventListener("change", () => {
+  clearError();
+  renderControls();
+});
 
 if (!hasWebRTCSupport()) {
   elements.startButton.disabled = true;
