@@ -1855,6 +1855,127 @@ def test_async_main_requires_explicit_preloaded_service_confirmation(monkeypatch
         asyncio.run(benchmark.async_main(args))
 
 
+def test_managed_cold_benchmark_allows_unpreloaded_service_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeManagedServer:
+        def __init__(self, *args, **kwargs) -> None:
+            self.process = None
+
+        def start(self) -> None:
+            return None
+
+        async def wait_ready(self) -> None:
+            return None
+
+        def stop(self) -> None:
+            return None
+
+    async def fake_fetch_service_metadata(_: str) -> dict[str, object]:
+        return {
+            "backend": "demo",
+            "models": ["demo-v1"],
+            "capabilities": {"device": "cpu", "compute_type": "int8"},
+            "preload_enabled": False,
+        }
+
+    async def fake_run_rest_benchmark(*args, **kwargs) -> dict[str, object]:
+        return {
+            "durations_ms": [40.0],
+            "mean_ms": 40.0,
+            "p90_ms": 40.0,
+            "p95_ms": 40.0,
+            "min_ms": 40.0,
+            "max_ms": 40.0,
+            "rtf_mean": 0.1,
+            "transcript": "done",
+        }
+
+    async def fake_run_ws_benchmark(*args, **kwargs) -> dict[str, object]:
+        return {
+            "binary_frames": False,
+            "partial_latencies_ms": [],
+            "partial_audio_offsets_ms": [],
+            "partial_end_to_end_ms": [],
+            "partial_gap_ms": [],
+            "partial_mean_ms": None,
+            "partial_p90_ms": None,
+            "partial_p95_ms": None,
+            "partial_first_ms": None,
+            "partial_last_ms": None,
+            "first_partial_audio_ms": None,
+            "first_partial_end_to_end_ms": None,
+            "partial_gap_mean_ms": None,
+            "partial_gap_p95_ms": None,
+            "final_ms": 200.0,
+            "time_to_final_from_audio_end_ms": 300.0,
+            "ready": {"type": "ready"},
+            "last_partial": None,
+            "final_transcript": "done",
+            "expected_partial_events": 0,
+            "observed_partial_events": 0,
+            "missing_partial_events": 0,
+            "late_partial_events": 0,
+            "late_partial_ratio": 0.0,
+            "partial_revision_count": 0,
+            "partial_transcript_churn_char_mean": None,
+            "partial_transcript_churn_char_p95": None,
+            "partial_transcript_churn_word_mean": None,
+            "partial_transcript_churn_word_p95": None,
+            "bridge": None,
+            "final_event_received": True,
+            "closeout_event_type": "final",
+            "transport": "direct",
+            "source_frame_ms": None,
+            "source_frame_count": None,
+            "aggregation_frame_count": None,
+        }
+
+    monkeypatch.setattr(benchmark, "ManagedServer", FakeManagedServer)
+    monkeypatch.setattr(benchmark, "benchmark_audio_path", lambda args: benchmark.FIXTURE_PATH)
+    monkeypatch.setattr(benchmark, "resolve_reference_text", lambda args, synthesized=False: None)
+    monkeypatch.setattr(benchmark, "load_audio", lambda path: (np.zeros(8, dtype=np.float32), 4))
+    monkeypatch.setattr(benchmark, "make_wav_bytes", lambda samples, sample_rate: b"wav")
+    monkeypatch.setattr(benchmark, "fetch_service_metadata", fake_fetch_service_metadata)
+    monkeypatch.setattr(benchmark, "run_rest_benchmark", fake_run_rest_benchmark)
+    monkeypatch.setattr(benchmark, "run_ws_benchmark", fake_run_ws_benchmark)
+
+    args = argparse.Namespace(
+        audio_file=None,
+        speech_text=benchmark.DEFAULT_TEXT,
+        reference_text=None,
+        reference_file=None,
+        spawn_server=True,
+        backend="demo",
+        model="demo-v1",
+        sample_count=1,
+        rest_runs=1,
+        chunk_ms=250,
+        partial_interval_chunks=1,
+        partial_window=2.0,
+        max_buffer=None,
+        binary_frames=False,
+        output=None,
+        device="cpu",
+        compute_type="int8",
+        qwen_dtype=None,
+        parakeet_dtype=None,
+        simulate_realtime=False,
+        mode="direct",
+        url="http://127.0.0.1:8090",
+        ws_url="ws://127.0.0.1:8090/ws/stream",
+        pipecat_source_frame_ms=20,
+        partial_event_timeout=0.1,
+        request_retries=1,
+        request_retry_delay=0.0,
+        preload_model=False,
+        require_preloaded_service=True,
+    )
+
+    result = asyncio.run(benchmark.async_main(args))
+
+    assert result["benchmark"]["preload_model"] is False
+    assert result["benchmark"]["require_preloaded_service"] is True
+
+
 def test_async_main_uses_service_model_id_and_parakeet_mlx_dtype(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_fetch_service_metadata(_: str) -> dict[str, object]:
         return {
