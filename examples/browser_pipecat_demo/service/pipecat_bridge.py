@@ -372,13 +372,17 @@ class PipecatDemoBridge:
         return "ready"
 
     def config(self) -> dict[str, object]:
+        bridge_status = self.bridge_status
+        dependency_message = str(self._dependency_error) if self._dependency_error is not None else None
         return {
             "service": "browser-pipecat-demo",
             "route": "/rtc-asr",
             "pipecat_transport": "smallwebrtc",
             "rtc_asr_ws_url": self.rtc_asr_ws_url,
             "rtc_asr_chunk_ms": self.chunk_ms,
-            "bridge_status": self.bridge_status,
+            "bridge_status": bridge_status,
+            "can_start_session": bridge_status == "ready",
+            "dependency_message": dependency_message,
         }
 
     async def create_session(

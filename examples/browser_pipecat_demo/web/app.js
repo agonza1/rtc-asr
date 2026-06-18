@@ -22,6 +22,8 @@ const state = {
   sessionId: null,
   pcId: null,
   isStarting: false,
+  canStartSession: false,
+  dependencyMessage: "",
   audioContext: null,
   audioElement: null,
   audioObjectUrl: null,
@@ -90,7 +92,10 @@ function renderControls() {
   elements.sourceMic.disabled = state.isStarting || isStreaming;
   elements.sourceFile.disabled = state.isStarting || isStreaming;
   elements.startButton.disabled =
-    state.isStarting || isStreaming || (sourceMode === "file" && !hasSourceFile);
+    state.isStarting ||
+    isStreaming ||
+    !state.canStartSession ||
+    (sourceMode === "file" && !hasSourceFile);
   elements.stopButton.disabled = !isStreaming;
   elements.startButton.textContent = sourceMode === "file" ? "Start file stream" : "Start mic";
   updateSourceHelp();
@@ -293,23 +298,39 @@ async function loadConfig() {
     setText(elements.serviceStatus, "reachable");
     setText(elements.bridgeStatus, config.bridge_status);
     setText(elements.asrTarget, config.rtc_asr_ws_url);
+    state.canStartSession = Boolean(config.can_start_session);
+    state.dependencyMessage = config.dependency_message || "";
+    if (!state.canStartSession) {
+      setText(elements.webrtcStatus, "blocked");
+      showError(state.dependencyMessage || "The Pipecat bridge is not ready yet.");
+      logEvent(`Demo start blocked: ${config.bridge_status}.`);
+    }
     logEvent("Loaded demo service config.");
   } catch (error) {
     setText(elements.serviceStatus, "unreachable");
+    state.canStartSession = false;
     showError(error.message);
     logEvent("Could not load demo service config.");
+  } finally {
+    renderControls();
   }
 }
 
 async function startDemo() {
-  clearError();
-
   if (!hasWebRTCSupport()) {
+    clearError();
     setText(elements.webrtcStatus, "unsupported");
     showError("This browser does not expose the WebRTC APIs required for the demo.");
     return;
   }
 
+  if (!state.canStartSession) {
+    setText(elements.webrtcStatus, "blocked");
+    showError(state.dependencyMessage || "The Pipecat bridge is not ready yet.");
+    return;
+  }
+
+  clearError();
   state.isStarting = true;
   renderControls();
 
