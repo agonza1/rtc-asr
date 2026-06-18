@@ -14,8 +14,42 @@ from src.protocols.local_stt_v1 import (
     TranscriptMessage,
     parse_client_message,
     parse_server_message,
+    build_hot_path_audio_format,
+    build_ready_message,
+    build_start_message,
     validate_audio_chunk,
 )
+
+
+def test_builders_emit_hot_path_messages_for_clients_and_servers() -> None:
+    start = build_start_message(
+        partial_interval_ms=100,
+        partial_window_seconds=1.5,
+        max_buffer_seconds=10,
+        client_stream_id="turn-abc",
+        metadata={"turn_id": "abc"},
+    )
+    ready = build_ready_message(metadata={"session_id": "session-1"})
+
+    assert start.model_dump() == {
+        "type": "start",
+        "version": PROTOCOL_VERSION,
+        "audio": build_hot_path_audio_format().model_dump(),
+        "language": "en",
+        "interim_results": True,
+        "partial_interval_ms": 100,
+        "partial_window_seconds": 1.5,
+        "max_buffer_seconds": 10.0,
+        "client_stream_id": "turn-abc",
+        "metadata": {"turn_id": "abc"},
+    }
+    assert ready.model_dump() == {
+        "type": "ready",
+        "version": PROTOCOL_VERSION,
+        "audio": build_hot_path_audio_format().model_dump(),
+        "interim_results": True,
+        "metadata": {"session_id": "session-1"},
+    }
 
 
 def test_start_message_validates_and_ignores_unknown_optional_fields() -> None:
