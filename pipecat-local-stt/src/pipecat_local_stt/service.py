@@ -126,6 +126,7 @@ class LocalStreamingSTTService(STTService):
     async def finalize_current_utterance(self) -> None:
         if not self._utterance_active:
             return
+        await self._send_queue.join()
         await self._send_control({"type": "finalize"}, ensure_started=False)
         self._utterance_active = False
 
@@ -214,6 +215,7 @@ class LocalStreamingSTTService(STTService):
             self._utterance_active = True
 
     async def _send_loop(self) -> None:
+        current_task = asyncio.current_task()
         while not self._closed:
             chunk = await self._send_queue.get()
             try:
@@ -223,6 +225,8 @@ class LocalStreamingSTTService(STTService):
                     continue
                 await self._send_binary(chunk.data)
                 self.metrics.local_stt_audio_frames_sent_total += 1
+                if self._send_task is not current_task:
+                    return
             finally:
                 self._send_queue.task_done()
 
@@ -265,6 +269,10 @@ class LocalStreamingSTTService(STTService):
 
     def _should_drop_transcript(self, event: LocalSTTTranscriptEvent) -> bool:
         generation = event.metadata.get("local_stt_generation")
+        if not isinstance(generation, int):
+            client_metadata = event.metadata.get("client_metadata")
+            if isinstance(client_metadata, dict):
+                generation = client_metadata.get("local_stt_generation")
         if isinstance(generation, int) and generation != self._generation:
             return True
         return self._suppress_transcripts

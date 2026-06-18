@@ -51,7 +51,7 @@ class CancelWebSocket:
                     "revision": 1,
                     "audio_received_ms": 20,
                     "audio_transcribed_ms": 20,
-                    "metadata": {"local_stt_generation": 0},
+                    "metadata": {"client_metadata": {"local_stt_generation": 0}},
                 }))
 
     async def recv(self) -> str:
@@ -77,6 +77,57 @@ class ReconnectWebSocket:
         if self.fail_after_ready and self.ready_sent:
             raise RuntimeError("simulated receive failure")
         self.ready_sent = True
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
+class FailingSendWebSocket:
+    def __init__(self, *, fail_first_binary: bool = False) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.fail_first_binary = fail_first_binary
+        self.binary_failures = 0
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str) and json.loads(data)["type"] == "start":
+            await self.incoming.put(json.dumps({"type": "ready"}))
+            return
+        if isinstance(data, bytes) and self.fail_first_binary and self.binary_failures == 0:
+            self.binary_failures += 1
+            raise RuntimeError("simulated send failure")
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
+class FinalizeWaitWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.release_binary_send = asyncio.Event()
+        self.binary_send_completed = 0
+        self.finalize_before_binary_completed = False
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str):
+            payload = json.loads(data)
+            if payload["type"] == "start":
+                await self.incoming.put(json.dumps({"type": "ready"}))
+            elif payload["type"] == "finalize":
+                self.finalize_before_binary_completed = self.binary_send_completed == 0
+            return
+
+        await self.release_binary_send.wait()
+        self.binary_send_completed += 1
+
+    async def recv(self) -> str:
         return await self.incoming.get()
 
     async def close(self, code: int = 1000) -> None:
@@ -176,4 +227,58 @@ async def _test_receive_loop_reconnect_exits_old_reader() -> None:
     assert service._receive_task is not first_receive_task
     assert service.metrics.local_stt_reconnects_total == 1
 
+    await service.cleanup()
+
+
+def test_finalize_waits_for_queued_audio_before_control_message() -> None:
+    asyncio.run(_test_finalize_waits_for_queued_audio_before_control_message())
+
+
+async def _test_finalize_waits_for_queued_audio_before_control_message() -> None:
+    websocket = FinalizeWaitWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream"),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+
+    finalize_task = asyncio.create_task(service.finalize_current_utterance())
+    await asyncio.sleep(0.05)
+    assert not finalize_task.done()
+
+    websocket.release_binary_send.set()
+    await finalize_task
+    await service.cleanup()
+
+    assert websocket.finalize_before_binary_completed is False
+
+
+def test_send_loop_exits_after_reconnect_replaces_task() -> None:
+    asyncio.run(_test_send_loop_exits_after_reconnect_replaces_task())
+
+
+async def _test_send_loop_exits_after_reconnect_replaces_task() -> None:
+    first = FailingSendWebSocket(fail_first_binary=True)
+    second = FailingSendWebSocket()
+    websockets = [first, second]
+
+    async def connect(_url: str) -> FailingSendWebSocket:
+        return websockets.pop(0)
+
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=True),
+        connect_fn=connect,
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    original_send_task = service._send_task
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: service._send_task is not None and service._send_task is not original_send_task)
+
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: sum(1 for item in second.sent if isinstance(item, bytes)) == 2)
+
+    assert original_send_task is not None and original_send_task.done()
     await service.cleanup()
