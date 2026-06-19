@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
@@ -27,10 +28,10 @@ class StreamConfig:
             raise ValueError("sample_rate must be a positive integer")
         if self.partial_interval_chunks < 1:
             raise ValueError("partial_interval_chunks must be a positive integer")
-        if self.partial_window_seconds is not None and self.partial_window_seconds <= 0:
-            raise ValueError("partial_window_seconds must be greater than zero")
-        if self.max_buffer_seconds is not None and self.max_buffer_seconds <= 0:
-            raise ValueError("max_buffer_seconds must be greater than zero")
+        if self.partial_window_seconds is not None and not _is_positive_finite_number(self.partial_window_seconds):
+            raise ValueError("partial_window_seconds must be a positive finite number")
+        if self.max_buffer_seconds is not None and not _is_positive_finite_number(self.max_buffer_seconds):
+            raise ValueError("max_buffer_seconds must be a positive finite number")
         if self.partial_event_timeout_seconds < 0:
             raise ValueError("partial_event_timeout_seconds must be zero or greater")
 
@@ -189,6 +190,9 @@ def transcribe_chunks(url: str, chunks: Iterable[bytes], *, config: StreamConfig
 def _maybe_int(value: Any) -> int | None:
     return value if isinstance(value, int) else None
 
+
+def _is_positive_finite_number(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0 and math.isfinite(value)
 
 
 def _maybe_str(value: Any) -> str | None:

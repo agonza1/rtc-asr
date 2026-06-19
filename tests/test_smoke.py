@@ -2176,11 +2176,13 @@ def test_stream_config_rejects_negative_partial_event_timeout() -> None:
         StreamConfig(partial_event_timeout_seconds=-0.1)
 
 
-def test_stream_config_rejects_non_positive_partial_window_seconds() -> None:
-    with pytest.raises(ValueError, match='partial_window_seconds must be greater than zero'):
-        StreamConfig(partial_window_seconds=0)
+@pytest.mark.parametrize("value", [0, True, float("inf"), float("nan")])
+def test_stream_config_rejects_invalid_partial_window_seconds(value: object) -> None:
+    with pytest.raises(ValueError, match='partial_window_seconds must be a positive finite number'):
+        StreamConfig(partial_window_seconds=value)
 
 
-def test_stream_config_rejects_non_positive_max_buffer_seconds() -> None:
-    with pytest.raises(ValueError, match='max_buffer_seconds must be greater than zero'):
-        StreamConfig(max_buffer_seconds=0)
+@pytest.mark.parametrize("value", [0, True, float("inf"), float("nan")])
+def test_stream_config_rejects_invalid_max_buffer_seconds(value: object) -> None:
+    with pytest.raises(ValueError, match='max_buffer_seconds must be a positive finite number'):
+        StreamConfig(max_buffer_seconds=value)
