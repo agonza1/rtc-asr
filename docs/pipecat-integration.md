@@ -8,6 +8,14 @@ The backend is configurable, but partials and finals are always emitted on `ws:/
 
 The current contract is buffered websocket ASR, not a true frame-synchronous streaming decoder API. Pipecat should stay responsible for WebRTC transport, jitter handling, audio decode, and media-edge timing. `rtc-asr` should stay responsible for normalized audio ingestion, partial refreshes over buffered windows, and final transcript generation.
 
+## Why A Local STT Service Instead Of Only Pipecat Plugins
+
+Existing Pipecat STT services are best when a pipeline can hand audio to a hosted provider or a provider-specific SDK and accept that provider contract as the integration boundary. This repo needed a different boundary: a warmed local ASR sidecar that can swap `faster-whisper`, Qwen, Parakeet, MLX, and future runtimes without changing the voice-agent pipeline.
+
+The Local STT service keeps model loading, preload readiness, backend capability metadata, and benchmark artifact generation inside `rtc-asr`. The Pipecat adapter stays intentionally thin: it turns decoded PCM frames into Local STT websocket messages and maps transcript events back into Pipecat frames. That lets us benchmark local CPU and Apple Silicon paths as services, compare backends through one protocol, and keep Pipecat focused on RTC session orchestration rather than model lifecycle management.
+
+Use native Pipecat/provider plugins when you want the provider experience directly. Use this sidecar when you want local inference, warmed latency measurements, backend portability, or a stable protocol that can be reused outside Pipecat.
+
 Open one websocket per utterance or per continuous stream and use this event order:
 
 ```json

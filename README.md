@@ -45,7 +45,7 @@ docker compose ps
 docker compose logs -f
 ```
 
-That compose stack starts the main ASR service on `http://127.0.0.1:8080`. To use the browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr`, start the companion demo service with `uvicorn examples.browser_pipecat_demo.service.app:app --host 127.0.0.1 --port 8090` from an environment with `examples/browser_pipecat_demo/requirements.txt` installed.
+That Compose stack starts the main ASR service on `http://127.0.0.1:8080` and the browser Pipecat demo on `http://127.0.0.1:8090/rtc-asr`. Use `docker compose up -d --build` to run both services locally.
 
 ## Best Low-Power Quick Start
 
@@ -146,6 +146,8 @@ After a `final` event, the socket stays open so the client can start the next ut
 ## RTC Edge Pattern
 
 Use WebRTC, RTP, or Opus only at the media edge, then forward normalized raw audio into `rtc-asr` over a simple websocket. That keeps `rtc-asr` focused on ASR benchmarking and serving instead of turning it into a media server.
+
+This is also why the repo ships a small Local STT service and Pipecat adapter instead of relying only on existing Pipecat STT plugins. Pipecat already gives voice apps a strong media and pipeline layer, and its provider plugins are a good fit when the ASR runtime is an external service. `rtc-asr` covers a different job: keep local ASR models warm, expose the same REST/websocket contract across backends, capture reproducible latency artifacts, and let Pipecat talk to that sidecar through a minimal PCM protocol. That separation makes local CPU, Apple Silicon, and accelerator experiments comparable without baking one Pipecat release or one hosted provider schema into the ASR service.
 
 ```text
 Browser / mobile mic
