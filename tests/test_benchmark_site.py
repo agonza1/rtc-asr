@@ -58,6 +58,8 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
+    assert len(tracks["qwen-mps"]["artifact_sha256"]) == 64
+    assert tracks["qwen-mps"]["artifact_size_bytes"] > 0
 
 
 def test_checked_in_manifest_matches_generated_output() -> None:
@@ -154,6 +156,8 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
     manifest = build_manifest(tmp_path, tracks_path)
 
     assert manifest["summary"]["asr_count"] == 2
+    assert all(len(entry["artifact_sha256"]) == 64 for entry in manifest["asr_benchmarks"])
+    assert all(entry["artifact_size_bytes"] > 0 for entry in manifest["asr_benchmarks"])
     runtimes = {entry["runtime"] for entry in manifest["asr_benchmarks"]}
     assert runtimes == {"cpu / int8", "cpu / float16"}
 
@@ -329,6 +333,9 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'data-label="Partial backlog latency"' in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html
+    assert 'function artifactHashLabel(entry)' in html
+    assert '${artifactHashLabel(entry)}' in html
+    assert 'Artifact-backed benchmark summary' not in html
 
 
 def test_docs_parakeet_mlx_row_matches_checked_in_artifact_summary() -> None:
@@ -437,12 +444,27 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
         assert "Artifact detail page" in detail_html
         assert "Back to benchmark homepage" in detail_html
         assert Path(track["artifact_path"]).name in detail_html
+        assert "Download raw JSON artifact" in detail_html
 
     rss_detail = (Path('docs') / 'benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html').read_text(encoding='utf-8')
     assert "System profile" in rss_detail
     assert "Efficiency signals" in rss_detail
     assert "Accuracy context" in rss_detail
     assert "Reproduction command" in rss_detail
+    assert "Artifact integrity" in rss_detail
+    assert "Artifact provenance" in rss_detail
+    assert "Manifest path benchmark-results/parakeet-mlx-110m-service-2026-06-13.json" in rss_detail
+    assert "SHA-256" in rss_detail
+    assert '"@type": "Dataset"' in rss_detail
+    assert '"@type": "DataDownload"' in rss_detail
+    assert '"@type": "BreadcrumbList"' in rss_detail
+    assert '"measurementTechnique": "REST and buffered websocket ASR latency benchmark"' in rss_detail
+    assert '"url": "parakeet-mlx-110m-service-2026-06-13.html"' in rss_detail
+    assert '"sha256":' in rss_detail
+    assert '<meta name="description" content="Validated 10-sample local Apple Silicon MLX service artifact' in rss_detail
+    assert '<link rel="canonical" href="parakeet-mlx-110m-service-2026-06-13.html">' in rss_detail
+    assert 'aria-label="Breadcrumb"' in rss_detail
+    assert "Benchmark homepage" in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
     assert "Artifact does not record sustained thermal notes yet." in rss_detail
 
@@ -462,10 +484,12 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'status_detail': 'Demo artifact.',
         'rest': {'mean_ms': 42.0, 'p95_ms': 55.0, 'rtf_mean': 0.2},
         'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
-        'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'binary_frames': False},
+        'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'sample_rate': 16000, 'binary_frames': False},
         'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
         'official_wer_reference': '3.1 / 7.2 Demo clean / other',
         'run_command': 'make benchmark-demo',
+        'artifact_sha256': '1234567890abcdef',
+        'artifact_size_bytes': 1536,
     }
     payload = {
         'environment': {
@@ -490,8 +514,23 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
     assert 'Thermal 63.5 C' in detail_html
+    assert 'Sample rate 16000 Hz' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html
     assert 'make benchmark-demo' in detail_html
+    assert '1234567890abcdef' in detail_html
+    assert '"contentSize": 1536' in detail_html
+    assert '"variableMeasured": [' in detail_html
+    assert '"audio-end finalization latency"' in detail_html
+    assert '"contentUrl": "../demo-artifact-2026-06-14.json"' in detail_html
+    assert 'download="demo-artifact-2026-06-14.json"' in detail_html
+    assert 'Download raw JSON artifact' in detail_html
+    assert '"@type": "BreadcrumbList"' in detail_html
+    assert 'aria-label="Breadcrumb"' in detail_html
+    assert 'Benchmark homepage' in detail_html
+    assert 'Size 1.5 KB' in detail_html
+    assert 'Integrity check: SHA-256 <code>1234567890abcdef</code>' in detail_html
+    assert 'Artifact provenance' in detail_html
+    assert 'Generated detail page demo-artifact-2026-06-14.html' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
     assert 'Stable over 5 minutes.' in detail_html
 
@@ -586,6 +625,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Reference WER" in homepage
     assert "external context rather than official rtc-asr measurements" in homepage
     assert "Open detail page" in homepage
+    assert "SHA-256" in homepage
     assert 'function formatHostSummary(entry)' in homepage
     assert 'Host profile' in homepage
     assert 'Efficiency signals' in homepage
@@ -752,5 +792,6 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     assert "Recommended default" in homepage
     assert "Artifacts kept out of the primary ranking" in homepage
     assert "Open detail page" in homepage
+    assert "SHA-256" in homepage
     assert "open JSON" not in homepage
     assert "Loading benchmark manifest..." not in homepage

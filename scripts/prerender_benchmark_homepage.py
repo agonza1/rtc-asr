@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import re
@@ -47,6 +48,16 @@ def format_watts(value: float | None) -> str:
 
 def format_celsius(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.1f} C"
+
+
+def format_bytes(value: int | None) -> str:
+    if value is None:
+        return "n/a"
+    if value < 1024:
+        return f"{value} B"
+    if value < 1024 * 1024:
+        return f"{value / 1024:.1f} KB"
+    return f"{value / (1024 * 1024):.1f} MB"
 
 
 def format_date(value: str | None) -> str:
@@ -264,6 +275,56 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     contract_value = "n/a" if contract.get("chunk_ms") is None else f"{contract['chunk_ms']} ms chunks"
     official_wer_reference = entry.get("official_wer_reference")
     run_command = entry.get("run_command")
+    artifact_sha256 = entry.get("artifact_sha256")
+    artifact_size_bytes = entry.get("artifact_size_bytes")
+    artifact_name = Path(entry.get("artifact_path") or "").name
+    description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
+    detail_href = Path(detail_page_path(entry)).name
+    structured_data = {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "name": f"rtc-asr benchmark artifact: {entry.get('label') or artifact_name or 'unknown'}",
+        "description": description,
+        "url": detail_href,
+        "datePublished": entry.get("measured_at"),
+        "measurementTechnique": "REST and buffered websocket ASR latency benchmark",
+        "variableMeasured": [
+            "first visible partial latency",
+            "partial backlog latency",
+            "audio-end finalization latency",
+            "REST throughput latency",
+        ],
+        "isPartOf": {
+            "@type": "Dataset",
+            "name": "rtc-asr benchmark results",
+            "url": "../../index.html",
+        },
+        "distribution": {
+            "@type": "DataDownload",
+            "encodingFormat": "application/json",
+            "contentUrl": artifact_href,
+            "sha256": artifact_sha256,
+            "contentSize": artifact_size_bytes,
+        },
+        "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "rtc-asr benchmark homepage",
+                    "item": "../../index.html",
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": entry.get("label") or artifact_name or "Benchmark artifact",
+                    "item": detail_href,
+                },
+            ],
+        },
+    }
+    structured_data_json = json.dumps(structured_data, indent=6).replace("</", "<\\/")
     system_signals = extract_system_signals(artifact_payload)
     system_summary = " · ".join(
         [
@@ -287,7 +348,12 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{html.escape(description)}">
+    <link rel="canonical" href="{html.escape(detail_href)}">
     <title>{title} | rtc-asr benchmark artifact</title>
+    <script type="application/ld+json">
+{structured_data_json}
+    </script>
     <style>
       :root {{
         color-scheme: light;
@@ -309,18 +375,21 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       .card {{ background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(31, 41, 51, 0.06); }}
       .label {{ display: block; font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }}
       .value {{ font-size: 1.4rem; line-height: 1.2; }}
+      .breadcrumb {{ display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; color: var(--muted); font: 600 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; }}
+      .breadcrumb span::before {{ content: "/"; margin-right: 8px; color: rgba(31, 41, 51, 0.35); }}
       a {{ color: var(--accent); text-decoration-thickness: 0.08em; }}
     </style>
   </head>
   <body>
     <main>
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a href="{homepage_href}">Benchmark homepage</a><span>{title}</span></nav>
       <div class="eyebrow">Artifact detail page</div>
       <h1>{title}</h1>
       <p>{html.escape(entry.get("status_detail") or "Checked-in benchmark artifact.")}</p>
       <div class="actions">
         <div class="card"><span class="label">Lane</span><div class="value">{html.escape(entry.get("lane") or "unknown")}</div><p>{html.escape(entry.get("backend") or "unknown")} · {html.escape(entry.get("model") or "unknown")}</p></div>
         <div class="card"><span class="label">Runtime</span><div class="value">{html.escape(entry.get("runtime") or "unknown")}</div><p>Status: {html.escape(entry.get("status") or "unknown")} · Samples: {entry.get("sample_count") or 'n/a'}</p></div>
-        <div class="card"><span class="label">Links</span><div><a href="{homepage_href}">Back to benchmark homepage</a></div><div><a href="{artifact_href}">Open raw JSON artifact</a></div><p>Measured {html.escape(format_date(entry.get("measured_at")))}</p></div>
+        <div class="card"><span class="label">Links</span><div><a href="{homepage_href}">Back to benchmark homepage</a></div><div><a href="{artifact_href}">Open raw JSON artifact</a></div><div><a href="{artifact_href}" download="{html.escape(artifact_name)}">Download raw JSON artifact</a></div><p>Measured {html.escape(format_date(entry.get("measured_at")))}</p></div>
       </div>
       <div class="grid">
         <article class="card"><span class="label">Overall score</span><div class="value">{score}</div><p>Confidence {confidence}</p></article>
@@ -328,16 +397,20 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Partial backlog latency</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Diagnostic chunk-response delay. Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
-        <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
+        <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Sample rate {contract.get("sample_rate") or 'n/a'} Hz · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">{html.escape(official_wer_reference or 'No external WER reference')}</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
+        <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p><p>Size {format_bytes(artifact_size_bytes)}</p></article>
+        <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>{html.escape(artifact_name or 'n/a')}</code></div><p>Manifest path {html.escape(entry.get('artifact_path') or 'n/a')}</p><p>Generated detail page {html.escape(Path(detail_page_path(entry)).name)}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
       </div>
       <div class="card" style="margin-top: 24px;">
         <span class="label">Artifact access</span>
         <p>The homepage now leads with decision-ready summaries instead of raw benchmark dumps. Use the JSON artifact only when you need the underlying machine-readable record.</p>
+        <p>Integrity check: SHA-256 <code>{html.escape(artifact_sha256 or 'not available')}</code> · Size {format_bytes(artifact_size_bytes)}</p>
         <div><a href="{artifact_href}">Open raw JSON artifact</a></div>
+        <div><a href="{artifact_href}" download="{html.escape(artifact_name)}">Download raw JSON artifact</a></div>
       </div>
     </main>
   </body>
@@ -353,9 +426,13 @@ def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_di
             continue
         artifact_payload = None
         artifact_path = results_dir.parent / entry["artifact_path"]
+        detail_entry = dict(entry)
         if artifact_path.exists():
-            artifact_payload = json.loads(artifact_path.read_text(encoding="utf-8"))
-        pages[detail_output_path(detail_dir, entry)] = render_detail_page(entry, artifact_payload)
+            artifact_bytes = artifact_path.read_bytes()
+            detail_entry["artifact_sha256"] = hashlib.sha256(artifact_bytes).hexdigest()
+            detail_entry["artifact_size_bytes"] = len(artifact_bytes)
+            artifact_payload = json.loads(artifact_bytes.decode("utf-8"))
+        pages[detail_output_path(detail_dir, entry)] = render_detail_page(detail_entry, artifact_payload)
     return pages
 
 
@@ -386,6 +463,8 @@ def render_row(
     confidence = derived.get("confidence_score")
     score = "n/a" if overall is None else f"{overall:.1f} / 100"
     confidence_text = "n/a" if confidence is None else f"{confidence:.1f} / 100"
+    artifact_hash = entry.get("artifact_sha256")
+    artifact_hash_label = f"SHA-256 {artifact_hash[:12]}" if artifact_hash else "SHA-256 n/a"
     status = html.escape(entry.get("status") or "unknown")
     return "".join(
         [
@@ -398,7 +477,7 @@ def render_row(
             f'<td data-label="Audio-end finalization"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
             f'<td data-label="REST throughput context"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
             f'<td data-label="Samples"><strong>{entry.get("sample_count") or "n/a"}</strong><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
-            f'<td data-label="Details"><a href="{html.escape(detail_page_path(entry))}">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td>',
+            f'<td data-label="Details"><a href="{html.escape(detail_page_path(entry))}">Open detail page</a><div class="tiny">{html.escape(artifact_hash_label)}</div></td>',
             "</tr>",
         ]
     )
@@ -414,13 +493,15 @@ def render_secondary_row(entry: dict[str, Any]) -> str:
     if streaming.get("final_mean_ms") is None:
         missing.append("finalization")
     gap_reason = "Missing comparable live metrics: " + ", ".join(missing) if missing else "Supporting artifact with a different contract or publication scope."
+    artifact_hash = entry.get("artifact_sha256")
+    artifact_hash_label = f"SHA-256 {artifact_hash[:12]}" if artifact_hash else "SHA-256 n/a"
     return "".join(
         [
             "<tr>",
             f'<td data-label="Lane" class="leader-name"><strong>{html.escape(entry.get("label") or "unknown")}</strong><span>{html.escape(entry.get("backend") or "unknown")} . {html.escape(entry.get("model") or "unknown")}</span><div class="table-note">{html.escape(entry.get("lane") or "unknown")} . {html.escape(entry.get("runtime") or "unknown")}</div></td>',
             f'<td data-label="Why it is secondary">{html.escape(gap_reason)}</td>',
             f'<td data-label="Visible live metrics"><strong>First partial {format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</strong><div class="tiny">Finalization {format_ms(streaming.get("final_mean_ms"))}</div></td>',
-            f'<td data-label="Details"><a href="{html.escape(detail_page_path(entry))}">Open detail page</a><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
+            f'<td data-label="Details"><a href="{html.escape(detail_page_path(entry))}">Open detail page</a><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div><div class="tiny">{html.escape(artifact_hash_label)}</div></td>',
             "</tr>",
         ]
     )

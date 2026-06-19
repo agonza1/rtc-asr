@@ -3,7 +3,55 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Validated 10-sample local Apple Silicon MPS artifact.">
+    <link rel="canonical" href="qwen-mps-2026-06-10.html">
     <title>Qwen MPS | rtc-asr benchmark artifact</title>
+    <script type="application/ld+json">
+{
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "rtc-asr benchmark artifact: Qwen MPS",
+      "description": "Validated 10-sample local Apple Silicon MPS artifact.",
+      "url": "qwen-mps-2026-06-10.html",
+      "datePublished": "2026-06-10T17:19:07Z",
+      "measurementTechnique": "REST and buffered websocket ASR latency benchmark",
+      "variableMeasured": [
+            "first visible partial latency",
+            "partial backlog latency",
+            "audio-end finalization latency",
+            "REST throughput latency"
+      ],
+      "isPartOf": {
+            "@type": "Dataset",
+            "name": "rtc-asr benchmark results",
+            "url": "../../index.html"
+      },
+      "distribution": {
+            "@type": "DataDownload",
+            "encodingFormat": "application/json",
+            "contentUrl": "../qwen-mps-2026-06-10.json",
+            "sha256": "3d72b21c7813d95f06c0c33ba4ecad5b4b356c57d5b47aa5a9109d28a9504648",
+            "contentSize": 32873
+      },
+      "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                  {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "rtc-asr benchmark homepage",
+                        "item": "../../index.html"
+                  },
+                  {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": "Qwen MPS",
+                        "item": "qwen-mps-2026-06-10.html"
+                  }
+            ]
+      }
+}
+    </script>
     <style>
       :root {
         color-scheme: light;
@@ -25,18 +73,21 @@
       .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(31, 41, 51, 0.06); }
       .label { display: block; font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
       .value { font-size: 1.4rem; line-height: 1.2; }
+      .breadcrumb { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; color: var(--muted); font: 600 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+      .breadcrumb span::before { content: "/"; margin-right: 8px; color: rgba(31, 41, 51, 0.35); }
       a { color: var(--accent); text-decoration-thickness: 0.08em; }
     </style>
   </head>
   <body>
     <main>
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../../index.html">Benchmark homepage</a><span>Qwen MPS</span></nav>
       <div class="eyebrow">Artifact detail page</div>
       <h1>Qwen MPS</h1>
       <p>Validated 10-sample local Apple Silicon MPS artifact.</p>
       <div class="actions">
         <div class="card"><span class="label">Lane</span><div class="value">Local Python Apple Silicon</div><p>qwen-asr · Qwen/Qwen3-ASR-0.6B</p></div>
         <div class="card"><span class="label">Runtime</span><div class="value">mps / auto</div><p>Status: validated · Samples: 10</p></div>
-        <div class="card"><span class="label">Links</span><div><a href="../../index.html">Back to benchmark homepage</a></div><div><a href="../qwen-mps-2026-06-10.json">Open raw JSON artifact</a></div><p>Measured Jun 10, 2026, 05:19 PM UTC</p></div>
+        <div class="card"><span class="label">Links</span><div><a href="../../index.html">Back to benchmark homepage</a></div><div><a href="../qwen-mps-2026-06-10.json">Open raw JSON artifact</a></div><div><a href="../qwen-mps-2026-06-10.json" download="qwen-mps-2026-06-10.json">Download raw JSON artifact</a></div><p>Measured Jun 10, 2026, 05:19 PM UTC</p></div>
       </div>
       <div class="grid">
         <article class="card"><span class="label">Overall score</span><div class="value">87.0 / 100</div><p>Confidence 100.0 / 100</p></article>
@@ -44,16 +95,20 @@
         <article class="card"><span class="label">Partial backlog latency</span><div class="value">352.0 ms</div><p>Diagnostic chunk-response delay. Gap n/a · Late ratio n/a</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">1189.6 ms</div><p>P95 1248.2 ms</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">1186.2 ms</div><p>P95 1261.2 ms · RTF 0.163</p></article>
-        <article class="card"><span class="label">Buffered contract</span><div class="value">250 ms chunks</div><p>Window 2 s · Interval 1 · Binary False</p></article>
+        <article class="card"><span class="label">Buffered contract</span><div class="value">250 ms chunks</div><p>Window 2 s · Interval 1 · Sample rate 22050 Hz · Binary False</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>make benchmark-qwen-mps</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
+        <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>3d72b21c7813</code></div><p>SHA-256 3d72b21c7813d95f06c0c33ba4ecad5b4b356c57d5b47aa5a9109d28a9504648</p><p>Size 32.1 KB</p></article>
+        <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>qwen-mps-2026-06-10.json</code></div><p>Manifest path benchmark-results/qwen-mps-2026-06-10.json</p><p>Generated detail page qwen-mps-2026-06-10.html</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">mps / auto</div><p>macOS-26.5.1-arm64-arm-64bit-Mach-O · arm · Python 3.14.4</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS n/a</div><p>Logical cores n/a · System RAM n/a · CPU n/a · Power n/a · Thermal n/a</p><p>Artifact does not record sustained thermal notes yet.</p></article>
       </div>
       <div class="card" style="margin-top: 24px;">
         <span class="label">Artifact access</span>
         <p>The homepage now leads with decision-ready summaries instead of raw benchmark dumps. Use the JSON artifact only when you need the underlying machine-readable record.</p>
+        <p>Integrity check: SHA-256 <code>3d72b21c7813d95f06c0c33ba4ecad5b4b356c57d5b47aa5a9109d28a9504648</code> · Size 32.1 KB</p>
         <div><a href="../qwen-mps-2026-06-10.json">Open raw JSON artifact</a></div>
+        <div><a href="../qwen-mps-2026-06-10.json" download="qwen-mps-2026-06-10.json">Download raw JSON artifact</a></div>
       </div>
     </main>
   </body>
