@@ -234,6 +234,8 @@ def test_async_local_stt_client_stream_flow() -> None:
         ready_event = await client.start(
             client_stream_id="turn-1",
             partial_interval_ms=100,
+            partial_window_seconds=1.5,
+            max_buffer_seconds=6.0,
             metadata={"turn_id": "turn-1", "tenant": "demo"},
         )
         pong_event = await client.ping(ping_id="heartbeat-1", timestamp_ms=1234)
@@ -277,6 +279,8 @@ def test_async_local_stt_client_stream_flow() -> None:
                 "language": "en",
                 "interim_results": True,
                 "partial_interval_ms": 100,
+                "partial_window_seconds": 1.5,
+                "max_buffer_seconds": 6.0,
                 "client_stream_id": "turn-1",
                 "metadata": {"turn_id": "turn-1", "tenant": "demo"},
             },
@@ -357,6 +361,19 @@ def test_async_asr_client_invokes_on_sent_callback_before_waiting_for_response()
 def test_async_asr_client_rejects_invalid_optional_window_settings(param_name: str, param_value: object) -> None:
     async def scenario() -> None:
         client = AsyncASRClient("ws://example.test/ws/stream")
+        with pytest.raises(ValueError, match=rf"{param_name} must be a positive number"):
+            await client.start(**{param_name: param_value})
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("param_name", "param_value"),
+    [("partial_window_seconds", 0), ("max_buffer_seconds", -1), ("max_buffer_seconds", True)],
+)
+def test_async_local_stt_client_rejects_invalid_optional_window_settings(param_name: str, param_value: object) -> None:
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream")
         with pytest.raises(ValueError, match=rf"{param_name} must be a positive number"):
             await client.start(**{param_name: param_value})
 
