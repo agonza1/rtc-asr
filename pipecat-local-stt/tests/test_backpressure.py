@@ -130,6 +130,29 @@ class FailFirstCancelWebSocket:
         return None
 
 
+class FailFirstStartWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.failed_start = False
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str):
+            payload = json.loads(data)
+            if payload["type"] == "start":
+                if not self.failed_start:
+                    self.failed_start = True
+                    raise RuntimeError("simulated start send failure")
+                await self.incoming.put(json.dumps({"type": "ready"}))
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
 class FinalizeWaitWebSocket:
     def __init__(self) -> None:
         self.sent: list[str | bytes] = []
@@ -423,5 +446,35 @@ async def _test_cancel_send_failure_does_not_replay_cancel_on_reconnect() -> Non
     second_control_types = [json.loads(item)["type"] for item in second.sent if isinstance(item, str)]
 
     assert first_control_types == ["start", "cancel"]
+    assert second_control_types == ["start"]
+    assert service.metrics.local_stt_reconnects_total == 1
+
+
+def test_start_send_failure_reconnect_does_not_reenter_start_lock() -> None:
+    asyncio.run(_test_start_send_failure_reconnect_does_not_reenter_start_lock())
+
+
+async def _test_start_send_failure_reconnect_does_not_reenter_start_lock() -> None:
+    first = FailFirstStartWebSocket()
+    second = HealthySendWebSocket()
+    websockets = [first, second]
+
+    async def connect(_url: str) -> FailFirstStartWebSocket | HealthySendWebSocket:
+        return websockets.pop(0)
+
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=True),
+        connect_fn=connect,
+    )
+
+    await asyncio.wait_for(service.start(StartFrame(audio_in_sample_rate=16000)), timeout=0.5)
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
+    await service.cleanup()
+
+    first_control_types = [json.loads(item)["type"] for item in first.sent if isinstance(item, str)]
+    second_control_types = [json.loads(item)["type"] for item in second.sent if isinstance(item, str)]
+
+    assert first_control_types == ["start"]
     assert second_control_types == ["start"]
     assert service.metrics.local_stt_reconnects_total == 1

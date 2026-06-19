@@ -206,12 +206,15 @@ class LocalStreamingSTTService(STTService):
                 self._ready_event.clear()
             self._suppress_transcripts = False
             metadata = {"local_stt_generation": self._generation}
-            await self._send_json(
-                build_start_message(
-                    self.config,
-                    client_stream_id=f"{self._session_id}:{self._generation}",
-                    metadata=metadata,
-                )
+            await self._send_ws(
+                json.dumps(
+                    build_start_message(
+                        self.config,
+                        client_stream_id=f"{self._session_id}:{self._generation}",
+                        metadata=metadata,
+                    )
+                ),
+                start_after_reconnect=False,
             )
             await asyncio.wait_for(self._ready_event.wait(), timeout=self.config.connect_timeout_s)
             self._utterance_active = True
