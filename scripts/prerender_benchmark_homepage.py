@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import re
@@ -264,6 +265,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     contract_value = "n/a" if contract.get("chunk_ms") is None else f"{contract['chunk_ms']} ms chunks"
     official_wer_reference = entry.get("official_wer_reference")
     run_command = entry.get("run_command")
+    artifact_sha256 = entry.get("artifact_sha256")
     system_signals = extract_system_signals(artifact_payload)
     system_summary = " · ".join(
         [
@@ -331,6 +333,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">{html.escape(official_wer_reference or 'No external WER reference')}</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
+        <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
       </div>
@@ -353,9 +356,12 @@ def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_di
             continue
         artifact_payload = None
         artifact_path = results_dir.parent / entry["artifact_path"]
+        detail_entry = dict(entry)
         if artifact_path.exists():
-            artifact_payload = json.loads(artifact_path.read_text(encoding="utf-8"))
-        pages[detail_output_path(detail_dir, entry)] = render_detail_page(entry, artifact_payload)
+            artifact_bytes = artifact_path.read_bytes()
+            detail_entry["artifact_sha256"] = hashlib.sha256(artifact_bytes).hexdigest()
+            artifact_payload = json.loads(artifact_bytes.decode("utf-8"))
+        pages[detail_output_path(detail_dir, entry)] = render_detail_page(detail_entry, artifact_payload)
     return pages
 
 

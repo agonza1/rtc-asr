@@ -443,6 +443,8 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Efficiency signals" in rss_detail
     assert "Accuracy context" in rss_detail
     assert "Reproduction command" in rss_detail
+    assert "Artifact integrity" in rss_detail
+    assert "SHA-256" in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
     assert "Artifact does not record sustained thermal notes yet." in rss_detail
 
@@ -466,6 +468,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
         'official_wer_reference': '3.1 / 7.2 Demo clean / other',
         'run_command': 'make benchmark-demo',
+        'artifact_sha256': '1234567890abcdef',
     }
     payload = {
         'environment': {
@@ -492,6 +495,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'Thermal 63.5 C' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html
     assert 'make benchmark-demo' in detail_html
+    assert '1234567890abcdef' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
     assert 'Stable over 5 minutes.' in detail_html
 
