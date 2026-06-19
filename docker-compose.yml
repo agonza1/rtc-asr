@@ -58,7 +58,7 @@ services:
     environment:
       RTC_ASR_WS_URL: ws://asr-service:8080/v1/stt/stream
       RTC_ASR_CHUNK_MS: ${RTC_ASR_CHUNK_MS:-100}
-      RTC_ASR_MAX_UTTERANCE_SECONDS: ${RTC_ASR_MAX_UTTERANCE_SECONDS:-24}
+      RTC_ASR_MAX_BUFFER_SECONDS: ${RTC_ASR_MAX_BUFFER_SECONDS:-5}
     command: ["uvicorn", "examples.browser_pipecat_demo.service.app:app", "--host", "0.0.0.0", "--port", "8090"]
     ports:
       - "${PIPECAT_DEMO_PORT:-8090}:8090"

@@ -154,7 +154,7 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
         "pipecat_transport": "smallwebrtc",
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
-        "rtc_asr_max_buffer_seconds": 12.0,
+        "rtc_asr_max_buffer_seconds": 5.0,
         "asr_model_options": [
             {
                 "id": "faster-whisper-base.en-int8",

@@ -122,7 +122,7 @@ Open:
 http://127.0.0.1:8090/rtc-asr
 ```
 
-Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, choose the ASR model option that matches the `rtc-asr` backend you started, then click **Start mic** or **Start file stream**. The demo now rolls long continuous speech after about 12 seconds by default so one Local STT utterance does not overrun the backend buffer cap. The dropdown is session metadata for the demo bridge; start the separate `rtc-asr` backend with the matching `ASR_BACKEND` and model environment when you want to change the real runtime model.
+Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, choose the ASR model option that matches the `rtc-asr` backend you started, then click **Start mic** or **Start file stream**. The demo now rolls long continuous speech after about 5 seconds by default so one Local STT utterance does not overrun the backend buffer cap. The dropdown is session metadata for the demo bridge; start the separate `rtc-asr` backend with the matching `ASR_BACKEND` and model environment when you want to change the real runtime model.
 
 The browser will:
 
