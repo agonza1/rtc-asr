@@ -29,3 +29,38 @@ stt = RtcAsrSTTService(
 ```
 
 Place the service after `transport.input()` and before `context_aggregator.user()` in a Pipecat pipeline. The plugin does not implement RTC, VAD, LLM context aggregation, or TTS.
+
+## Running Against `rtc-asr`
+
+Start the `rtc-asr` sidecar before creating the Pipecat pipeline, and treat readiness as part of the voice-agent startup path:
+
+```bash
+ASR_BACKEND=faster-whisper \
+ASR_MODEL_SIZE=base.en \
+ASR_DEVICE=cpu \
+ASR_COMPUTE_TYPE=int8 \
+ASR_PRELOAD_MODEL=true \
+uvicorn src.main:app --host 0.0.0.0 --port 8080
+
+curl -f http://localhost:8080/ready
+```
+
+Use `ASR_PRELOAD_MODEL=true` for production-style local serving so model load and backend validation happen before the first caller hits the Pipecat pipeline. After `/ready` passes, send one short warm-up utterance before measuring latency or routing live traffic. Keep the sidecar process resident across calls; one-shot process startup numbers mostly measure model load, graph compilation, and first-request cache setup rather than steady-state ASR latency.
+
+## Audio Chunking
+
+Pipecat commonly emits decoded PCM frames at about `20` ms cadence. Aggregate those frames before forwarding them to `rtc-asr`:
+
+| Chunk duration | Pipecat frames | PCM16 payload at 16 kHz mono |
+| --- | --- | --- |
+| `80` ms | `4` | `2560` bytes |
+| `100` ms | `5` | `3200` bytes |
+| `160` ms | `8` | `5120` bytes |
+
+`80` to `160` ms is the practical default range for live Pipecat bridges. It keeps partials responsive while avoiding unnecessary websocket and ASR invocation overhead on low-power devices. Use smaller chunks only when you are intentionally measuring per-frame transport overhead.
+
+## Benchmarking Notes
+
+For fair Pipecat comparisons, benchmark the warmed sidecar path and keep backend, model, device, chunk duration, partial interval, audio fixture, and run count fixed between artifacts. The useful latency numbers are first visible partial, final after audio end, realtime factor, missing partial count, and transcript churn across interim updates.
+
+See the repo-level [README](../README.md) and [Pipecat Integration Guide](../docs/pipecat-integration.md) for the full service contract and benchmark harness.
