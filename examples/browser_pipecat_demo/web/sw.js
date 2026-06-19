@@ -69,7 +69,16 @@ self.addEventListener("fetch", (event) => {
   if (SHELL_ASSETS.includes(url.pathname)) {
     const cacheFallback = () => caches.match(request, { ignoreSearch: true });
     if (url.search) {
-      event.respondWith(fetch(request).catch(cacheFallback));
+      event.respondWith(
+        fetch(request)
+          .then(async (response) => {
+            if (response.ok) {
+              return response;
+            }
+            return (await cacheFallback()) || response;
+          })
+          .catch(async () => (await cacheFallback()) || Response.error())
+      );
       return;
     }
 

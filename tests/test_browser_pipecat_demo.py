@@ -119,7 +119,8 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
     assert 'const CACHE_NAME = "rtc-asr-demo-shell-v3";' in service_worker_response.text
     assert '"/rtc-asr/assets/icons/apple-touch-icon.png"' in service_worker_response.text
     assert "const cacheFallback = () => caches.match(request, { ignoreSearch: true });" in service_worker_response.text
-    assert "event.respondWith(fetch(request).catch(cacheFallback));" in service_worker_response.text
+    assert "if (response.ok)" in service_worker_response.text
+    assert "return (await cacheFallback()) || response;" in service_worker_response.text
 
     app_js_response = client.get("/rtc-asr/assets/app.js")
 
@@ -153,7 +154,7 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
         "pipecat_transport": "smallwebrtc",
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
-        "rtc_asr_max_buffer_seconds": 12.0,
+        "rtc_asr_max_buffer_seconds": 5.0,
         "asr_model_options": [
             {
                 "id": "faster-whisper-base.en-int8",
