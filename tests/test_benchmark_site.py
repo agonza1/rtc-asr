@@ -445,6 +445,10 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Reproduction command" in rss_detail
     assert "Artifact integrity" in rss_detail
     assert "SHA-256" in rss_detail
+    assert '"@type": "Dataset"' in rss_detail
+    assert '"@type": "DataDownload"' in rss_detail
+    assert '"measurementTechnique": "REST and buffered websocket ASR latency benchmark"' in rss_detail
+    assert '"sha256":' in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
     assert "Artifact does not record sustained thermal notes yet." in rss_detail
 
@@ -497,6 +501,8 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert '3.1 / 7.2 Demo clean / other' in detail_html
     assert 'make benchmark-demo' in detail_html
     assert '1234567890abcdef' in detail_html
+    assert '"contentSize": 1536' in detail_html
+    assert '"contentUrl": "../demo-artifact-2026-06-14.json"' in detail_html
     assert 'Size 1.5 KB' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
     assert 'Stable over 5 minutes.' in detail_html

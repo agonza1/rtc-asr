@@ -277,6 +277,28 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     run_command = entry.get("run_command")
     artifact_sha256 = entry.get("artifact_sha256")
     artifact_size_bytes = entry.get("artifact_size_bytes")
+    artifact_name = Path(entry.get("artifact_path") or "").name
+    structured_data = {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "name": f"rtc-asr benchmark artifact: {entry.get('label') or artifact_name or 'unknown'}",
+        "description": entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact.",
+        "datePublished": entry.get("measured_at"),
+        "measurementTechnique": "REST and buffered websocket ASR latency benchmark",
+        "isPartOf": {
+            "@type": "Dataset",
+            "name": "rtc-asr benchmark results",
+            "url": "../../index.html",
+        },
+        "distribution": {
+            "@type": "DataDownload",
+            "encodingFormat": "application/json",
+            "contentUrl": artifact_href,
+            "sha256": artifact_sha256,
+            "contentSize": artifact_size_bytes,
+        },
+    }
+    structured_data_json = json.dumps(structured_data, indent=6).replace("</", "<\\/")
     system_signals = extract_system_signals(artifact_payload)
     system_summary = " · ".join(
         [
@@ -301,6 +323,9 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{title} | rtc-asr benchmark artifact</title>
+    <script type="application/ld+json">
+{structured_data_json}
+    </script>
     <style>
       :root {{
         color-scheme: light;
