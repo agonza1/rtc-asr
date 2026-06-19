@@ -278,11 +278,14 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     artifact_sha256 = entry.get("artifact_sha256")
     artifact_size_bytes = entry.get("artifact_size_bytes")
     artifact_name = Path(entry.get("artifact_path") or "").name
+    description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
+    detail_href = Path(detail_page_path(entry)).name
     structured_data = {
         "@context": "https://schema.org",
         "@type": "Dataset",
         "name": f"rtc-asr benchmark artifact: {entry.get('label') or artifact_name or 'unknown'}",
-        "description": entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact.",
+        "description": description,
+        "url": detail_href,
         "datePublished": entry.get("measured_at"),
         "measurementTechnique": "REST and buffered websocket ASR latency benchmark",
         "variableMeasured": [
@@ -316,7 +319,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
                     "@type": "ListItem",
                     "position": 2,
                     "name": entry.get("label") or artifact_name or "Benchmark artifact",
-                    "item": Path(detail_page_path(entry)).name,
+                    "item": detail_href,
                 },
             ],
         },
@@ -345,6 +348,8 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{html.escape(description)}">
+    <link rel="canonical" href="{html.escape(detail_href)}">
     <title>{title} | rtc-asr benchmark artifact</title>
     <script type="application/ld+json">
 {structured_data_json}

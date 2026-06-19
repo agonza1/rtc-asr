@@ -455,7 +455,10 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert '"@type": "DataDownload"' in rss_detail
     assert '"@type": "BreadcrumbList"' in rss_detail
     assert '"measurementTechnique": "REST and buffered websocket ASR latency benchmark"' in rss_detail
+    assert '"url": "parakeet-mlx-110m-service-2026-06-13.html"' in rss_detail
     assert '"sha256":' in rss_detail
+    assert '<meta name="description" content="Validated 10-sample local Apple Silicon MLX service artifact' in rss_detail
+    assert '<link rel="canonical" href="parakeet-mlx-110m-service-2026-06-13.html">' in rss_detail
     assert 'aria-label="Breadcrumb"' in rss_detail
     assert "Benchmark homepage" in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
