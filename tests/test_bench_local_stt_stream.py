@@ -126,9 +126,17 @@ def test_normalize_pcm16_buffer_rejects_odd_byte_buffers() -> None:
 def test_iter_server_decode_buffers_matches_accumulated_partial_and_final_audio() -> None:
     frames = [b"a" * 640, b"b" * 640, b"c" * 640, b"d" * 640, b"e" * 640, b"f" * 640]
 
-    buffers = benchmark_module.iter_server_decode_buffers(frames, frame_ms=20, partial_interval_ms=100)
+    buffers = list(benchmark_module.iter_server_decode_buffers(frames, frame_ms=20, partial_interval_ms=100))
 
     assert buffers == [b"".join(frames[:5]), b"".join(frames)]
+
+
+def test_iter_server_decode_buffers_streams_without_list_storage() -> None:
+    buffers = benchmark_module.iter_server_decode_buffers([b"a" * 640, b"b" * 640], frame_ms=20, partial_interval_ms=20)
+
+    assert iter(buffers) is buffers
+    assert next(buffers) == b"a" * 640
+    assert next(buffers) == b"a" * 640 + b"b" * 640
 
 
 def test_measure_pcm16_normalization_uses_server_decode_buffers(monkeypatch) -> None:

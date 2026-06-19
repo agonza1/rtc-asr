@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 import sys
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Iterator, Protocol
 
 import numpy as np
 
@@ -311,24 +311,20 @@ def normalize_pcm16_buffer(audio_data: bytes) -> np.ndarray:
     return np.frombuffer(audio_data, dtype="<i2").astype(np.float32) / 32768.0
 
 
-def iter_server_decode_buffers(frames: list[bytes], *, frame_ms: int, partial_interval_ms: int) -> list[bytes]:
-    if not frames:
-        return []
-
-    buffers: list[bytes] = []
+def iter_server_decode_buffers(frames: list[bytes], *, frame_ms: int, partial_interval_ms: int) -> Iterator[bytes]:
     accumulated = bytearray()
     partial_elapsed_ms = 0
+    last_emitted_length = 0
     for frame in frames:
         accumulated.extend(frame)
         partial_elapsed_ms += frame_ms
         if partial_elapsed_ms >= partial_interval_ms:
-            buffers.append(bytes(accumulated))
+            yield bytes(accumulated)
+            last_emitted_length = len(accumulated)
             partial_elapsed_ms = 0
 
-    final_buffer = bytes(accumulated)
-    if not buffers or buffers[-1] != final_buffer:
-        buffers.append(final_buffer)
-    return buffers
+    if accumulated and last_emitted_length != len(accumulated):
+        yield bytes(accumulated)
 
 
 def measure_pcm16_normalization_latencies(frames: list[bytes], *, frame_ms: int, partial_interval_ms: int) -> list[float]:
