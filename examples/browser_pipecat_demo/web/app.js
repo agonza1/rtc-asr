@@ -9,7 +9,6 @@ const elements = {
   asrModelHelp: document.querySelector("#asr-model-help"),
   startButton: document.querySelector("#start-button"),
   stopButton: document.querySelector("#stop-button"),
-  installHelp: document.querySelector("#install-help"),
   errorMessage: document.querySelector("#error-message"),
   partialText: document.querySelector("#partial-text"),
   finalLog: document.querySelector("#final-log"),
@@ -34,8 +33,8 @@ const state = {
   audioContext: null,
   audioElement: null,
   audioObjectUrl: null,
-  deferredInstallPrompt: null,
   serviceConfig: null,
+  lastPartialTranscript: "",
 };
 
 function setText(node, value) {
@@ -70,6 +69,14 @@ function appendFinalTranscript(text) {
   prependLog(elements.finalLog, text || "[final transcript event]");
 }
 
+function currentPartialTranscript() {
+  const text = (state.lastPartialTranscript || "").trim();
+  if (!text) {
+    return "";
+  }
+  return text;
+}
+
 function showError(message) {
   elements.errorMessage.hidden = false;
   setText(elements.errorMessage, message);
@@ -80,33 +87,33 @@ function clearError() {
   setText(elements.errorMessage, "");
 }
 
-function isStandaloneMode() {
-  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-}
-
-function renderInstallControls() {
-  if (!elements.installHelp) {
-    return;
-  }
-
-  if (isStandaloneMode()) {
-    elements.installHelp.hidden = false;
-    setText(elements.installHelp, "Installed app is running in standalone mode. Keep the local backend running for transcription.");
-    return;
-  }
-
-  if (state.deferredInstallPrompt) {
-    elements.installHelp.hidden = false;
-    setText(elements.installHelp, "Install the demo shell from your browser's install menu for quicker launches. The Pipecat bridge and rtc-asr backend still need to be running.");
-    return;
-  }
-
-  elements.installHelp.hidden = false;
-  setText(elements.installHelp, "Install is available from a supported browser on localhost or HTTPS by using the browser's install or Add to Dock menu.");
-}
-
 function currentSourceMode() {
   return elements.sourceFile.checked ? "file" : "mic";
+}
+
+function isLocalDemoHost() {
+  return location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.hostname === "::1";
+}
+
+async function retireLocalServiceWorker() {
+  if (!("serviceWorker" in navigator) || !("caches" in window)) {
+    return;
+  }
+
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  for (const registration of registrations) {
+    const scope = registration.scope || "";
+    if (scope.includes("/rtc-asr")) {
+      await registration.unregister();
+    }
+  }
+
+  const keys = await caches.keys();
+  for (const key of keys) {
+    if (key.startsWith("rtc-asr-demo-shell")) {
+      await caches.delete(key);
+    }
+  }
 }
 
 function selectedAudioFile() {
@@ -173,7 +180,7 @@ function updateSmartTurnHelp() {
   setText(
     elements.smartTurnHelp,
     enabled
-      ? `Pipecat Smart Turn mode is enabled for the next session${configuredDefault ? " (recommended default)." : "."}`
+      ? `Smart Turn is enabled for the next session${configuredDefault ? " (recommended default)." : "."}`
       : "Pipecat Smart Turn mode is disabled for the next session. The relay will use the plain browser-to-ASR bridge path."
   );
 }
@@ -247,13 +254,15 @@ function handleDataChannelMessage(event) {
   }
 
   if (message.type === "partial") {
-    setText(elements.partialText, message.text || "");
+    state.lastPartialTranscript = message.text || "";
+    setText(elements.partialText, state.lastPartialTranscript);
     setText(elements.bridgeStatus, "receiving partials");
     return;
   }
 
   if (message.type === "final") {
     appendFinalTranscript(message.text || "");
+    state.lastPartialTranscript = "";
     setText(elements.partialText, "");
     setText(elements.bridgeStatus, "received final");
     return;
@@ -434,6 +443,7 @@ async function startDemo() {
   }
 
   clearError();
+  state.lastPartialTranscript = "";
   state.isStarting = true;
   renderControls();
 
@@ -466,7 +476,7 @@ async function startDemo() {
     const asrModel = selectedAsrModelOption();
     setText(elements.webrtcStatus, "signaling");
     logEvent(
-      `Starting ${useSmartTurnMode() ? "Pipecat Smart Turn" : "plain relay"} session with ${asrModel?.label || "unknown ASR model"}.`
+      `Starting ${useSmartTurnMode() ? "Smart Turn" : "plain relay"} session with ${asrModel?.label || "unknown ASR model"}.`
     );
     const response = await fetch("/rtc-asr/offer", {
       method: "POST",
@@ -549,6 +559,12 @@ function stopDemo(preserveError = false) {
     clearError();
   }
 
+  const partialTranscript = currentPartialTranscript();
+  if (partialTranscript) {
+    appendFinalTranscript(`${partialTranscript} [partial captured on stop]`);
+    state.lastPartialTranscript = "";
+  }
+
   if (state.dataChannel) {
     state.dataChannel.close();
     state.dataChannel = null;
@@ -577,30 +593,25 @@ function stopDemo(preserveError = false) {
 }
 
 async function registerPwaShell() {
-  renderInstallControls();
-
   if (!("serviceWorker" in navigator)) {
     return;
   }
 
   try {
-    await navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" });
+    if (isLocalDemoHost()) {
+      await retireLocalServiceWorker();
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" });
+    await registration.update();
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
   } catch (error) {
     logEvent(`Service worker registration failed: ${error.message}`);
   }
 }
-
-window.addEventListener("beforeinstallprompt", (event) => {
-  event.preventDefault();
-  state.deferredInstallPrompt = event;
-  renderInstallControls();
-});
-
-window.addEventListener("appinstalled", () => {
-  state.deferredInstallPrompt = null;
-  renderInstallControls();
-  logEvent("Installed the demo app shell.");
-});
 
 elements.startButton.addEventListener("click", startDemo);
 elements.stopButton.addEventListener("click", stopDemo);
@@ -620,6 +631,5 @@ if (!hasWebRTCSupport()) {
 }
 
 renderControls();
-renderInstallControls();
 registerPwaShell();
 loadConfig();

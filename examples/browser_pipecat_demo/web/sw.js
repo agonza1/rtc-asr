@@ -1,4 +1,6 @@
-const CACHE_NAME = "rtc-asr-demo-shell-v1";
+const CACHE_NAME = "rtc-asr-demo-shell-v3";
+const LOCAL_DEMO_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+const IS_LOCAL_DEMO = LOCAL_DEMO_HOSTS.has(self.location.hostname);
 const SHELL_ASSETS = [
   "/rtc-asr",
   "/rtc-asr/manifest.webmanifest",
@@ -11,11 +13,35 @@ const SHELL_ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
+  if (IS_LOCAL_DEMO) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
+
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)));
   self.skipWaiting();
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("activate", (event) => {
+  if (IS_LOCAL_DEMO) {
+    event.waitUntil(
+      (async () => {
+        const keys = await caches.keys();
+        const demoCaches = keys.filter((key) => key.startsWith("rtc-asr-demo-shell"));
+        await Promise.all(demoCaches.map((key) => caches.delete(key)));
+        await self.clients.claim();
+        await self.registration.unregister();
+      })()
+    );
+    return;
+  }
+
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
@@ -35,8 +61,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (IS_LOCAL_DEMO) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   if (SHELL_ASSETS.includes(url.pathname)) {
-    event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
+    event.respondWith(caches.match(request, { ignoreSearch: true }).then((cached) => cached || fetch(request)));
     return;
   }
 

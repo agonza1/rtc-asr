@@ -88,11 +88,17 @@ def test_demo_page_serves_static_app() -> None:
     assert "Browser WebRTC to local Pipecat edge" in response.text
     assert "Uploaded audio file" in response.text
     assert "ASR rollover" in response.text
-    assert "/rtc-asr/assets/app.js" in response.text
+    assert "/rtc-asr/assets/app.js?v=" in response.text
+    assert "/rtc-asr/assets/styles.css?v=" in response.text
+    assert "__RTC_ASR_DEMO_BUILD__" not in response.text
+    assert "window.location.reload" not in response.text
     assert "/rtc-asr/manifest.webmanifest" in response.text
     assert 'id="asr-model-select"' in response.text
     assert "ASR model" in response.text
-    assert 'Use "Silero VAD + Smart Turn" mode' in response.text
+    assert 'id="install-help"' not in response.text
+    assert "Silero VAD + smart turn" in response.text
+    assert '<span class="smart-toggle" aria-hidden="true">' not in response.text
+    assert '<span class="smart-toggle-slider" aria-hidden="true"></span>' in response.text
     assert '<ul id="final-log" class="log-list final-log"></ul>' in response.text
     assert '<ul id="event-log" class="log-list event-log" aria-live="polite"></ul>' in response.text
 
@@ -110,13 +116,18 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
 
     assert service_worker_response.status_code == 200
     assert service_worker_response.headers["service-worker-allowed"] == "/rtc-asr"
-    assert 'const CACHE_NAME = "rtc-asr-demo-shell-v1";' in service_worker_response.text
+    assert 'const CACHE_NAME = "rtc-asr-demo-shell-v3";' in service_worker_response.text
     assert '"/rtc-asr/assets/icons/apple-touch-icon.png"' in service_worker_response.text
+    assert "caches.match(request, { ignoreSearch: true })" in service_worker_response.text
 
     app_js_response = client.get("/rtc-asr/assets/app.js")
 
     assert app_js_response.status_code == 200
     assert 'navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" })' in app_js_response.text
+    assert "partial captured on stop" in app_js_response.text
+    assert "state.lastPartialTranscript || elements.partialText.textContent" not in app_js_response.text
+    assert "beforeinstallprompt" not in app_js_response.text
+    assert "deferredInstallPrompt" not in app_js_response.text
 
 
 def missing_runtime_loader() -> PipecatRuntime:
