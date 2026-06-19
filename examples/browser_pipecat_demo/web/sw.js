@@ -67,7 +67,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (SHELL_ASSETS.includes(url.pathname)) {
-    event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
+    event.respondWith(caches.match(request, { ignoreSearch: true }).then((cached) => cached || fetch(request)));
     return;
   }
 

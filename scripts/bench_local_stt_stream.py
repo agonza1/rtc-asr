@@ -104,6 +104,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
     keys = [
         "time_to_first_interim_ms",
         "time_to_final_after_finalize_ms",
+        "audio_send_duration_ms",
         "audio_send_queue_depth_p95_ms",
         "audio_send_latency_p95_ms",
         "asr_receive_loop_append_p95_ms",
@@ -206,6 +207,8 @@ async def _run_once(
     reconnects = 0
     send_latencies: list[float] = []
     receive_latencies: list[float] = []
+    audio_send_started_at: float | None = None
+    audio_send_completed_at: float | None = None
 
     await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
     receive_done = asyncio.Event()
@@ -241,6 +244,8 @@ async def _run_once(
     frames_sent = 0
     try:
         for frame in audio.frames:
+            if audio_send_started_at is None:
+                audio_send_started_at = time.perf_counter()
             if first_audio_sent_at is None:
                 first_audio_sent_at = time.perf_counter()
             send_started = time.perf_counter()
@@ -249,6 +254,8 @@ async def _run_once(
             frames_sent += 1
             if realtime_pace:
                 await asyncio.sleep(audio.frame_ms / 1000)
+        if audio_send_started_at is not None:
+            audio_send_completed_at = time.perf_counter()
 
         final_requested_at = time.perf_counter()
         await client.finalize()
@@ -267,6 +274,11 @@ async def _run_once(
         "index": index,
         "time_to_first_interim_ms": _rounded_or_none(first_interim_ms),
         "time_to_final_after_finalize_ms": _rounded_or_none(final_after_finalize_ms),
+        "audio_send_duration_ms": _rounded_or_none(
+            None
+            if audio_send_started_at is None or audio_send_completed_at is None
+            else (audio_send_completed_at - audio_send_started_at) * 1000
+        ),
         "audio_send_queue_depth_p95_ms": None,
         "audio_send_latency_p95_ms": send_p95,
         "asr_receive_loop_append_p95_ms": receive_p95,
