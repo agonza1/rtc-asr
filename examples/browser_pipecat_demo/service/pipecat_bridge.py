@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_RTC_ASR_CHUNK_MS = 100
 MIN_RTC_ASR_CHUNK_MS = 80
 MAX_RTC_ASR_CHUNK_MS = 160
+DEFAULT_RTC_ASR_MAX_BUFFER_SECONDS = 12.0
 
 ASR_MODEL_OPTIONS = (
     {
@@ -166,6 +167,18 @@ def _asr_model_option_from_env(value: str | None) -> dict[str, str]:
     return ASR_MODEL_OPTION_BY_ID.get(value, ASR_MODEL_OPTION_BY_ID[DEFAULT_ASR_MODEL_OPTION_ID])
 
 
+def _max_buffer_seconds_from_env(value: str | None) -> float:
+    if value is None or value == "":
+        return DEFAULT_RTC_ASR_MAX_BUFFER_SECONDS
+    try:
+        max_buffer_seconds = float(value)
+    except ValueError as exc:
+        raise ValueError("RTC_ASR_MAX_BUFFER_SECONDS must be a number") from exc
+    if max_buffer_seconds <= 0:
+        raise ValueError("RTC_ASR_MAX_BUFFER_SECONDS must be positive")
+    return max_buffer_seconds
+
+
 def load_pipecat_runtime() -> PipecatRuntime:
     try:
         from pipecat.frames.frames import InputAudioRawFrame
@@ -223,11 +236,13 @@ class RTCASRAudioRelay:
         chunk_ms: int,
         send_app_message: AppMessageSender,
         mark_failed: ErrorCallback,
+        max_buffer_seconds: float,
         asr_client_factory: ASRClientFactory = AsyncLocalSttClient,
     ) -> None:
         self.session_id = session_id
         self.rtc_asr_ws_url = rtc_asr_ws_url
         self.chunk_ms = chunk_ms
+        self.max_buffer_seconds = max_buffer_seconds
         self._send_app_message = send_app_message
         self._mark_failed = mark_failed
         self._asr_client_factory = asr_client_factory
@@ -302,6 +317,7 @@ class RTCASRAudioRelay:
                 self._client.start(
                     sample_rate=sample_rate,
                     partial_interval_ms=self.chunk_ms,
+                    max_buffer_seconds=self.max_buffer_seconds,
                     client_stream_id=self.session_id,
                 ),
                 timeout=5.0,
@@ -416,6 +432,9 @@ class PipecatDemoBridge:
         self.chunk_ms = chunk_ms if chunk_ms is not None else _chunk_ms_from_env(
             os.getenv("RTC_ASR_CHUNK_MS")
         )
+        self.max_buffer_seconds = _max_buffer_seconds_from_env(
+            os.getenv("RTC_ASR_MAX_BUFFER_SECONDS")
+        )
         self.default_asr_model_option = _asr_model_option_from_env(os.getenv("RTC_ASR_MODEL_OPTION"))
         self._runtime_loader = runtime_loader
         self._asr_client_factory = asr_client_factory
@@ -443,6 +462,7 @@ class PipecatDemoBridge:
             "pipecat_transport": "smallwebrtc",
             "rtc_asr_ws_url": self.rtc_asr_ws_url,
             "rtc_asr_chunk_ms": self.chunk_ms,
+            "rtc_asr_max_buffer_seconds": self.max_buffer_seconds,
             "asr_model_options": list(ASR_MODEL_OPTIONS),
             "default_asr_model_option_id": self.default_asr_model_option["id"],
             "asr_model_label": self.default_asr_model_option["label"],
@@ -478,6 +498,7 @@ class PipecatDemoBridge:
             metadata={
                 "rtc_asr_ws_url": self.rtc_asr_ws_url,
                 "rtc_asr_chunk_ms": str(self.chunk_ms),
+                "rtc_asr_max_buffer_seconds": str(self.max_buffer_seconds),
                 "asr_model_option_id": asr_model_option["id"],
                 "asr_model_label": asr_model_option["label"],
                 "asr_backend": asr_model_option["backend"],
@@ -621,6 +642,7 @@ class PipecatDemoBridge:
             session_id=session.session_id,
             rtc_asr_ws_url=self.rtc_asr_ws_url,
             chunk_ms=self.chunk_ms,
+            max_buffer_seconds=self.max_buffer_seconds,
             send_app_message=send_app_message,
             mark_failed=mark_failed,
             asr_client_factory=self._asr_client_factory,

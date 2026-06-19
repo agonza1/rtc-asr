@@ -139,6 +139,7 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
         "pipecat_transport": "smallwebrtc",
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
+        "rtc_asr_max_buffer_seconds": 12.0,
         "asr_model_options": [
             {
                 "id": "faster-whisper-base.en-int8",
@@ -281,11 +282,14 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
     sent_chunks: list[bytes] = []
     app_messages: list[dict[str, object]] = []
 
+    start_calls: list[dict[str, Any]] = []
+
     class FakeASRClient:
         def __init__(self, ws_url: str) -> None:
             self.ws_url = ws_url
 
         async def start(self, **kwargs: Any) -> dict[str, object]:
+            start_calls.append(kwargs)
             return {"type": "ready"}
 
         async def send_audio(self, chunk: bytes, **kwargs: Any) -> None:
@@ -313,6 +317,7 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
         chunk_ms=100,
         send_app_message=app_messages.append,
         mark_failed=lambda message: None,
+        max_buffer_seconds=12.0,
         asr_client_factory=FakeASRClient,
     )
     frame = FakeInputAudioRawFrame(audio=b"x" * 6400, sample_rate=16000, num_channels=1)
@@ -320,6 +325,7 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
     await relay.handle_audio_frame(frame)
 
     assert [len(chunk) for chunk in sent_chunks] == [3200, 3200]
+    assert start_calls == [{"sample_rate": 16000, "partial_interval_ms": 100, "max_buffer_seconds": 12.0, "client_stream_id": "session_1"}]
     assert app_messages[0]["type"] == "status"
 
 
@@ -341,6 +347,7 @@ async def test_asr_relay_reports_websocket_start_failure() -> None:
         chunk_ms=100,
         send_app_message=app_messages.append,
         mark_failed=failures.append,
+        max_buffer_seconds=12.0,
         asr_client_factory=FailingASRClient,
     )
     frame = FakeInputAudioRawFrame(audio=b"x" * 3200, sample_rate=16000, num_channels=1)
@@ -364,11 +371,14 @@ async def test_asr_relay_close_swallows_receiver_failure_and_closes_client() -> 
     failures: list[str] = []
     client_closed = False
 
+    start_calls: list[dict[str, Any]] = []
+
     class FakeASRClient:
         def __init__(self, ws_url: str) -> None:
             self.ws_url = ws_url
 
         async def start(self, **kwargs: Any) -> dict[str, object]:
+            start_calls.append(kwargs)
             return {"type": "ready"}
 
         async def send_audio(self, chunk: bytes, **kwargs: Any) -> None:
@@ -400,6 +410,7 @@ async def test_asr_relay_close_swallows_receiver_failure_and_closes_client() -> 
         chunk_ms=100,
         send_app_message=app_messages.append,
         mark_failed=failures.append,
+        max_buffer_seconds=12.0,
         asr_client_factory=FakeASRClient,
     )
     frame = FakeInputAudioRawFrame(audio=b"x" * 3200, sample_rate=16000, num_channels=1)

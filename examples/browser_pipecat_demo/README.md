@@ -83,6 +83,7 @@ That example requirements file includes `pipecat-ai[webrtc]`. The dependency is 
 | `RTC_ASR_WS_URL` | `ws://127.0.0.1:8080/v1/stt/stream` | `rtc-asr` websocket target for transcript streaming |
 | `RTC_ASR_CHUNK_MS` | `100` | PCM batch duration sent to `rtc-asr`; must be between `80` and `160` |
 | `RTC_ASR_MODEL_OPTION` | `faster-whisper-base.en-int8` | Demo dropdown default. Options include `faster-whisper-base.en-int8`, `parakeet-mlx-110m`, `parakeet-nemo-110m`, `parakeet-v3`, and `qwen3-asr-0.6b` |
+| `RTC_ASR_MAX_BUFFER_SECONDS` | `12` | Caps one Local STT utterance before rollover so long continuous speech does not hit the backend buffer ceiling |
 | `PIPECAT_ICE_SERVERS` | unset | Reserved for future STUN/TURN configuration; local `127.0.0.1` testing usually does not need it |
 
 Example:
@@ -91,6 +92,7 @@ Example:
 export RTC_ASR_WS_URL="ws://127.0.0.1:8080/v1/stt/stream"
 export RTC_ASR_CHUNK_MS="100"
 export RTC_ASR_MODEL_OPTION="parakeet-mlx-110m"
+export RTC_ASR_MAX_BUFFER_SECONDS="12"
 ```
 
 ## Run the Demo
@@ -120,7 +122,7 @@ Open:
 http://127.0.0.1:8090/rtc-asr
 ```
 
-Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, choose the ASR model option that matches the `rtc-asr` backend you started, then click **Start mic** or **Start file stream**. You can install the demo locally from the browser's install menu or Add to Dock flow. The dropdown is session metadata for the demo bridge; start the separate `rtc-asr` backend with the matching `ASR_BACKEND` and model environment when you want to change the real runtime model.
+Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, choose the ASR model option that matches the `rtc-asr` backend you started, then click **Start mic** or **Start file stream**. The demo now rolls long continuous speech after about 12 seconds by default so one Local STT utterance does not overrun the backend buffer cap. You can install the demo locally from the browser's install menu or Add to Dock flow. The dropdown is session metadata for the demo bridge; start the separate `rtc-asr` backend with the matching `ASR_BACKEND` and model environment when you want to change the real runtime model.
 
 The browser will:
 
