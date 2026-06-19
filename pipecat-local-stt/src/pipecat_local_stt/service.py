@@ -127,6 +127,8 @@ class LocalStreamingSTTService(STTService):
         if not self._utterance_active:
             return
         await self._send_queue.join()
+        if not self._utterance_active or self._websocket is None:
+            return
         await self._send_control({"type": "finalize"}, ensure_started=False)
         self._utterance_active = False
 

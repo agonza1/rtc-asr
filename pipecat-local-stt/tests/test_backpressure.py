@@ -201,6 +201,28 @@ class AlwaysFailSendWebSocket:
         return None
 
 
+class BlockingFailSendWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.release_binary_send = asyncio.Event()
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str) and json.loads(data)["type"] == "start":
+            await self.incoming.put(json.dumps({"type": "ready"}))
+            return
+        if isinstance(data, bytes):
+            await self.release_binary_send.wait()
+            raise RuntimeError("simulated tail send failure")
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
 class HealthySendWebSocket:
     def __init__(self) -> None:
         self.sent: list[str | bytes] = []
@@ -337,6 +359,44 @@ async def _test_finalize_waits_for_queued_audio_before_control_message() -> None
     await service.cleanup()
 
     assert websocket.finalize_before_binary_completed is False
+
+
+def test_finalize_skips_control_after_queued_send_failure_disconnects() -> None:
+    asyncio.run(_test_finalize_skips_control_after_queued_send_failure_disconnects())
+
+
+async def _test_finalize_skips_control_after_queued_send_failure_disconnects() -> None:
+    first = BlockingFailSendWebSocket()
+    second = HealthySendWebSocket()
+    websockets = [first, second]
+
+    async def connect(_url: str) -> BlockingFailSendWebSocket | HealthySendWebSocket:
+        return websockets.pop(0)
+
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=False),
+        connect_fn=connect,
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+
+    finalize_task = asyncio.create_task(service.finalize_current_utterance())
+    await asyncio.sleep(0.05)
+    assert not finalize_task.done()
+
+    first.release_binary_send.set()
+    await asyncio.wait_for(finalize_task, timeout=0.5)
+
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
+    await service.cleanup()
+
+    first_control_types = [json.loads(item)["type"] for item in first.sent if isinstance(item, str)]
+    second_control_types = [json.loads(item)["type"] for item in second.sent if isinstance(item, str)]
+
+    assert first_control_types == ["start"]
+    assert second_control_types == ["start"]
 
 
 def test_send_loop_exits_after_reconnect_replaces_task() -> None:
