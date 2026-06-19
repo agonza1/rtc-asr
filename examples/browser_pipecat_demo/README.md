@@ -34,6 +34,17 @@ This remains an example app, not a production deployment recipe. It is intended 
 
 Most browsers block `getUserMedia` on plain HTTP remote hosts. Use `127.0.0.1`, `localhost`, or HTTPS while testing.
 
+## Fastest Local Path
+
+From the repository root, the simplest end-to-end setup is now:
+
+```bash
+make start
+open http://127.0.0.1:8090/rtc-asr
+```
+
+That compose stack starts the main `rtc-asr` service on `127.0.0.1:8080` and the browser Pipecat demo on `127.0.0.1:8090`. Use the manual Python flow below only when you want to iterate on the demo service itself outside Docker.
+
 ## Install
 
 From the repository root, create or reuse the project virtualenv:
@@ -58,6 +69,7 @@ That example requirements file includes `pipecat-ai[webrtc]`. The dependency is 
 | --- | --- | --- |
 | `RTC_ASR_WS_URL` | `ws://127.0.0.1:8080/v1/stt/stream` | `rtc-asr` websocket target for transcript streaming |
 | `RTC_ASR_CHUNK_MS` | `100` | PCM batch duration sent to `rtc-asr`; must be between `80` and `160` |
+| `RTC_ASR_MAX_UTTERANCE_SECONDS` | `24` | Demo-side rollover guard for long continuous speech so one Local STT stream does not hit the default 1 MiB server buffer cap |
 | `PIPECAT_ICE_SERVERS` | unset | Reserved for future STUN/TURN configuration; local `127.0.0.1` testing usually does not need it |
 
 Example:
@@ -65,11 +77,20 @@ Example:
 ```bash
 export RTC_ASR_WS_URL="ws://127.0.0.1:8080/v1/stt/stream"
 export RTC_ASR_CHUNK_MS="100"
+export RTC_ASR_MAX_UTTERANCE_SECONDS="24"
 ```
 
 ## Run the Demo
 
-Start the main `rtc-asr` backend in one terminal:
+Recommended: use the compose stack so both services come up together:
+
+```bash
+make start
+```
+
+Open `http://127.0.0.1:8090/rtc-asr`.
+
+If you want the manual split-terminal flow instead, start the main `rtc-asr` backend in one terminal:
 
 ```bash
 make dev
@@ -115,6 +136,10 @@ Install the example requirements:
 ```bash
 pip install -r examples/browser_pipecat_demo/requirements.txt
 ```
+
+### Long microphone session eventually errors or stops updating
+
+The demo now rolls the Local STT stream before the default server buffer cap, but continuous speech is still segmented into multiple ASR utterances. If you want longer segments while testing, raise `RTC_ASR_MAX_UTTERANCE_SECONDS` and keep it below the server-side buffer limit for your sample rate.
 
 ### Bridge connects, but no transcript appears
 

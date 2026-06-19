@@ -3,6 +3,7 @@ const elements = {
   webrtcStatus: document.querySelector("#webrtc-status"),
   bridgeStatus: document.querySelector("#bridge-status"),
   asrTarget: document.querySelector("#asr-target"),
+  asrRollover: document.querySelector("#asr-rollover"),
   startButton: document.querySelector("#start-button"),
   stopButton: document.querySelector("#stop-button"),
   errorMessage: document.querySelector("#error-message"),
@@ -298,6 +299,7 @@ async function loadConfig() {
     setText(elements.serviceStatus, "reachable");
     setText(elements.bridgeStatus, config.bridge_status);
     setText(elements.asrTarget, config.rtc_asr_ws_url);
+    setText(elements.asrRollover, `${config.rtc_asr_max_utterance_seconds}s max utterance`);
     state.canStartSession = Boolean(config.can_start_session);
     state.dependencyMessage = config.dependency_message || "";
     if (!state.canStartSession) {

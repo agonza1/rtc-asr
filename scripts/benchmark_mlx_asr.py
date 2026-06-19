@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import shutil
 import statistics
@@ -58,20 +59,27 @@ def summarize(values: list[float]) -> dict[str, float]:
 
 
 def describe_environment() -> dict[str, Any]:
-    memory_mb: float | None = None
+    memory_total_mb: float | None = None
+    process_rss_mb: float | None = None
     try:
         import psutil
 
-        memory_mb = round(psutil.Process().memory_info().rss / (1024 * 1024), 1)
+        memory_total_mb = round(psutil.virtual_memory().total / (1024 * 1024), 1)
+        process_rss_mb = round(psutil.Process().memory_info().rss / (1024 * 1024), 1)
     except Exception:
-        memory_mb = None
+        memory_total_mb = None
+        process_rss_mb = None
 
     return {
         "date_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "platform": platform.platform(),
         "python": sys.version.split()[0],
+        "processor": platform.processor() or platform.machine(),
         "machine": platform.machine(),
-        "process_rss_mb": memory_mb,
+        "cpu_logical_cores": os.cpu_count(),
+        "memory_total_mb": memory_total_mb,
+        "process_rss_mb": process_rss_mb,
+        "peak_rss_mb": process_rss_mb,
     }
 
 
