@@ -70,8 +70,8 @@ function appendFinalTranscript(text) {
 }
 
 function currentPartialTranscript() {
-  const text = (state.lastPartialTranscript || elements.partialText.textContent || "").trim();
-  if (!text || text === "Waiting for a Pipecat bridge.") {
+  const text = (state.lastPartialTranscript || "").trim();
+  if (!text) {
     return "";
   }
   return text;

@@ -125,6 +125,7 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
     assert app_js_response.status_code == 200
     assert 'navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" })' in app_js_response.text
     assert "partial captured on stop" in app_js_response.text
+    assert "state.lastPartialTranscript || elements.partialText.textContent" not in app_js_response.text
     assert "beforeinstallprompt" not in app_js_response.text
     assert "deferredInstallPrompt" not in app_js_response.text
 
