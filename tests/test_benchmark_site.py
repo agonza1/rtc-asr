@@ -441,6 +441,7 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
         assert "Artifact detail page" in detail_html
         assert "Back to benchmark homepage" in detail_html
         assert Path(track["artifact_path"]).name in detail_html
+        assert "Download raw JSON artifact" in detail_html
 
     rss_detail = (Path('docs') / 'benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html').read_text(encoding='utf-8')
     assert "System profile" in rss_detail
@@ -518,6 +519,8 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert '"variableMeasured": [' in detail_html
     assert '"audio-end finalization latency"' in detail_html
     assert '"contentUrl": "../demo-artifact-2026-06-14.json"' in detail_html
+    assert 'download="demo-artifact-2026-06-14.json"' in detail_html
+    assert 'Download raw JSON artifact' in detail_html
     assert '"@type": "BreadcrumbList"' in detail_html
     assert 'aria-label="Breadcrumb"' in detail_html
     assert 'Benchmark homepage' in detail_html
