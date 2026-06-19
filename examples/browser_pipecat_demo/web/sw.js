@@ -67,7 +67,13 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (SHELL_ASSETS.includes(url.pathname)) {
-    event.respondWith(caches.match(request, { ignoreSearch: true }).then((cached) => cached || fetch(request)));
+    const cacheFallback = () => caches.match(request, { ignoreSearch: true });
+    if (url.search) {
+      event.respondWith(fetch(request).catch(cacheFallback));
+      return;
+    }
+
+    event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
     return;
   }
 
