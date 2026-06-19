@@ -118,7 +118,8 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
     assert service_worker_response.headers["service-worker-allowed"] == "/rtc-asr"
     assert 'const CACHE_NAME = "rtc-asr-demo-shell-v3";' in service_worker_response.text
     assert '"/rtc-asr/assets/icons/apple-touch-icon.png"' in service_worker_response.text
-    assert "caches.match(request, { ignoreSearch: true })" in service_worker_response.text
+    assert "const cacheFallback = () => caches.match(request, { ignoreSearch: true });" in service_worker_response.text
+    assert "event.respondWith(fetch(request).catch(cacheFallback));" in service_worker_response.text
 
     app_js_response = client.get("/rtc-asr/assets/app.js")
 
