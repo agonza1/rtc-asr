@@ -408,6 +408,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <div class="card" style="margin-top: 24px;">
         <span class="label">Artifact access</span>
         <p>The homepage now leads with decision-ready summaries instead of raw benchmark dumps. Use the JSON artifact only when you need the underlying machine-readable record.</p>
+        <p>Integrity check: SHA-256 <code>{html.escape(artifact_sha256 or 'not available')}</code> · Size {format_bytes(artifact_size_bytes)}</p>
         <div><a href="{artifact_href}">Open raw JSON artifact</a></div>
         <div><a href="{artifact_href}" download="{html.escape(artifact_name)}">Download raw JSON artifact</a></div>
       </div>

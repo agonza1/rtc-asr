@@ -525,6 +525,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'aria-label="Breadcrumb"' in detail_html
     assert 'Benchmark homepage' in detail_html
     assert 'Size 1.5 KB' in detail_html
+    assert 'Integrity check: SHA-256 <code>1234567890abcdef</code>' in detail_html
     assert 'Artifact provenance' in detail_html
     assert 'Generated detail page demo-artifact-2026-06-14.html' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
