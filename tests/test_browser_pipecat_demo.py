@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -86,6 +87,7 @@ def test_demo_page_serves_static_app() -> None:
     assert response.status_code == 200
     assert "Browser WebRTC to local Pipecat edge" in response.text
     assert "Uploaded audio file" in response.text
+    assert "ASR rollover" in response.text
     assert "/rtc-asr/assets/app.js" in response.text
     assert "/rtc-asr/manifest.webmanifest" in response.text
     assert 'id="asr-model-select"' in response.text
@@ -330,6 +332,63 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
 
 
 @pytest.mark.anyio
+async def test_asr_relay_rolls_stream_before_buffer_cap() -> None:
+    sent_chunks: list[bytes] = []
+    client_starts: list[str] = []
+    client_finalizes: list[str] = []
+    client_closes: list[str] = []
+    app_messages: list[dict[str, object]] = []
+
+    class FakeASRClient:
+        def __init__(self, ws_url: str) -> None:
+            self.ws_url = ws_url
+            self.client_id = f"client_{len(client_starts) + len(client_closes)}"
+
+        async def start(self, **kwargs: Any) -> dict[str, object]:
+            client_starts.append(self.client_id)
+            return {"type": "ready"}
+
+        async def send_audio(self, chunk: bytes, **kwargs: Any) -> None:
+            sent_chunks.append(chunk)
+
+        async def finalize(self) -> Any:
+            client_finalizes.append(self.client_id)
+            return type(
+                "FakeEvent",
+                (),
+                {
+                    "type": "final",
+                    "text": "rolled",
+                    "is_final": True,
+                    "chunks_received": len(sent_chunks),
+                },
+            )()
+
+        async def close(self) -> None:
+            client_closes.append(self.client_id)
+
+    relay = RTCASRAudioRelay(
+        session_id="session_rollover",
+        rtc_asr_ws_url="ws://example.test/ws",
+        chunk_ms=100,
+        send_app_message=app_messages.append,
+        mark_failed=lambda message: None,
+        max_buffer_seconds=0.1,
+        asr_client_factory=FakeASRClient,
+    )
+    frame = FakeInputAudioRawFrame(audio=b"x" * 6400, sample_rate=16000, num_channels=1)
+
+    await relay.handle_audio_frame(frame)
+
+    assert [len(chunk) for chunk in sent_chunks] == [3200, 3200]
+    assert len(client_starts) == 2
+    assert client_starts[0] != client_starts[1]
+    assert client_finalizes == [client_starts[0]]
+    assert client_closes == [client_starts[0]]
+    assert any(message.get("message") == "Rolling ASR stream before the Local STT buffer cap." for message in app_messages)
+
+
+@pytest.mark.anyio
 async def test_asr_relay_reports_websocket_start_failure() -> None:
     app_messages: list[dict[str, object]] = []
     failures: list[str] = []
@@ -416,16 +475,17 @@ async def test_asr_relay_close_swallows_receiver_failure_and_closes_client() -> 
     frame = FakeInputAudioRawFrame(audio=b"x" * 3200, sample_rate=16000, num_channels=1)
 
     await relay.handle_audio_frame(frame)
+    await asyncio.sleep(0)
     await relay.close()
 
     assert client_closed is True
     assert relay._client is None
     assert failures == ["ASR websocket receive failed: receiver failed"]
-    assert app_messages[-1] == {
+    assert {
         "type": "error",
         "message": "ASR websocket receive failed: receiver failed",
         "session_id": "session_1",
-    }
+    } in app_messages
 
 
 def test_unknown_session_returns_404() -> None:

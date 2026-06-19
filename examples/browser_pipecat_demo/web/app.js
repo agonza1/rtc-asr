@@ -3,6 +3,7 @@ const elements = {
   webrtcStatus: document.querySelector("#webrtc-status"),
   bridgeStatus: document.querySelector("#bridge-status"),
   asrTarget: document.querySelector("#asr-target"),
+  asrRollover: document.querySelector("#asr-rollover"),
   asrModelStatus: document.querySelector("#asr-model-status"),
   asrModelSelect: document.querySelector("#asr-model-select"),
   asrModelHelp: document.querySelector("#asr-model-help"),
@@ -397,6 +398,7 @@ async function loadConfig() {
     setText(elements.serviceStatus, "reachable");
     setText(elements.bridgeStatus, config.bridge_status);
     setText(elements.asrTarget, config.rtc_asr_ws_url);
+    setText(elements.asrRollover, `${config.rtc_asr_max_buffer_seconds}s max buffer`);
     renderAsrModelOptions(config);
     state.canStartSession = Boolean(config.can_start_session);
     state.dependencyMessage = config.dependency_message || "";

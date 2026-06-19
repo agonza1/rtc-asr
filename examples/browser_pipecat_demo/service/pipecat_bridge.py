@@ -252,6 +252,7 @@ class RTCASRAudioRelay:
         self._num_channels: int | None = None
         self._final_event: asyncio.Future[TranscriptEvent] | None = None
         self._receiver_task: asyncio.Task[None] | None = None
+        self._utterance_bytes_sent = 0
 
     async def handle_audio_frame(self, frame: Any) -> None:
         audio = bytes(getattr(frame, "audio", b""))
@@ -276,34 +277,12 @@ class RTCASRAudioRelay:
             if self._buffer:
                 await self._send_chunk(bytes(self._buffer))
                 self._buffer.clear()
-            finalize = getattr(self._client, "finalize", None)
-            if callable(finalize):
-                await finalize()
-                if self._final_event is not None:
-                    try:
-                        await asyncio.wait_for(asyncio.shield(self._final_event), timeout=5.0)
-                    except Exception as exc:
-                        if self._receiver_task is None or not self._receiver_task.done() or self._receiver_task.cancelled():
-                            raise
-                        receiver_exc = self._receiver_task.exception()
-                        if receiver_exc is None or receiver_exc is not exc:
-                            raise
-            else:
-                final_event = await self._client.stop()
-                self._send_transcript_event(final_event)
+            if self._utterance_bytes_sent > 0:
+                await self._finalize_and_close_client()
         except Exception as exc:
             self._send_error(f"ASR relay shutdown failed: {exc}")
         finally:
-            if self._receiver_task is not None:
-                self._receiver_task.cancel()
-                try:
-                    await self._receiver_task
-                except (asyncio.CancelledError, Exception):
-                    pass
-                self._receiver_task = None
-            await self._client.close()
-            self._client = None
-            self._final_event = None
+            await self._close_client()
 
     async def _ensure_client(self, *, sample_rate: int, num_channels: int) -> None:
         if self._client is not None:
@@ -341,11 +320,72 @@ class RTCASRAudioRelay:
     async def _send_chunk(self, chunk: bytes) -> None:
         if self._client is None:
             raise RuntimeError("ASR client is not started")
+        await self._roll_utterance_if_needed(next_chunk_bytes=len(chunk))
         try:
             await self._client.send_audio(chunk)
+            self._utterance_bytes_sent += len(chunk)
         except Exception as exc:
             self._send_error(f"ASR websocket send failed: {exc}")
             raise
+
+    async def _roll_utterance_if_needed(self, *, next_chunk_bytes: int) -> None:
+        if self._sample_rate is None or self._num_channels is None:
+            return
+        max_buffer_bytes = max(
+            2,
+            int(self._sample_rate * self._num_channels * 2 * self.max_buffer_seconds),
+        )
+        if self._utterance_bytes_sent == 0:
+            return
+        if self._utterance_bytes_sent + next_chunk_bytes <= max_buffer_bytes:
+            return
+
+        self._send_app_message({
+            "type": "status",
+            "message": "Rolling ASR stream before the Local STT buffer cap.",
+            "session_id": self.session_id,
+            "buffered_audio_ms": int(
+                self._utterance_bytes_sent / max(self._sample_rate * self._num_channels * 2, 1) * 1000
+            ),
+        })
+        await self._finalize_and_close_client()
+        await self._ensure_client(sample_rate=self._sample_rate, num_channels=self._num_channels)
+
+    async def _finalize_and_close_client(self) -> None:
+        if self._client is None:
+            return
+        finalize = getattr(self._client, "finalize", None)
+        if callable(finalize):
+            final_event = await finalize()
+            if final_event is not None:
+                self._send_transcript_event(final_event)
+            elif self._final_event is not None:
+                try:
+                    await asyncio.wait_for(asyncio.shield(self._final_event), timeout=5.0)
+                except Exception as exc:
+                    if self._receiver_task is None or not self._receiver_task.done() or self._receiver_task.cancelled():
+                        raise
+                    receiver_exc = self._receiver_task.exception()
+                    if receiver_exc is None or receiver_exc is not exc:
+                        raise
+        else:
+            final_event = await self._client.stop()
+            self._send_transcript_event(final_event)
+        await self._close_client()
+
+    async def _close_client(self) -> None:
+        if self._receiver_task is not None:
+            self._receiver_task.cancel()
+            try:
+                await self._receiver_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._receiver_task = None
+        if self._client is not None:
+            await self._client.close()
+        self._client = None
+        self._final_event = None
+        self._utterance_bytes_sent = 0
 
     async def _pump_events(self) -> None:
         assert self._client is not None
@@ -366,10 +406,8 @@ class RTCASRAudioRelay:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            if self._final_event is not None and not self._final_event.done():
-                self._final_event.set_exception(exc)
             self._send_error(f"ASR websocket receive failed: {exc}")
-            raise
+            return
 
     def _send_transcript_event(self, event: TranscriptEvent) -> None:
         event_type = "final" if event.is_final or event.type == "final" else event.type
