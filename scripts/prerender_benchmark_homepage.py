@@ -303,6 +303,23 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
             "sha256": artifact_sha256,
             "contentSize": artifact_size_bytes,
         },
+        "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "rtc-asr benchmark homepage",
+                    "item": "../../index.html",
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": entry.get("label") or artifact_name or "Benchmark artifact",
+                    "item": Path(detail_page_path(entry)).name,
+                },
+            ],
+        },
     }
     structured_data_json = json.dumps(structured_data, indent=6).replace("</", "<\\/")
     system_signals = extract_system_signals(artifact_payload)
@@ -353,11 +370,14 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       .card {{ background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(31, 41, 51, 0.06); }}
       .label {{ display: block; font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }}
       .value {{ font-size: 1.4rem; line-height: 1.2; }}
+      .breadcrumb {{ display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; color: var(--muted); font: 600 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; }}
+      .breadcrumb span::before {{ content: "/"; margin-right: 8px; color: rgba(31, 41, 51, 0.35); }}
       a {{ color: var(--accent); text-decoration-thickness: 0.08em; }}
     </style>
   </head>
   <body>
     <main>
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a href="{homepage_href}">Benchmark homepage</a><span>{title}</span></nav>
       <div class="eyebrow">Artifact detail page</div>
       <h1>{title}</h1>
       <p>{html.escape(entry.get("status_detail") or "Checked-in benchmark artifact.")}</p>

@@ -29,6 +29,23 @@
             "contentUrl": "../parakeet-mlx-110m-service-2026-06-13.json",
             "sha256": "32726e579cf7cf219b3633596b5b4275b9c6a5be058cbe86546c7b37ee31848e",
             "contentSize": 45949
+      },
+      "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                  {
+                        "@type": "ListItem",
+                        "position": 1,
+                        "name": "rtc-asr benchmark homepage",
+                        "item": "../../index.html"
+                  },
+                  {
+                        "@type": "ListItem",
+                        "position": 2,
+                        "name": "Parakeet 110M NeMo MLX",
+                        "item": "parakeet-mlx-110m-service-2026-06-13.html"
+                  }
+            ]
       }
 }
     </script>
@@ -53,11 +70,14 @@
       .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 12px 30px rgba(31, 41, 51, 0.06); }
       .label { display: block; font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
       .value { font-size: 1.4rem; line-height: 1.2; }
+      .breadcrumb { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; color: var(--muted); font: 600 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+      .breadcrumb span::before { content: "/"; margin-right: 8px; color: rgba(31, 41, 51, 0.35); }
       a { color: var(--accent); text-decoration-thickness: 0.08em; }
     </style>
   </head>
   <body>
     <main>
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../../index.html">Benchmark homepage</a><span>Parakeet 110M NeMo MLX</span></nav>
       <div class="eyebrow">Artifact detail page</div>
       <h1>Parakeet 110M NeMo MLX</h1>
       <p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p>
