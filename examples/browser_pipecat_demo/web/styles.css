@@ -244,11 +244,6 @@ button:disabled {
   color: var(--accent-dark);
 }
 
-.install-help {
-  margin: 0.85rem 0 0;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
 
 .error {
   margin: 1rem 0 0;

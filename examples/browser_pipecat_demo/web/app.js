@@ -9,7 +9,6 @@ const elements = {
   asrModelHelp: document.querySelector("#asr-model-help"),
   startButton: document.querySelector("#start-button"),
   stopButton: document.querySelector("#stop-button"),
-  installHelp: document.querySelector("#install-help"),
   errorMessage: document.querySelector("#error-message"),
   partialText: document.querySelector("#partial-text"),
   finalLog: document.querySelector("#final-log"),
@@ -34,7 +33,6 @@ const state = {
   audioContext: null,
   audioElement: null,
   audioObjectUrl: null,
-  deferredInstallPrompt: null,
   serviceConfig: null,
 };
 
@@ -78,31 +76,6 @@ function showError(message) {
 function clearError() {
   elements.errorMessage.hidden = true;
   setText(elements.errorMessage, "");
-}
-
-function isStandaloneMode() {
-  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-}
-
-function renderInstallControls() {
-  if (!elements.installHelp) {
-    return;
-  }
-
-  if (isStandaloneMode()) {
-    elements.installHelp.hidden = false;
-    setText(elements.installHelp, "Installed app is running in standalone mode. Keep the local backend running for transcription.");
-    return;
-  }
-
-  if (state.deferredInstallPrompt) {
-    elements.installHelp.hidden = false;
-    setText(elements.installHelp, "Install the demo shell from your browser's install menu for quicker launches. The Pipecat bridge and rtc-asr backend still need to be running.");
-    return;
-  }
-
-  elements.installHelp.hidden = false;
-  setText(elements.installHelp, "Install is available from a supported browser on localhost or HTTPS by using the browser's install or Add to Dock menu.");
 }
 
 function currentSourceMode() {
@@ -577,7 +550,6 @@ function stopDemo(preserveError = false) {
 }
 
 async function registerPwaShell() {
-  renderInstallControls();
 
   if (!("serviceWorker" in navigator)) {
     return;
@@ -589,18 +561,6 @@ async function registerPwaShell() {
     logEvent(`Service worker registration failed: ${error.message}`);
   }
 }
-
-window.addEventListener("beforeinstallprompt", (event) => {
-  event.preventDefault();
-  state.deferredInstallPrompt = event;
-  renderInstallControls();
-});
-
-window.addEventListener("appinstalled", () => {
-  state.deferredInstallPrompt = null;
-  renderInstallControls();
-  logEvent("Installed the demo app shell.");
-});
 
 elements.startButton.addEventListener("click", startDemo);
 elements.stopButton.addEventListener("click", stopDemo);
@@ -620,6 +580,5 @@ if (!hasWebRTCSupport()) {
 }
 
 renderControls();
-renderInstallControls();
 registerPwaShell();
 loadConfig();

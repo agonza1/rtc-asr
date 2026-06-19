@@ -92,6 +92,7 @@ def test_demo_page_serves_static_app() -> None:
     assert "/rtc-asr/manifest.webmanifest" in response.text
     assert 'id="asr-model-select"' in response.text
     assert "ASR model" in response.text
+    assert 'id="install-help"' not in response.text
     assert 'Use "Silero VAD + Smart Turn" mode' in response.text
     assert '<ul id="final-log" class="log-list final-log"></ul>' in response.text
     assert '<ul id="event-log" class="log-list event-log" aria-live="polite"></ul>' in response.text
@@ -110,13 +111,15 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
 
     assert service_worker_response.status_code == 200
     assert service_worker_response.headers["service-worker-allowed"] == "/rtc-asr"
-    assert 'const CACHE_NAME = "rtc-asr-demo-shell-v1";' in service_worker_response.text
+    assert 'const CACHE_NAME = "rtc-asr-demo-shell-v2";' in service_worker_response.text
     assert '"/rtc-asr/assets/icons/apple-touch-icon.png"' in service_worker_response.text
 
     app_js_response = client.get("/rtc-asr/assets/app.js")
 
     assert app_js_response.status_code == 200
     assert 'navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" })' in app_js_response.text
+    assert "beforeinstallprompt" not in app_js_response.text
+    assert "deferredInstallPrompt" not in app_js_response.text
 
 
 def missing_runtime_loader() -> PipecatRuntime:

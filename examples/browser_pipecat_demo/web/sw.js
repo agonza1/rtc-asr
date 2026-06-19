@@ -1,4 +1,4 @@
-const CACHE_NAME = "rtc-asr-demo-shell-v1";
+const CACHE_NAME = "rtc-asr-demo-shell-v2";
 const SHELL_ASSETS = [
   "/rtc-asr",
   "/rtc-asr/manifest.webmanifest",
