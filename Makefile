@@ -97,7 +97,7 @@ help:
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
 	@echo "  make docs           - Build documentation snapshot"
-	@echo "  make start          - Start docker compose stack"
+	@echo "  make start          - Start docker compose stack, including the browser Pipecat demo"
 	@echo "  make stop           - Stop docker compose stack"
 	@echo "  make status         - Check service status"
 
@@ -161,7 +161,7 @@ dev: venv
 start:
 	@echo "Starting docker compose stack..."
 	docker compose up -d --build
-	@echo "  ✓ Service started"
+	@echo "  ✓ Services started: http://127.0.0.1:8080 and http://127.0.0.1:8090/rtc-asr"
 
 stop:
 	@echo "Stopping service..."
@@ -177,6 +177,9 @@ status:
 	@echo ""
 	@echo "Readiness:"
 	@curl -s -f http://localhost:8080/ready 2>/dev/null || echo "  ⚠ Service is live but not ready"
+	@echo ""
+	@echo "Pipecat demo:"
+	@curl -s -f http://localhost:8090/rtc-asr/config 2>/dev/null || echo "  ⚠ Pipecat demo is not reachable locally"
 
 test: venv
 	@echo "Running test suite..."

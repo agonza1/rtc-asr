@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_RTC_ASR_CHUNK_MS = 100
 MIN_RTC_ASR_CHUNK_MS = 80
 MAX_RTC_ASR_CHUNK_MS = 160
+DEFAULT_RTC_ASR_MAX_UTTERANCE_SECONDS = 24.0
 
 
 class BridgeUnavailableError(RuntimeError):
@@ -113,6 +114,18 @@ def _chunk_ms_from_env(value: str | None) -> int:
     return chunk_ms
 
 
+def _max_utterance_seconds_from_env(value: str | None) -> float:
+    if value is None or value == "":
+        return DEFAULT_RTC_ASR_MAX_UTTERANCE_SECONDS
+    try:
+        max_utterance_seconds = float(value)
+    except ValueError as exc:
+        raise ValueError("RTC_ASR_MAX_UTTERANCE_SECONDS must be a number") from exc
+    if max_utterance_seconds <= 0:
+        raise ValueError("RTC_ASR_MAX_UTTERANCE_SECONDS must be positive")
+    return max_utterance_seconds
+
+
 def load_pipecat_runtime() -> PipecatRuntime:
     try:
         from pipecat.frames.frames import InputAudioRawFrame
@@ -159,6 +172,7 @@ class RTCASRAudioRelay:
         session_id: str,
         rtc_asr_ws_url: str,
         chunk_ms: int,
+        max_utterance_seconds: float,
         send_app_message: AppMessageSender,
         mark_failed: ErrorCallback,
         asr_client_factory: ASRClientFactory = AsyncLocalSttClient,
@@ -166,6 +180,7 @@ class RTCASRAudioRelay:
         self.session_id = session_id
         self.rtc_asr_ws_url = rtc_asr_ws_url
         self.chunk_ms = chunk_ms
+        self.max_utterance_seconds = max_utterance_seconds
         self._send_app_message = send_app_message
         self._mark_failed = mark_failed
         self._asr_client_factory = asr_client_factory
@@ -175,6 +190,7 @@ class RTCASRAudioRelay:
         self._num_channels: int | None = None
         self._final_event: asyncio.Future[TranscriptEvent] | None = None
         self._receiver_task: asyncio.Task[None] | None = None
+        self._utterance_bytes_sent = 0
 
     async def handle_audio_frame(self, frame: Any) -> None:
         audio = bytes(getattr(frame, "audio", b""))
@@ -199,34 +215,12 @@ class RTCASRAudioRelay:
             if self._buffer:
                 await self._send_chunk(bytes(self._buffer))
                 self._buffer.clear()
-            finalize = getattr(self._client, "finalize", None)
-            if callable(finalize):
-                await finalize()
-                if self._final_event is not None:
-                    try:
-                        await asyncio.wait_for(asyncio.shield(self._final_event), timeout=5.0)
-                    except Exception as exc:
-                        if self._receiver_task is None or not self._receiver_task.done() or self._receiver_task.cancelled():
-                            raise
-                        receiver_exc = self._receiver_task.exception()
-                        if receiver_exc is None or receiver_exc is not exc:
-                            raise
-            else:
-                final_event = await self._client.stop()
-                self._send_transcript_event(final_event)
+            if self._utterance_bytes_sent > 0:
+                await self._finalize_and_close_client()
         except Exception as exc:
             self._send_error(f"ASR relay shutdown failed: {exc}")
         finally:
-            if self._receiver_task is not None:
-                self._receiver_task.cancel()
-                try:
-                    await self._receiver_task
-                except (asyncio.CancelledError, Exception):
-                    pass
-                self._receiver_task = None
-            await self._client.close()
-            self._client = None
-            self._final_event = None
+            await self._close_client()
 
     async def _ensure_client(self, *, sample_rate: int, num_channels: int) -> None:
         if self._client is not None:
@@ -263,11 +257,72 @@ class RTCASRAudioRelay:
     async def _send_chunk(self, chunk: bytes) -> None:
         if self._client is None:
             raise RuntimeError("ASR client is not started")
+        await self._roll_utterance_if_needed(next_chunk_bytes=len(chunk))
         try:
             await self._client.send_audio(chunk)
+            self._utterance_bytes_sent += len(chunk)
         except Exception as exc:
             self._send_error(f"ASR websocket send failed: {exc}")
             raise
+
+    async def _roll_utterance_if_needed(self, *, next_chunk_bytes: int) -> None:
+        if self._sample_rate is None or self._num_channels is None:
+            return
+        max_utterance_bytes = max(
+            2,
+            int(self._sample_rate * self._num_channels * 2 * self.max_utterance_seconds),
+        )
+        if self._utterance_bytes_sent == 0:
+            return
+        if self._utterance_bytes_sent + next_chunk_bytes <= max_utterance_bytes:
+            return
+
+        self._send_app_message({
+            "type": "status",
+            "message": "Rolling ASR stream before the Local STT buffer cap.",
+            "session_id": self.session_id,
+            "buffered_audio_ms": int(
+                self._utterance_bytes_sent / max(self._sample_rate * self._num_channels * 2, 1) * 1000
+            ),
+        })
+        await self._finalize_and_close_client()
+        await self._ensure_client(sample_rate=self._sample_rate, num_channels=self._num_channels)
+
+    async def _finalize_and_close_client(self) -> None:
+        if self._client is None:
+            return
+        finalize = getattr(self._client, "finalize", None)
+        if callable(finalize):
+            final_event = await finalize()
+            if final_event is not None:
+                self._send_transcript_event(final_event)
+            elif self._final_event is not None:
+                try:
+                    await asyncio.wait_for(asyncio.shield(self._final_event), timeout=5.0)
+                except Exception as exc:
+                    if self._receiver_task is None or not self._receiver_task.done() or self._receiver_task.cancelled():
+                        raise
+                    receiver_exc = self._receiver_task.exception()
+                    if receiver_exc is None or receiver_exc is not exc:
+                        raise
+        else:
+            final_event = await self._client.stop()
+            self._send_transcript_event(final_event)
+        await self._close_client()
+
+    async def _close_client(self) -> None:
+        if self._receiver_task is not None:
+            self._receiver_task.cancel()
+            try:
+                await self._receiver_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._receiver_task = None
+        if self._client is not None:
+            await self._client.close()
+        self._client = None
+        self._final_event = None
+        self._utterance_bytes_sent = 0
 
     async def _pump_events(self) -> None:
         assert self._client is not None
@@ -354,6 +409,9 @@ class PipecatDemoBridge:
         self.chunk_ms = chunk_ms if chunk_ms is not None else _chunk_ms_from_env(
             os.getenv("RTC_ASR_CHUNK_MS")
         )
+        self.max_utterance_seconds = _max_utterance_seconds_from_env(
+            os.getenv("RTC_ASR_MAX_UTTERANCE_SECONDS")
+        )
         self._runtime_loader = runtime_loader
         self._asr_client_factory = asr_client_factory
         self._runtime: PipecatRuntime | None = None
@@ -380,6 +438,7 @@ class PipecatDemoBridge:
             "pipecat_transport": "smallwebrtc",
             "rtc_asr_ws_url": self.rtc_asr_ws_url,
             "rtc_asr_chunk_ms": self.chunk_ms,
+            "rtc_asr_max_utterance_seconds": self.max_utterance_seconds,
             "bridge_status": bridge_status,
             "can_start_session": bridge_status == "ready",
             "dependency_message": dependency_message,
@@ -403,6 +462,7 @@ class PipecatDemoBridge:
             metadata={
                 "rtc_asr_ws_url": self.rtc_asr_ws_url,
                 "rtc_asr_chunk_ms": str(self.chunk_ms),
+                "rtc_asr_max_utterance_seconds": str(self.max_utterance_seconds),
             },
         )
         self._sessions[session.session_id] = session
@@ -496,6 +556,7 @@ class PipecatDemoBridge:
             session_id=session.session_id,
             rtc_asr_ws_url=self.rtc_asr_ws_url,
             chunk_ms=self.chunk_ms,
+            max_utterance_seconds=self.max_utterance_seconds,
             send_app_message=send_app_message,
             mark_failed=mark_failed,
             asr_client_factory=self._asr_client_factory,

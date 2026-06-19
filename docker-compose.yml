@@ -43,3 +43,29 @@ services:
     volumes:
       - ./.cache/huggingface:/app/.cache/huggingface
     restart: unless-stopped
+
+
+  browser-pipecat-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
+        ENABLE_PIPECAT_DEMO_RUNTIME: 1
+    depends_on:
+      asr-service:
+        condition: service_healthy
+    environment:
+      RTC_ASR_WS_URL: ws://asr-service:8080/v1/stt/stream
+      RTC_ASR_CHUNK_MS: ${RTC_ASR_CHUNK_MS:-100}
+      RTC_ASR_MAX_UTTERANCE_SECONDS: ${RTC_ASR_MAX_UTTERANCE_SECONDS:-24}
+    command: ["uvicorn", "examples.browser_pipecat_demo.service.app:app", "--host", "0.0.0.0", "--port", "8090"]
+    ports:
+      - "${PIPECAT_DEMO_PORT:-8090}:8090"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8090/rtc-asr/config"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
