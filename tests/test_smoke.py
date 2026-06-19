@@ -1316,6 +1316,41 @@ def test_local_stt_v1_receive_loop_accepts_audio_while_partial_decode_runs() -> 
     assert transcriber.calls[-1]["audio_size"] == len(chunk) * 10
 
 
+def test_local_stt_v1_emits_inflight_partial_while_audio_continues() -> None:
+    transcriber = SleepingTranscriber(delay_seconds=0.1)
+    chunk = b"p" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "partial_interval_ms": HOT_PATH_FRAME_MS,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(chunk)
+            time.sleep(0.02)
+            for _ in range(5):
+                websocket.send_bytes(chunk)
+                time.sleep(0.01)
+
+            partial_event = parse_server_message(websocket.receive_json())
+            websocket.send_json({"type": "cancel"})
+            websocket.receive_json()
+
+    assert partial_event.type == "transcript"
+    assert partial_event.is_final is False
+    assert partial_event.audio_transcribed_ms == HOT_PATH_FRAME_MS
+    assert partial_event.audio_received_ms > partial_event.audio_transcribed_ms
+    assert transcriber.max_active_calls == 1
+
+
 def test_local_stt_v1_finalize_suppresses_inflight_stale_partial() -> None:
     transcriber = SleepingTranscriber(delay_seconds=0.05)
     chunk = b"b" * HOT_PATH_BYTES_PER_FRAME

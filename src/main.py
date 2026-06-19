@@ -166,10 +166,20 @@ class StreamSession:
         self.audio_buffer.extend(chunk)
         self.chunks_received += 1
 
-    def record_partial(self, transcript: dict[str, object]) -> None:
+    def record_partial(
+        self,
+        transcript: dict[str, object],
+        *,
+        chunks_received: int | None = None,
+        audio_received_ms: int | None = None,
+    ) -> None:
         self.last_partial_result = transcript
-        self.last_partial_chunks_received = self.chunks_received
-        self.last_partial_audio_received_ms = self.audio_received_ms()
+        self.last_partial_chunks_received = (
+            chunks_received if chunks_received is not None else self.chunks_received
+        )
+        self.last_partial_audio_received_ms = (
+            audio_received_ms if audio_received_ms is not None else self.audio_received_ms()
+        )
 
     def audio_received_ms(self) -> int:
         return _audio_bytes_to_duration_ms(len(self.audio_buffer), self.sample_rate)
@@ -480,17 +490,22 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             nonlocal runtime, worker_task, send_task
             if runtime is not None:
                 runtime.close()
-            for task in (worker_task, send_task):
-                if task is not None and not task.done():
-                    task.cancel()
-            for task in (worker_task, send_task):
-                if task is not None:
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
-                    except Exception:
-                        pass
+            if worker_task is not None:
+                try:
+                    await worker_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    pass
+            if send_task is not None and not send_task.done():
+                send_task.cancel()
+            if send_task is not None:
+                try:
+                    await send_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    pass
             runtime = None
             worker_task = None
             send_task = None
@@ -693,25 +708,29 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
 
         runtime.dirty = False
         partial_audio_bytes = session.partial_audio_bytes()
+        partial_chunks_received = session.chunks_received
+        partial_audio_received_ms = session.audio_received_ms()
         runtime.decode_in_flight = True
-        partial = await _run_transcription_async(
-            runtime.services,
-            audio_bytes=partial_audio_bytes,
-            language=session.language,
-            sample_rate=session.sample_rate,
-        )
-        runtime.decode_in_flight = False
+        try:
+            partial = await _run_transcription_async(
+                runtime.services,
+                audio_bytes=partial_audio_bytes,
+                language=session.language,
+                sample_rate=session.sample_rate,
+            )
+        finally:
+            runtime.decode_in_flight = False
 
         if runtime.cancel_requested.is_set() or runtime.final_emitted or runtime.closed:
             return
         if runtime.finalize_requested.is_set():
             runtime.audio_updated.set()
             continue
-        if runtime.dirty:
-            runtime.audio_updated.set()
-            continue
-
-        session.record_partial(partial)
+        session.record_partial(
+            partial,
+            chunks_received=partial_chunks_received,
+            audio_received_ms=partial_audio_received_ms,
+        )
         partial_text = str(partial.get("text", "")).strip()
         if partial_text:
             await runtime.outgoing_events.put(
@@ -722,8 +741,8 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
                     transcribed_audio_bytes=len(partial_audio_bytes),
                 )
             )
-
-
+        if runtime.dirty:
+            runtime.audio_updated.set()
 
 
 def _create_stream_session(
