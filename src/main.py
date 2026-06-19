@@ -724,6 +724,12 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
         if runtime.cancel_requested.is_set() or runtime.final_emitted or runtime.closed:
             return
         if runtime.finalize_requested.is_set():
+            if partial_chunks_received == session.chunks_received and _partial_covers_full_buffer(session):
+                session.record_partial(
+                    partial,
+                    chunks_received=partial_chunks_received,
+                    audio_received_ms=partial_audio_received_ms,
+                )
             runtime.audio_updated.set()
             continue
         session.record_partial(
@@ -1137,8 +1143,12 @@ def _can_reuse_last_partial(session: StreamSession) -> bool:
     return (
         session.last_partial_result is not None
         and session.last_partial_chunks_received == session.chunks_received
-        and (session.partial_window_bytes is None or len(session.audio_buffer) <= session.partial_window_bytes)
+        and _partial_covers_full_buffer(session)
     )
+
+
+def _partial_covers_full_buffer(session: StreamSession) -> bool:
+    return session.partial_window_bytes is None or len(session.audio_buffer) <= session.partial_window_bytes
 
 
 def _run_transcription(

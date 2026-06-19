@@ -1377,6 +1377,7 @@ def test_local_stt_v1_finalize_suppresses_inflight_stale_partial() -> None:
     assert final_event.is_final is True
     assert final_event.revision == 1
     assert transcriber.max_active_calls == 1
+    assert len(transcriber.calls) == 1
 
 
 def test_local_stt_v1_cancel_suppresses_inflight_partial_result() -> None:
