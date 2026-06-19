@@ -45,7 +45,7 @@ docker compose ps
 docker compose logs -f
 ```
 
-That compose stack starts the main ASR service on `http://127.0.0.1:8080`. To use the browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr`, start the companion demo service with `uvicorn examples.browser_pipecat_demo.service.app:app --host 127.0.0.1 --port 8090` from an environment with `examples/browser_pipecat_demo/requirements.txt` installed.
+That Compose stack starts the main ASR service on `http://127.0.0.1:8080` and the browser Pipecat demo on `http://127.0.0.1:8090/rtc-asr`. Use `docker compose up -d --build` to run both services locally.
 
 ## Best Low-Power Quick Start
 
