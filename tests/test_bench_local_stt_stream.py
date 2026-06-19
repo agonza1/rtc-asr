@@ -107,6 +107,57 @@ def test_describe_environment_records_host_capacity(monkeypatch) -> None:
     assert payload["python"]
 
 
+def test_normalize_pcm16_buffer_reports_float32_samples() -> None:
+    samples = benchmark_module.normalize_pcm16_buffer(b"\x00\x00\x00@")
+
+    assert samples.dtype.name == "float32"
+    assert samples.tolist() == [0.0, 0.5]
+
+
+def test_normalize_pcm16_buffer_rejects_odd_byte_buffers() -> None:
+    try:
+        benchmark_module.normalize_pcm16_buffer(b"x")
+    except ValueError as exc:
+        assert "even number of bytes" in str(exc)
+    else:
+        raise AssertionError("expected odd-byte PCM16 buffer to fail")
+
+
+def test_iter_server_decode_buffers_matches_accumulated_partial_and_final_audio() -> None:
+    frames = [b"a" * 640, b"b" * 640, b"c" * 640, b"d" * 640, b"e" * 640, b"f" * 640]
+
+    buffers = list(benchmark_module.iter_server_decode_buffers(frames, frame_ms=20, partial_interval_ms=100))
+
+    assert buffers == [b"".join(frames[:5]), b"".join(frames)]
+
+
+def test_iter_server_decode_buffers_streams_without_list_storage() -> None:
+    buffers = benchmark_module.iter_server_decode_buffers([b"a" * 640, b"b" * 640], frame_ms=20, partial_interval_ms=20)
+
+    assert iter(buffers) is buffers
+    assert next(buffers) == b"a" * 640
+    assert next(buffers) == b"a" * 640 + b"b" * 640
+
+
+def test_measure_pcm16_normalization_uses_server_decode_buffers(monkeypatch) -> None:
+    normalized_lengths: list[int] = []
+
+    def fake_normalize(audio_data: bytes):
+        normalized_lengths.append(len(audio_data))
+        return []
+
+    monkeypatch.setattr(benchmark_module, "normalize_pcm16_buffer", fake_normalize)
+
+    latencies = benchmark_module.measure_pcm16_normalization_latencies(
+        [b"a" * 640, b"b" * 640, b"c" * 640],
+        frame_ms=20,
+        partial_interval_ms=40,
+    )
+
+    assert len(latencies) == 2
+    assert normalized_lengths == [1280, 1920]
+
+
 def test_run_benchmark_records_required_latency_metrics() -> None:
     audio = benchmark_module.AudioInput(
         source="fixture.raw",
@@ -148,12 +199,14 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["audio_send_duration_ms"] is not None
     assert sample["audio_send_queue_depth_p95_ms"] is None
     assert sample["audio_send_latency_p95_ms"] is not None
+    assert sample["pcm16_normalization_p95_ms"] is not None
     assert sample["asr_queue_delay_p95_ms"] is None
     assert sample["asr_decode_p95_ms"] is None
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_duration_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
+    assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
 
 
 def test_receive_latency_ignores_empty_poll_timeouts() -> None:

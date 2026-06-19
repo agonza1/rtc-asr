@@ -87,9 +87,9 @@ If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service d
 | Profile | Target | Backend | Model | Notes |
 | --- | --- | --- | --- | --- |
 | Tiny CPU | Raspberry Pi / mini PC | `faster-whisper` | `tiny.en` `int8` | Best smoke test, lowest accuracy |
-| Practical CPU | Mac Mini / N100 / laptop | `faster-whisper` | `base.en` `int8` | Good default benchmark lane |
-| Apple Silicon | M-series Mac | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Strong warmed latency and power tradeoff |
-| Not low-power | Large CPU or accelerator comparison lane | `qwen-asr` or larger Parakeet variants | `Qwen/Qwen3-ASR-0.6B` or `nvidia/parakeet-tdt-0.6b-v3` | Useful comparison, not the default edge path |
+| Practical CPU | Mac Mini / N100 / laptop | `faster-whisper` or `parakeet-nemo` | `base.en` `int8` or `nvidia/parakeet-tdt_ctc-110m` | Good default benchmark lane; 110M Parakeet is the higher-quality CPU comparison |
+| Apple Silicon | M-series Mac | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` or `mlx-community/parakeet-tdt-0.6b-v3` | Strong warmed latency and power tradeoff; 0.6B MLX is useful when quality matters more than footprint |
+| Not low-power | Large CPU or accelerator comparison lane | `qwen-asr`, Canary Flash, or larger Parakeet variants | `Qwen/Qwen3-ASR-0.6B`, `nvidia/canary-1b-flash`, or `nvidia/parakeet-tdt-0.6b-v3` | Useful comparison, not the default edge path |
 
 Current checked-in benchmarks make the Apple Silicon story especially strong for the warmed `parakeet-mlx-service-110m` lane. See [Benchmarks](./docs/benchmarks.md) for the latest artifact-backed numbers.
 
@@ -214,7 +214,7 @@ curl http://localhost:8080/api/models
 
 Use the checked-in benchmark flow when you need reproducible latency artifacts:
 
-For pre/post optimization comparisons, keep the audio fixture, `--frame-ms`, `--partial-interval-ms`, backend, model, device, compute type, preload setting, and run count unchanged between artifacts. Compare `summary.time_to_first_interim_ms`, `summary.time_to_final_after_finalize_ms`, `summary.audio_send_duration_ms`, and protocol error counts first; then inspect raw per-run samples for outliers before claiming a regression or win.
+For pre/post optimization comparisons, keep the audio fixture, `--frame-ms`, `--partial-interval-ms`, backend, model, device, compute type, preload setting, and run count unchanged between artifacts. Compare `summary.time_to_first_interim_ms`, `summary.time_to_final_after_finalize_ms`, `summary.audio_send_duration_ms`, `summary.pcm16_normalization_p95_ms`, and protocol error counts first; `summary.asr_decode_p95_ms` stays reserved for server-side backend decode timing when exposed separately. Then inspect raw per-run samples for outliers before claiming a regression or win.
 
 ```bash
 make benchmark-faster-whisper-matrix

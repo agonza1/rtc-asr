@@ -11,7 +11,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 import sys
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Iterator, Protocol
+
+import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -107,6 +109,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "audio_send_duration_ms",
         "audio_send_queue_depth_p95_ms",
         "audio_send_latency_p95_ms",
+        "pcm16_normalization_p95_ms",
         "asr_receive_loop_append_p95_ms",
         "asr_queue_delay_p95_ms",
         "asr_decode_p95_ms",
@@ -209,6 +212,11 @@ async def _run_once(
     receive_latencies: list[float] = []
     audio_send_started_at: float | None = None
     audio_send_completed_at: float | None = None
+    pcm16_normalization_latencies = measure_pcm16_normalization_latencies(
+        audio.frames,
+        frame_ms=audio.frame_ms,
+        partial_interval_ms=partial_interval_ms,
+    )
 
     await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
     receive_done = asyncio.Event()
@@ -281,6 +289,7 @@ async def _run_once(
         ),
         "audio_send_queue_depth_p95_ms": None,
         "audio_send_latency_p95_ms": send_p95,
+        "pcm16_normalization_p95_ms": percentile(pcm16_normalization_latencies, 0.95),
         "asr_receive_loop_append_p95_ms": receive_p95,
         "asr_queue_delay_p95_ms": None,
         "asr_decode_p95_ms": None,
@@ -294,6 +303,37 @@ async def _run_once(
         "reconnects": reconnects,
         "protocol_errors": protocol_errors,
     }
+
+
+def normalize_pcm16_buffer(audio_data: bytes) -> np.ndarray:
+    if len(audio_data) % 2 != 0:
+        raise ValueError("Raw PCM16 audio must contain an even number of bytes")
+    return np.frombuffer(audio_data, dtype="<i2").astype(np.float32) / 32768.0
+
+
+def iter_server_decode_buffers(frames: list[bytes], *, frame_ms: int, partial_interval_ms: int) -> Iterator[bytes]:
+    accumulated = bytearray()
+    partial_elapsed_ms = 0
+    last_emitted_length = 0
+    for frame in frames:
+        accumulated.extend(frame)
+        partial_elapsed_ms += frame_ms
+        if partial_elapsed_ms >= partial_interval_ms:
+            yield bytes(accumulated)
+            last_emitted_length = len(accumulated)
+            partial_elapsed_ms = 0
+
+    if accumulated and last_emitted_length != len(accumulated):
+        yield bytes(accumulated)
+
+
+def measure_pcm16_normalization_latencies(frames: list[bytes], *, frame_ms: int, partial_interval_ms: int) -> list[float]:
+    latencies = []
+    for audio_data in iter_server_decode_buffers(frames, frame_ms=frame_ms, partial_interval_ms=partial_interval_ms):
+        started_at = time.perf_counter()
+        normalize_pcm16_buffer(audio_data)
+        latencies.append((time.perf_counter() - started_at) * 1000)
+    return latencies
 
 
 def _read_pcm16_mono_wav(path: Path) -> tuple[bytes, int]:
