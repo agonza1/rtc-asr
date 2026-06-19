@@ -36,14 +36,26 @@ Most browsers block `getUserMedia` on plain HTTP remote hosts. Use `127.0.0.1`, 
 
 ## Fastest Local Path
 
-From the repository root, the simplest end-to-end setup is now:
+From the repository root, start the main `rtc-asr` backend in one terminal:
 
 ```bash
-make start
+make dev
+```
+
+Then run the browser Pipecat demo service in another terminal:
+
+```bash
+. .venv/bin/activate
+uvicorn examples.browser_pipecat_demo.service.app:app --host 127.0.0.1 --port 8090
+```
+
+Open:
+
+```bash
 open http://127.0.0.1:8090/rtc-asr
 ```
 
-That compose stack starts the main `rtc-asr` service on `127.0.0.1:8080` and the browser Pipecat demo on `127.0.0.1:8090`. The demo can then be installed locally from a supported browser as a PWA shell. Use the manual Python flow below only when you want to iterate on the demo service itself outside Docker.
+The demo can then be installed locally from a supported browser as a PWA shell. `make start` only starts the main `rtc-asr` backend compose service today; keep the demo service on the explicit `uvicorn` command until a compose-managed Pipecat demo service is added.
 
 ## Install
 
