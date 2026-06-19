@@ -25,6 +25,7 @@ sys.modules.setdefault("rtc_asr_prerender_benchmark_homepage", prerender_module)
 PRERENDER_SPEC.loader.exec_module(prerender_module)
 detail_page_path = prerender_module.detail_page_path
 render_detail_page = prerender_module.render_detail_page
+render_homepage = prerender_module.render_homepage
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -324,12 +325,67 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     assert 'function secondaryEntries(entries)' in html
 
 
+def test_render_homepage_counts_unpublished_registry_gaps() -> None:
+    homepage = """<!-- BEGIN GENERATED:static-summary -->\nold\n<!-- END GENERATED:static-summary -->\n<!-- BEGIN GENERATED:generated-at -->\nold\n<!-- END GENERATED:generated-at -->"""
+    manifest = {
+        "summary": {"validated_count": 1, "tracked_count": 2},
+        "tracks": [
+            {
+                "slug": "validated",
+                "label": "Validated Lane",
+                "status": "validated",
+                "status_detail": "publishable",
+                "artifact_path": "docs/benchmark-results/validated.json",
+                "lane": "local",
+                "runtime": "cpu / int8",
+                "backend": "demo",
+                "model": "demo-v1",
+                "rest": {"mean_ms": 10},
+                "streaming": {
+                    "first_partial_end_to_end_mean_ms": 20,
+                    "partial_mean_ms": 30,
+                    "partial_gap_mean_ms": 5,
+                    "final_mean_ms": 40,
+                },
+            },
+            {
+                "slug": "unpublished",
+                "label": "Unpublished Lane",
+                "status": "validated",
+                "status_detail": "waiting on artifact",
+                "artifact_path": None,
+                "lane": "ci",
+                "runtime": "cpu / int8",
+                "backend": "demo",
+                "model": "demo-v2",
+                "run_command": "make benchmark-demo",
+                "rest": {},
+                "streaming": {},
+            },
+        ],
+    }
+
+    html = render_homepage(manifest, homepage)
+
+    assert '1 tracked lanes are blocked or unpublished' in html
+    assert 'Unpublished Lane' in html
+    assert 'waiting on artifact' in html
+
+
 def test_docs_index_live_labels_match_streaming_framing() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
     assert 'Recommended default' in html
     assert 'Primary ranking scope' in html
     assert 'Best live numbers' in html
+    assert 'Registry coverage' in html
+    assert 'of 8 validated' in html
+    assert 'tracked lanes are blocked or unpublished' in html
+    assert 'Registry gaps' in html
+    assert 'Tracked lanes that still need launch-ready proof' in html
+    assert 'Pipecat E2E Faster-Whisper Base' in html
+    assert 'make benchmark-pipecat-e2e' in html
+    assert 'Artifact checked in but excluded from public ranking' in html
     assert 'data-label="Partial backlog latency"' in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html
