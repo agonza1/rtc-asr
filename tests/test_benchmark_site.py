@@ -333,6 +333,9 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'data-label="Partial backlog latency"' in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html
+    assert 'function artifactHashLabel(entry)' in html
+    assert '${artifactHashLabel(entry)}' in html
+    assert 'Artifact-backed benchmark summary' not in html
 
 
 def test_docs_parakeet_mlx_row_matches_checked_in_artifact_summary() -> None:

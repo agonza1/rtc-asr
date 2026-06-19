@@ -1146,6 +1146,9 @@ Published Jun 19, 2026, 03:42 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           </article>
         `).join("");
       }
+      function artifactHashLabel(entry) {
+        return entry.artifact_sha256 ? `SHA-256 ${entry.artifact_sha256.slice(0, 12)}` : "SHA-256 n/a";
+      }
       function renderComparison(entries) {
         const target = document.getElementById("comparison-wrap");
         if (!entries.length) {
@@ -1202,7 +1205,7 @@ Published Jun 19, 2026, 03:42 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
                 <strong>${entry.sample_count ?? "n/a"}</strong>
                 <div class="tiny">Measured ${formatDate(entry.measured_at)}</div>
               </td>
-              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Artifact-backed benchmark summary</div></td>
+              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">${artifactHashLabel(entry)}</div></td>
             </tr>
           `;
         }).join("");
@@ -1221,7 +1224,7 @@ Published Jun 19, 2026, 03:42 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
               </td>
               <td data-label="Why it is secondary">${why}</td>
               <td data-label="Visible live metrics"><strong>First partial ${formatMs(firstVisiblePartial(entry))}</strong><div class="tiny">Finalization ${formatMs(entry.streaming.final_mean_ms)}</div></td>
-              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Measured ${formatDate(entry.measured_at)}</div></td>
+              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Measured ${formatDate(entry.measured_at)}</div><div class="tiny">${artifactHashLabel(entry)}</div></td>
             </tr>
           `;
         }).join("");
