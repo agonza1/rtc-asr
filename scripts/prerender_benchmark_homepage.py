@@ -146,6 +146,10 @@ def registry_gap_entries(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def registry_gap_count(manifest: dict[str, Any]) -> int:
+    return len(registry_gap_entries(manifest))
+
+
 def median(values: list[float | None]) -> float | None:
     defined = sorted(value for value in values if value is not None)
     if not defined:
@@ -566,8 +570,9 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
     )
+    gap_count = registry_gap_count(manifest)
     summary_cards.append(
-        f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Registry coverage</div><div class="headline-value">{summary.get("validated_count", 0)} of {summary.get("tracked_count", 0)} validated</div><p>{summary.get("blocked_count", 0)} tracked lanes are blocked or unpublished, so reviewers can separate launch-ready evidence from backlog work.</p></article>'
+        f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Registry coverage</div><div class="headline-value">{summary.get("validated_count", 0)} of {summary.get("tracked_count", 0)} validated</div><p>{gap_count} tracked lanes are blocked or unpublished, so reviewers can separate launch-ready evidence from backlog work.</p></article>'
     )
     top_cards = "".join(
         f'<article class="story-card panel {tone_class(index)}"><div class="section-kicker">Rank {index + 1}</div><div class="story-rank">{html.escape(entry.get("label") or "unknown")}</div><div class="chip-row"><div class="chip"><strong>{html.escape(entry.get("runtime") or "unknown")}</strong> runtime</div><div class="chip"><strong>{html.escape(entry.get("lane") or "unknown")}</strong> lane</div></div><p>{html.escape(entry.get("status_detail") or "")}</p></article>'
