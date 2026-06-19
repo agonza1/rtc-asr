@@ -112,6 +112,10 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
         "bridge_status": "dependency_missing",
+        "can_start_session": False,
+        "dependency_message": "Install the demo WebRTC extras with "
+        "`pip install -r examples/browser_pipecat_demo/requirements.txt` "
+        "to enable Pipecat SmallWebRTC.",
     }
 
 
