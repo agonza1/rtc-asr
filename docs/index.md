@@ -20,20 +20,6 @@
 - Use the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide when you are wiring an RTC client around that service contract.
 - Use [Troubleshooting](./troubleshooting.md) for preload, backend runtime, and streaming failure modes.
 
-## Official WER References
-
-The docs screen now carries the same official WER references shown in the benchmark notes. These are upstream Hugging Face benchmark or model-card values for the underlying models, not repo-measured runtime results.
-
-| Runtime lane | Official WER reference |
-| --- | --- |
-| `faster-whisper-base` and `faster-whisper-base-c80-w075-json-preview` | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` |
-| `faster-whisper-small` | `3.05 / 7.25` on LibriSpeech `clean / other` for `openai/whisper-small.en` |
-| `parakeet-nemo-compose` | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` |
-| `parakeet-compose` | `1.93 / 3.59` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt-0.6b-v3` |
-| `qwen-mps` and `qwen-compose` | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` |
-
-Use [Benchmarks](./benchmarks.md) for the full artifact-backed comparison matrix, source links, and the methodology note that keeps these upstream WER references separate from local latency measurements.
-
 ## Architecture Snapshot
 
 - FastAPI exposes health, readiness, model metadata, file/REST transcription, and websocket streaming routes.
