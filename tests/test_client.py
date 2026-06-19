@@ -356,12 +356,12 @@ def test_async_asr_client_invokes_on_sent_callback_before_waiting_for_response()
 
 @pytest.mark.parametrize(
     ("param_name", "param_value"),
-    [("partial_window_seconds", 0), ("max_buffer_seconds", -1), ("partial_window_seconds", True)],
+    [("partial_window_seconds", 0), ("max_buffer_seconds", -1), ("partial_window_seconds", True), ("max_buffer_seconds", float("inf"))],
 )
 def test_async_asr_client_rejects_invalid_optional_window_settings(param_name: str, param_value: object) -> None:
     async def scenario() -> None:
         client = AsyncASRClient("ws://example.test/ws/stream")
-        with pytest.raises(ValueError, match=rf"{param_name} must be a positive number"):
+        with pytest.raises(ValueError, match=rf"{param_name} must be a positive finite number"):
             await client.start(**{param_name: param_value})
 
     asyncio.run(scenario())
@@ -369,12 +369,12 @@ def test_async_asr_client_rejects_invalid_optional_window_settings(param_name: s
 
 @pytest.mark.parametrize(
     ("param_name", "param_value"),
-    [("partial_window_seconds", 0), ("max_buffer_seconds", -1), ("max_buffer_seconds", True)],
+    [("partial_window_seconds", 0), ("max_buffer_seconds", -1), ("max_buffer_seconds", True), ("partial_window_seconds", float("nan"))],
 )
 def test_async_local_stt_client_rejects_invalid_optional_window_settings(param_name: str, param_value: object) -> None:
     async def scenario() -> None:
         client = AsyncLocalSttClient("ws://example.test/v1/stt/stream")
-        with pytest.raises(ValueError, match=rf"{param_name} must be a positive number"):
+        with pytest.raises(ValueError, match=rf"{param_name} must be a positive finite number"):
             await client.start(**{param_name: param_value})
 
     asyncio.run(scenario())

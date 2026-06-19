@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Protocol
 
@@ -356,5 +357,5 @@ def _maybe_int(value: Any) -> int | None:
 def _validate_positive_number(value: Any, *, field_name: str) -> None:
     if value is None:
         return
-    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
-        raise ValueError(f"{field_name} must be a positive number")
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0 or not math.isfinite(value):
+        raise ValueError(f"{field_name} must be a positive finite number")
