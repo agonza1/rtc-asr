@@ -147,6 +147,8 @@ After a `final` event, the socket stays open so the client can start the next ut
 
 Use WebRTC, RTP, or Opus only at the media edge, then forward normalized raw audio into `rtc-asr` over a simple websocket. That keeps `rtc-asr` focused on ASR benchmarking and serving instead of turning it into a media server.
 
+This is also why the repo ships a small Local STT service and Pipecat adapter instead of relying only on existing Pipecat STT plugins. Pipecat already gives voice apps a strong media and pipeline layer, and its provider plugins are a good fit when the ASR runtime is an external service. `rtc-asr` covers a different job: keep local ASR models warm, expose the same REST/websocket contract across backends, capture reproducible latency artifacts, and let Pipecat talk to that sidecar through a minimal PCM protocol. That separation makes local CPU, Apple Silicon, and accelerator experiments comparable without baking one Pipecat release or one hosted provider schema into the ASR service.
+
 ```text
 Browser / mobile mic
   -> WebRTC / RTP / Opus
