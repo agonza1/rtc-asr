@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Protocol
 
@@ -227,6 +228,8 @@ class AsyncLocalSttClient:
         sample_rate: int = HOT_PATH_SAMPLE_RATE,
         interim_results: bool = True,
         partial_interval_ms: int = HOT_PATH_FRAME_MS,
+        partial_window_seconds: float | None = None,
+        max_buffer_seconds: float | None = None,
         client_stream_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -234,6 +237,8 @@ class AsyncLocalSttClient:
             raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
         if partial_interval_ms < 1:
             raise ValueError("partial_interval_ms must be a positive integer")
+        _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
+        _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
         websocket = await self.connect()
         payload: dict[str, Any] = {
             "type": "start",
@@ -249,6 +254,10 @@ class AsyncLocalSttClient:
             "interim_results": interim_results,
             "partial_interval_ms": partial_interval_ms,
         }
+        if partial_window_seconds is not None:
+            payload["partial_window_seconds"] = partial_window_seconds
+        if max_buffer_seconds is not None:
+            payload["max_buffer_seconds"] = max_buffer_seconds
         if client_stream_id is not None:
             payload["client_stream_id"] = client_stream_id
         if metadata:
@@ -348,5 +357,5 @@ def _maybe_int(value: Any) -> int | None:
 def _validate_positive_number(value: Any, *, field_name: str) -> None:
     if value is None:
         return
-    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
-        raise ValueError(f"{field_name} must be a positive number")
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0 or not math.isfinite(value):
+        raise ValueError(f"{field_name} must be a positive finite number")
