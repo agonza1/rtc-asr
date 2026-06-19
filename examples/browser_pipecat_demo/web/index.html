@@ -47,8 +47,8 @@
               <dd id="asr-target">unknown</dd>
             </div>
             <div>
-              <dt>ASR rollover</dt>
-              <dd id="asr-rollover">unknown</dd>
+              <dt>ASR model</dt>
+              <dd id="asr-model-status">unknown</dd>
             </div>
           </dl>
           <fieldset class="source-panel">
@@ -69,6 +69,13 @@
               Use a microphone for live speech or upload a clip to stream real-time browser audio over WebRTC.
             </p>
           </fieldset>
+          <label class="select-option" for="asr-model-select">
+            <span>ASR model</span>
+            <select id="asr-model-select"></select>
+          </label>
+          <p id="asr-model-help" class="source-help">
+            The selected model is sent with the demo session metadata. Start the rtc-asr backend with the matching ASR_BACKEND/model environment for a real runtime switch.
+          </p>
           <label class="toggle-option" for="smart-turn-input">
             <input id="smart-turn-input" type="checkbox" checked>
             <span>Use "Silero VAD + Smart Turn" mode</span>
@@ -79,7 +86,6 @@
           <div class="actions">
             <button id="start-button" type="button">Start stream</button>
             <button id="stop-button" type="button" disabled>Stop</button>
-            <button id="install-button" type="button" class="secondary-button" hidden disabled>Install app</button>
           </div>
           <p id="install-help" class="install-help" hidden></p>
           <p id="error-message" class="error" role="alert" hidden></p>

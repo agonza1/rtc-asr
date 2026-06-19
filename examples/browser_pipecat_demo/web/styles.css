@@ -145,6 +145,7 @@ dd {
 
 .source-option,
 .file-picker,
+.select-option,
 .toggle-option {
   display: grid;
   gap: 0.35rem;
@@ -152,6 +153,7 @@ dd {
 
 .source-option + .source-option,
 .file-picker,
+.select-option,
 .toggle-option {
   margin-top: 0.65rem;
 }
@@ -159,6 +161,21 @@ dd {
 .source-option input,
 .toggle-option input {
   margin-right: 0.45rem;
+}
+
+.select-option select {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  padding: 0.65rem 0.75rem;
+}
+
+.select-option select:disabled {
+  background: #f1f4f9;
+  color: #7a879a;
 }
 
 .file-picker input[type="file"] {

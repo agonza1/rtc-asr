@@ -3,10 +3,11 @@ const elements = {
   webrtcStatus: document.querySelector("#webrtc-status"),
   bridgeStatus: document.querySelector("#bridge-status"),
   asrTarget: document.querySelector("#asr-target"),
-  asrRollover: document.querySelector("#asr-rollover"),
+  asrModelStatus: document.querySelector("#asr-model-status"),
+  asrModelSelect: document.querySelector("#asr-model-select"),
+  asrModelHelp: document.querySelector("#asr-model-help"),
   startButton: document.querySelector("#start-button"),
   stopButton: document.querySelector("#stop-button"),
-  installButton: document.querySelector("#install-button"),
   installHelp: document.querySelector("#install-help"),
   errorMessage: document.querySelector("#error-message"),
   partialText: document.querySelector("#partial-text"),
@@ -83,40 +84,24 @@ function isStandaloneMode() {
 }
 
 function renderInstallControls() {
+  if (!elements.installHelp) {
+    return;
+  }
+
   if (isStandaloneMode()) {
-    elements.installButton.hidden = true;
-    elements.installButton.disabled = true;
     elements.installHelp.hidden = false;
     setText(elements.installHelp, "Installed app is running in standalone mode. Keep the local backend running for transcription.");
     return;
   }
 
   if (state.deferredInstallPrompt) {
-    elements.installButton.hidden = false;
-    elements.installButton.disabled = false;
     elements.installHelp.hidden = false;
-    setText(elements.installHelp, "Install the demo shell locally for quicker launches. The Pipecat bridge and rtc-asr backend still need to be running.");
+    setText(elements.installHelp, "Install the demo shell from your browser's install menu for quicker launches. The Pipecat bridge and rtc-asr backend still need to be running.");
     return;
   }
 
-  elements.installButton.hidden = true;
-  elements.installButton.disabled = true;
   elements.installHelp.hidden = false;
-  setText(elements.installHelp, "Install is available from a supported browser on localhost or HTTPS. If no button appears, use your browser's install or Add to Dock menu.");
-}
-
-async function promptInstall() {
-  if (!state.deferredInstallPrompt) {
-    renderInstallControls();
-    return;
-  }
-
-  const deferredPrompt = state.deferredInstallPrompt;
-  state.deferredInstallPrompt = null;
-  deferredPrompt.prompt();
-  const outcome = await deferredPrompt.userChoice;
-  logEvent(`Install prompt ${outcome.outcome}.`);
-  renderInstallControls();
+  setText(elements.installHelp, "Install is available from a supported browser on localhost or HTTPS by using the browser's install or Add to Dock menu.");
 }
 
 function currentSourceMode() {
@@ -129,6 +114,38 @@ function selectedAudioFile() {
 
 function useSmartTurnMode() {
   return Boolean(elements.smartTurnInput?.checked);
+}
+
+function selectedAsrModelOption() {
+  const options = state.serviceConfig?.asr_model_options || [];
+  return options.find((option) => option.id === elements.asrModelSelect.value) || options[0] || null;
+}
+
+function renderAsrModelOptions(config) {
+  elements.asrModelSelect.replaceChildren();
+  const options = config.asr_model_options || [];
+  for (const option of options) {
+    const item = document.createElement("option");
+    item.value = option.id;
+    item.textContent = option.label;
+    elements.asrModelSelect.append(item);
+  }
+  elements.asrModelSelect.value = config.default_asr_model_option_id || options[0]?.id || "";
+}
+
+function updateAsrModelDisplay() {
+  const selected = selectedAsrModelOption();
+  if (!selected) {
+    setText(elements.asrModelStatus, "unknown");
+    setText(elements.asrModelHelp, "No ASR model options were reported by the demo service.");
+    return;
+  }
+
+  setText(elements.asrModelStatus, `${selected.backend} / ${selected.model}`);
+  setText(
+    elements.asrModelHelp,
+    `Selected for the next session: ${selected.label}. Backend process should match ${selected.backend} / ${selected.model}.`
+  );
 }
 
 function updateSourceHelp() {
@@ -169,6 +186,7 @@ function renderControls() {
   elements.sourceMic.disabled = state.isStarting || isStreaming;
   elements.sourceFile.disabled = state.isStarting || isStreaming;
   elements.smartTurnInput.disabled = state.isStarting || isStreaming;
+  elements.asrModelSelect.disabled = state.isStarting || isStreaming || elements.asrModelSelect.options.length === 0;
   elements.startButton.disabled =
     state.isStarting ||
     isStreaming ||
@@ -178,6 +196,7 @@ function renderControls() {
   elements.startButton.textContent = sourceMode === "file" ? "Start file stream" : "Start mic";
   updateSourceHelp();
   updateSmartTurnHelp();
+  updateAsrModelDisplay();
 }
 
 function hasWebRTCSupport() {
@@ -378,7 +397,7 @@ async function loadConfig() {
     setText(elements.serviceStatus, "reachable");
     setText(elements.bridgeStatus, config.bridge_status);
     setText(elements.asrTarget, config.rtc_asr_ws_url);
-    setText(elements.asrRollover, `${config.rtc_asr_max_utterance_seconds}s max utterance`);
+    renderAsrModelOptions(config);
     state.canStartSession = Boolean(config.can_start_session);
     state.dependencyMessage = config.dependency_message || "";
     elements.smartTurnInput.checked = config.default_use_smart_turn !== false;
@@ -442,8 +461,11 @@ async function startDemo() {
       throw new Error("Browser did not produce a local SDP offer.");
     }
 
+    const asrModel = selectedAsrModelOption();
     setText(elements.webrtcStatus, "signaling");
-    logEvent(`Starting ${useSmartTurnMode() ? "Pipecat Smart Turn" : "plain relay"} session.`);
+    logEvent(
+      `Starting ${useSmartTurnMode() ? "Pipecat Smart Turn" : "plain relay"} session with ${asrModel?.label || "unknown ASR model"}.`
+    );
     const response = await fetch("/rtc-asr/offer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -451,9 +473,14 @@ async function startDemo() {
         type: localDescription.type,
         sdp: localDescription.sdp,
         use_smart_turn: useSmartTurnMode(),
+        asr_model_option_id: asrModel?.id || null,
         request_data: {
           demo_audio_source: currentSourceMode(),
           smart_turn_label: useSmartTurnMode() ? "silero-vad-smart-turn" : "plain-relay",
+          asr_model_option_id: asrModel?.id || null,
+          asr_model_label: asrModel?.label || null,
+          asr_backend: asrModel?.backend || null,
+          asr_model: asrModel?.model || null,
         },
       }),
     });
@@ -575,10 +602,10 @@ window.addEventListener("appinstalled", () => {
 
 elements.startButton.addEventListener("click", startDemo);
 elements.stopButton.addEventListener("click", stopDemo);
-elements.installButton.addEventListener("click", promptInstall);
 elements.sourceMic.addEventListener("change", renderControls);
 elements.sourceFile.addEventListener("change", renderControls);
 elements.smartTurnInput.addEventListener("change", renderControls);
+elements.asrModelSelect.addEventListener("change", renderControls);
 elements.audioFileInput.addEventListener("change", () => {
   clearError();
   renderControls();
