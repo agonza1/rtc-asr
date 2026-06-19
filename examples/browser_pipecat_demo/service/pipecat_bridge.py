@@ -92,6 +92,8 @@ class PipecatRuntime:
     pipeline_worker_cls: type
     pipeline_params_cls: type
     worker_runner_cls: type
+    silero_vad_analyzer_cls: type | None = None
+    local_smart_turn_analyzer_v3_cls: type | None = None
 
 
 ASRClientFactory = Callable[[str], Any]
@@ -150,6 +152,13 @@ def load_pipecat_runtime() -> PipecatRuntime:
     except ModuleNotFoundError:
         from pipecat.pipeline.runner import WorkerRunner
 
+    try:
+        from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+        from pipecat.audio.vad.silero import SileroVADAnalyzer
+    except Exception:
+        LocalSmartTurnAnalyzerV3 = None
+        SileroVADAnalyzer = None
+
     return PipecatRuntime(
         request_cls=SmallWebRTCRequest,
         request_handler_cls=SmallWebRTCRequestHandler,
@@ -162,6 +171,8 @@ def load_pipecat_runtime() -> PipecatRuntime:
         pipeline_worker_cls=PipelineWorker,
         pipeline_params_cls=PipelineParams,
         worker_runner_cls=WorkerRunner,
+        silero_vad_analyzer_cls=SileroVADAnalyzer,
+        local_smart_turn_analyzer_v3_cls=LocalSmartTurnAnalyzerV3,
     )
 
 
@@ -441,6 +452,7 @@ class PipecatDemoBridge:
             "rtc_asr_max_utterance_seconds": self.max_utterance_seconds,
             "bridge_status": bridge_status,
             "can_start_session": bridge_status == "ready",
+            "default_use_smart_turn": True,
             "dependency_message": dependency_message,
         }
 
@@ -452,6 +464,7 @@ class PipecatDemoBridge:
         pc_id: str | None = None,
         restart_pc: bool | None = None,
         request_data: Any | None = None,
+        use_smart_turn: bool = True,
     ) -> DemoSession:
         session = DemoSession(
             session_id=str(uuid4()),
@@ -463,18 +476,22 @@ class PipecatDemoBridge:
                 "rtc_asr_ws_url": self.rtc_asr_ws_url,
                 "rtc_asr_chunk_ms": str(self.chunk_ms),
                 "rtc_asr_max_utterance_seconds": str(self.max_utterance_seconds),
+                "use_smart_turn_requested": str(use_smart_turn).lower(),
+                "smart_turn_mode": "requested" if use_smart_turn else "disabled",
             },
         )
         self._sessions[session.session_id] = session
 
         try:
             runtime = self._ensure_runtime()
+            merged_request_data = dict(request_data or {})
+            merged_request_data.setdefault("use_smart_turn", use_smart_turn)
             request = runtime.request_cls(
                 sdp=offer_sdp,
                 type=offer_type,
                 pc_id=pc_id,
                 restart_pc=restart_pc,
-                request_data=request_data,
+                request_data=merged_request_data,
             )
             session.state = SessionState.WAITING_FOR_PIPECAT
             answer = await self._request_handler.handle_web_request(
@@ -539,6 +556,37 @@ class PipecatDemoBridge:
 
         task.add_done_callback(_handle_done)
 
+    def _build_transport_params(self, session: DemoSession, runtime: PipecatRuntime) -> Any:
+        params_kwargs = {
+            "audio_in_enabled": True,
+            "audio_out_enabled": False,
+        }
+        if session.metadata.get("use_smart_turn_requested") != "true":
+            return runtime.transport_params_cls(**params_kwargs)
+
+        vad_cls = runtime.silero_vad_analyzer_cls
+        turn_cls = runtime.local_smart_turn_analyzer_v3_cls
+        if vad_cls is None or turn_cls is None:
+            session.metadata["smart_turn_mode"] = "requested_but_runtime_missing"
+            return runtime.transport_params_cls(**params_kwargs)
+
+        try:
+            params = runtime.transport_params_cls(
+                **params_kwargs,
+                vad_analyzer=vad_cls(),
+                turn_analyzer=turn_cls(),
+            )
+        except TypeError:
+            session.metadata["smart_turn_mode"] = "requested_but_transport_params_unsupported"
+            return runtime.transport_params_cls(**params_kwargs)
+        except Exception:
+            logger.exception("browser_pipecat_demo_smart_turn_init_failed")
+            session.metadata["smart_turn_mode"] = "requested_but_analyzer_init_failed"
+            return runtime.transport_params_cls(**params_kwargs)
+
+        session.metadata["smart_turn_mode"] = "enabled"
+        return params
+
     async def _run_pipeline(
         self,
         session: DemoSession,
@@ -551,6 +599,13 @@ class PipecatDemoBridge:
         def mark_failed(message: str) -> None:
             session.state = SessionState.FAILED
             session.error = message
+
+        transport_params = self._build_transport_params(session, runtime)
+        send_app_message({
+            "type": "status",
+            "message": f"Pipecat smart turn mode: {session.metadata.get('smart_turn_mode', 'disabled').replace('_', ' ')}",
+            "session_id": session.session_id,
+        })
 
         relay = RTCASRAudioRelay(
             session_id=session.session_id,
@@ -565,10 +620,7 @@ class PipecatDemoBridge:
         relay_processor = processor_cls(relay)
         transport = runtime.transport_cls(
             webrtc_connection=webrtc_connection,
-            params=runtime.transport_params_cls(
-                audio_in_enabled=True,
-                audio_out_enabled=False,
-            ),
+            params=transport_params,
         )
         pipeline = runtime.pipeline_cls([transport.input(), relay_processor])
         worker = runtime.pipeline_worker_cls(

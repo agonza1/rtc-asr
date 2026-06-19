@@ -144,17 +144,20 @@ dd {
 }
 
 .source-option,
-.file-picker {
+.file-picker,
+.toggle-option {
   display: grid;
   gap: 0.35rem;
 }
 
 .source-option + .source-option,
-.file-picker {
+.file-picker,
+.toggle-option {
   margin-top: 0.65rem;
 }
 
-.source-option input {
+.source-option input,
+.toggle-option input {
   margin-right: 0.45rem;
 }
 

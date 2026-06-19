@@ -89,7 +89,7 @@ def test_demo_page_serves_static_app() -> None:
     assert "ASR rollover" in response.text
     assert "/rtc-asr/assets/app.js" in response.text
     assert "/rtc-asr/manifest.webmanifest" in response.text
-    assert "Install app" in response.text
+    assert "Use \"Silero VAD + Smart Turn\" mode" in response.text
     assert '<ul id="final-log" class="log-list final-log"></ul>' in response.text
     assert '<ul id="event-log" class="log-list event-log" aria-live="polite"></ul>' in response.text
 
@@ -141,6 +141,7 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
         "rtc_asr_max_utterance_seconds": 24.0,
         "bridge_status": "dependency_missing",
         "can_start_session": False,
+        "default_use_smart_turn": True,
         "dependency_message": "Install the demo WebRTC extras with "
         "`pip install -r examples/browser_pipecat_demo/requirements.txt` "
         "to enable Pipecat SmallWebRTC.",
@@ -176,7 +177,7 @@ def test_offer_returns_structured_dependency_response(monkeypatch: pytest.Monkey
     monkeypatch.setattr(app_module, "bridge", fake_bridge)
     client = TestClient(app_module.app)
 
-    response = client.post("/rtc-asr/offer", json={"type": "offer", "sdp": "v=0"})
+    response = client.post("/rtc-asr/offer", json={"type": "offer", "sdp": "v=0", "use_smart_turn": False})
 
     assert response.status_code == 501
     assert response.json() == {
@@ -198,16 +199,30 @@ def test_offer_returns_answer_with_fake_pipecat_handler(monkeypatch: pytest.Monk
     monkeypatch.setattr(app_module, "bridge", fake_bridge)
     client = TestClient(app_module.app)
 
-    response = client.post("/rtc-asr/offer", json={"type": "offer", "sdp": "v=0"})
+    response = client.post(
+        "/rtc-asr/offer",
+        json={
+            "type": "offer",
+            "sdp": "v=0",
+            "use_smart_turn": True,
+            "request_data": {"demo_audio_source": "mic"},
+        },
+    )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "session_id": response.json()["session_id"],
+    payload = response.json()
+    assert payload == {
+        "session_id": payload["session_id"],
         "type": "answer",
         "sdp": "v=0\r\nfake-answer",
         "state": "connected",
         "pc_id": "pc_fake",
     }
+
+    session = fake_bridge.get_session(payload["session_id"])
+    assert session is not None
+    assert session.metadata["use_smart_turn_requested"] == "true"
+    assert session.metadata["smart_turn_mode"] == "requested"
 
 
 @pytest.mark.anyio

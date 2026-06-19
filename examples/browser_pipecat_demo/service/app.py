@@ -24,6 +24,10 @@ class OfferRequest(BaseModel):
     pc_id: str | None = Field(None, description="Existing Pipecat peer connection id.")
     restart_pc: bool | None = Field(None, description="Whether Pipecat should restart the peer connection.")
     request_data: dict[str, Any] | None = Field(None, description="Optional caller metadata.")
+    use_smart_turn: bool = Field(
+        True,
+        description='Whether to request Pipecat "Silero VAD + Smart Turn" mode for this session.',
+    )
 
     @field_validator("type")
     @classmethod
@@ -80,6 +84,7 @@ async def create_offer(request: OfferRequest) -> OfferResponse:
             pc_id=request.pc_id,
             restart_pc=request.restart_pc,
             request_data=request.request_data,
+            use_smart_turn=request.use_smart_turn,
         )
     except BridgeUnavailableError as exc:
         logger.info("browser_pipecat_demo_bridge_unavailable")

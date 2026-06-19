@@ -16,6 +16,8 @@ const elements = {
   sourceFile: document.querySelector("#source-file"),
   audioFileInput: document.querySelector("#audio-file-input"),
   sourceHelp: document.querySelector("#source-help"),
+  smartTurnInput: document.querySelector("#smart-turn-input"),
+  smartTurnHelp: document.querySelector("#smart-turn-help"),
 };
 
 const state = {
@@ -31,6 +33,7 @@ const state = {
   audioElement: null,
   audioObjectUrl: null,
   deferredInstallPrompt: null,
+  serviceConfig: null,
 };
 
 function setText(node, value) {
@@ -124,6 +127,10 @@ function selectedAudioFile() {
   return elements.audioFileInput.files?.[0] || null;
 }
 
+function useSmartTurnMode() {
+  return Boolean(elements.smartTurnInput?.checked);
+}
+
 function updateSourceHelp() {
   if (currentSourceMode() === "file") {
     const file = selectedAudioFile();
@@ -142,6 +149,17 @@ function updateSourceHelp() {
   );
 }
 
+function updateSmartTurnHelp() {
+  const enabled = useSmartTurnMode();
+  const configuredDefault = state.serviceConfig?.default_use_smart_turn !== false;
+  setText(
+    elements.smartTurnHelp,
+    enabled
+      ? `Pipecat Smart Turn mode is enabled for the next session${configuredDefault ? " (recommended default)." : "."}`
+      : "Pipecat Smart Turn mode is disabled for the next session. The relay will use the plain browser-to-ASR bridge path."
+  );
+}
+
 function renderControls() {
   const hasSourceFile = Boolean(selectedAudioFile());
   const sourceMode = currentSourceMode();
@@ -150,6 +168,7 @@ function renderControls() {
   elements.audioFileInput.disabled = sourceMode !== "file" || state.isStarting || isStreaming;
   elements.sourceMic.disabled = state.isStarting || isStreaming;
   elements.sourceFile.disabled = state.isStarting || isStreaming;
+  elements.smartTurnInput.disabled = state.isStarting || isStreaming;
   elements.startButton.disabled =
     state.isStarting ||
     isStreaming ||
@@ -158,6 +177,7 @@ function renderControls() {
   elements.stopButton.disabled = !isStreaming;
   elements.startButton.textContent = sourceMode === "file" ? "Start file stream" : "Start mic";
   updateSourceHelp();
+  updateSmartTurnHelp();
 }
 
 function hasWebRTCSupport() {
@@ -354,12 +374,14 @@ async function loadConfig() {
       throw new Error(`Config request failed with ${response.status}`);
     }
     const config = await response.json();
+    state.serviceConfig = config;
     setText(elements.serviceStatus, "reachable");
     setText(elements.bridgeStatus, config.bridge_status);
     setText(elements.asrTarget, config.rtc_asr_ws_url);
     setText(elements.asrRollover, `${config.rtc_asr_max_utterance_seconds}s max utterance`);
     state.canStartSession = Boolean(config.can_start_session);
     state.dependencyMessage = config.dependency_message || "";
+    elements.smartTurnInput.checked = config.default_use_smart_turn !== false;
     if (!state.canStartSession) {
       setText(elements.webrtcStatus, "blocked");
       showError(state.dependencyMessage || "The Pipecat bridge is not ready yet.");
@@ -421,12 +443,18 @@ async function startDemo() {
     }
 
     setText(elements.webrtcStatus, "signaling");
+    logEvent(`Starting ${useSmartTurnMode() ? "Pipecat Smart Turn" : "plain relay"} session.`);
     const response = await fetch("/rtc-asr/offer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: localDescription.type,
         sdp: localDescription.sdp,
+        use_smart_turn: useSmartTurnMode(),
+        request_data: {
+          demo_audio_source: currentSourceMode(),
+          smart_turn_label: useSmartTurnMode() ? "silero-vad-smart-turn" : "plain-relay",
+        },
       }),
     });
     const payload = await response.json();
@@ -550,6 +578,7 @@ elements.stopButton.addEventListener("click", stopDemo);
 elements.installButton.addEventListener("click", promptInstall);
 elements.sourceMic.addEventListener("change", renderControls);
 elements.sourceFile.addEventListener("change", renderControls);
+elements.smartTurnInput.addEventListener("change", renderControls);
 elements.audioFileInput.addEventListener("change", () => {
   clearError();
   renderControls();

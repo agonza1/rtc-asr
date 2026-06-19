@@ -69,6 +69,13 @@
               Use a microphone for live speech or upload a clip to stream real-time browser audio over WebRTC.
             </p>
           </fieldset>
+          <label class="toggle-option" for="smart-turn-input">
+            <input id="smart-turn-input" type="checkbox" checked>
+            <span>Use "Silero VAD + Smart Turn" mode</span>
+          </label>
+          <p id="smart-turn-help" class="source-help">
+            When enabled, the demo asks Pipecat to apply its local Silero VAD and Smart Turn analyzers for this session.
+          </p>
           <div class="actions">
             <button id="start-button" type="button">Start stream</button>
             <button id="stop-button" type="button" disabled>Stop</button>
