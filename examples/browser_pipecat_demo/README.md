@@ -2,6 +2,8 @@
 
 This example is a local browser-to-ASR proof of concept for the `rtc-asr` RTC edge pattern:
 
+<img width="640" height="360" alt="transcription_clip" src="https://github.com/user-attachments/assets/1b334f26-50c7-44c2-9b93-7a165e726ec6" />
+
 ```text
 Browser microphone
   -> native browser WebRTC
