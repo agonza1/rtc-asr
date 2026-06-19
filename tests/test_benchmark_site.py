@@ -330,6 +330,14 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'Recommended default' in html
     assert 'Primary ranking scope' in html
     assert 'Best live numbers' in html
+    assert 'Registry coverage' in html
+    assert 'of 8 validated' in html
+    assert 'tracked lanes are blocked or unpublished' in html
+    assert 'Registry gaps' in html
+    assert 'Tracked lanes that still need launch-ready proof' in html
+    assert 'Pipecat E2E Faster-Whisper Base' in html
+    assert 'make benchmark-pipecat-e2e' in html
+    assert 'Artifact checked in but excluded from public ranking' in html
     assert 'data-label="Partial backlog latency"' in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html

@@ -138,6 +138,14 @@ def secondary_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [entry for entry in sort_entries(entries) if entry.get("slug") not in primary_slugs]
 
 
+def registry_gap_entries(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        track
+        for track in manifest.get("tracks", [])
+        if track.get("status") == "blocked" or not track.get("artifact_path")
+    ]
+
+
 def median(values: list[float | None]) -> float | None:
     defined = sorted(value for value in values if value is not None)
     if not defined:
@@ -507,6 +515,20 @@ def render_secondary_row(entry: dict[str, Any]) -> str:
     )
 
 
+def render_registry_gap_row(entry: dict[str, Any]) -> str:
+    artifact_path = entry.get("artifact_path")
+    artifact_text = "Artifact checked in but excluded from public ranking" if artifact_path else "No publishable artifact yet"
+    return "".join(
+        [
+            "<tr>",
+            f'<td data-label="Lane" class="leader-name"><strong>{html.escape(entry.get("label") or "unknown")}</strong><span>{html.escape(entry.get("backend") or "unknown")} . {html.escape(entry.get("model") or "unknown")}</span><div class="table-note">{html.escape(entry.get("lane") or "unknown")} . {html.escape(entry.get("runtime") or "unknown")}</div></td>',
+            f'<td data-label="Registry state"><span class="status status-{html.escape(entry.get("status") or "unknown")}">{html.escape(entry.get("status") or "unknown")}</span><div class="tiny">{html.escape(artifact_text)}</div></td>',
+            f'<td data-label="Next proof"><strong>{html.escape(entry.get("run_command") or "No checked-in command")}</strong><div class="tiny">{html.escape(entry.get("status_detail") or "No registry detail recorded.")}</div></td>',
+            "</tr>",
+        ]
+    )
+
+
 def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     summary = manifest.get("summary", {})
     entries = published_tracks(manifest)
@@ -544,6 +566,9 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
     )
+    summary_cards.append(
+        f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Registry coverage</div><div class="headline-value">{summary.get("validated_count", 0)} of {summary.get("tracked_count", 0)} validated</div><p>{summary.get("blocked_count", 0)} tracked lanes are blocked or unpublished, so reviewers can separate launch-ready evidence from backlog work.</p></article>'
+    )
     top_cards = "".join(
         f'<article class="story-card panel {tone_class(index)}"><div class="section-kicker">Rank {index + 1}</div><div class="story-rank">{html.escape(entry.get("label") or "unknown")}</div><div class="chip-row"><div class="chip"><strong>{html.escape(entry.get("runtime") or "unknown")}</strong> runtime</div><div class="chip"><strong>{html.escape(entry.get("lane") or "unknown")}</strong> lane</div></div><p>{html.escape(entry.get("status_detail") or "")}</p></article>'
         for index, entry in enumerate(primary[:3])
@@ -553,6 +578,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
         for entry in primary
     )
     secondary_rows = "".join(render_secondary_row(entry) for entry in secondary)
+    registry_gap_rows = "".join(render_registry_gap_row(entry) for entry in registry_gap_entries(manifest))
     secondary_section = ""
     if secondary_rows:
         secondary_section = f"""
@@ -603,6 +629,27 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
   </div>
 </div>
 {secondary_section}
+{f'''
+<div class="comparison-wrap panel" style="margin-top: 16px;">
+  <div class="section-head">
+    <div>
+      <div class="section-kicker">Registry gaps</div>
+      <h2>Tracked lanes that still need launch-ready proof</h2>
+    </div>
+    <p class="subcopy">These entries stay visible as backlog evidence without entering the public ranking until their artifact coverage is comparable.</p>
+  </div>
+  <div class="comparison-scroll">
+    <table>
+      <thead>
+        <tr><th>Lane</th><th>Registry state</th><th>Next proof</th></tr>
+      </thead>
+      <tbody>
+{registry_gap_rows}
+      </tbody>
+    </table>
+  </div>
+</div>
+''' if registry_gap_rows else ''}
 """.strip()
     generated_at = html.escape(
         f"Published {format_date(manifest.get('generated_at'))} . {len(entries)} visible ASR lanes . {summary.get('tracked_count', 0)} tracked lanes in the registry."
