@@ -102,6 +102,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "time_to_first_interim_ms",
         "time_to_final_after_finalize_ms",
         "audio_send_queue_depth_p95_ms",
+        "audio_send_latency_p95_ms",
         "asr_receive_loop_append_p95_ms",
         "asr_queue_delay_p95_ms",
         "asr_decode_p95_ms",
@@ -188,6 +189,7 @@ async def _run_once(
     final_transcript: str | None = None
     protocol_errors = 0
     reconnects = 0
+    send_latencies: list[float] = []
     receive_latencies: list[float] = []
 
     await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
@@ -226,7 +228,9 @@ async def _run_once(
         for frame in audio.frames:
             if first_audio_sent_at is None:
                 first_audio_sent_at = time.perf_counter()
+            send_started = time.perf_counter()
             await client.send_audio(frame)
+            send_latencies.append((time.perf_counter() - send_started) * 1000)
             frames_sent += 1
             if realtime_pace:
                 await asyncio.sleep(audio.frame_ms / 1000)
@@ -242,12 +246,14 @@ async def _run_once(
         await receive_task
         await client.close(graceful=False)
 
+    send_p95 = percentile(send_latencies, 0.95)
     receive_p95 = percentile(receive_latencies, 0.95)
     return {
         "index": index,
         "time_to_first_interim_ms": _rounded_or_none(first_interim_ms),
         "time_to_final_after_finalize_ms": _rounded_or_none(final_after_finalize_ms),
         "audio_send_queue_depth_p95_ms": None,
+        "audio_send_latency_p95_ms": send_p95,
         "asr_receive_loop_append_p95_ms": receive_p95,
         "asr_queue_delay_p95_ms": None,
         "asr_decode_p95_ms": None,

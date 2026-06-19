@@ -129,10 +129,12 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["time_to_first_interim_ms"] is not None
     assert sample["time_to_final_after_finalize_ms"] is not None
     assert sample["audio_send_queue_depth_p95_ms"] is None
+    assert sample["audio_send_latency_p95_ms"] is not None
     assert sample["asr_queue_delay_p95_ms"] is None
     assert sample["asr_decode_p95_ms"] is None
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
+    assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
 
 
 def test_receive_latency_ignores_empty_poll_timeouts() -> None:
