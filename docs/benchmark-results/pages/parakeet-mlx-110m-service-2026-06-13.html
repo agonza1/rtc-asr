@@ -12,6 +12,12 @@
       "description": "Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.",
       "datePublished": "2026-06-13T22:55:30Z",
       "measurementTechnique": "REST and buffered websocket ASR latency benchmark",
+      "variableMeasured": [
+            "first visible partial latency",
+            "partial backlog latency",
+            "audio-end finalization latency",
+            "REST throughput latency"
+      ],
       "isPartOf": {
             "@type": "Dataset",
             "name": "rtc-asr benchmark results",
@@ -66,7 +72,7 @@
         <article class="card"><span class="label">Partial backlog latency</span><div class="value">74.5 ms</div><p>Diagnostic chunk-response delay. Gap 244.2 ms · Late ratio n/a</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">210.6 ms</div><p>P95 246.3 ms</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">141.9 ms</div><p>P95 170.0 ms · RTF 0.019</p></article>
-        <article class="card"><span class="label">Buffered contract</span><div class="value">250 ms chunks</div><p>Window 2.0 s · Interval 1 · Binary False</p></article>
+        <article class="card"><span class="label">Buffered contract</span><div class="value">250 ms chunks</div><p>Window 2.0 s · Interval 1 · Sample rate 22050 Hz · Binary False</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>make benchmark-parakeet-mlx-service-110m</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
         <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>32726e579cf7</code></div><p>SHA-256 32726e579cf7cf219b3633596b5b4275b9c6a5be058cbe86546c7b37ee31848e</p><p>Size 44.9 KB</p></article>

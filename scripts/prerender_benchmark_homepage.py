@@ -285,6 +285,12 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "description": entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact.",
         "datePublished": entry.get("measured_at"),
         "measurementTechnique": "REST and buffered websocket ASR latency benchmark",
+        "variableMeasured": [
+            "first visible partial latency",
+            "partial backlog latency",
+            "audio-end finalization latency",
+            "REST throughput latency",
+        ],
         "isPartOf": {
             "@type": "Dataset",
             "name": "rtc-asr benchmark results",
@@ -366,7 +372,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Partial backlog latency</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Diagnostic chunk-response delay. Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
-        <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
+        <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Sample rate {contract.get("sample_rate") or 'n/a'} Hz · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">{html.escape(official_wer_reference or 'No external WER reference')}</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
         <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p><p>Size {format_bytes(artifact_size_bytes)}</p></article>

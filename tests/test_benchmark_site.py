@@ -468,7 +468,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'status_detail': 'Demo artifact.',
         'rest': {'mean_ms': 42.0, 'p95_ms': 55.0, 'rtf_mean': 0.2},
         'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
-        'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'binary_frames': False},
+        'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'sample_rate': 16000, 'binary_frames': False},
         'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
         'official_wer_reference': '3.1 / 7.2 Demo clean / other',
         'run_command': 'make benchmark-demo',
@@ -498,10 +498,13 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
     assert 'Thermal 63.5 C' in detail_html
+    assert 'Sample rate 16000 Hz' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html
     assert 'make benchmark-demo' in detail_html
     assert '1234567890abcdef' in detail_html
     assert '"contentSize": 1536' in detail_html
+    assert '"variableMeasured": [' in detail_html
+    assert '"audio-end finalization latency"' in detail_html
     assert '"contentUrl": "../demo-artifact-2026-06-14.json"' in detail_html
     assert 'Size 1.5 KB' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
