@@ -107,20 +107,47 @@ def test_describe_environment_records_host_capacity(monkeypatch) -> None:
     assert payload["python"]
 
 
-def test_normalize_pcm16_frame_reports_float32_samples() -> None:
-    samples = benchmark_module.normalize_pcm16_frame(b"\x00\x00\x00@")
+def test_normalize_pcm16_buffer_reports_float32_samples() -> None:
+    samples = benchmark_module.normalize_pcm16_buffer(b"\x00\x00\x00@")
 
     assert samples.dtype.name == "float32"
     assert samples.tolist() == [0.0, 0.5]
 
 
-def test_normalize_pcm16_frame_rejects_odd_byte_frames() -> None:
+def test_normalize_pcm16_buffer_rejects_odd_byte_buffers() -> None:
     try:
-        benchmark_module.normalize_pcm16_frame(b"x")
+        benchmark_module.normalize_pcm16_buffer(b"x")
     except ValueError as exc:
         assert "even number of bytes" in str(exc)
     else:
-        raise AssertionError("expected odd-byte PCM16 frame to fail")
+        raise AssertionError("expected odd-byte PCM16 buffer to fail")
+
+
+def test_iter_server_decode_buffers_matches_accumulated_partial_and_final_audio() -> None:
+    frames = [b"a" * 640, b"b" * 640, b"c" * 640, b"d" * 640, b"e" * 640, b"f" * 640]
+
+    buffers = benchmark_module.iter_server_decode_buffers(frames, frame_ms=20, partial_interval_ms=100)
+
+    assert buffers == [b"".join(frames[:5]), b"".join(frames)]
+
+
+def test_measure_pcm16_normalization_uses_server_decode_buffers(monkeypatch) -> None:
+    normalized_lengths: list[int] = []
+
+    def fake_normalize(audio_data: bytes):
+        normalized_lengths.append(len(audio_data))
+        return []
+
+    monkeypatch.setattr(benchmark_module, "normalize_pcm16_buffer", fake_normalize)
+
+    latencies = benchmark_module.measure_pcm16_normalization_latencies(
+        [b"a" * 640, b"b" * 640, b"c" * 640],
+        frame_ms=20,
+        partial_interval_ms=40,
+    )
+
+    assert len(latencies) == 2
+    assert normalized_lengths == [1280, 1920]
 
 
 def test_run_benchmark_records_required_latency_metrics() -> None:

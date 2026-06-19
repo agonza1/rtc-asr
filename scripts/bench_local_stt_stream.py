@@ -212,7 +212,11 @@ async def _run_once(
     receive_latencies: list[float] = []
     audio_send_started_at: float | None = None
     audio_send_completed_at: float | None = None
-    pcm16_normalization_latencies = measure_pcm16_normalization_latencies(audio.frames)
+    pcm16_normalization_latencies = measure_pcm16_normalization_latencies(
+        audio.frames,
+        frame_ms=audio.frame_ms,
+        partial_interval_ms=partial_interval_ms,
+    )
 
     await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
     receive_done = asyncio.Event()
@@ -301,17 +305,37 @@ async def _run_once(
     }
 
 
-def normalize_pcm16_frame(frame: bytes) -> np.ndarray:
-    if len(frame) % 2 != 0:
-        raise ValueError("Raw PCM16 frames must contain an even number of bytes")
-    return np.frombuffer(frame, dtype="<i2").astype(np.float32) / 32768.0
+def normalize_pcm16_buffer(audio_data: bytes) -> np.ndarray:
+    if len(audio_data) % 2 != 0:
+        raise ValueError("Raw PCM16 audio must contain an even number of bytes")
+    return np.frombuffer(audio_data, dtype="<i2").astype(np.float32) / 32768.0
 
 
-def measure_pcm16_normalization_latencies(frames: list[bytes]) -> list[float]:
-    latencies = []
+def iter_server_decode_buffers(frames: list[bytes], *, frame_ms: int, partial_interval_ms: int) -> list[bytes]:
+    if not frames:
+        return []
+
+    buffers: list[bytes] = []
+    accumulated = bytearray()
+    partial_elapsed_ms = 0
     for frame in frames:
+        accumulated.extend(frame)
+        partial_elapsed_ms += frame_ms
+        if partial_elapsed_ms >= partial_interval_ms:
+            buffers.append(bytes(accumulated))
+            partial_elapsed_ms = 0
+
+    final_buffer = bytes(accumulated)
+    if not buffers or buffers[-1] != final_buffer:
+        buffers.append(final_buffer)
+    return buffers
+
+
+def measure_pcm16_normalization_latencies(frames: list[bytes], *, frame_ms: int, partial_interval_ms: int) -> list[float]:
+    latencies = []
+    for audio_data in iter_server_decode_buffers(frames, frame_ms=frame_ms, partial_interval_ms=partial_interval_ms):
         started_at = time.perf_counter()
-        normalize_pcm16_frame(frame)
+        normalize_pcm16_buffer(audio_data)
         latencies.append((time.perf_counter() - started_at) * 1000)
     return latencies
 
