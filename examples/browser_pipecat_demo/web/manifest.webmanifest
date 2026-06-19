@@ -1,0 +1,29 @@
+{
+  "id": "/rtc-asr",
+  "name": "rtc-asr Browser Pipecat Demo",
+  "short_name": "rtc-asr Demo",
+  "description": "Installable local demo shell for the rtc-asr browser-to-Pipecat bridge.",
+  "start_url": "/rtc-asr",
+  "scope": "/rtc-asr",
+  "display": "standalone",
+  "background_color": "#f7f8fb",
+  "theme_color": "#0d766e",
+  "icons": [
+    {
+      "src": "/rtc-asr/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/rtc-asr/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/rtc-asr/assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

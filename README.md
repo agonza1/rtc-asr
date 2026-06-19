@@ -16,7 +16,7 @@ The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parake
 - `ws://.../ws/stream` for buffered websocket transcription with `ready`, `partial`, `final`, `canceled`, and `error` events
 - `ws://.../v1/stt/stream` for Local STT v1 JSON-control plus binary-PCM websocket streaming
 - Shared client helpers in `src/rtc_client.py` and `src/streaming.py`
-- A browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr` when you start the compose stack
+- A browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr` when you start the compose stack, now installable locally as a PWA shell
 
 ## Quick Start
 
@@ -45,7 +45,7 @@ docker compose ps
 docker compose logs -f
 ```
 
-That compose stack now starts both the main ASR service on `http://127.0.0.1:8080` and the browser Pipecat demo on `http://127.0.0.1:8090/rtc-asr`.
+That compose stack now starts both the main ASR service on `http://127.0.0.1:8080` and the browser Pipecat demo on `http://127.0.0.1:8090/rtc-asr`. On a supported browser, the demo can be installed locally as a PWA shell while still talking to the running backend services.
 
 ## Best Low-Power Quick Start
 

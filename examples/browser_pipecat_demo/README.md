@@ -15,7 +15,7 @@ The browser stays dependency-free. It owns microphone permission, native `RTCPee
 
 ## Current Scope
 
-- Serves a static single-page app at `GET /rtc-asr`
+- Serves an installable static single-page app at `GET /rtc-asr` with a local PWA shell
 - Uses native browser APIs: `getUserMedia`, `RTCPeerConnection`, `RTCDataChannel`, and browser-managed audio playback for repeatable file streaming
 - Posts a browser SDP offer to `POST /rtc-asr/offer`
 - Uses Pipecat's SmallWebRTC transport when `pipecat-ai[webrtc]` is installed
@@ -43,7 +43,7 @@ make start
 open http://127.0.0.1:8090/rtc-asr
 ```
 
-That compose stack starts the main `rtc-asr` service on `127.0.0.1:8080` and the browser Pipecat demo on `127.0.0.1:8090`. Use the manual Python flow below only when you want to iterate on the demo service itself outside Docker.
+That compose stack starts the main `rtc-asr` service on `127.0.0.1:8080` and the browser Pipecat demo on `127.0.0.1:8090`. The demo can then be installed locally from a supported browser as a PWA shell. Use the manual Python flow below only when you want to iterate on the demo service itself outside Docker.
 
 ## Install
 
@@ -115,7 +115,9 @@ Open:
 http://127.0.0.1:8090/rtc-asr
 ```
 
-Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, then click **Start mic** or **Start file stream**. The browser will:
+Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, then click **Start mic** or **Start file stream**. If you open the page in Chrome or another supported browser on `localhost` or `127.0.0.1`, the new **Install app** button lets you pin the demo locally as a PWA shell. The installed app still depends on the running local Pipecat demo service and `rtc-asr` backend.
+
+The browser will:
 
 1. Request microphone permission or load the selected audio clip into a browser audio graph
 2. Create a native `RTCPeerConnection`

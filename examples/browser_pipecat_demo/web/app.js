@@ -6,6 +6,8 @@ const elements = {
   asrRollover: document.querySelector("#asr-rollover"),
   startButton: document.querySelector("#start-button"),
   stopButton: document.querySelector("#stop-button"),
+  installButton: document.querySelector("#install-button"),
+  installHelp: document.querySelector("#install-help"),
   errorMessage: document.querySelector("#error-message"),
   partialText: document.querySelector("#partial-text"),
   finalLog: document.querySelector("#final-log"),
@@ -28,24 +30,39 @@ const state = {
   audioContext: null,
   audioElement: null,
   audioObjectUrl: null,
+  deferredInstallPrompt: null,
 };
 
 function setText(node, value) {
   node.textContent = value;
 }
 
-function logEvent(message) {
+function createLogEntry(message) {
   const item = document.createElement("li");
-  const time = new Date().toLocaleTimeString();
-  item.textContent = `${time} - ${message}`;
-  elements.eventLog.prepend(item);
+  item.className = "log-entry";
+
+  const time = document.createElement("span");
+  time.className = "log-time";
+  time.textContent = new Date().toLocaleTimeString();
+
+  const text = document.createElement("span");
+  text.className = "log-message";
+  text.textContent = message;
+
+  item.append(time, text);
+  return item;
+}
+
+function prependLog(list, message) {
+  list.prepend(createLogEntry(message));
+}
+
+function logEvent(message) {
+  prependLog(elements.eventLog, message);
 }
 
 function appendFinalTranscript(text) {
-  const item = document.createElement("li");
-  const time = new Date().toLocaleTimeString();
-  item.textContent = text ? `${time} - ${text}` : `${time} - [final transcript event]`;
-  elements.finalLog.prepend(item);
+  prependLog(elements.finalLog, text || "[final transcript event]");
 }
 
 function showError(message) {
@@ -56,6 +73,47 @@ function showError(message) {
 function clearError() {
   elements.errorMessage.hidden = true;
   setText(elements.errorMessage, "");
+}
+
+function isStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function renderInstallControls() {
+  if (isStandaloneMode()) {
+    elements.installButton.hidden = true;
+    elements.installButton.disabled = true;
+    elements.installHelp.hidden = false;
+    setText(elements.installHelp, "Installed app is running in standalone mode. Keep the local backend running for transcription.");
+    return;
+  }
+
+  if (state.deferredInstallPrompt) {
+    elements.installButton.hidden = false;
+    elements.installButton.disabled = false;
+    elements.installHelp.hidden = false;
+    setText(elements.installHelp, "Install the demo shell locally for quicker launches. The Pipecat bridge and rtc-asr backend still need to be running.");
+    return;
+  }
+
+  elements.installButton.hidden = true;
+  elements.installButton.disabled = true;
+  elements.installHelp.hidden = false;
+  setText(elements.installHelp, "Install is available from a supported browser on localhost or HTTPS. If no button appears, use your browser's install or Add to Dock menu.");
+}
+
+async function promptInstall() {
+  if (!state.deferredInstallPrompt) {
+    renderInstallControls();
+    return;
+  }
+
+  const deferredPrompt = state.deferredInstallPrompt;
+  state.deferredInstallPrompt = null;
+  deferredPrompt.prompt();
+  const outcome = await deferredPrompt.userChoice;
+  logEvent(`Install prompt ${outcome.outcome}.`);
+  renderInstallControls();
 }
 
 function currentSourceMode() {
@@ -461,8 +519,35 @@ function stopDemo(preserveError = false) {
   renderControls();
 }
 
+async function registerPwaShell() {
+  renderInstallControls();
+
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  try {
+    await navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" });
+  } catch (error) {
+    logEvent(`Service worker registration failed: ${error.message}`);
+  }
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  state.deferredInstallPrompt = event;
+  renderInstallControls();
+});
+
+window.addEventListener("appinstalled", () => {
+  state.deferredInstallPrompt = null;
+  renderInstallControls();
+  logEvent("Installed the demo app shell.");
+});
+
 elements.startButton.addEventListener("click", startDemo);
 elements.stopButton.addEventListener("click", stopDemo);
+elements.installButton.addEventListener("click", promptInstall);
 elements.sourceMic.addEventListener("change", renderControls);
 elements.sourceFile.addEventListener("change", renderControls);
 elements.audioFileInput.addEventListener("change", () => {
@@ -477,4 +562,6 @@ if (!hasWebRTCSupport()) {
 }
 
 renderControls();
+renderInstallControls();
+registerPwaShell();
 loadConfig();

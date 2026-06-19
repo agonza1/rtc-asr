@@ -51,6 +51,20 @@ async def demo_page() -> FileResponse:
     return FileResponse(WEB_DIR / "index.html")
 
 
+@app.get("/rtc-asr/manifest.webmanifest", include_in_schema=False)
+async def demo_manifest() -> FileResponse:
+    return FileResponse(WEB_DIR / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/rtc-asr/sw.js", include_in_schema=False)
+async def demo_service_worker() -> FileResponse:
+    return FileResponse(
+        WEB_DIR / "sw.js",
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/rtc-asr"},
+    )
+
+
 @app.get("/rtc-asr/config")
 async def demo_config() -> dict[str, object]:
     return bridge.config()

@@ -88,6 +88,32 @@ def test_demo_page_serves_static_app() -> None:
     assert "Uploaded audio file" in response.text
     assert "ASR rollover" in response.text
     assert "/rtc-asr/assets/app.js" in response.text
+    assert "/rtc-asr/manifest.webmanifest" in response.text
+    assert "Install app" in response.text
+    assert '<ul id="final-log" class="log-list final-log"></ul>' in response.text
+    assert '<ul id="event-log" class="log-list event-log" aria-live="polite"></ul>' in response.text
+
+
+def test_demo_manifest_and_service_worker_are_served() -> None:
+    client = TestClient(app)
+
+    manifest_response = client.get("/rtc-asr/manifest.webmanifest")
+    service_worker_response = client.get("/rtc-asr/sw.js")
+
+    assert manifest_response.status_code == 200
+    assert manifest_response.headers["content-type"].startswith("application/manifest+json")
+    assert '"display": "standalone"' in manifest_response.text
+    assert '"src": "/rtc-asr/assets/icons/icon-512.png"' in manifest_response.text
+
+    assert service_worker_response.status_code == 200
+    assert service_worker_response.headers["service-worker-allowed"] == "/rtc-asr"
+    assert 'const CACHE_NAME = "rtc-asr-demo-shell-v1";' in service_worker_response.text
+    assert '"/rtc-asr/assets/icons/apple-touch-icon.png"' in service_worker_response.text
+
+    app_js_response = client.get("/rtc-asr/assets/app.js")
+
+    assert app_js_response.status_code == 200
+    assert 'navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" })' in app_js_response.text
 
 
 def missing_runtime_loader() -> PipecatRuntime:
