@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">rtc-asr Demo Icon</title>
+  <desc id="desc">Rounded square with waveform bars and a transcript bubble.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#0d766e"/>
+      <stop offset="100%" stop-color="#152033"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="88" y="116" width="336" height="280" rx="48" fill="#ffffff" opacity="0.96"/>
+  <path d="M164 396l58-48h142c26.51 0 48-21.49 48-48V164c0-26.51-21.49-48-48-48H148c-26.51 0-48 21.49-48 48v136c0 26.51 21.49 48 48 48h16v48z" fill="#ffffff" opacity="0.96"/>
+  <rect x="144" y="188" width="28" height="88" rx="14" fill="#0d766e"/>
+  <rect x="194" y="162" width="28" height="140" rx="14" fill="#0d766e"/>
+  <rect x="244" y="142" width="28" height="180" rx="14" fill="#0d766e"/>
+  <rect x="294" y="170" width="28" height="124" rx="14" fill="#0d766e"/>
+  <rect x="344" y="202" width="28" height="60" rx="14" fill="#0d766e"/>
+  <rect x="164" y="344" width="168" height="18" rx="9" fill="#d8deea"/>
+  <rect x="164" y="376" width="108" height="18" rx="9" fill="#d8deea"/>
+</svg>

@@ -15,11 +15,12 @@ The browser stays dependency-free. It owns microphone permission, native `RTCPee
 
 ## Current Scope
 
-- Serves a static single-page app at `GET /rtc-asr`
+- Serves an installable static single-page app at `GET /rtc-asr` with a local PWA shell
 - Uses native browser APIs: `getUserMedia`, `RTCPeerConnection`, `RTCDataChannel`, and browser-managed audio playback for repeatable file streaming
 - Posts a browser SDP offer to `POST /rtc-asr/offer`
 - Uses Pipecat's SmallWebRTC transport when `pipecat-ai[webrtc]` is installed
 - Relays decoded PCM to `rtc-asr` over `/v1/stt/stream` in configurable low-latency chunks
+- Displays the demo's intended ASR backend/model and sends the selected model option with each session
 - Sends partial, final, status, and error messages back to the browser over the data channel
 - Returns a structured dependency error when the optional Pipecat WebRTC runtime is not installed
 
@@ -36,14 +37,26 @@ Most browsers block `getUserMedia` on plain HTTP remote hosts. Use `127.0.0.1`, 
 
 ## Fastest Local Path
 
-From the repository root, the simplest end-to-end setup is now:
+From the repository root, start the main `rtc-asr` backend in one terminal:
 
 ```bash
-make start
+make dev
+```
+
+Then run the browser Pipecat demo service in another terminal:
+
+```bash
+. .venv/bin/activate
+uvicorn examples.browser_pipecat_demo.service.app:app --host 127.0.0.1 --port 8090
+```
+
+Open:
+
+```bash
 open http://127.0.0.1:8090/rtc-asr
 ```
 
-That compose stack starts the main `rtc-asr` service on `127.0.0.1:8080` and the browser Pipecat demo on `127.0.0.1:8090`. Use the manual Python flow below only when you want to iterate on the demo service itself outside Docker.
+The demo can then be installed locally from a supported browser as a PWA shell. `make start` only starts the main `rtc-asr` backend compose service today; keep the demo service on the explicit `uvicorn` command until a compose-managed Pipecat demo service is added.
 
 ## Install
 
@@ -69,7 +82,8 @@ That example requirements file includes `pipecat-ai[webrtc]`. The dependency is 
 | --- | --- | --- |
 | `RTC_ASR_WS_URL` | `ws://127.0.0.1:8080/v1/stt/stream` | `rtc-asr` websocket target for transcript streaming |
 | `RTC_ASR_CHUNK_MS` | `100` | PCM batch duration sent to `rtc-asr`; must be between `80` and `160` |
-| `RTC_ASR_MAX_UTTERANCE_SECONDS` | `24` | Demo-side rollover guard for long continuous speech so one Local STT stream does not hit the default 1 MiB server buffer cap |
+| `RTC_ASR_MODEL_OPTION` | `faster-whisper-base.en-int8` | Demo dropdown default. Options include `faster-whisper-base.en-int8`, `parakeet-mlx-110m`, `parakeet-nemo-110m`, `parakeet-v3`, and `qwen3-asr-0.6b` |
+| `RTC_ASR_MAX_BUFFER_SECONDS` | `12` | Caps one Local STT utterance before rollover so long continuous speech does not hit the backend buffer ceiling |
 | `PIPECAT_ICE_SERVERS` | unset | Reserved for future STUN/TURN configuration; local `127.0.0.1` testing usually does not need it |
 
 Example:
@@ -77,20 +91,13 @@ Example:
 ```bash
 export RTC_ASR_WS_URL="ws://127.0.0.1:8080/v1/stt/stream"
 export RTC_ASR_CHUNK_MS="100"
-export RTC_ASR_MAX_UTTERANCE_SECONDS="24"
+export RTC_ASR_MODEL_OPTION="parakeet-mlx-110m"
+export RTC_ASR_MAX_BUFFER_SECONDS="12"
 ```
 
 ## Run the Demo
 
-Recommended: use the compose stack so both services come up together:
-
-```bash
-make start
-```
-
-Open `http://127.0.0.1:8090/rtc-asr`.
-
-If you want the manual split-terminal flow instead, start the main `rtc-asr` backend in one terminal:
+Start the main `rtc-asr` backend in one terminal:
 
 ```bash
 make dev
@@ -115,7 +122,9 @@ Open:
 http://127.0.0.1:8090/rtc-asr
 ```
 
-Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, then click **Start mic** or **Start file stream**. The browser will:
+Choose *Live microphone* for spoken input or *Uploaded audio file* for repeatable browser-side playback, choose the ASR model option that matches the `rtc-asr` backend you started, then click **Start mic** or **Start file stream**. The demo now rolls long continuous speech after about 12 seconds by default so one Local STT utterance does not overrun the backend buffer cap. You can install the demo locally from the browser's install menu or Add to Dock flow. The dropdown is session metadata for the demo bridge; start the separate `rtc-asr` backend with the matching `ASR_BACKEND` and model environment when you want to change the real runtime model.
+
+The browser will:
 
 1. Request microphone permission or load the selected audio clip into a browser audio graph
 2. Create a native `RTCPeerConnection`
@@ -136,10 +145,6 @@ Install the example requirements:
 ```bash
 pip install -r examples/browser_pipecat_demo/requirements.txt
 ```
-
-### Long microphone session eventually errors or stops updating
-
-The demo now rolls the Local STT stream before the default server buffer cap, but continuous speech is still segmented into multiple ASR utterances. If you want longer segments while testing, raise `RTC_ASR_MAX_UTTERANCE_SECONDS` and keep it below the server-side buffer limit for your sample rate.
 
 ### Bridge connects, but no transcript appears
 

@@ -144,18 +144,38 @@ dd {
 }
 
 .source-option,
-.file-picker {
+.file-picker,
+.select-option,
+.toggle-option {
   display: grid;
   gap: 0.35rem;
 }
 
 .source-option + .source-option,
-.file-picker {
+.file-picker,
+.select-option,
+.toggle-option {
   margin-top: 0.65rem;
 }
 
-.source-option input {
+.source-option input,
+.toggle-option input {
   margin-right: 0.45rem;
+}
+
+.select-option select {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  padding: 0.65rem 0.75rem;
+}
+
+.select-option select:disabled {
+  background: #f1f4f9;
+  color: #7a879a;
 }
 
 .file-picker input[type="file"] {
@@ -212,6 +232,24 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.secondary-button {
+  border-color: var(--line);
+  background: #fff;
+  color: var(--text);
+}
+
+.secondary-button:hover {
+  border-color: var(--accent);
+  background: #edf8f6;
+  color: var(--accent-dark);
+}
+
+.install-help {
+  margin: 0.85rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .error {
   margin: 1rem 0 0;
   border: 1px solid #f2c5c5;
@@ -233,20 +271,48 @@ button:disabled {
   color: var(--muted);
 }
 
-.final-log,
-.event-log {
+.log-list {
   margin: 0;
-  padding-left: 1.25rem;
+  padding: 0;
+  list-style: none;
 }
 
 .event-panel {
   margin-top: 1rem;
 }
 
+.final-log,
 .event-log {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.6rem;
+}
+
+.event-log {
   color: var(--muted);
+}
+
+.log-entry {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.log-time {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: #eef3f8;
+  color: var(--muted);
+  padding: 0.1rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.log-message {
+  overflow-wrap: anywhere;
 }
 
 @media (min-width: 760px) {
@@ -262,4 +328,3 @@ button:disabled {
     font-size: 3rem;
   }
 }
-

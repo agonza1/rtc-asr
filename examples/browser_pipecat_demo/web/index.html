@@ -4,6 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>rtc-asr Browser Pipecat Demo</title>
+    <meta name="theme-color" content="#0d766e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="rtc-asr Demo">
+    <link rel="manifest" href="/rtc-asr/manifest.webmanifest">
+    <link rel="icon" href="/rtc-asr/assets/icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/rtc-asr/assets/icons/apple-touch-icon.png">
     <link rel="stylesheet" href="/rtc-asr/assets/styles.css">
   </head>
   <body>
@@ -43,6 +50,10 @@
               <dt>ASR rollover</dt>
               <dd id="asr-rollover">unknown</dd>
             </div>
+            <div>
+              <dt>ASR model</dt>
+              <dd id="asr-model-status">unknown</dd>
+            </div>
           </dl>
           <fieldset class="source-panel">
             <legend>Audio source</legend>
@@ -62,10 +73,25 @@
               Use a microphone for live speech or upload a clip to stream real-time browser audio over WebRTC.
             </p>
           </fieldset>
+          <label class="select-option" for="asr-model-select">
+            <span>ASR model</span>
+            <select id="asr-model-select"></select>
+          </label>
+          <p id="asr-model-help" class="source-help">
+            The selected model is sent with the demo session metadata. Start the rtc-asr backend with the matching ASR_BACKEND/model environment for a real runtime switch.
+          </p>
+          <label class="toggle-option" for="smart-turn-input">
+            <input id="smart-turn-input" type="checkbox" checked>
+            <span>Use "Silero VAD + Smart Turn" mode</span>
+          </label>
+          <p id="smart-turn-help" class="source-help">
+            When enabled, the demo asks Pipecat to apply its local Silero VAD and Smart Turn analyzers for this session.
+          </p>
           <div class="actions">
             <button id="start-button" type="button">Start stream</button>
             <button id="stop-button" type="button" disabled>Stop</button>
           </div>
+          <p id="install-help" class="install-help" hidden></p>
           <p id="error-message" class="error" role="alert" hidden></p>
         </section>
 
@@ -73,17 +99,16 @@
           <h2 id="transcript-title">Transcript</h2>
           <div class="transcript" aria-live="polite" aria-atomic="false">
             <p id="partial-text" class="partial">Waiting for a Pipecat bridge.</p>
-            <ol id="final-log" class="final-log"></ol>
+            <ul id="final-log" class="log-list final-log"></ul>
           </div>
         </section>
       </section>
 
       <section class="panel event-panel" aria-labelledby="event-title">
         <h2 id="event-title">Event log</h2>
-        <ol id="event-log" class="event-log" aria-live="polite"></ol>
+        <ul id="event-log" class="log-list event-log" aria-live="polite"></ul>
       </section>
     </main>
     <script src="/rtc-asr/assets/app.js" type="module"></script>
   </body>
 </html>
-

@@ -4,8 +4,12 @@ const elements = {
   bridgeStatus: document.querySelector("#bridge-status"),
   asrTarget: document.querySelector("#asr-target"),
   asrRollover: document.querySelector("#asr-rollover"),
+  asrModelStatus: document.querySelector("#asr-model-status"),
+  asrModelSelect: document.querySelector("#asr-model-select"),
+  asrModelHelp: document.querySelector("#asr-model-help"),
   startButton: document.querySelector("#start-button"),
   stopButton: document.querySelector("#stop-button"),
+  installHelp: document.querySelector("#install-help"),
   errorMessage: document.querySelector("#error-message"),
   partialText: document.querySelector("#partial-text"),
   finalLog: document.querySelector("#final-log"),
@@ -14,6 +18,8 @@ const elements = {
   sourceFile: document.querySelector("#source-file"),
   audioFileInput: document.querySelector("#audio-file-input"),
   sourceHelp: document.querySelector("#source-help"),
+  smartTurnInput: document.querySelector("#smart-turn-input"),
+  smartTurnHelp: document.querySelector("#smart-turn-help"),
 };
 
 const state = {
@@ -28,24 +34,40 @@ const state = {
   audioContext: null,
   audioElement: null,
   audioObjectUrl: null,
+  deferredInstallPrompt: null,
+  serviceConfig: null,
 };
 
 function setText(node, value) {
   node.textContent = value;
 }
 
-function logEvent(message) {
+function createLogEntry(message) {
   const item = document.createElement("li");
-  const time = new Date().toLocaleTimeString();
-  item.textContent = `${time} - ${message}`;
-  elements.eventLog.prepend(item);
+  item.className = "log-entry";
+
+  const time = document.createElement("span");
+  time.className = "log-time";
+  time.textContent = new Date().toLocaleTimeString();
+
+  const text = document.createElement("span");
+  text.className = "log-message";
+  text.textContent = message;
+
+  item.append(time, text);
+  return item;
+}
+
+function prependLog(list, message) {
+  list.prepend(createLogEntry(message));
+}
+
+function logEvent(message) {
+  prependLog(elements.eventLog, message);
 }
 
 function appendFinalTranscript(text) {
-  const item = document.createElement("li");
-  const time = new Date().toLocaleTimeString();
-  item.textContent = text ? `${time} - ${text}` : `${time} - [final transcript event]`;
-  elements.finalLog.prepend(item);
+  prependLog(elements.finalLog, text || "[final transcript event]");
 }
 
 function showError(message) {
@@ -58,12 +80,73 @@ function clearError() {
   setText(elements.errorMessage, "");
 }
 
+function isStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function renderInstallControls() {
+  if (!elements.installHelp) {
+    return;
+  }
+
+  if (isStandaloneMode()) {
+    elements.installHelp.hidden = false;
+    setText(elements.installHelp, "Installed app is running in standalone mode. Keep the local backend running for transcription.");
+    return;
+  }
+
+  if (state.deferredInstallPrompt) {
+    elements.installHelp.hidden = false;
+    setText(elements.installHelp, "Install the demo shell from your browser's install menu for quicker launches. The Pipecat bridge and rtc-asr backend still need to be running.");
+    return;
+  }
+
+  elements.installHelp.hidden = false;
+  setText(elements.installHelp, "Install is available from a supported browser on localhost or HTTPS by using the browser's install or Add to Dock menu.");
+}
+
 function currentSourceMode() {
   return elements.sourceFile.checked ? "file" : "mic";
 }
 
 function selectedAudioFile() {
   return elements.audioFileInput.files?.[0] || null;
+}
+
+function useSmartTurnMode() {
+  return Boolean(elements.smartTurnInput?.checked);
+}
+
+function selectedAsrModelOption() {
+  const options = state.serviceConfig?.asr_model_options || [];
+  return options.find((option) => option.id === elements.asrModelSelect.value) || options[0] || null;
+}
+
+function renderAsrModelOptions(config) {
+  elements.asrModelSelect.replaceChildren();
+  const options = config.asr_model_options || [];
+  for (const option of options) {
+    const item = document.createElement("option");
+    item.value = option.id;
+    item.textContent = option.label;
+    elements.asrModelSelect.append(item);
+  }
+  elements.asrModelSelect.value = config.default_asr_model_option_id || options[0]?.id || "";
+}
+
+function updateAsrModelDisplay() {
+  const selected = selectedAsrModelOption();
+  if (!selected) {
+    setText(elements.asrModelStatus, "unknown");
+    setText(elements.asrModelHelp, "No ASR model options were reported by the demo service.");
+    return;
+  }
+
+  setText(elements.asrModelStatus, `${selected.backend} / ${selected.model}`);
+  setText(
+    elements.asrModelHelp,
+    `Selected for the next session: ${selected.label}. Backend process should match ${selected.backend} / ${selected.model}.`
+  );
 }
 
 function updateSourceHelp() {
@@ -84,6 +167,17 @@ function updateSourceHelp() {
   );
 }
 
+function updateSmartTurnHelp() {
+  const enabled = useSmartTurnMode();
+  const configuredDefault = state.serviceConfig?.default_use_smart_turn !== false;
+  setText(
+    elements.smartTurnHelp,
+    enabled
+      ? `Pipecat Smart Turn mode is enabled for the next session${configuredDefault ? " (recommended default)." : "."}`
+      : "Pipecat Smart Turn mode is disabled for the next session. The relay will use the plain browser-to-ASR bridge path."
+  );
+}
+
 function renderControls() {
   const hasSourceFile = Boolean(selectedAudioFile());
   const sourceMode = currentSourceMode();
@@ -92,6 +186,8 @@ function renderControls() {
   elements.audioFileInput.disabled = sourceMode !== "file" || state.isStarting || isStreaming;
   elements.sourceMic.disabled = state.isStarting || isStreaming;
   elements.sourceFile.disabled = state.isStarting || isStreaming;
+  elements.smartTurnInput.disabled = state.isStarting || isStreaming;
+  elements.asrModelSelect.disabled = state.isStarting || isStreaming || elements.asrModelSelect.options.length === 0;
   elements.startButton.disabled =
     state.isStarting ||
     isStreaming ||
@@ -100,6 +196,8 @@ function renderControls() {
   elements.stopButton.disabled = !isStreaming;
   elements.startButton.textContent = sourceMode === "file" ? "Start file stream" : "Start mic";
   updateSourceHelp();
+  updateSmartTurnHelp();
+  updateAsrModelDisplay();
 }
 
 function hasWebRTCSupport() {
@@ -296,12 +394,15 @@ async function loadConfig() {
       throw new Error(`Config request failed with ${response.status}`);
     }
     const config = await response.json();
+    state.serviceConfig = config;
     setText(elements.serviceStatus, "reachable");
     setText(elements.bridgeStatus, config.bridge_status);
     setText(elements.asrTarget, config.rtc_asr_ws_url);
-    setText(elements.asrRollover, `${config.rtc_asr_max_utterance_seconds}s max utterance`);
+    setText(elements.asrRollover, `${config.rtc_asr_max_buffer_seconds}s max buffer`);
+    renderAsrModelOptions(config);
     state.canStartSession = Boolean(config.can_start_session);
     state.dependencyMessage = config.dependency_message || "";
+    elements.smartTurnInput.checked = config.default_use_smart_turn !== false;
     if (!state.canStartSession) {
       setText(elements.webrtcStatus, "blocked");
       showError(state.dependencyMessage || "The Pipecat bridge is not ready yet.");
@@ -362,13 +463,27 @@ async function startDemo() {
       throw new Error("Browser did not produce a local SDP offer.");
     }
 
+    const asrModel = selectedAsrModelOption();
     setText(elements.webrtcStatus, "signaling");
+    logEvent(
+      `Starting ${useSmartTurnMode() ? "Pipecat Smart Turn" : "plain relay"} session with ${asrModel?.label || "unknown ASR model"}.`
+    );
     const response = await fetch("/rtc-asr/offer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: localDescription.type,
         sdp: localDescription.sdp,
+        use_smart_turn: useSmartTurnMode(),
+        asr_model_option_id: asrModel?.id || null,
+        request_data: {
+          demo_audio_source: currentSourceMode(),
+          smart_turn_label: useSmartTurnMode() ? "silero-vad-smart-turn" : "plain-relay",
+          asr_model_option_id: asrModel?.id || null,
+          asr_model_label: asrModel?.label || null,
+          asr_backend: asrModel?.backend || null,
+          asr_model: asrModel?.model || null,
+        },
       }),
     });
     const payload = await response.json();
@@ -461,10 +576,38 @@ function stopDemo(preserveError = false) {
   renderControls();
 }
 
+async function registerPwaShell() {
+  renderInstallControls();
+
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  try {
+    await navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" });
+  } catch (error) {
+    logEvent(`Service worker registration failed: ${error.message}`);
+  }
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  state.deferredInstallPrompt = event;
+  renderInstallControls();
+});
+
+window.addEventListener("appinstalled", () => {
+  state.deferredInstallPrompt = null;
+  renderInstallControls();
+  logEvent("Installed the demo app shell.");
+});
+
 elements.startButton.addEventListener("click", startDemo);
 elements.stopButton.addEventListener("click", stopDemo);
 elements.sourceMic.addEventListener("change", renderControls);
 elements.sourceFile.addEventListener("change", renderControls);
+elements.smartTurnInput.addEventListener("change", renderControls);
+elements.asrModelSelect.addEventListener("change", renderControls);
 elements.audioFileInput.addEventListener("change", () => {
   clearError();
   renderControls();
@@ -477,4 +620,6 @@ if (!hasWebRTCSupport()) {
 }
 
 renderControls();
+renderInstallControls();
+registerPwaShell();
 loadConfig();

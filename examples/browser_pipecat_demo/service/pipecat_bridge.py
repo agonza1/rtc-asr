@@ -17,7 +17,52 @@ logger = logging.getLogger(__name__)
 DEFAULT_RTC_ASR_CHUNK_MS = 100
 MIN_RTC_ASR_CHUNK_MS = 80
 MAX_RTC_ASR_CHUNK_MS = 160
-DEFAULT_RTC_ASR_MAX_UTTERANCE_SECONDS = 24.0
+DEFAULT_RTC_ASR_MAX_BUFFER_SECONDS = 12.0
+
+ASR_MODEL_OPTIONS = (
+    {
+        "id": "faster-whisper-base.en-int8",
+        "label": "Faster-Whisper Base English int8",
+        "backend": "faster-whisper",
+        "model": "base.en",
+        "device": "cpu",
+        "compute_type": "int8",
+    },
+    {
+        "id": "parakeet-mlx-110m",
+        "label": "Parakeet 110M MLX",
+        "backend": "parakeet-mlx",
+        "model": "mlx-community/parakeet-tdt_ctc-110m",
+        "device": "apple-silicon",
+        "compute_type": "auto",
+    },
+    {
+        "id": "parakeet-nemo-110m",
+        "label": "Parakeet 110M NeMo",
+        "backend": "parakeet-nemo",
+        "model": "nvidia/parakeet-tdt_ctc-110m",
+        "device": "cpu",
+        "compute_type": "auto",
+    },
+    {
+        "id": "parakeet-v3",
+        "label": "Parakeet TDT 0.6B v3",
+        "backend": "parakeet",
+        "model": "nvidia/parakeet-tdt-0.6b-v3",
+        "device": "cpu",
+        "compute_type": "auto",
+    },
+    {
+        "id": "qwen3-asr-0.6b",
+        "label": "Qwen3 ASR 0.6B",
+        "backend": "qwen-asr",
+        "model": "Qwen/Qwen3-ASR-0.6B",
+        "device": "cpu",
+        "compute_type": "auto",
+    },
+)
+ASR_MODEL_OPTION_BY_ID = {option["id"]: option for option in ASR_MODEL_OPTIONS}
+DEFAULT_ASR_MODEL_OPTION_ID = ASR_MODEL_OPTIONS[0]["id"]
 
 
 class BridgeUnavailableError(RuntimeError):
@@ -92,6 +137,8 @@ class PipecatRuntime:
     pipeline_worker_cls: type
     pipeline_params_cls: type
     worker_runner_cls: type
+    silero_vad_analyzer_cls: type | None = None
+    local_smart_turn_analyzer_v3_cls: type | None = None
 
 
 ASRClientFactory = Callable[[str], Any]
@@ -114,16 +161,22 @@ def _chunk_ms_from_env(value: str | None) -> int:
     return chunk_ms
 
 
-def _max_utterance_seconds_from_env(value: str | None) -> float:
+def _asr_model_option_from_env(value: str | None) -> dict[str, str]:
+    if not value:
+        value = DEFAULT_ASR_MODEL_OPTION_ID
+    return ASR_MODEL_OPTION_BY_ID.get(value, ASR_MODEL_OPTION_BY_ID[DEFAULT_ASR_MODEL_OPTION_ID])
+
+
+def _max_buffer_seconds_from_env(value: str | None) -> float:
     if value is None or value == "":
-        return DEFAULT_RTC_ASR_MAX_UTTERANCE_SECONDS
+        return DEFAULT_RTC_ASR_MAX_BUFFER_SECONDS
     try:
-        max_utterance_seconds = float(value)
+        max_buffer_seconds = float(value)
     except ValueError as exc:
-        raise ValueError("RTC_ASR_MAX_UTTERANCE_SECONDS must be a number") from exc
-    if max_utterance_seconds <= 0:
-        raise ValueError("RTC_ASR_MAX_UTTERANCE_SECONDS must be positive")
-    return max_utterance_seconds
+        raise ValueError("RTC_ASR_MAX_BUFFER_SECONDS must be a number") from exc
+    if max_buffer_seconds <= 0:
+        raise ValueError("RTC_ASR_MAX_BUFFER_SECONDS must be positive")
+    return max_buffer_seconds
 
 
 def load_pipecat_runtime() -> PipecatRuntime:
@@ -150,6 +203,13 @@ def load_pipecat_runtime() -> PipecatRuntime:
     except ModuleNotFoundError:
         from pipecat.pipeline.runner import WorkerRunner
 
+    try:
+        from pipecat.audio.turn.smart_turn.local_smart_turn_v3 import LocalSmartTurnAnalyzerV3
+        from pipecat.audio.vad.silero import SileroVADAnalyzer
+    except Exception:
+        LocalSmartTurnAnalyzerV3 = None
+        SileroVADAnalyzer = None
+
     return PipecatRuntime(
         request_cls=SmallWebRTCRequest,
         request_handler_cls=SmallWebRTCRequestHandler,
@@ -162,6 +222,8 @@ def load_pipecat_runtime() -> PipecatRuntime:
         pipeline_worker_cls=PipelineWorker,
         pipeline_params_cls=PipelineParams,
         worker_runner_cls=WorkerRunner,
+        silero_vad_analyzer_cls=SileroVADAnalyzer,
+        local_smart_turn_analyzer_v3_cls=LocalSmartTurnAnalyzerV3,
     )
 
 
@@ -172,15 +234,15 @@ class RTCASRAudioRelay:
         session_id: str,
         rtc_asr_ws_url: str,
         chunk_ms: int,
-        max_utterance_seconds: float,
         send_app_message: AppMessageSender,
         mark_failed: ErrorCallback,
+        max_buffer_seconds: float,
         asr_client_factory: ASRClientFactory = AsyncLocalSttClient,
     ) -> None:
         self.session_id = session_id
         self.rtc_asr_ws_url = rtc_asr_ws_url
         self.chunk_ms = chunk_ms
-        self.max_utterance_seconds = max_utterance_seconds
+        self.max_buffer_seconds = max_buffer_seconds
         self._send_app_message = send_app_message
         self._mark_failed = mark_failed
         self._asr_client_factory = asr_client_factory
@@ -234,6 +296,7 @@ class RTCASRAudioRelay:
                 self._client.start(
                     sample_rate=sample_rate,
                     partial_interval_ms=self.chunk_ms,
+                    max_buffer_seconds=self.max_buffer_seconds,
                     client_stream_id=self.session_id,
                 ),
                 timeout=5.0,
@@ -268,13 +331,13 @@ class RTCASRAudioRelay:
     async def _roll_utterance_if_needed(self, *, next_chunk_bytes: int) -> None:
         if self._sample_rate is None or self._num_channels is None:
             return
-        max_utterance_bytes = max(
+        max_buffer_bytes = max(
             2,
-            int(self._sample_rate * self._num_channels * 2 * self.max_utterance_seconds),
+            int(self._sample_rate * self._num_channels * 2 * self.max_buffer_seconds),
         )
         if self._utterance_bytes_sent == 0:
             return
-        if self._utterance_bytes_sent + next_chunk_bytes <= max_utterance_bytes:
+        if self._utterance_bytes_sent + next_chunk_bytes <= max_buffer_bytes:
             return
 
         self._send_app_message({
@@ -343,10 +406,8 @@ class RTCASRAudioRelay:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            if self._final_event is not None and not self._final_event.done():
-                self._final_event.set_exception(exc)
             self._send_error(f"ASR websocket receive failed: {exc}")
-            raise
+            return
 
     def _send_transcript_event(self, event: TranscriptEvent) -> None:
         event_type = "final" if event.is_final or event.type == "final" else event.type
@@ -409,9 +470,10 @@ class PipecatDemoBridge:
         self.chunk_ms = chunk_ms if chunk_ms is not None else _chunk_ms_from_env(
             os.getenv("RTC_ASR_CHUNK_MS")
         )
-        self.max_utterance_seconds = _max_utterance_seconds_from_env(
-            os.getenv("RTC_ASR_MAX_UTTERANCE_SECONDS")
+        self.max_buffer_seconds = _max_buffer_seconds_from_env(
+            os.getenv("RTC_ASR_MAX_BUFFER_SECONDS")
         )
+        self.default_asr_model_option = _asr_model_option_from_env(os.getenv("RTC_ASR_MODEL_OPTION"))
         self._runtime_loader = runtime_loader
         self._asr_client_factory = asr_client_factory
         self._runtime: PipecatRuntime | None = None
@@ -438,9 +500,15 @@ class PipecatDemoBridge:
             "pipecat_transport": "smallwebrtc",
             "rtc_asr_ws_url": self.rtc_asr_ws_url,
             "rtc_asr_chunk_ms": self.chunk_ms,
-            "rtc_asr_max_utterance_seconds": self.max_utterance_seconds,
+            "rtc_asr_max_buffer_seconds": self.max_buffer_seconds,
+            "asr_model_options": list(ASR_MODEL_OPTIONS),
+            "default_asr_model_option_id": self.default_asr_model_option["id"],
+            "asr_model_label": self.default_asr_model_option["label"],
+            "asr_backend": self.default_asr_model_option["backend"],
+            "asr_model": self.default_asr_model_option["model"],
             "bridge_status": bridge_status,
             "can_start_session": bridge_status == "ready",
+            "default_use_smart_turn": True,
             "dependency_message": dependency_message,
         }
 
@@ -452,7 +520,13 @@ class PipecatDemoBridge:
         pc_id: str | None = None,
         restart_pc: bool | None = None,
         request_data: Any | None = None,
+        use_smart_turn: bool = True,
+        asr_model_option_id: str | None = None,
     ) -> DemoSession:
+        asr_model_option = ASR_MODEL_OPTION_BY_ID.get(
+            asr_model_option_id or "",
+            self.default_asr_model_option,
+        )
         session = DemoSession(
             session_id=str(uuid4()),
             created_at=datetime.now(timezone.utc),
@@ -462,19 +536,31 @@ class PipecatDemoBridge:
             metadata={
                 "rtc_asr_ws_url": self.rtc_asr_ws_url,
                 "rtc_asr_chunk_ms": str(self.chunk_ms),
-                "rtc_asr_max_utterance_seconds": str(self.max_utterance_seconds),
+                "rtc_asr_max_buffer_seconds": str(self.max_buffer_seconds),
+                "asr_model_option_id": asr_model_option["id"],
+                "asr_model_label": asr_model_option["label"],
+                "asr_backend": asr_model_option["backend"],
+                "asr_model": asr_model_option["model"],
+                "use_smart_turn_requested": str(use_smart_turn).lower(),
+                "smart_turn_mode": "requested" if use_smart_turn else "disabled",
             },
         )
         self._sessions[session.session_id] = session
 
         try:
             runtime = self._ensure_runtime()
+            merged_request_data = dict(request_data or {})
+            merged_request_data.setdefault("use_smart_turn", use_smart_turn)
+            merged_request_data.setdefault("asr_model_option_id", asr_model_option["id"])
+            merged_request_data.setdefault("asr_model_label", asr_model_option["label"])
+            merged_request_data.setdefault("asr_backend", asr_model_option["backend"])
+            merged_request_data.setdefault("asr_model", asr_model_option["model"])
             request = runtime.request_cls(
                 sdp=offer_sdp,
                 type=offer_type,
                 pc_id=pc_id,
                 restart_pc=restart_pc,
-                request_data=request_data,
+                request_data=merged_request_data,
             )
             session.state = SessionState.WAITING_FOR_PIPECAT
             answer = await self._request_handler.handle_web_request(
@@ -539,6 +625,37 @@ class PipecatDemoBridge:
 
         task.add_done_callback(_handle_done)
 
+    def _build_transport_params(self, session: DemoSession, runtime: PipecatRuntime) -> Any:
+        params_kwargs = {
+            "audio_in_enabled": True,
+            "audio_out_enabled": False,
+        }
+        if session.metadata.get("use_smart_turn_requested") != "true":
+            return runtime.transport_params_cls(**params_kwargs)
+
+        vad_cls = runtime.silero_vad_analyzer_cls
+        turn_cls = runtime.local_smart_turn_analyzer_v3_cls
+        if vad_cls is None or turn_cls is None:
+            session.metadata["smart_turn_mode"] = "requested_but_runtime_missing"
+            return runtime.transport_params_cls(**params_kwargs)
+
+        try:
+            params = runtime.transport_params_cls(
+                **params_kwargs,
+                vad_analyzer=vad_cls(),
+                turn_analyzer=turn_cls(),
+            )
+        except TypeError:
+            session.metadata["smart_turn_mode"] = "requested_but_transport_params_unsupported"
+            return runtime.transport_params_cls(**params_kwargs)
+        except Exception:
+            logger.exception("browser_pipecat_demo_smart_turn_init_failed")
+            session.metadata["smart_turn_mode"] = "requested_but_analyzer_init_failed"
+            return runtime.transport_params_cls(**params_kwargs)
+
+        session.metadata["smart_turn_mode"] = "enabled"
+        return params
+
     async def _run_pipeline(
         self,
         session: DemoSession,
@@ -552,11 +669,18 @@ class PipecatDemoBridge:
             session.state = SessionState.FAILED
             session.error = message
 
+        transport_params = self._build_transport_params(session, runtime)
+        send_app_message({
+            "type": "status",
+            "message": f"Pipecat smart turn mode: {session.metadata.get('smart_turn_mode', 'disabled').replace('_', ' ')}",
+            "session_id": session.session_id,
+        })
+
         relay = RTCASRAudioRelay(
             session_id=session.session_id,
             rtc_asr_ws_url=self.rtc_asr_ws_url,
             chunk_ms=self.chunk_ms,
-            max_utterance_seconds=self.max_utterance_seconds,
+            max_buffer_seconds=self.max_buffer_seconds,
             send_app_message=send_app_message,
             mark_failed=mark_failed,
             asr_client_factory=self._asr_client_factory,
@@ -565,10 +689,7 @@ class PipecatDemoBridge:
         relay_processor = processor_cls(relay)
         transport = runtime.transport_cls(
             webrtc_connection=webrtc_connection,
-            params=runtime.transport_params_cls(
-                audio_in_enabled=True,
-                audio_out_enabled=False,
-            ),
+            params=transport_params,
         )
         pipeline = runtime.pipeline_cls([transport.input(), relay_processor])
         worker = runtime.pipeline_worker_cls(
