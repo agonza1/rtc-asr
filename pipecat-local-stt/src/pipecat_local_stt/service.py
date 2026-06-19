@@ -319,7 +319,7 @@ class LocalStreamingSTTService(STTService):
         await self._ensure_connection()
         if ensure_started:
             await self._ensure_utterance_started()
-        await self._send_json(payload)
+        await self._send_ws(json.dumps(payload), replay_after_reconnect=False, start_after_reconnect=False)
 
     async def _send_json(self, payload: dict[str, Any]) -> None:
         await self._send_ws(json.dumps(payload))
@@ -327,7 +327,13 @@ class LocalStreamingSTTService(STTService):
     async def _send_binary(self, payload: bytes) -> None:
         await self._send_ws(payload)
 
-    async def _send_ws(self, payload: str | bytes) -> None:
+    async def _send_ws(
+        self,
+        payload: str | bytes,
+        *,
+        replay_after_reconnect: bool = True,
+        start_after_reconnect: bool = True,
+    ) -> None:
         websocket = self._websocket
         if websocket is None:
             raise RuntimeError("Local STT websocket is not connected")
@@ -336,19 +342,22 @@ class LocalStreamingSTTService(STTService):
         except Exception:
             if not self.config.reconnect_on_error:
                 raise
-            await self._reconnect()
+            await self._reconnect(start_utterance=start_after_reconnect)
+            if not replay_after_reconnect:
+                return
             websocket = self._websocket
             if websocket is None:
                 raise RuntimeError("Local STT websocket reconnect failed")
             await websocket.send(payload)
 
-    async def _reconnect(self) -> None:
+    async def _reconnect(self, *, start_utterance: bool = True) -> None:
         self.metrics.local_stt_reconnects_total += 1
         await self._close_socket_and_tasks(cancel_current=False)
         self._websocket = None
         self._utterance_active = False
         await self._ensure_connection()
-        await self._ensure_utterance_started()
+        if start_utterance:
+            await self._ensure_utterance_started()
 
     async def _disconnect(self) -> None:
         await self._close_socket_and_tasks(cancel_current=True)

@@ -106,6 +106,30 @@ class FailingSendWebSocket:
         return None
 
 
+class FailFirstCancelWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.failed_cancel = False
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str):
+            payload = json.loads(data)
+            if payload["type"] == "start":
+                await self.incoming.put(json.dumps({"type": "ready"}))
+                return
+            if payload["type"] == "cancel" and not self.failed_cancel:
+                self.failed_cancel = True
+                raise RuntimeError("simulated cancel send failure")
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
 class FinalizeWaitWebSocket:
     def __init__(self) -> None:
         self.sent: list[str | bytes] = []
@@ -370,3 +394,34 @@ async def _test_unrecoverable_send_failure_disconnects_and_allows_reconnect() ->
 
     assert service.metrics.local_stt_protocol_errors_total >= 1
     await service.cleanup()
+
+
+def test_cancel_send_failure_does_not_replay_cancel_on_reconnect() -> None:
+    asyncio.run(_test_cancel_send_failure_does_not_replay_cancel_on_reconnect())
+
+
+async def _test_cancel_send_failure_does_not_replay_cancel_on_reconnect() -> None:
+    first = FailFirstCancelWebSocket()
+    second = HealthySendWebSocket()
+    websockets = [first, second]
+
+    async def connect(_url: str) -> FailFirstCancelWebSocket | HealthySendWebSocket:
+        return websockets.pop(0)
+
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=True),
+        connect_fn=connect,
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.cancel_current_utterance()
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
+    await service.cleanup()
+
+    first_control_types = [json.loads(item)["type"] for item in first.sent if isinstance(item, str)]
+    second_control_types = [json.loads(item)["type"] for item in second.sent if isinstance(item, str)]
+
+    assert first_control_types == ["start", "cancel"]
+    assert second_control_types == ["start"]
+    assert service.metrics.local_stt_reconnects_total == 1
