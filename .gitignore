@@ -13,6 +13,7 @@ config
 .env
 
 .cache/
+.run-logs/
 
 # Compounds local session data
 .compounds/
