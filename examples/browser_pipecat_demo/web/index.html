@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>rtc-asr Browser Pipecat Demo</title>
     <meta name="theme-color" content="#0d766e">
+    <meta name="rtc-asr-demo-build" content="__RTC_ASR_DEMO_BUILD__">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="rtc-asr Demo">
     <link rel="manifest" href="/rtc-asr/manifest.webmanifest">
     <link rel="icon" href="/rtc-asr/assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/rtc-asr/assets/icons/apple-touch-icon.png">
-    <link rel="stylesheet" href="/rtc-asr/assets/styles.css">
+    <link rel="stylesheet" href="/rtc-asr/assets/styles.css?v=__RTC_ASR_DEMO_BUILD__">
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to demo</a>
@@ -80,12 +81,18 @@
           <p id="asr-model-help" class="source-help">
             The selected model is sent with the demo session metadata. Start the rtc-asr backend with the matching ASR_BACKEND/model environment for a real runtime switch.
           </p>
-          <label class="toggle-option" for="smart-turn-input">
-            <input id="smart-turn-input" type="checkbox" checked>
-            <span>Use "Silero VAD + Smart Turn" mode</span>
+          <label class="toggle-option">
+            <span>
+              <strong>Smart Turn</strong>
+              <span>Silero VAD + smart turn for local utterance boundaries.</span>
+            </span>
+            <span class="smart-toggle" aria-hidden="true">
+              <input id="smart-turn-input" type="checkbox" checked>
+              <span class="smart-toggle-slider"></span>
+            </span>
           </label>
           <p id="smart-turn-help" class="source-help">
-            When enabled, the demo asks Pipecat to apply its local Silero VAD and Smart Turn analyzers for this session.
+            When enabled, Pipecat applies local Silero VAD and Smart Turn analyzers before sending audio to ASR.
           </p>
           <div class="actions">
             <button id="start-button" type="button">Start stream</button>
@@ -108,6 +115,6 @@
         <ul id="event-log" class="log-list event-log" aria-live="polite"></ul>
       </section>
     </main>
-    <script src="/rtc-asr/assets/app.js" type="module"></script>
+    <script src="/rtc-asr/assets/app.js?v=__RTC_ASR_DEMO_BUILD__" type="module"></script>
   </body>
 </html>

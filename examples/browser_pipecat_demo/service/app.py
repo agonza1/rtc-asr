@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from typing import Any
 
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .pipecat_bridge import BridgeUnavailableError, PipecatDemoBridge
 
@@ -16,6 +16,39 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 WEB_DIR = BASE_DIR / "web"
+LOCAL_DEMO_HOSTS = {"localhost", "127.0.0.1", "::1"}
+DEMO_BUILD_TOKEN = "__RTC_ASR_DEMO_BUILD__"
+
+
+def _is_local_demo_request(request: Request) -> bool:
+    client_host = request.client.host if request.client is not None else ""
+    host = request.headers.get("host") or client_host
+    if host.startswith("[") and "]" in host:
+        host = host[1 : host.find("]")]
+    elif host.count(":") == 1:
+        host = host.split(":", 1)[0]
+    return host in LOCAL_DEMO_HOSTS
+
+
+class LocalDemoNoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+
+        if request.url.path.startswith("/rtc-asr") and _is_local_demo_request(request):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+
+def _demo_cache_bust() -> int:
+    files = [WEB_DIR / "index.html", WEB_DIR / "app.js", WEB_DIR / "styles.css"]
+    return int(max(file.stat().st_mtime_ns for file in files))
+
+
+def _demo_page_html() -> str:
+    template = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    return template.replace(DEMO_BUILD_TOKEN, str(_demo_cache_bust()))
 
 
 class OfferRequest(BaseModel):
@@ -48,12 +81,13 @@ class OfferResponse(BaseModel):
 
 bridge = PipecatDemoBridge()
 app = FastAPI(title="rtc-asr Browser Pipecat Demo")
+app.add_middleware(LocalDemoNoCacheMiddleware)
 app.mount("/rtc-asr/assets", StaticFiles(directory=WEB_DIR), name="rtc-asr-assets")
 
 
 @app.get("/rtc-asr", include_in_schema=False)
-async def demo_page() -> FileResponse:
-    return FileResponse(WEB_DIR / "index.html")
+async def demo_page() -> HTMLResponse:
+    return HTMLResponse(_demo_page_html())
 
 
 @app.get("/rtc-asr/manifest.webmanifest", include_in_schema=False)
