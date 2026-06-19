@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import struct
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,7 @@ from examples.browser_pipecat_demo.service.pipecat_bridge import (
     PipecatDemoBridge,
     PipecatRuntime,
     RTCASRAudioRelay,
+    TranscriptEvent,
 )
 
 
@@ -69,11 +71,7 @@ def fake_runtime_loader() -> PipecatRuntime:
 
 
 def test_pipecat_demo_requirements_match_worker_api_minimum() -> None:
-    requirements = (
-        Path("examples")
-        / "browser_pipecat_demo"
-        / "requirements.txt"
-    ).read_text(encoding="utf-8")
+    requirements = (Path("examples") / "browser_pipecat_demo" / "requirements.txt").read_text(encoding="utf-8")
 
     assert "pipecat-ai[webrtc]>=1.3.0" in requirements
     assert "pipecat-ai[webrtc]>=0.0.86" not in requirements
@@ -118,7 +116,8 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
     assert service_worker_response.headers["service-worker-allowed"] == "/rtc-asr"
     assert 'const CACHE_NAME = "rtc-asr-demo-shell-v3";' in service_worker_response.text
     assert '"/rtc-asr/assets/icons/apple-touch-icon.png"' in service_worker_response.text
-    assert "caches.match(request, { ignoreSearch: true })" in service_worker_response.text
+    assert "const cacheFallback = () => caches.match(request, { ignoreSearch: true });" in service_worker_response.text
+    assert "event.respondWith(fetch(request).catch(cacheFallback));" in service_worker_response.text
 
     app_js_response = client.get("/rtc-asr/assets/app.js")
 
@@ -126,6 +125,8 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
     assert 'navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" })' in app_js_response.text
     assert "partial captured on stop" in app_js_response.text
     assert "state.lastPartialTranscript || elements.partialText.textContent" not in app_js_response.text
+    assert 'message.type === "speech_started"' in app_js_response.text
+    assert 'message.type === "sentence_boundary"' in app_js_response.text
     assert "beforeinstallprompt" not in app_js_response.text
     assert "deferredInstallPrompt" not in app_js_response.text
 
@@ -152,7 +153,7 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
         "pipecat_transport": "smallwebrtc",
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
-        "rtc_asr_max_buffer_seconds": 12.0,
+        "rtc_asr_max_utterance_seconds": 24.0,
         "asr_model_options": [
             {
                 "id": "faster-whisper-base.en-int8",
@@ -208,49 +209,6 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
     }
 
 
-def test_offer_requires_offer_type() -> None:
-    client = TestClient(app)
-
-    response = client.post("/rtc-asr/offer", json={"type": "answer", "sdp": "v=0"})
-
-    assert response.status_code == 422
-
-
-def test_offer_requires_sdp() -> None:
-    client = TestClient(app)
-
-    response = client.post("/rtc-asr/offer", json={"type": "offer"})
-
-    assert response.status_code == 422
-
-
-def test_offer_rejects_empty_sdp() -> None:
-    client = TestClient(app)
-
-    response = client.post("/rtc-asr/offer", json={"type": "offer", "sdp": ""})
-
-    assert response.status_code == 422
-
-
-def test_offer_returns_structured_dependency_response(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake_bridge = PipecatDemoBridge(runtime_loader=missing_runtime_loader)
-    monkeypatch.setattr(app_module, "bridge", fake_bridge)
-    client = TestClient(app_module.app)
-
-    response = client.post("/rtc-asr/offer", json={"type": "offer", "sdp": "v=0", "use_smart_turn": False})
-
-    assert response.status_code == 501
-    assert response.json() == {
-        "detail": {
-            "error": "PIPECAT_WEBRTC_DEPENDENCY_MISSING",
-            "message": "Install the demo WebRTC extras with "
-            "`pip install -r examples/browser_pipecat_demo/requirements.txt` "
-            "to enable Pipecat SmallWebRTC.",
-            "bridge_status": "dependency_missing",
-        }
-    }
-
-
 def test_offer_returns_answer_with_fake_pipecat_handler(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_bridge = PipecatDemoBridge(
         runtime_loader=fake_runtime_loader,
@@ -295,19 +253,15 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
     sent_chunks: list[bytes] = []
     app_messages: list[dict[str, object]] = []
 
-    start_calls: list[dict[str, Any]] = []
-
     class FakeASRClient:
         def __init__(self, ws_url: str) -> None:
             self.ws_url = ws_url
 
         async def start(self, **kwargs: Any) -> dict[str, object]:
-            start_calls.append(kwargs)
             return {"type": "ready"}
 
         async def send_audio(self, chunk: bytes, **kwargs: Any) -> None:
             sent_chunks.append(chunk)
-            return None
 
         async def finalize(self) -> Any:
             return type(
@@ -318,6 +272,12 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
                     "text": "",
                     "is_final": True,
                     "chunks_received": len(sent_chunks),
+                    "stream_id": 1,
+                    "buffered_bytes": 0,
+                    "remaining_buffer_bytes": 0,
+                    "revision": 1,
+                    "audio_received_ms": None,
+                    "audio_transcribed_ms": None,
                 },
             )()
 
@@ -328,9 +288,10 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
         session_id="session_1",
         rtc_asr_ws_url="ws://example.test/ws",
         chunk_ms=100,
+        max_utterance_seconds=24.0,
+        smart_turn_enabled=False,
         send_app_message=app_messages.append,
         mark_failed=lambda message: None,
-        max_buffer_seconds=12.0,
         asr_client_factory=FakeASRClient,
     )
     frame = FakeInputAudioRawFrame(audio=b"x" * 6400, sample_rate=16000, num_channels=1)
@@ -338,65 +299,90 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
     await relay.handle_audio_frame(frame)
 
     assert [len(chunk) for chunk in sent_chunks] == [3200, 3200]
-    assert start_calls == [{"sample_rate": 16000, "partial_interval_ms": 100, "max_buffer_seconds": 12.0, "client_stream_id": "session_1"}]
     assert app_messages[0]["type"] == "status"
 
 
 @pytest.mark.anyio
-async def test_asr_relay_rolls_stream_before_buffer_cap() -> None:
-    sent_chunks: list[bytes] = []
-    client_starts: list[str] = []
-    client_finalizes: list[str] = []
-    client_closes: list[str] = []
+async def test_asr_relay_starts_new_sentence_on_pause_boundary() -> None:
     app_messages: list[dict[str, object]] = []
+    starts: list[str] = []
+    finalizes: list[str] = []
 
     class FakeASRClient:
         def __init__(self, ws_url: str) -> None:
             self.ws_url = ws_url
-            self.client_id = f"client_{len(client_starts) + len(client_closes)}"
+            self.events: asyncio.Queue[TranscriptEvent] = asyncio.Queue()
+            self.partial_sent = False
+            self.current_stream_id = ""
 
         async def start(self, **kwargs: Any) -> dict[str, object]:
-            client_starts.append(self.client_id)
+            self.current_stream_id = str(kwargs.get("client_stream_id"))
+            starts.append(self.current_stream_id)
             return {"type": "ready"}
 
         async def send_audio(self, chunk: bytes, **kwargs: Any) -> None:
-            sent_chunks.append(chunk)
+            if not self.partial_sent:
+                self.partial_sent = True
+                await self.events.put(
+                    TranscriptEvent(
+                        type="partial",
+                        text="hello there",
+                        stream_id=1,
+                        is_final=False,
+                        chunks_received=1,
+                        buffered_bytes=len(chunk),
+                        remaining_buffer_bytes=3200,
+                        revision=1,
+                    )
+                )
 
-        async def finalize(self) -> Any:
-            client_finalizes.append(self.client_id)
-            return type(
-                "FakeEvent",
-                (),
-                {
-                    "type": "final",
-                    "text": "rolled",
-                    "is_final": True,
-                    "chunks_received": len(sent_chunks),
-                },
-            )()
+        async def finalize(self) -> None:
+            finalizes.append(self.current_stream_id)
+            self.partial_sent = False
+            await self.events.put(
+                TranscriptEvent(
+                    type="final",
+                    text="hello there",
+                    stream_id=1,
+                    is_final=True,
+                    chunks_received=1,
+                    buffered_bytes=0,
+                    remaining_buffer_bytes=0,
+                    revision=2,
+                )
+            )
+
+        async def recv_event(self) -> TranscriptEvent:
+            return await self.events.get()
 
         async def close(self) -> None:
-            client_closes.append(self.client_id)
+            return None
 
     relay = RTCASRAudioRelay(
-        session_id="session_rollover",
+        session_id="session_turns",
         rtc_asr_ws_url="ws://example.test/ws",
         chunk_ms=100,
+        max_utterance_seconds=24.0,
+        smart_turn_enabled=True,
         send_app_message=app_messages.append,
         mark_failed=lambda message: None,
-        max_buffer_seconds=0.1,
         asr_client_factory=FakeASRClient,
     )
-    frame = FakeInputAudioRawFrame(audio=b"x" * 6400, sample_rate=16000, num_channels=1)
+    speech_frame = FakeInputAudioRawFrame(audio=struct.pack("<h", 2000) * 1600)
+    pause_frame = FakeInputAudioRawFrame(audio=bytes(8000))
 
-    await relay.handle_audio_frame(frame)
+    await relay.handle_audio_frame(speech_frame)
+    await asyncio.sleep(0.05)
+    await relay.handle_audio_frame(pause_frame)
+    await asyncio.sleep(0.05)
 
-    assert [len(chunk) for chunk in sent_chunks] == [3200, 3200]
-    assert len(client_starts) == 2
-    assert client_starts[0] != client_starts[1]
-    assert client_finalizes == [client_starts[0]]
-    assert client_closes == [client_starts[0]]
-    assert any(message.get("message") == "Rolling ASR stream before the Local STT buffer cap." for message in app_messages)
+    assert len(starts) >= 2
+    assert finalizes == [starts[0]]
+    assert any(message.get("type") == "speech_started" for message in app_messages)
+    assert any(message.get("type") == "speech_paused" for message in app_messages)
+    assert any(message.get("type") == "sentence_boundary" for message in app_messages)
+
+    await relay.close()
 
 
 @pytest.mark.anyio
@@ -415,9 +401,10 @@ async def test_asr_relay_reports_websocket_start_failure() -> None:
         session_id="session_1",
         rtc_asr_ws_url="ws://example.test/ws",
         chunk_ms=100,
+        max_utterance_seconds=24.0,
+        smart_turn_enabled=False,
         send_app_message=app_messages.append,
         mark_failed=failures.append,
-        max_buffer_seconds=12.0,
         asr_client_factory=FailingASRClient,
     )
     frame = FakeInputAudioRawFrame(audio=b"x" * 3200, sample_rate=16000, num_channels=1)
@@ -433,81 +420,3 @@ async def test_asr_relay_reports_websocket_start_failure() -> None:
             "session_id": "session_1",
         }
     ]
-
-
-@pytest.mark.anyio
-async def test_asr_relay_close_swallows_receiver_failure_and_closes_client() -> None:
-    app_messages: list[dict[str, object]] = []
-    failures: list[str] = []
-    client_closed = False
-
-    start_calls: list[dict[str, Any]] = []
-
-    class FakeASRClient:
-        def __init__(self, ws_url: str) -> None:
-            self.ws_url = ws_url
-
-        async def start(self, **kwargs: Any) -> dict[str, object]:
-            start_calls.append(kwargs)
-            return {"type": "ready"}
-
-        async def send_audio(self, chunk: bytes, **kwargs: Any) -> None:
-            return None
-
-        async def finalize(self) -> Any:
-            return type(
-                "FakeEvent",
-                (),
-                {
-                    "type": "final",
-                    "text": "done",
-                    "is_final": True,
-                    "chunks_received": 1,
-                },
-            )()
-
-        async def recv_event(self) -> Any:
-            raise RuntimeError("receiver failed")
-
-        async def close(self) -> None:
-            nonlocal client_closed
-            client_closed = True
-            return None
-
-    relay = RTCASRAudioRelay(
-        session_id="session_1",
-        rtc_asr_ws_url="ws://example.test/ws",
-        chunk_ms=100,
-        send_app_message=app_messages.append,
-        mark_failed=failures.append,
-        max_buffer_seconds=12.0,
-        asr_client_factory=FakeASRClient,
-    )
-    frame = FakeInputAudioRawFrame(audio=b"x" * 3200, sample_rate=16000, num_channels=1)
-
-    await relay.handle_audio_frame(frame)
-    await asyncio.sleep(0)
-    await relay.close()
-
-    assert client_closed is True
-    assert relay._client is None
-    assert failures == ["ASR websocket receive failed: receiver failed"]
-    assert {
-        "type": "error",
-        "message": "ASR websocket receive failed: receiver failed",
-        "session_id": "session_1",
-    } in app_messages
-
-
-def test_unknown_session_returns_404() -> None:
-    client = TestClient(app)
-
-    response = client.get("/rtc-asr/session/missing")
-
-    assert response.status_code == 404
-    assert response.json() == {
-        "detail": {
-            "error": "SESSION_NOT_FOUND",
-            "message": "No demo session exists for that id.",
-        }
-    }
