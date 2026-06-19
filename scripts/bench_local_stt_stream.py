@@ -13,6 +13,8 @@ from pathlib import Path
 import sys
 from typing import Any, Callable, Protocol
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -107,6 +109,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "audio_send_duration_ms",
         "audio_send_queue_depth_p95_ms",
         "audio_send_latency_p95_ms",
+        "pcm16_normalization_p95_ms",
         "asr_receive_loop_append_p95_ms",
         "asr_queue_delay_p95_ms",
         "asr_decode_p95_ms",
@@ -209,6 +212,7 @@ async def _run_once(
     receive_latencies: list[float] = []
     audio_send_started_at: float | None = None
     audio_send_completed_at: float | None = None
+    pcm16_normalization_latencies = measure_pcm16_normalization_latencies(audio.frames)
 
     await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
     receive_done = asyncio.Event()
@@ -281,6 +285,7 @@ async def _run_once(
         ),
         "audio_send_queue_depth_p95_ms": None,
         "audio_send_latency_p95_ms": send_p95,
+        "pcm16_normalization_p95_ms": percentile(pcm16_normalization_latencies, 0.95),
         "asr_receive_loop_append_p95_ms": receive_p95,
         "asr_queue_delay_p95_ms": None,
         "asr_decode_p95_ms": None,
@@ -294,6 +299,21 @@ async def _run_once(
         "reconnects": reconnects,
         "protocol_errors": protocol_errors,
     }
+
+
+def normalize_pcm16_frame(frame: bytes) -> np.ndarray:
+    if len(frame) % 2 != 0:
+        raise ValueError("Raw PCM16 frames must contain an even number of bytes")
+    return np.frombuffer(frame, dtype="<i2").astype(np.float32) / 32768.0
+
+
+def measure_pcm16_normalization_latencies(frames: list[bytes]) -> list[float]:
+    latencies = []
+    for frame in frames:
+        started_at = time.perf_counter()
+        normalize_pcm16_frame(frame)
+        latencies.append((time.perf_counter() - started_at) * 1000)
+    return latencies
 
 
 def _read_pcm16_mono_wav(path: Path) -> tuple[bytes, int]:

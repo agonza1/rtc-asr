@@ -107,6 +107,22 @@ def test_describe_environment_records_host_capacity(monkeypatch) -> None:
     assert payload["python"]
 
 
+def test_normalize_pcm16_frame_reports_float32_samples() -> None:
+    samples = benchmark_module.normalize_pcm16_frame(b"\x00\x00\x00@")
+
+    assert samples.dtype.name == "float32"
+    assert samples.tolist() == [0.0, 0.5]
+
+
+def test_normalize_pcm16_frame_rejects_odd_byte_frames() -> None:
+    try:
+        benchmark_module.normalize_pcm16_frame(b"x")
+    except ValueError as exc:
+        assert "even number of bytes" in str(exc)
+    else:
+        raise AssertionError("expected odd-byte PCM16 frame to fail")
+
+
 def test_run_benchmark_records_required_latency_metrics() -> None:
     audio = benchmark_module.AudioInput(
         source="fixture.raw",
@@ -148,12 +164,14 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["audio_send_duration_ms"] is not None
     assert sample["audio_send_queue_depth_p95_ms"] is None
     assert sample["audio_send_latency_p95_ms"] is not None
+    assert sample["pcm16_normalization_p95_ms"] is not None
     assert sample["asr_queue_delay_p95_ms"] is None
     assert sample["asr_decode_p95_ms"] is None
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_duration_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
+    assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
 
 
 def test_receive_latency_ignores_empty_poll_timeouts() -> None:
