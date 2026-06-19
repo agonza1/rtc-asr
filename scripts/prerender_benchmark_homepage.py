@@ -50,6 +50,16 @@ def format_celsius(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.1f} C"
 
 
+def format_bytes(value: int | None) -> str:
+    if value is None:
+        return "n/a"
+    if value < 1024:
+        return f"{value} B"
+    if value < 1024 * 1024:
+        return f"{value / 1024:.1f} KB"
+    return f"{value / (1024 * 1024):.1f} MB"
+
+
 def format_date(value: str | None) -> str:
     if not value:
         return "n/a"
@@ -266,6 +276,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     official_wer_reference = entry.get("official_wer_reference")
     run_command = entry.get("run_command")
     artifact_sha256 = entry.get("artifact_sha256")
+    artifact_size_bytes = entry.get("artifact_size_bytes")
     system_signals = extract_system_signals(artifact_payload)
     system_summary = " · ".join(
         [
@@ -333,7 +344,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">{html.escape(official_wer_reference or 'No external WER reference')}</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
-        <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p></article>
+        <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p><p>Size {format_bytes(artifact_size_bytes)}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
       </div>
@@ -360,6 +371,7 @@ def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_di
         if artifact_path.exists():
             artifact_bytes = artifact_path.read_bytes()
             detail_entry["artifact_sha256"] = hashlib.sha256(artifact_bytes).hexdigest()
+            detail_entry["artifact_size_bytes"] = len(artifact_bytes)
             artifact_payload = json.loads(artifact_bytes.decode("utf-8"))
         pages[detail_output_path(detail_dir, entry)] = render_detail_page(detail_entry, artifact_payload)
     return pages

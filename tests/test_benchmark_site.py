@@ -469,6 +469,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'official_wer_reference': '3.1 / 7.2 Demo clean / other',
         'run_command': 'make benchmark-demo',
         'artifact_sha256': '1234567890abcdef',
+        'artifact_size_bytes': 1536,
     }
     payload = {
         'environment': {
@@ -496,6 +497,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert '3.1 / 7.2 Demo clean / other' in detail_html
     assert 'make benchmark-demo' in detail_html
     assert '1234567890abcdef' in detail_html
+    assert 'Size 1.5 KB' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
     assert 'Stable over 5 minutes.' in detail_html
 
