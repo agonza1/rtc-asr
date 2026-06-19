@@ -444,6 +444,8 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Accuracy context" in rss_detail
     assert "Reproduction command" in rss_detail
     assert "Artifact integrity" in rss_detail
+    assert "Artifact provenance" in rss_detail
+    assert "Manifest path benchmark-results/parakeet-mlx-110m-service-2026-06-13.json" in rss_detail
     assert "SHA-256" in rss_detail
     assert '"@type": "Dataset"' in rss_detail
     assert '"@type": "DataDownload"' in rss_detail
@@ -507,6 +509,8 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert '"audio-end finalization latency"' in detail_html
     assert '"contentUrl": "../demo-artifact-2026-06-14.json"' in detail_html
     assert 'Size 1.5 KB' in detail_html
+    assert 'Artifact provenance' in detail_html
+    assert 'Generated detail page demo-artifact-2026-06-14.html' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
     assert 'Stable over 5 minutes.' in detail_html
 
