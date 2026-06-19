@@ -91,6 +91,22 @@ def test_split_pcm_frames_uses_20_ms_pcm16_boundaries() -> None:
     assert frames == [b"a" * 640, b"b" * 640, b"tail"]
 
 
+def test_describe_environment_records_host_capacity(monkeypatch) -> None:
+    monkeypatch.setattr(benchmark_module.platform, "platform", lambda: "TestOS")
+    monkeypatch.setattr(benchmark_module.platform, "processor", lambda: "TestCPU")
+    monkeypatch.setattr(benchmark_module.platform, "machine", lambda: "arm64")
+    monkeypatch.setattr(benchmark_module.os, "cpu_count", lambda: 8)
+
+    payload = benchmark_module.describe_environment()
+
+    assert payload["date_utc"].endswith("Z")
+    assert payload["platform"] == "TestOS"
+    assert payload["processor"] == "TestCPU"
+    assert payload["machine"] == "arm64"
+    assert payload["cpu_logical_cores"] == 8
+    assert payload["python"]
+
+
 def test_run_benchmark_records_required_latency_metrics() -> None:
     audio = benchmark_module.AudioInput(
         source="fixture.raw",
@@ -112,6 +128,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
 
     sample = payload["samples"][0]
     assert payload["kind"] == "local-stt-v1-latency-benchmark"
+    assert payload["environment"]["cpu_logical_cores"] is not None
     assert payload["audio"]["bytes_per_frame"] == 640
     assert payload["audio"]["duration_ms"] == 40
     assert payload["settings"] == {

@@ -3,9 +3,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import platform
 import time
 import wave
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 import sys
 from typing import Any, Callable, Protocol
@@ -119,6 +122,17 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
     return summary
 
 
+def describe_environment() -> dict[str, Any]:
+    return {
+        "date_utc": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "platform": platform.platform(),
+        "python": sys.version.split()[0],
+        "processor": platform.processor() or platform.machine(),
+        "machine": platform.machine(),
+        "cpu_logical_cores": os.cpu_count(),
+    }
+
+
 async def run_benchmark(
     *,
     url: str,
@@ -148,6 +162,7 @@ async def run_benchmark(
         "kind": "local-stt-v1-latency-benchmark",
         "protocol": "local-stt.v1",
         "target": {"url": url},
+        "environment": describe_environment(),
         "audio": {
             "source": audio.source,
             "sample_rate": audio.sample_rate,
