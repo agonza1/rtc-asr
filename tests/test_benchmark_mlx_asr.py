@@ -4,6 +4,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 
@@ -103,6 +104,33 @@ def test_run_benchmark_falls_back_to_cli_adjacent_to_active_python(monkeypatch, 
     resolved = benchmark_module._resolve_cli("parakeet-mlx")
 
     assert resolved == str(cli_path)
+
+
+def test_describe_environment_reports_mlx_host_capacity(monkeypatch) -> None:
+    class FakeProcess:
+        def memory_info(self) -> SimpleNamespace:
+            return SimpleNamespace(rss=512 * 1024 * 1024)
+
+    fake_psutil = SimpleNamespace(
+        virtual_memory=lambda: SimpleNamespace(total=32768 * 1024 * 1024),
+        Process=FakeProcess,
+    )
+
+    monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+    monkeypatch.setattr(benchmark_module.platform, "platform", lambda: "TestOS")
+    monkeypatch.setattr(benchmark_module.platform, "processor", lambda: "TestCPU")
+    monkeypatch.setattr(benchmark_module.platform, "machine", lambda: "arm64")
+    monkeypatch.setattr(benchmark_module.os, "cpu_count", lambda: 10)
+
+    payload = benchmark_module.describe_environment()
+
+    assert payload["platform"] == "TestOS"
+    assert payload["processor"] == "TestCPU"
+    assert payload["machine"] == "arm64"
+    assert payload["cpu_logical_cores"] == 10
+    assert payload["memory_total_mb"] == 32768.0
+    assert payload["process_rss_mb"] == 512.0
+    assert payload["peak_rss_mb"] == 512.0
 
 
 def test_coerce_transcript_prefers_explicit_empty_text_field() -> None:
