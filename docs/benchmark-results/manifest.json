@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-19T12:11:05Z",
+  "generated_at": "2026-06-19T14:11:15Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -141,6 +141,8 @@
       "measured_at": "2026-06-13T22:55:30Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "artifact_sha256": "32726e579cf7cf219b3633596b5b4275b9c6a5be058cbe86546c7b37ee31848e",
+      "artifact_size_bytes": 45949,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -215,6 +217,8 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "artifact_sha256": "7889834b81f89e178efed1bc5ead039a2c1a0951a49fdb7775404a4b2d5f287a",
+      "artifact_size_bytes": 29316,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -288,6 +292,8 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "artifact_sha256": "3d72b21c7813d95f06c0c33ba4ecad5b4b356c57d5b47aa5a9109d28a9504648",
+      "artifact_size_bytes": 32873,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -361,6 +367,8 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "artifact_sha256": "8f12040623941ba0c0e299861bce5a18724e6b5106fa58671c4c117449a18251",
+      "artifact_size_bytes": 32810,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -434,6 +442,8 @@
       "measured_at": "2026-06-16T03:03:27Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-15.json",
+      "artifact_sha256": "d2c6b08c113cd4d781bad5100675d18576daba79416c50b6f746b6b003a7910a",
+      "artifact_size_bytes": 51376,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -508,6 +518,8 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "artifact_sha256": "3dca476e639b2360116e793106b83d7871ba14cf4409dbda644359249cac59d0",
+      "artifact_size_bytes": 33218,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -581,6 +593,8 @@
       "measured_at": "2026-06-15T20:09:37Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
+      "artifact_sha256": "66a12e0a85d30be6d3f9365946783e3d622cbd06acbdbe17856adeb6ad390e26",
+      "artifact_size_bytes": 25756,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -655,6 +669,8 @@
       "measured_at": "2026-06-16T03:51:29Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
+      "artifact_sha256": "b36bf13185f6cfa8e6cc8a8b162cda6e7b91dfbc1d61c5925bbbb310386a6f85",
+      "artifact_size_bytes": 14037,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -724,6 +740,8 @@
       "measured_at": "2026-06-17T17:15:19Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17-cate-blanch.json",
+      "artifact_sha256": "5169129c586604c02a0c479a990c98b8b2d8476426770c5d917fa2b97f50d362",
+      "artifact_size_bytes": 13300,
       "system": {
         "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
         "processor": "aarch64",
@@ -778,6 +796,8 @@
       "measured_at": "2026-06-17T17:11:26Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17.json",
+      "artifact_sha256": "95f52f4317b78fe566ed8aa265b7e7a72afa2ae9e18c1e8dc194467890b9ec93",
+      "artifact_size_bytes": 10708,
       "system": {
         "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
         "processor": "aarch64",
@@ -832,6 +852,8 @@
       "measured_at": "2026-06-16T03:51:29Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
+      "artifact_sha256": "b36bf13185f6cfa8e6cc8a8b162cda6e7b91dfbc1d61c5925bbbb310386a6f85",
+      "artifact_size_bytes": 14037,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -886,6 +908,8 @@
       "measured_at": "2026-06-16T03:29:41Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-15.json",
+      "artifact_sha256": "b1d0e0396c7319c686f9045059b90c1967861af253e7dca7592d2f0c6e62d8d8",
+      "artifact_size_bytes": 14310,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -940,6 +964,8 @@
       "measured_at": "2026-06-16T03:03:27Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-15.json",
+      "artifact_sha256": "d2c6b08c113cd4d781bad5100675d18576daba79416c50b6f746b6b003a7910a",
+      "artifact_size_bytes": 51376,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -993,6 +1019,8 @@
       "measured_at": "2026-06-15T20:09:37Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
+      "artifact_sha256": "66a12e0a85d30be6d3f9365946783e3d622cbd06acbdbe17856adeb6ad390e26",
+      "artifact_size_bytes": 25756,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1046,6 +1074,8 @@
       "measured_at": "2026-06-13T22:55:30Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "artifact_sha256": "32726e579cf7cf219b3633596b5b4275b9c6a5be058cbe86546c7b37ee31848e",
+      "artifact_size_bytes": 45949,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1099,6 +1129,8 @@
       "measured_at": "2026-06-13T03:44:05Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.json",
+      "artifact_sha256": "fcfafab1713a7b502215ad5a57fe39421ec0acd2170129c8e17cc8f2cbec6878",
+      "artifact_size_bytes": 5769,
       "system": {
         "platform": "Linux-6.12.76-linuxkit-aarch64-with-glibc2.36",
         "processor": "aarch64",
@@ -1153,6 +1185,8 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "artifact_sha256": "3d72b21c7813d95f06c0c33ba4ecad5b4b356c57d5b47aa5a9109d28a9504648",
+      "artifact_size_bytes": 32873,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1205,6 +1239,8 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "artifact_sha256": "7889834b81f89e178efed1bc5ead039a2c1a0951a49fdb7775404a4b2d5f287a",
+      "artifact_size_bytes": 29316,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1257,6 +1293,8 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "artifact_sha256": "8f12040623941ba0c0e299861bce5a18724e6b5106fa58671c4c117449a18251",
+      "artifact_size_bytes": 32810,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1309,6 +1347,8 @@
       "measured_at": "2026-06-10T02:16:51Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-10.json",
+      "artifact_sha256": "181dc6146b9113eda1cf37574576d0f96ae5105f9c79f96740693cbdb68b9eca",
+      "artifact_size_bytes": 32547,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1361,6 +1401,8 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "artifact_sha256": "3dca476e639b2360116e793106b83d7871ba14cf4409dbda644359249cac59d0",
+      "artifact_size_bytes": 33218,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1423,6 +1465,8 @@
       "measured_at": "2026-06-13T22:55:30Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
+      "artifact_sha256": "32726e579cf7cf219b3633596b5b4275b9c6a5be058cbe86546c7b37ee31848e",
+      "artifact_size_bytes": 45949,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1497,6 +1541,8 @@
       "measured_at": "2026-06-10T03:11:39Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json",
+      "artifact_sha256": "7889834b81f89e178efed1bc5ead039a2c1a0951a49fdb7775404a4b2d5f287a",
+      "artifact_size_bytes": 29316,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1570,6 +1616,8 @@
       "measured_at": "2026-06-10T17:19:07Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
+      "artifact_sha256": "3d72b21c7813d95f06c0c33ba4ecad5b4b356c57d5b47aa5a9109d28a9504648",
+      "artifact_size_bytes": 32873,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1643,6 +1691,8 @@
       "measured_at": "2026-06-10T02:23:49Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
+      "artifact_sha256": "8f12040623941ba0c0e299861bce5a18724e6b5106fa58671c4c117449a18251",
+      "artifact_size_bytes": 32810,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1716,6 +1766,8 @@
       "measured_at": "2026-06-16T03:03:27Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-15.json",
+      "artifact_sha256": "d2c6b08c113cd4d781bad5100675d18576daba79416c50b6f746b6b003a7910a",
+      "artifact_size_bytes": 51376,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1790,6 +1842,8 @@
       "measured_at": "2026-06-10T01:41:11Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/parakeet-compose-2026-06-10.json",
+      "artifact_sha256": "3dca476e639b2360116e793106b83d7871ba14cf4409dbda644359249cac59d0",
+      "artifact_size_bytes": 33218,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1863,6 +1917,8 @@
       "measured_at": "2026-06-15T20:09:37Z",
       "sample_count": 5,
       "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
+      "artifact_sha256": "66a12e0a85d30be6d3f9365946783e3d622cbd06acbdbe17856adeb6ad390e26",
+      "artifact_size_bytes": 25756,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -1937,6 +1993,8 @@
       "measured_at": "2026-06-16T03:51:29Z",
       "sample_count": 1,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
+      "artifact_sha256": "b36bf13185f6cfa8e6cc8a8b162cda6e7b91dfbc1d61c5925bbbb310386a6f85",
+      "artifact_size_bytes": 14037,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",

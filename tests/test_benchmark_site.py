@@ -58,6 +58,8 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
+    assert len(tracks["qwen-mps"]["artifact_sha256"]) == 64
+    assert tracks["qwen-mps"]["artifact_size_bytes"] > 0
 
 
 def test_checked_in_manifest_matches_generated_output() -> None:
@@ -154,6 +156,8 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
     manifest = build_manifest(tmp_path, tracks_path)
 
     assert manifest["summary"]["asr_count"] == 2
+    assert all(len(entry["artifact_sha256"]) == 64 for entry in manifest["asr_benchmarks"])
+    assert all(entry["artifact_size_bytes"] > 0 for entry in manifest["asr_benchmarks"])
     runtimes = {entry["runtime"] for entry in manifest["asr_benchmarks"]}
     assert runtimes == {"cpu / int8", "cpu / float16"}
 

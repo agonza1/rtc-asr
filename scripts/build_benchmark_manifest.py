@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -260,6 +261,7 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     rest = payload["rest"]
     streaming = payload["streaming"]
     contract = extract_benchmark_contract(payload)
+    artifact_bytes = path.read_bytes()
     return {
         "kind": "asr",
         "backend": backend["name"],
@@ -268,6 +270,8 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
         "measured_at": artifact_timestamp(path, payload),
         "sample_count": sample_count(payload),
         "artifact_path": f"benchmark-results/{path.name}",
+        "artifact_sha256": hashlib.sha256(artifact_bytes).hexdigest(),
+        "artifact_size_bytes": len(artifact_bytes),
         "system": extract_system_signals(payload),
         "contract": contract,
         "rest": {
@@ -414,6 +418,8 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
         "measured_at": None,
         "sample_count": None,
         "artifact_path": None,
+        "artifact_sha256": None,
+        "artifact_size_bytes": None,
         "system": {
             "platform": None,
             "processor": None,
@@ -455,6 +461,8 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
                 "measured_at": measured["measured_at"],
                 "sample_count": measured["sample_count"],
                 "artifact_path": measured["artifact_path"],
+                "artifact_sha256": measured["artifact_sha256"],
+                "artifact_size_bytes": measured["artifact_size_bytes"],
                 "system": measured["system"],
                 "contract": measured["contract"],
                 "rest": measured["rest"],
