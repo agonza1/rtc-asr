@@ -34,8 +34,8 @@
       "lane": "Pipecat E2E Local Python CPU",
       "status": "blocked",
       "target_sample_count": 1,
-      "artifact": "faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
-      "status_detail": "Checked-in single-sample Pipecat E2E artifact refreshed on 2026-06-16 using synthesized real-time speech, 20 ms source frames, and 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
+      "artifact": "faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json",
+      "status_detail": "Checked-in single-sample Pipecat E2E artifact refreshed on 2026-06-19 using synthesized real-time speech normalized to 16 kHz, 20 ms source frames, and 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
       "run_command": "make benchmark-pipecat-e2e",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
     },

@@ -53,7 +53,7 @@ Required methodology fields for any future published WER:
 | --- | --- | --- | --- | --- | --- | --- |
 | `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-15.json` |
 | `faster-whisper-base-c80-w075-json-preview` | `faster-whisper` | `base.en` | Local Python CPU Sweep Preview | `cpu / int8` | preview artifact | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
-| `pipecat-e2e-faster-whisper-base` | `faster-whisper` | `base.en` | Pipecat E2E Local Python CPU | `cpu / int8` | blocked integration artifact | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json` |
+| `pipecat-e2e-faster-whisper-base` | `faster-whisper` | `base.en` | Pipecat E2E Local Python CPU | `cpu / int8` | blocked integration artifact | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json` |
 | `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
 | `parakeet-compose` | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU | `cpu / float32` | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` |
 | `parakeet-nemo-compose` | `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU | `cpu / float32` | validated artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-09.json` |
@@ -67,7 +67,7 @@ Status details from the track registry:
 
 - `faster-whisper-base`: validated 10-sample local CPU baseline refreshed on `2026-06-15` with a preloaded model.
 - `faster-whisper-base-c80-w075-json-preview`: preview low-latency sweep artifact for the `80 ms` chunk / `0.75 s` partial-window JSON framing variant.
-- `pipecat-e2e-faster-whisper-base`: checked-in single-sample Pipecat E2E artifact refreshed on `2026-06-16` using synthesized real-time speech, `20 ms` source frames, and `100 ms` websocket chunks; kept off the homepage until comparable E2E lanes exist.
+- `pipecat-e2e-faster-whisper-base`: checked-in single-sample Pipecat E2E artifact refreshed on `2026-06-19` using synthesized real-time speech normalized to `16 kHz`, `20 ms` source frames, and `100 ms` websocket chunks; kept off the homepage until comparable E2E lanes exist.
 - `faster-whisper-small`: validated 10-sample local CPU baseline using the default service model.
 - `parakeet-compose`: validated 10-sample Compose CPU artifact.
 - `parakeet-nemo-compose`: validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.
@@ -104,13 +104,13 @@ Notes:
 
 ## Pipecat E2E Integration Track
 
-This repo now keeps Pipecat end-to-end results as a separate integration lane instead of mixing them into the backend-only homepage leaderboard. The checked-in artifact below uses a local `faster-whisper` base lane with synthesized real-time speech, `20 ms` Pipecat-style source frames, and `100 ms` websocket chunks. That lets us capture metrics the homepage does not currently rank on its own: first useful partial timing, partial cadence/jitter, final closeout after audio end, and missing partial counts across the bridge.
+This repo now keeps Pipecat end-to-end results as a separate integration lane instead of mixing them into the backend-only homepage leaderboard. The checked-in artifact below uses a local `faster-whisper` base lane with synthesized real-time speech normalized to the service target of `16 kHz`, `20 ms` Pipecat-style source frames, and `100 ms` websocket chunks. That lets us capture metrics the homepage does not currently rank on its own: first useful partial timing, partial cadence/jitter, final closeout after audio end, and missing partial counts across the bridge.
 
-| Track | Samples | First Visible Partial | Partial Mean / P95 | Partial Gap Mean / P95 | Audio-end Final | Missing Partials | Artifact |
+| Track | Samples | First Visible Partial | Backlog Delay Mean / P95 | Partial Gap Mean / P95 | Audio-end Final | Missing Partials | Artifact |
 | --- | ---: | --- | --- | --- | --- | ---: | --- |
-| `pipecat-e2e-faster-whisper-base` | 1 | 1412.8 ms | 15441.5 ms / 21110.8 ms | 408.0 ms / 1911.3 ms | 16492.0 ms | 2 | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json` |
+| `pipecat-e2e-faster-whisper-base` | 1 | 702.8 ms | 9432.6 ms / 15077.5 ms | 337.8 ms / 2529.6 ms | 10844.6 ms | 2 | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json` |
 
-The artifact stays tracked in `docs/benchmark-results/tracks.json`, but it is intentionally excluded from `docs/index.html` because there is only one Pipecat E2E lane today. The June 16 refresh keeps the real-time pacing and synthesized speech defaults while materially improving the first-partial and cadence story versus the June 15 pass, even though the underlying `faster-whisper` partials are still too delayed to treat as a good live UX. That keeps backend-only and integration-level claims separate until there are comparable E2E artifacts across multiple backends.
+The artifact stays tracked in `docs/benchmark-results/tracks.json`, but it is intentionally excluded from `docs/index.html` because there is only one Pipecat E2E lane today. The June 19 refresh keeps real-time pacing, normalizes generated audio to `16 kHz`, and ignores stale partial events that arrive after newer chunk indexes have already been observed. `Backlog Delay` remains a diagnostic chunk-response metric, not perceived first-token latency; the `faster-whisper` partials are still too delayed to treat as a good live UX. That keeps backend-only and integration-level claims separate until there are comparable E2E artifacts across multiple backends.
 
 ## Recommended Low-Power Profiling Fields
 

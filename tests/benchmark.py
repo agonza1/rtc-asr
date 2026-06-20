@@ -33,6 +33,7 @@ DEFAULT_TEXT = (
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_PATH = ROOT / "tests" / "fixtures" / "smoke.wav"
 CACHE_ROOT = ROOT / ".cache" / "huggingface"
+BENCHMARK_SAMPLE_RATE = 16000
 
 
 def positive_int(value: str) -> int:
@@ -208,6 +209,18 @@ def load_audio(path: Path) -> tuple[np.ndarray, int]:
     if samples.size == 0:
         raise ValueError(f"Audio file is empty: {path}")
     return samples, int(sample_rate)
+
+
+def resample_audio(samples: np.ndarray, source_rate: int, target_rate: int) -> np.ndarray:
+    if source_rate == target_rate:
+        return samples.astype(np.float32, copy=False)
+    if samples.size == 0:
+        return samples.astype(np.float32, copy=False)
+    duration_seconds = samples.shape[0] / source_rate
+    target_length = max(int(round(duration_seconds * target_rate)), 1)
+    source_positions = np.linspace(0.0, duration_seconds, num=samples.shape[0], endpoint=False)
+    target_positions = np.linspace(0.0, duration_seconds, num=target_length, endpoint=False)
+    return np.interp(target_positions, source_positions, samples).astype(np.float32)
 
 
 def benchmark_audio_path(args: argparse.Namespace) -> Path:
@@ -845,6 +858,9 @@ async def run_pipecat_e2e_benchmark(
     chunk_count = 0
     source_audio_ms = 0.0
 
+    def latest_recorded_chunk_index() -> int:
+        return max(recorded_partial_chunks, default=0)
+
     def record_partial_event(
         event: TranscriptEvent,
         received_at: float,
@@ -858,6 +874,9 @@ async def run_pipecat_e2e_benchmark(
             chunk_index = fallback_chunk_index
         started_at = pending_partial_started_at.get(chunk_index)
         if started_at is None:
+            return None
+
+        if chunk_index < latest_recorded_chunk_index():
             return None
 
         last_partial_text = event.text
@@ -1045,7 +1064,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
     audio_path = benchmark_audio_path(args)
     synthesized = audio_path != args.audio_file if args.audio_file else audio_path != FIXTURE_PATH
     reference_text = resolve_reference_text(args, synthesized=synthesized)
-    samples, sample_rate = load_audio(audio_path)
+    samples, source_sample_rate = load_audio(audio_path)
+    sample_rate = BENCHMARK_SAMPLE_RATE
+    samples = resample_audio(samples, source_sample_rate, sample_rate)
     wav_bytes = make_wav_bytes(samples, sample_rate)
     raw_pcm = (np.clip(samples, -1.0, 1.0) * 32767.0).astype("<i2").tobytes()
     duration_s = len(samples) / sample_rate
