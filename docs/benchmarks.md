@@ -173,7 +173,7 @@ Run the Compose CPU baselines that currently have checked-in artifacts:
 ```bash
 make benchmark-compose-parakeet
 make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09
-BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen
+BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen
 ```
 
 

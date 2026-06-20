@@ -459,6 +459,8 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
     assert "should not show reference WER in the primary ranking table" in docs_text
     assert "not an official rtc-asr measurement" in docs_text
     assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
+    assert "BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen" in docs_text
+    assert "BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen" not in docs_text
 
     for track in tracks:
         assert track["slug"] in docs_text
