@@ -160,19 +160,44 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     streaming = payload.get("streaming") or {}
     ready = streaming.get("ready") or {}
     audio = payload.get("audio") or {}
+    integration = payload.get("integration") or {}
+    bridge = streaming.get("bridge") or {}
     contract = {
         "chunk_ms": benchmark.get("chunk_ms", streaming.get("chunk_ms")),
         "partial_interval_chunks": benchmark.get("partial_interval_chunks", ready.get("partial_interval_chunks")),
         "partial_window_seconds": benchmark.get("partial_window_seconds", ready.get("partial_window_seconds")),
         "binary_frames": benchmark.get("binary_frames", streaming.get("binary_frames")),
         "sample_rate": audio.get("sample_rate", ready.get("sample_rate")),
+        "live_metrics_comparable": bool(streaming.get("live_metrics_comparable", False)),
     }
+    transport = first_defined(streaming.get("transport"), benchmark.get("mode"), integration.get("transport"))
+    if transport is not None:
+        contract["transport"] = transport
+    protocol = first_defined(bridge.get("protocol"), integration.get("protocol"))
+    if protocol is not None:
+        contract["protocol"] = protocol
+    path = first_defined(
+        bridge.get("path"),
+        integration.get("path"),
+        "/v1/stt/stream" if transport == "v1-stt-stream" else "/ws/stream" if transport in {"direct", "ws/stream"} else None,
+    )
+    if path is not None:
+        contract["path"] = path
     max_buffer_seconds = benchmark.get("max_buffer_seconds", streaming.get("max_buffer_seconds"))
     if max_buffer_seconds is not None:
         contract["max_buffer_seconds"] = max_buffer_seconds
     source_frame_ms = benchmark.get("source_frame_ms", streaming.get("source_frame_ms"))
     if source_frame_ms is not None:
         contract["source_frame_ms"] = source_frame_ms
+    aggregation_ms = benchmark.get("aggregation_ms", streaming.get("aggregation_ms"))
+    if aggregation_ms is not None:
+        contract["aggregation_ms"] = aggregation_ms
+    partial_interval_ms = benchmark.get("partial_interval_ms", streaming.get("partial_interval_ms"))
+    if partial_interval_ms is not None:
+        contract["partial_interval_ms"] = partial_interval_ms
+    simulate_realtime = benchmark.get("simulate_realtime", streaming.get("simulate_realtime"))
+    if simulate_realtime is not None:
+        contract["simulate_realtime"] = simulate_realtime
     partial_event_timeout_seconds = benchmark.get(
         "partial_event_timeout_seconds",
         streaming.get("partial_event_timeout_seconds"),
@@ -320,6 +345,8 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
             "rtf_mean": rest.get("rtf_mean"),
         },
         "streaming": {
+            "transport": contract.get("transport"),
+            "live_metrics_comparable": contract.get("live_metrics_comparable", False),
             "partial_mean_ms": streaming.get("partial_mean_ms"),
             "partial_p95_ms": streaming.get("partial_p95_ms"),
             "first_partial_end_to_end_mean_ms": streaming.get("first_partial_end_to_end_mean_ms", streaming.get("first_partial_end_to_end_ms")),
@@ -479,9 +506,12 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
             "partial_interval_chunks": None,
             "partial_window_seconds": None,
             "binary_frames": None,
+            "live_metrics_comparable": False,
         },
         "rest": {"mean_ms": None, "p95_ms": None, "rtf_mean": None},
         "streaming": {
+            "transport": None,
+            "live_metrics_comparable": False,
             "partial_mean_ms": None,
             "partial_p95_ms": None,
             "first_partial_end_to_end_mean_ms": None,
@@ -621,6 +651,13 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
     artifact_backed = [track for track in tracks if track["artifact_path"]]
     validated_entries = [track for track in artifact_backed if track["status"] == "validated"]
     highlight_entries = validated_entries or artifact_backed
+    live_comparable_entries = [
+        track
+        for track in artifact_backed
+        if track.get("status") != "blocked"
+        and track.get("streaming", {}).get("live_metrics_comparable") is True
+        and track.get("contract", {}).get("transport") == "v1-stt-stream"
+    ]
     asr_entries = sorted(
         artifact_backed,
         key=lambda item: (
@@ -658,26 +695,26 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "highlights": {
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),
             "lowest_partial_backlog": build_highlight(
-                "Lowest partial backlog latency", ("streaming", "partial_mean_ms"), highlight_entries
+                "Lowest partial backlog latency", ("streaming", "partial_mean_ms"), live_comparable_entries
             ),
             "fastest_first_partial": build_highlight(
-                "Fastest first visible partial", ("streaming", "first_partial_end_to_end_mean_ms"), highlight_entries
+                "Fastest first visible partial", ("streaming", "first_partial_end_to_end_mean_ms"), live_comparable_entries
             ),
             "tightest_partial_cadence": build_highlight(
-                "Tightest partial cadence", ("streaming", "partial_gap_mean_ms"), highlight_entries
+                "Tightest partial cadence", ("streaming", "partial_gap_mean_ms"), live_comparable_entries
             ),
             "lowest_late_partial_ratio": build_highlight(
-                "Lowest late partial ratio", ("streaming", "late_partial_ratio"), highlight_entries
+                "Lowest late partial ratio", ("streaming", "late_partial_ratio"), live_comparable_entries
             ),
             "fastest_final": build_highlight(
-                "Fastest streaming finalization delay", ("streaming", "final_mean_ms"), highlight_entries
+                "Fastest streaming finalization delay", ("streaming", "final_mean_ms"), live_comparable_entries
             ),
-            "best_overall": build_derived_highlight("Best overall benchmark balance", "overall_score", highlight_entries),
+            "best_overall": build_derived_highlight("Best overall benchmark balance", "overall_score", live_comparable_entries),
             "best_live_caption": build_derived_highlight(
-                "Best live turn-taking score", "live_caption_score", highlight_entries
+                "Best live turn-taking score", "live_caption_score", live_comparable_entries
             ),
             "best_partial_backlog": build_derived_highlight(
-                "Best partial backlog score", "partial_backlog_score", highlight_entries
+                "Best partial backlog score", "partial_backlog_score", live_comparable_entries
             ),
         },
     }

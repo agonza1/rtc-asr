@@ -128,13 +128,12 @@ def sort_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def comparable_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    validated = [entry for entry in entries if entry.get("status") == "validated"]
-    return validated or entries
+    return [entry for entry in entries if entry.get("streaming", {}).get("live_metrics_comparable") is True]
 
 
 def has_primary_live_metrics(entry: dict[str, Any]) -> bool:
     streaming = entry.get("streaming", {})
-    return all(
+    return streaming.get("live_metrics_comparable") is True and all(
         streaming.get(field) is not None
         for field in ("first_partial_end_to_end_mean_ms", "partial_gap_mean_ms", "final_mean_ms")
     )
@@ -148,6 +147,28 @@ def primary_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def secondary_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     primary_slugs = {entry.get("slug") for entry in primary_entries(entries)}
     return [entry for entry in sort_entries(entries) if entry.get("slug") not in primary_slugs]
+
+
+def secondary_reason(entry: dict[str, Any]) -> str:
+    streaming = entry.get("streaming", {})
+    contract = entry.get("contract", {})
+    path = contract.get("path")
+    transport = contract.get("transport")
+    if streaming.get("live_metrics_comparable") is not True:
+        if path == "/ws/stream" or transport in {"direct", "ws/stream"} or entry.get("status") == "legacy":
+            return "Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling."
+        return "Non-comparable streaming contract or protocol path."
+
+    missing = []
+    if streaming.get("first_partial_end_to_end_mean_ms") is None:
+        missing.append("first partial")
+    if streaming.get("partial_gap_mean_ms") is None:
+        missing.append("partial cadence")
+    if streaming.get("final_mean_ms") is None:
+        missing.append("finalization")
+    if missing:
+        return "Missing comparable live metrics: " + ", ".join(missing)
+    return "Supporting artifact with a different contract or publication scope."
 
 
 def registry_gap_entries(manifest: dict[str, Any]) -> list[dict[str, Any]]:
@@ -523,21 +544,13 @@ def render_row(
 
 def render_secondary_row(entry: dict[str, Any]) -> str:
     streaming = entry.get("streaming", {})
-    missing = []
-    if streaming.get("first_partial_end_to_end_mean_ms") is None:
-        missing.append("first partial")
-    if streaming.get("partial_mean_ms") is None:
-        missing.append("partial cadence")
-    if streaming.get("final_mean_ms") is None:
-        missing.append("finalization")
-    gap_reason = "Missing comparable live metrics: " + ", ".join(missing) if missing else "Supporting artifact with a different contract or publication scope."
     artifact_hash = entry.get("artifact_sha256")
     artifact_hash_label = f"SHA-256 {artifact_hash[:12]}" if artifact_hash else "SHA-256 n/a"
     return "".join(
         [
             "<tr>",
             f'<td data-label="Lane" class="leader-name"><strong>{html.escape(entry.get("label") or "unknown")}</strong><span>{html.escape(entry.get("backend") or "unknown")} . {html.escape(entry.get("model") or "unknown")}</span><div class="table-note">{html.escape(entry.get("lane") or "unknown")} . {html.escape(entry.get("runtime") or "unknown")}</div></td>',
-            f'<td data-label="Why it is secondary">{html.escape(gap_reason)}</td>',
+            f'<td data-label="Why it is secondary">{html.escape(secondary_reason(entry))}</td>',
             f'<td data-label="Visible live metrics"><strong>First partial {format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</strong><div class="tiny">Finalization {format_ms(streaming.get("final_mean_ms"))}</div></td>',
             f'<td data-label="Details"><a href="{html.escape(detail_page_path(entry))}">Open detail page</a><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div><div class="tiny">{html.escape(artifact_hash_label)}</div></td>',
             "</tr>",
@@ -576,10 +589,10 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     best_first_partial = first_visible_partial(best_primary) if best_primary else None
     best_final = best_primary.get("streaming", {}).get("final_mean_ms") if best_primary else None
     recommendation_title = (
-        f"Start with {best_primary.get('label')} for live turn-taking." if best_primary else "Use the benchmark as a live ASR shortlist."
+        f"Start with {best_primary.get('label')} for live turn-taking." if best_primary else "No backend-only lane currently meets the live comparability contract."
     )
     recommendation_copy = (
-        f"{best_primary.get('label')} is the strongest publishable default right now: {format_ms(first_visible_partial(best_primary))} first visible partial, {format_ms(best_primary.get('streaming', {}).get('final_mean_ms'))} audio-end finalization, and backlog diagnostics that stay separated from perceived latency." if best_primary else "The homepage now leads with decision-ready comparisons instead of raw benchmark plumbing."
+        f"{best_primary.get('label')} is the strongest publishable default right now: {format_ms(first_visible_partial(best_primary))} first visible partial, {format_ms(best_primary.get('streaming', {}).get('final_mean_ms'))} audio-end finalization, and backlog diagnostics that stay separated from perceived latency." if best_primary else "Legacy /ws/stream artifacts stay published as supporting evidence, but the live leaderboard now waits for paced /v1/stt/stream replacements."
     )
     summary_cards: list[str] = []
     if best_primary:
@@ -591,7 +604,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
             f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Alternative lane</div><div class="headline-value">{html.escape(alternative.get("label") or "unknown")}</div><p>{html.escape(alternative.get("status_detail") or "Supporting lane")}</p></article>'
         )
     summary_cards.append(
-        f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">{len(primary)} fully comparable lanes</div><p>{len(secondary)} supporting lanes stay below the fold because they are missing at least one live metric, usually first-partial capture.</p></article>'
+        f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">{len(primary)} fully comparable lanes</div><p>{len(secondary)} supporting lanes stay below the fold because they use the deprecated /ws/stream contract, lack a comparable live metric, or were published for a narrower benchmarking purpose.</p></article>'
     )
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
@@ -624,7 +637,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
       <div class="section-kicker">Supporting lanes</div>
       <h2>Artifacts kept out of the primary ranking</h2>
     </div>
-    <p class="subcopy">These lanes still add context, but they are missing at least one comparable live metric or were published for a narrower benchmarking purpose.</p>
+    <p class="subcopy">These lanes still add context, but they use the deprecated /ws/stream path, miss a comparable live metric, or were published for a narrower benchmarking purpose.</p>
   </div>
   <div class="comparison-scroll">
     <table>

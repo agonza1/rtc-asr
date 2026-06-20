@@ -504,6 +504,11 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "benchmark-parakeet-mlx-service: mlx-venv" in makefile
     assert "benchmark-parakeet-mlx-service-110m:" in makefile
     assert "BENCHMARK_PIPECAT_REALTIME_FLAG ?= --simulate-realtime" in makefile
+    assert "COMPOSE_V1_WS_URL ?= ws://127.0.0.1:8080/v1/stt/stream" in makefile
+    assert "BENCHMARK_V1_SOURCE_FRAME_MS ?= 20" in makefile
+    assert "BENCHMARK_V1_AGGREGATION_MS ?= 100" in makefile
+    assert "BENCHMARK_V1_PARTIAL_INTERVAL_MS ?= 100" in makefile
+    assert "BENCHMARK_V1_REALTIME_FLAG ?= --simulate-realtime" in makefile
     assert "benchmark-pipecat-e2e: venv" in makefile
     assert "$(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json" in makefile
     assert '$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx psutil' in makefile
@@ -514,7 +519,7 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "trap cleanup EXIT INT TERM" in mlx_service_block
     assert "PYTHONPATH=. ASR_BACKEND=parakeet-mlx ASR_DEVICE=apple-silicon ASR_PRELOAD_MODEL=true ASR_PARAKEET_MODEL=$(PARAKEET_MLX_MODEL) ASR_PARAKEET_DTYPE=auto $(MLX_PYTHON) -m uvicorn src.main:app --host 127.0.0.1 --port 8090 --log-level warning" in mlx_service_block
     assert "curl -sf http://127.0.0.1:8090/ready >/dev/null" in mlx_service_block
-    assert "PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --url http://127.0.0.1:8090 --ws-url ws://127.0.0.1:8090/ws/stream --backend parakeet-mlx" in mlx_service_block
+    assert "PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --mode v1-stt-stream --url http://127.0.0.1:8090 --v1-ws-url ws://127.0.0.1:8090/v1/stt/stream --backend parakeet-mlx" in mlx_service_block
     assert "PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service" in makefile
     assert makefile.count("ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE=\"$${base_image}\" docker compose up -d --build; \\") == 6
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m")):
@@ -558,7 +563,7 @@ def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
         assert f"--backend {backend}" in block
 
 
-def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> None:
+def test_checked_in_legacy_benchmark_artifacts_include_current_harness_metadata() -> None:
     artifact_expectations = {
         "faster-whisper-base.en-int8-2026-06-15.json": {
             "partial_interval_chunks": 1,
@@ -584,7 +589,7 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "parakeet-nemo-110m-compose-2026-06-09.json": {
+        "parakeet-nemo-110m-compose-2026-06-19.json": {
             "partial_interval_chunks": 8,
             "binary_frames": False,
             "partial_window_seconds": 2.0,
@@ -592,7 +597,15 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "qwen-mps-2026-06-10.json": {
+        "parakeet-mlx-110m-service-2026-06-13.json": {
+            "partial_interval_chunks": 1,
+            "binary_frames": False,
+            "partial_window_seconds": 2.0,
+            "max_buffer_seconds": None,
+            "request_retries": 3,
+            "request_retry_delay": 2.0,
+        },
+        "qwen-mps-2026-06-20.json": {
             "partial_interval_chunks": 1,
             "binary_frames": False,
             "partial_window_seconds": 2.0,
@@ -617,17 +630,19 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             assert benchmark_metadata[key] == expected
 
 
-def test_checked_in_benchmark_artifacts_include_streaming_sample_binary_frame_metadata() -> None:
+def test_checked_in_legacy_benchmark_artifacts_include_streaming_sample_binary_frame_metadata() -> None:
     results_dir = Path("docs") / "benchmark-results"
-    validated_artifacts = [
+    legacy_artifacts = [
         "faster-whisper-base.en-int8-2026-06-15.json",
         "faster-whisper-small.en-int8-2026-06-10.json",
         "parakeet-compose-2026-06-10.json",
-        "parakeet-nemo-110m-compose-2026-06-09.json",
+        "parakeet-nemo-110m-compose-2026-06-19.json",
+        "parakeet-mlx-110m-service-2026-06-13.json",
+        "qwen-mps-2026-06-20.json",
         "qwen-compose-2026-06-19.json",
     ]
 
-    for artifact_name in validated_artifacts:
+    for artifact_name in legacy_artifacts:
         payload = json.loads((results_dir / artifact_name).read_text(encoding="utf-8"))
         benchmark_binary_frames = payload["benchmark"]["binary_frames"]
         streaming_samples = payload["samples"]["streaming"]
@@ -637,7 +652,28 @@ def test_checked_in_benchmark_artifacts_include_streaming_sample_binary_frame_me
             assert sample["binary_frames"] == benchmark_binary_frames
 
 
-def test_benchmarks_doc_validated_artifact_rows_reference_checked_in_current_schema_artifacts() -> None:
+def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
+    payload = json.loads((Path("docs") / "benchmark-results" / "tracks.json").read_text(encoding="utf-8"))
+    sample_contract = payload["sample_contract"]
+
+    assert sample_contract["transport"] == "v1-stt-stream"
+    assert sample_contract["protocol"] == "local-stt-v1"
+    assert sample_contract["chunk_ms"] == 100
+    assert sample_contract["source_frame_ms"] == 20
+    assert sample_contract["partial_interval_chunks"] == 1
+    assert sample_contract["partial_interval_ms"] == 100
+    assert sample_contract["binary_frames"] is True
+    assert sample_contract["live_metrics_comparable"] is True
+
+    published_tracks = [track for track in payload["tracks"] if track["status"] != "blocked"]
+    assert published_tracks
+    for track in published_tracks:
+        assert track["status"] == "legacy"
+        assert "/ws/stream" in track["status_detail"]
+        assert "/v1/stt/stream" in track["status_detail"]
+
+
+def test_benchmarks_doc_legacy_artifact_rows_reference_checked_in_current_schema_artifacts() -> None:
     benchmarks_doc = (Path("docs") / "benchmarks.md").read_text(encoding="utf-8")
     results_dir = Path("docs") / "benchmark-results"
     required_metadata_keys = {
@@ -649,16 +685,17 @@ def test_benchmarks_doc_validated_artifact_rows_reference_checked_in_current_sch
         "request_retry_delay",
     }
 
-    validated_rows = [
+    legacy_rows = [
         line
         for line in benchmarks_doc.splitlines()
         if line.startswith("| `")
-        and "| validated artifact" in line
+        and "| legacy artifact" in line
         and "text-generation feasibility benchmark" not in line
     ]
-    assert validated_rows
+    assert legacy_rows
+    assert "| validated artifact" not in benchmarks_doc
 
-    for row in validated_rows:
+    for row in legacy_rows:
         artifact_name = row.split("`docs/benchmark-results/", 1)[1].split("`", 1)[0]
         artifact_path = results_dir / artifact_name
         assert artifact_path.exists(), f"documented artifact missing: {artifact_name}"
@@ -2245,4 +2282,3 @@ def test_benchmarks_doc_no_longer_references_legacy_qwen_artifacts() -> None:
         if line.startswith("| `") and "| validated legacy artifact" in line
     ]
     assert legacy_rows == []
-

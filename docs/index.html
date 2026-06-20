@@ -602,7 +602,7 @@
               <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
             <p class="meta-line" id="generated-at"><!-- BEGIN GENERATED:generated-at -->
-Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
+Published Jun 20, 2026, 10:12 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
 <!-- END GENERATED:generated-at --></p>
           </div>
           <div class="hero-side" id="hero-side"></div>
@@ -614,15 +614,15 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
 <section class="section-head">
   <div>
     <div class="section-kicker">Launch readout</div>
-    <h2>Start with Parakeet 110M NeMo MLX for live turn-taking.</h2>
+    <h2>No backend-only lane currently meets the live comparability contract.</h2>
   </div>
-  <p class="subcopy">Parakeet 110M NeMo MLX is the strongest publishable default right now: 557.4 ms first visible partial, 210.6 ms audio-end finalization, and backlog diagnostics that stay separated from perceived latency. The main ranking now stays focused on fully comparable live lanes, while incomplete or differently scoped artifacts move into a labeled supporting section.</p>
+  <p class="subcopy">Legacy /ws/stream artifacts stay published as supporting evidence, but the live leaderboard now waits for paced /v1/stt/stream replacements. The main ranking now stays focused on fully comparable live lanes, while incomplete or differently scoped artifacts move into a labeled supporting section.</p>
 </section>
 <div class="snapshot-grid">
-  <article class="snapshot-card tone-moss"><div class="section-kicker">Recommended default</div><div class="headline-value">Parakeet 110M NeMo MLX</div><p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Alternative lane</div><div class="headline-value">Parakeet 110M NeMo</div><p>Validated 10-sample Compose CPU artifact refreshed on 2026-06-19 with an 8-chunk partial cadence.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">5 fully comparable lanes</div><p>2 supporting lanes stay below the fold because they are missing at least one live metric, usually first-partial capture.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Best live numbers</div><div class="headline-value">557.4 ms</div><p>Fastest first visible partial in the primary comparison. Best finalization is 210.6 ms.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Registry coverage</div><div class="headline-value">7 of 8 validated</div><p>1 tracked lanes are blocked or unpublished, so reviewers can separate launch-ready evidence from backlog work.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">System evidence</div><div class="headline-value">7 memory traces</div><p>2 artifacts include CPU utilization; 0 include sustained thermal notes.</p></article>
+  <article class="snapshot-card tone-sage"><div class="section-kicker">Alternative lane</div><div class="headline-value">Parakeet 110M NeMo MLX</div><p>Legacy /ws/stream local Apple Silicon MLX service artifact. It remains published for comparison history, but the live leaderboard now waits for a paced /v1/stt/stream replacement.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">0 fully comparable lanes</div><p>7 supporting lanes stay below the fold because they use the deprecated /ws/stream contract, lack a comparable live metric, or were published for a narrower benchmarking purpose.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Best live numbers</div><div class="headline-value">n/a</div><p>Fastest first visible partial in the primary comparison. Best finalization is n/a.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Registry coverage</div><div class="headline-value">0 of 8 validated</div><p>1 tracked lanes are blocked or unpublished, so reviewers can separate launch-ready evidence from backlog work.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">System evidence</div><div class="headline-value">7 memory traces</div><p>2 artifacts include CPU utilization; 0 include sustained thermal notes.</p></article>
 </div>
 <div class="story-grid">
-<article class="story-card panel tone-moss"><div class="section-kicker">Rank 1</div><div class="story-rank">Parakeet 110M NeMo MLX</div><div class="chip-row"><div class="chip"><strong>apple-silicon / auto</strong> runtime</div><div class="chip"><strong>Local Python Apple Silicon MLX Service</strong> lane</div></div><p>Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.</p></article><article class="story-card panel tone-sage"><div class="section-kicker">Rank 2</div><div class="story-rank">Parakeet 110M NeMo</div><div class="chip-row"><div class="chip"><strong>cpu / float32</strong> runtime</div><div class="chip"><strong>Docker Compose CPU</strong> lane</div></div><p>Validated 10-sample Compose CPU artifact refreshed on 2026-06-19 with an 8-chunk partial cadence.</p></article><article class="story-card panel tone-olive"><div class="section-kicker">Rank 3</div><div class="story-rank">Qwen MPS</div><div class="chip-row"><div class="chip"><strong>mps / auto</strong> runtime</div><div class="chip"><strong>Local Python Apple Silicon</strong> lane</div></div><p>Validated 10-sample local Apple Silicon MPS artifact refreshed on 2026-06-20 with comparable first-partial live metrics.</p></article>
+
 </div>
 <div class="comparison-wrap panel">
   <div class="comparison-scroll">
@@ -631,7 +631,7 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         <tr><th>Lane</th><th>State</th><th>Score</th><th><span class="hint" title="End-to-end time from stream start until the first visible partial transcript appears.">First partial</span></th><th><span class="hint" title="Diagnostic latency for chunk-triggered partial updates after streaming is already underway; this is not perceived first-response latency, so read it alongside partial gap and late partial ratio.">Partial backlog latency</span></th><th><span class="hint" title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.">Audio-end finalization</span></th><th><span class="hint" title="Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.">REST throughput context</span></th><th><span class="hint" title="How many benchmark samples were recorded for this published artifact.">Samples</span></th><th>Details</th></tr>
       </thead>
       <tbody>
-<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo MLX</strong><span>parakeet-mlx . mlx-community/parakeet-tdt_ctc-110m</span><div class="table-note">Local Python Apple Silicon MLX Service . apple-silicon / auto</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>97.2 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>557.4 ms</strong><div class="tiny">P95 565.0 ms</div><div class="tiny">+120.5 ms vs fastest</div></td><td data-label="Partial backlog latency"><strong>74.5 ms</strong><div class="tiny">P95 96.9 ms</div><div class="tiny">best baseline vs lowest diagnostic</div></td><td data-label="Audio-end finalization"><strong>210.6 ms</strong><div class="tiny">P95 246.3 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="REST throughput context"><strong>141.9 ms</strong><div class="tiny">P95 170.0 ms . RTF 0.019</div><div class="metric-bar"><span style="width:6%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 13, 2026, 10:55 PM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html">Open detail page</a><div class="tiny">SHA-256 32726e579cf7</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo</strong><span>parakeet-nemo . nvidia/parakeet-tdt_ctc-110m</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>84.0 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>2144.3 ms</strong><div class="tiny">P95 2264.6 ms</div><div class="tiny">+1707.4 ms vs fastest</div></td><td data-label="Partial backlog latency"><strong>184.0 ms</strong><div class="tiny">P95 396.1 ms</div><div class="tiny">+109.5 ms vs lowest diagnostic</div></td><td data-label="Audio-end finalization"><strong>406.6 ms</strong><div class="tiny">P95 821.1 ms</div><div class="tiny">+196.0 ms vs fastest</div></td><td data-label="REST throughput context"><strong>302.7 ms</strong><div class="tiny">P95 514.9 ms . RTF 0.042</div><div class="metric-bar"><span style="width:8.517643086273848%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 20, 2026, 03:05 AM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-19.html">Open detail page</a><div class="tiny">SHA-256 97a7f62b2dea</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen MPS</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Local Python Apple Silicon . mps / auto</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>67.3 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>436.9 ms</strong><div class="tiny">P95 485.0 ms</div><div class="tiny">best baseline vs fastest</div></td><td data-label="Partial backlog latency"><strong>5643.7 ms</strong><div class="tiny">P95 8866.6 ms</div><div class="tiny">+5569.2 ms vs lowest diagnostic</div></td><td data-label="Audio-end finalization"><strong>8410.5 ms</strong><div class="tiny">P95 8857.7 ms</div><div class="tiny">+8199.9 ms vs fastest</div></td><td data-label="REST throughput context"><strong>1134.5 ms</strong><div class="tiny">P95 1195.4 ms . RTF 0.156</div><div class="metric-bar"><span style="width:31.923574765040236%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 20, 2026, 12:39 PM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-mps-2026-06-20.html">Open detail page</a><div class="tiny">SHA-256 7289bef6897a</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Base</strong><span>faster-whisper . base.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>66.0 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>2100.1 ms</strong><div class="tiny">P95 3230.7 ms</div><div class="tiny">+1663.2 ms vs fastest</div></td><td data-label="Partial backlog latency"><strong>12134.1 ms</strong><div class="tiny">P95 16250.0 ms</div><div class="tiny">+12059.6 ms vs lowest diagnostic</div></td><td data-label="Audio-end finalization"><strong>13498.8 ms</strong><div class="tiny">P95 15429.3 ms</div><div class="tiny">+13288.2 ms vs fastest</div></td><td data-label="REST throughput context"><strong>558.4 ms</strong><div class="tiny">P95 726.1 ms . RTF 0.077</div><div class="metric-bar"><span style="width:15.712758174348584%"></span></div></td><td data-label="Samples"><strong>10</strong><div class="tiny">Measured Jun 16, 2026, 03:03 AM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-base.en-int8-2026-06-15.html">Open detail page</a><div class="tiny">SHA-256 d2c6b08c113c</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen Compose</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Docker Compose CPU . cpu / float16</div></td><td data-label="State"><span class="status status-validated">validated</span></td><td data-label="Score"><strong>43.1 / 100</strong><div class="tiny">Confidence 100.0 / 100</div></td><td data-label="First partial"><strong>3297.7 ms</strong><div class="tiny">P95 3345.3 ms</div><div class="tiny">+2860.8 ms vs fastest</div></td><td data-label="Partial backlog latency"><strong>3581.5 ms</strong><div class="tiny">P95 7396.4 ms</div><div class="tiny">+3507.0 ms vs lowest diagnostic</div></td><td data-label="Audio-end finalization"><strong>7049.6 ms</strong><div class="tiny">P95 7728.3 ms</div><div class="tiny">+6839.0 ms vs fastest</div></td><td data-label="REST throughput context"><strong>3553.8 ms</strong><div class="tiny">P95 4215.3 ms . RTF 0.488</div><div class="metric-bar"><span style="width:100.0%"></span></div></td><td data-label="Samples"><strong>5</strong><div class="tiny">Measured Jun 20, 2026, 03:50 AM UTC</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-compose-2026-06-19.html">Open detail page</a><div class="tiny">SHA-256 165f9f6c3822</div></td></tr>
+
       </tbody>
     </table>
   </div>
@@ -642,7 +642,7 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
       <div class="section-kicker">Supporting lanes</div>
       <h2>Artifacts kept out of the primary ranking</h2>
     </div>
-    <p class="subcopy">These lanes still add context, but they are missing at least one comparable live metric or were published for a narrower benchmarking purpose.</p>
+    <p class="subcopy">These lanes still add context, but they use the deprecated /ws/stream path, miss a comparable live metric, or were published for a narrower benchmarking purpose.</p>
   </div>
   <div class="comparison-scroll">
     <table>
@@ -650,7 +650,7 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         <tr><th>Lane</th><th>Why it is secondary</th><th>Visible live metrics</th><th>Details</th></tr>
       </thead>
       <tbody>
-<tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Small</strong><span>faster-whisper . small.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>First partial n/a</strong><div class="tiny">Finalization 1420.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-small.en-int8-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 02:23 AM UTC</div><div class="tiny">SHA-256 8f1204062394</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 0.6B Compose</strong><span>parakeet . nvidia/parakeet-tdt-0.6b-v3</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Missing comparable live metrics: first partial</td><td data-label="Visible live metrics"><strong>First partial n/a</strong><div class="tiny">Finalization 2215.8 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-compose-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 01:41 AM UTC</div><div class="tiny">SHA-256 3dca476e639b</div></td></tr>
+<tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo MLX</strong><span>parakeet-mlx . mlx-community/parakeet-tdt_ctc-110m</span><div class="table-note">Local Python Apple Silicon MLX Service . apple-silicon / auto</div></td><td data-label="Why it is secondary">Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling.</td><td data-label="Visible live metrics"><strong>First partial 557.4 ms</strong><div class="tiny">Finalization 210.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html">Open detail page</a><div class="tiny">Measured Jun 13, 2026, 10:55 PM UTC</div><div class="tiny">SHA-256 32726e579cf7</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Small</strong><span>faster-whisper . small.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="Why it is secondary">Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling.</td><td data-label="Visible live metrics"><strong>First partial n/a</strong><div class="tiny">Finalization 1420.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-small.en-int8-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 02:23 AM UTC</div><div class="tiny">SHA-256 8f1204062394</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 110M NeMo</strong><span>parakeet-nemo . nvidia/parakeet-tdt_ctc-110m</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling.</td><td data-label="Visible live metrics"><strong>First partial 2144.3 ms</strong><div class="tiny">Finalization 406.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-19.html">Open detail page</a><div class="tiny">Measured Jun 20, 2026, 03:05 AM UTC</div><div class="tiny">SHA-256 97a7f62b2dea</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen MPS</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Local Python Apple Silicon . mps / auto</div></td><td data-label="Why it is secondary">Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling.</td><td data-label="Visible live metrics"><strong>First partial 436.9 ms</strong><div class="tiny">Finalization 8410.5 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-mps-2026-06-20.html">Open detail page</a><div class="tiny">Measured Jun 20, 2026, 12:39 PM UTC</div><div class="tiny">SHA-256 7289bef6897a</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Faster-Whisper Base</strong><span>faster-whisper . base.en</span><div class="table-note">Local Python CPU . cpu / int8</div></td><td data-label="Why it is secondary">Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling.</td><td data-label="Visible live metrics"><strong>First partial 2100.1 ms</strong><div class="tiny">Finalization 13498.8 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/faster-whisper-base.en-int8-2026-06-15.html">Open detail page</a><div class="tiny">Measured Jun 16, 2026, 03:03 AM UTC</div><div class="tiny">SHA-256 d2c6b08c113c</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Parakeet 0.6B Compose</strong><span>parakeet . nvidia/parakeet-tdt-0.6b-v3</span><div class="table-note">Docker Compose CPU . cpu / float32</div></td><td data-label="Why it is secondary">Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling.</td><td data-label="Visible live metrics"><strong>First partial n/a</strong><div class="tiny">Finalization 2215.8 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/parakeet-compose-2026-06-10.html">Open detail page</a><div class="tiny">Measured Jun 10, 2026, 01:41 AM UTC</div><div class="tiny">SHA-256 3dca476e639b</div></td></tr><tr><td data-label="Lane" class="leader-name"><strong>Qwen Compose</strong><span>qwen-asr . Qwen/Qwen3-ASR-0.6B</span><div class="table-note">Docker Compose CPU . cpu / float16</div></td><td data-label="Why it is secondary">Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling.</td><td data-label="Visible live metrics"><strong>First partial 3297.7 ms</strong><div class="tiny">Finalization 7049.6 ms</div></td><td data-label="Details"><a href="benchmark-results/pages/qwen-compose-2026-06-19.html">Open detail page</a><div class="tiny">Measured Jun 20, 2026, 03:50 AM UTC</div><div class="tiny">SHA-256 165f9f6c3822</div></td></tr>
       </tbody>
     </table>
   </div>
@@ -911,11 +911,10 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         return 2;
       }
       function comparableEntries(entries) {
-        const validated = entries.filter((entry) => entry.status === "validated");
-        return validated.length ? validated : entries;
+        return entries.filter((entry) => entry.streaming.live_metrics_comparable === true);
       }
       function hasPrimaryLiveMetrics(entry) {
-        return firstVisiblePartial(entry) != null && entry.streaming.partial_gap_mean_ms != null && entry.streaming.final_mean_ms != null;
+        return entry.streaming.live_metrics_comparable === true && firstVisiblePartial(entry) != null && entry.streaming.partial_gap_mean_ms != null && entry.streaming.final_mean_ms != null;
       }
       function primaryEntries(entries) {
         const primary = comparableEntries(entries).filter((entry) => hasPrimaryLiveMetrics(entry));
@@ -927,6 +926,22 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
       }
       function toneClass(index) {
         return ["tone-moss", "tone-sage", "tone-olive"][index % 3];
+      }
+      function secondaryReason(entry) {
+        const path = entry.contract?.path;
+        const transport = entry.contract?.transport;
+        if (entry.streaming.live_metrics_comparable !== true) {
+          if (path === "/ws/stream" || transport === "direct" || transport === "ws/stream" || entry.status === "legacy") {
+            return "Deprecated /ws/stream artifact: buffered websocket contract with lower-performance partial handling.";
+          }
+          return "Non-comparable streaming contract or protocol path.";
+        }
+        const missing = [];
+        if (firstVisiblePartial(entry) == null) missing.push("first partial");
+        if (entry.streaming.partial_gap_mean_ms == null) missing.push("partial cadence");
+        if (entry.streaming.final_mean_ms == null) missing.push("finalization");
+        if (missing.length) return `Missing comparable live metrics: ${missing.join(", ")}`;
+        return "Supporting artifact with a different contract or publication scope.";
       }
       function sortEntries(entries) {
         return [...entries].sort((left, right) => {
@@ -997,7 +1012,7 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           tone: toneClass(2),
           value: `${primary.length}`,
           title: "Fully comparable lanes",
-          detail: `${secondary.length} supporting lanes are separated because they are missing at least one live metric`
+          detail: `${secondary.length} supporting lanes are separated because they use the deprecated /ws/stream contract, lack a comparable live metric, or were published for a narrower purpose`
         });
         cards.push({
           tone: toneClass(0),
@@ -1049,7 +1064,7 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           <article class="snapshot-card ${toneClass(2)}">
             <div class="section-kicker">Primary ranking scope</div>
             <div class="headline-value">${primary.length} fully comparable lanes</div>
-            <p>${secondary.length} supporting lanes stay out of the main ranking because they are missing at least one live metric, usually first-partial capture.</p>
+            <p>${secondary.length} supporting lanes stay out of the main ranking because they use the deprecated /ws/stream contract, lack a comparable live metric, or were published for a narrower benchmarking purpose.</p>
           </article>
         `);
         cards.push(`
@@ -1230,11 +1245,6 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           `;
         }).join("");
         const secondaryRows = secondary.map((entry) => {
-          const missing = [];
-          if (firstVisiblePartial(entry) == null) missing.push("first partial");
-          if (entry.streaming.partial_gap_mean_ms == null) missing.push("partial cadence");
-          if (entry.streaming.final_mean_ms == null) missing.push("finalization");
-          const why = missing.length ? `Missing comparable live metrics: ${missing.join(", ")}` : "Supporting artifact with a different contract or publication scope.";
           return `
             <tr>
               <td data-label="Lane" class="leader-name">
@@ -1242,7 +1252,7 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
                 <span>${entry.backend} · ${entry.model}</span>
                 <div class="table-note">${entry.lane} · ${entry.runtime}</div>
               </td>
-              <td data-label="Why it is secondary">${why}</td>
+              <td data-label="Why it is secondary">${secondaryReason(entry)}</td>
               <td data-label="Visible live metrics"><strong>First partial ${formatMs(firstVisiblePartial(entry))}</strong><div class="tiny">Finalization ${formatMs(entry.streaming.final_mean_ms)}</div></td>
               <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Measured ${formatDate(entry.measured_at)}</div><div class="tiny">${artifactHashLabel(entry)}</div></td>
             </tr>
@@ -1271,7 +1281,7 @@ Published Jun 20, 2026, 07:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
                 <div class="section-kicker">Supporting lanes</div>
                 <h2>Artifacts kept out of the primary ranking</h2>
               </div>
-              <p class="subcopy">These lanes still add context, but they are missing at least one comparable live metric or were published for a narrower benchmarking purpose.</p>
+              <p class="subcopy">These lanes still add context, but they use the deprecated /ws/stream path, miss a comparable live metric, or were published for a narrower benchmarking purpose.</p>
             </div>
             <table>
               <thead>

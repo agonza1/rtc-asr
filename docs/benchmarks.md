@@ -7,6 +7,8 @@ The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/man
 
 Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. The homepage stays latency-first, and this notes page carries the issue #46 methodology decision about how reference WER should be labeled until the repo has its own reproducible quality track.
 
+Current publication policy: checked-in `/ws/stream` artifacts remain visible only as legacy supporting evidence. The live leaderboard now waits for paced `/v1/stt/stream` artifacts with `streaming.live_metrics_comparable == true`.
+
 ## Accuracy Publishing Policy
 
 Issue #46 resolves to a simple public-facing rule:
@@ -51,17 +53,17 @@ Required methodology fields for any future published WER:
 
 | Track | Backend | Model | Lane | Runtime | Status | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-15.json` |
+| `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | legacy artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-15.json` |
 | `faster-whisper-base-c80-w075-json-preview` | `faster-whisper` | `base.en` | Local Python CPU Sweep Preview | `cpu / int8` | preview artifact | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
 | `pipecat-e2e-faster-whisper-base` | `faster-whisper` | `base.en` | Pipecat E2E Local Python CPU | `cpu / int8` | blocked integration artifact | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json` |
-| `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
-| `parakeet-compose` | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU | `cpu / float32` | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` |
-| `parakeet-nemo-compose` | `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU | `cpu / float32` | validated artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-19.json` |
-| `parakeet-mlx-service-110m` | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Local Python Apple Silicon MLX Service | `apple-silicon / auto` | validated artifact | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
+| `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | legacy artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
+| `parakeet-compose` | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU | `cpu / float32` | legacy artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` |
+| `parakeet-nemo-compose` | `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU | `cpu / float32` | legacy artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-19.json` |
+| `parakeet-mlx-service-110m` | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Local Python Apple Silicon MLX Service | `apple-silicon / auto` | legacy artifact | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
 | `parakeet-mlx` | `parakeet-mlx` | `mlx-community/parakeet-tdt-0.6b-v3` | Local Apple Silicon MLX CLI | `apple-silicon / mlx` | preview artifact | `docs/benchmark-results/parakeet-mlx-2026-06-13.json` |
 | `parakeet-mlx-110m` | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Local Apple Silicon MLX CLI | `apple-silicon / mlx` | preview artifact | `docs/benchmark-results/parakeet-mlx-110m-2026-06-13.json` |
-| `qwen-mps` | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Local Python Apple Silicon | `mps / auto` | validated artifact | `docs/benchmark-results/qwen-mps-2026-06-20.json` |
-| `qwen-compose` | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU | `cpu / float16` | validated artifact | `docs/benchmark-results/qwen-compose-2026-06-19.json` |
+| `qwen-mps` | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Local Python Apple Silicon | `mps / auto` | legacy artifact | `docs/benchmark-results/qwen-mps-2026-06-20.json` |
+| `qwen-compose` | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU | `cpu / float16` | legacy artifact | `docs/benchmark-results/qwen-compose-2026-06-19.json` |
 
 Status details from the track registry:
 

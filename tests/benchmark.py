@@ -149,13 +149,13 @@ def parse_args() -> argparse.Namespace:
         "--simulate-realtime",
         dest="simulate_realtime",
         action="store_true",
-        help="Pace Pipecat source frames against wall clock time so streaming metrics reflect live speech cadence (default)",
+        help="Pace source frames against wall clock time so streaming metrics reflect live speech cadence (default)",
     )
     simulate_realtime_group.add_argument(
         "--no-simulate-realtime",
         dest="simulate_realtime",
         action="store_false",
-        help="Send Pipecat source frames as fast as possible for stress or catch-up measurements",
+        help="Send source frames as fast as possible for stress or catch-up measurements",
     )
     require_preloaded_group.add_argument(
         "--require-preloaded-service",
@@ -1108,92 +1108,92 @@ async def run_v1_stt_stream_benchmark(
     connect_fn=None,
 ) -> dict[str, object]:
     source_frames = chunk_pcm(raw_pcm, sample_rate, source_frame_ms)
-    chunk_size_ms = max(chunk_ms, source_frame_ms)
-    aggregation_bytes = pcm_chunk_size(sample_rate, chunk_size_ms)
-    partial_interval_chunks = max((partial_interval_ms + chunk_size_ms - 1) // chunk_size_ms, 1)
+    aggregation_ms = max(chunk_ms, source_frame_ms)
+    aggregation_bytes = pcm_chunk_size(sample_rate, aggregation_ms)
+    partial_interval_chunks = max(int(round(partial_interval_ms / max(aggregation_ms, 1))), 1)
     total_audio_ms = round((len(raw_pcm) / max(sample_rate * 2, 1)) * 1000, 1)
-    if partial_interval_chunks < 1:
-        partial_interval_chunks = 1
     sleep = sleep_fn or asyncio.sleep
+    late_partial_threshold_ms = float(max(partial_interval_ms, 100))
 
-    partial_latencies = []
-    partial_audio_offsets_ms = []
-    partial_end_to_end_ms = []
+    partial_latencies: list[float] = []
+    partial_audio_offsets_ms: list[float] = []
+    partial_end_to_end_ms: list[float] = []
     partial_gap_ms: list[float] = []
     partial_texts: list[str] = []
     last_partial_text = ""
     chunk_audio_offsets_ms: list[float] = []
-    last_partial_visible_ms = 0.0
-    last_partial_audio_offset_ms: float | None = None
     last_partial_received_at: float | None = None
     chunk_count = 0
     source_audio_ms = 0.0
+    late_partial_events = 0
+    stream_started_at = 0.0
+    next_expected_partial_audio_ms = float(partial_interval_ms)
+    expected_partial_events = 0
+    recorded_partial_revisions: set[int] = set()
 
-    def record_partial_event(
-        event: TranscriptEvent,
-        received_at: float,
-        *,
-        fallback_chunk_index: int,
-    ) -> int | None:
-        nonlocal last_partial_text, last_partial_visible_ms, last_partial_received_at, last_partial_audio_offset_ms
-        chunk_index = event.chunks_received
-        if chunk_index < 1:
-            chunk_index = fallback_chunk_index
-        if len(chunk_audio_offsets_ms) == 0:
-            return None
-        if chunk_index < max(len(chunk_audio_offsets_ms), 1):
-            return None
+    def expected_partial_for_audio_offset(audio_offset_ms: float) -> None:
+        nonlocal expected_partial_events, next_expected_partial_audio_ms
+        if audio_offset_ms + 0.5 >= next_expected_partial_audio_ms:
+            expected_partial_events += 1
+            next_expected_partial_audio_ms += float(partial_interval_ms)
 
-        response_latency_ms = (received_at - fallback_start_at.get(chunk_index, received_at)) * 1000
-        audio_offset_ms = chunk_audio_offsets_ms[min(chunk_index - 1, len(chunk_audio_offsets_ms) - 1)]
-        visible_elapsed_ms = max(audio_offset_ms, last_partial_visible_ms) + response_latency_ms
-        visible_elapsed_ms = round(visible_elapsed_ms, 1)
-        partial_latencies.append(response_latency_ms)
+    def record_partial_event(event: TranscriptEvent, received_at: float) -> bool:
+        nonlocal last_partial_received_at, last_partial_text, late_partial_events
+
+        if event.type != "partial":
+            return False
+        if event.revision is not None:
+            if event.revision in recorded_partial_revisions:
+                return False
+            recorded_partial_revisions.add(event.revision)
+
+        audio_offset_ms = float(event.audio_received_ms or 0)
+        if audio_offset_ms <= 0 and chunk_audio_offsets_ms:
+            audio_offset_ms = chunk_audio_offsets_ms[-1]
+        audio_offset_ms = min(round(audio_offset_ms, 1), total_audio_ms)
+        end_to_end_ms = round((received_at - stream_started_at) * 1000, 1)
+        staleness_ms = max(round(end_to_end_ms - audio_offset_ms, 1), 0.0)
+        if staleness_ms > late_partial_threshold_ms:
+            late_partial_events += 1
+
+        partial_latencies.append(staleness_ms)
         partial_audio_offsets_ms.append(audio_offset_ms)
-        partial_end_to_end_ms.append(visible_elapsed_ms)
+        partial_end_to_end_ms.append(end_to_end_ms)
         partial_texts.append(event.text)
         last_partial_text = event.text
         if last_partial_received_at is not None:
             partial_gap_ms.append(round((received_at - last_partial_received_at) * 1000, 1))
-        last_partial_visible_ms = visible_elapsed_ms
         last_partial_received_at = received_at
-        last_partial_audio_offset_ms = audio_offset_ms
-        return chunk_index
+        return True
 
-    pending_partial_started_at: dict[int, float] = {}
-    recorded_partial_chunks: set[int] = set()
+    pending_terminal_event: tuple[TranscriptEvent, float] | None = None
 
-    async def recv_event_with_timeout(timeout: float) -> TranscriptEvent | None:
-        payload = await client._recv_json_with_timeout(timeout, allow_error=True)
+    async def recv_event_with_timeout(timeout_seconds: float) -> TranscriptEvent | None:
+        if hasattr(client, "recv_event"):
+            return await client.recv_event(timeout=timeout_seconds, allow_error=True)
+        payload = await client._recv_json_with_timeout(timeout_seconds, allow_error=True)
         if payload is None:
             return None
         return TranscriptEvent.from_payload(payload)
 
-    async def collect_partial_events(expected_chunk_index: int) -> None:
-        deadline = time.perf_counter() + partial_event_timeout_seconds
-        while expected_chunk_index not in recorded_partial_chunks and time.perf_counter() < deadline:
-            payload = await client._recv_json_with_timeout(
-                max(0.0, deadline - time.perf_counter()),
-                allow_error=True,
-            )
-            if payload is None:
+    async def collect_partial_events(timeout_seconds: float) -> None:
+        nonlocal pending_terminal_event
+        deadline = time.perf_counter() + timeout_seconds
+        while True:
+            remaining = deadline - time.perf_counter()
+            if remaining <= 0:
                 return
-            event = TranscriptEvent.from_payload(payload)
-            if event.type != "partial":
-                if event.type == "final" and event.is_final:
-                    return
+            event = await recv_event_with_timeout(remaining)
+            if event is None:
+                return
+            received_at = time.perf_counter()
+            if event.type == "partial":
+                record_partial_event(event, received_at)
                 continue
-            event_chunk_index = event.chunks_received
-            if event_chunk_index > 0 and event_chunk_index != expected_chunk_index:
-                if event_chunk_index > expected_chunk_index:
-                    continue
-            recorded = record_partial_event(
-                event,
-                time.perf_counter(),
-                fallback_chunk_index=expected_chunk_index,
-            )
-            if recorded is not None:
-                recorded_partial_chunks.add(recorded)
+            if event.type == "error":
+                continue
+            pending_terminal_event = (event, received_at)
+            return
 
     client = AsyncLocalSttClient(ws_url, connect_fn=connect_fn)
     ready_event = await client.start(
@@ -1206,7 +1206,7 @@ async def run_v1_stt_stream_benchmark(
     final_event = None
     audio_finished_at: float | None = None
     final_received_at = 0.0
-    fallback_start_at: dict[int, float] = {}
+    finalize_started_at = 0.0
 
     try:
         stream_started_at = time.perf_counter()
@@ -1226,7 +1226,6 @@ async def run_v1_stt_stream_benchmark(
             buffer.clear()
             chunk_count += 1
             chunk_audio_offsets_ms.append(source_audio_ms)
-            started = time.perf_counter()
             sent_at: float | None = None
 
             def mark_sent() -> None:
@@ -1234,42 +1233,40 @@ async def run_v1_stt_stream_benchmark(
                 sent_at = time.perf_counter()
 
             await client.send_audio(chunk, on_sent=mark_sent)
-            pending_partial_started_at[chunk_count] = started
-            fallback_start_at[chunk_count] = started
+            expected_partial_for_audio_offset(source_audio_ms)
             if frame_index == len(source_frames):
                 audio_finished_at = sent_at if sent_at is not None else time.perf_counter()
-            if chunk_count % partial_interval_chunks != 0:
-                continue
-            await collect_partial_events(chunk_count)
+            await collect_partial_events(partial_event_timeout_seconds)
 
+        finalize_started_at = time.perf_counter()
         await client.finalize()
         final_deadline = time.perf_counter() + final_event_timeout_seconds
         while time.perf_counter() < final_deadline:
-            event = await recv_event_with_timeout(max(0.0, final_deadline - time.perf_counter()))
-            if event is None:
-                break
+            if pending_terminal_event is not None:
+                event, received_at = pending_terminal_event
+                pending_terminal_event = None
+            else:
+                event = await recv_event_with_timeout(max(0.0, final_deadline - time.perf_counter()))
+                if event is None:
+                    break
+                received_at = time.perf_counter()
             if event.type == "partial":
-                event_chunk_index = event.chunks_received
-                record_partial_event(
-                    event,
-                    time.perf_counter(),
-                    fallback_chunk_index=max(event_chunk_index, chunk_count),
-                )
+                record_partial_event(event, received_at)
                 continue
             if event.type == "error":
                 continue
             final_event = event
             if event.type == "final":
-                final_received_at = time.perf_counter()
+                final_received_at = received_at
             break
     finally:
-        await client.close()
+        await client.close(graceful=False)
 
     if final_event is None:
         final_event = TranscriptEvent.from_payload({"type": "final", "text": "", "is_final": True, "chunks_received": chunk_count})
-        final_received_at = final_event and time.perf_counter()
+        final_received_at = time.perf_counter()
 
-    final_ms = (final_received_at - (audio_finished_at or stream_started_at)) * 1000
+    final_ms = (final_received_at - finalize_started_at) * 1000
     time_to_final_from_audio_end_ms = (final_received_at - (audio_finished_at or stream_started_at)) * 1000
     partial_summary = {
         "partial_mean_ms": round(statistics.mean(partial_latencies), 1) if partial_latencies else None,
@@ -1282,17 +1279,16 @@ async def run_v1_stt_stream_benchmark(
         "partial_gap_p95_ms": round(percentile(partial_gap_ms, 0.95), 1) if partial_gap_ms else None,
     }
     partial_churn = summarize_partial_churn(partial_texts)
-    expected_partial_events = chunk_count // partial_interval_chunks
     return {
         "chunks": chunk_count,
-        "chunk_ms": chunk_ms,
+        "chunk_ms": aggregation_ms,
         "binary_frames": True,
         "transport": "v1-stt-stream",
-        "aggregation_ms": chunk_size_ms,
+        "aggregation_ms": aggregation_ms,
         "source_frame_ms": source_frame_ms,
         "source_frame_count": len(source_frames),
         "simulate_realtime": simulate_realtime,
-        "aggregation_frame_count": max(int(round(chunk_ms / max(source_frame_ms, 1))), 1),
+        "aggregation_frame_count": max(int(round(aggregation_ms / max(source_frame_ms, 1))), 1),
         "partial_interval_ms": partial_interval_ms,
         "partial_interval_chunks": partial_interval_chunks,
         "partial_latencies_ms": [round(value, 1) for value in partial_latencies],
@@ -1307,20 +1303,22 @@ async def run_v1_stt_stream_benchmark(
         "last_partial": last_partial_text,
         "final_transcript": final_event.text if final_event is not None else "",
         "expected_partial_events": expected_partial_events,
-        "observed_partial_events": len(recorded_partial_chunks),
-        "missing_partial_events": max(expected_partial_events - len(recorded_partial_chunks), 0),
-        "late_partial_events": 0,
-        "late_partial_ratio": round(0 / len(recorded_partial_chunks), 3) if recorded_partial_chunks else None,
+        "observed_partial_events": len(partial_latencies),
+        "missing_partial_events": max(expected_partial_events - len(partial_latencies), 0),
+        "late_partial_events": late_partial_events,
+        "late_partial_ratio": round(late_partial_events / len(partial_latencies), 3) if partial_latencies else None,
         "final_event_received": final_event is not None and final_event.type == "final",
         "closeout_event_type": final_event.type if final_event is not None else None,
         **partial_churn,
         "bridge": {
             "protocol": "local-stt-v1",
+            "path": "/v1/stt/stream",
             "source_frame_ms": source_frame_ms,
             "source_frame_count": len(source_frames),
             "chunk_count": chunk_count,
-            "aggregation_frame_count": max(int(round(chunk_ms / max(source_frame_ms, 1))), 1),
-            "chunk_ms": chunk_ms,
+            "aggregation_frame_count": max(int(round(aggregation_ms / max(source_frame_ms, 1))), 1),
+            "chunk_ms": aggregation_ms,
+            "partial_interval_ms": partial_interval_ms,
             "simulate_realtime": simulate_realtime,
         },
     }
@@ -1423,7 +1421,6 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                     partial_window_seconds=args.partial_window,
                     max_buffer_seconds=args.max_buffer,
                     partial_event_timeout_seconds=args.partial_event_timeout,
-                    final_event_timeout_seconds=args.final_event_timeout,
                     simulate_realtime=args.simulate_realtime,
                 )
             else:
@@ -1557,7 +1554,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         partial_gap_summary = summarize_latencies(partial_gap_all) if partial_gap_all else None
         final_summary = summarize_latencies(finalization_latencies_all)
         stop_to_final_summary = summarize_latencies(final_latencies_all)
-        live_streaming_metrics_comparable = args.mode == "pipecat-e2e" and getattr(args, "simulate_realtime", False)
+        live_streaming_metrics_comparable = args.mode == "v1-stt-stream" and getattr(args, "simulate_realtime", False)
         partial_churn_char_summary = summarize_ratio_series(partial_churn_char_all) if partial_churn_char_all else None
         partial_churn_word_summary = summarize_ratio_series(partial_churn_word_all) if partial_churn_word_all else None
         source_frame_mode = args.mode in {"pipecat-e2e", "v1-stt-stream"}
@@ -1569,6 +1566,11 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         )
         stream_binary_frames = True if args.mode == "v1-stt-stream" else args.binary_frames
         stream_simulate_realtime = args.simulate_realtime if source_frame_mode else None
+        stream_partial_interval_chunks = (
+            streaming_samples[0].get("partial_interval_chunks")
+            if streaming_samples and args.mode == "v1-stt-stream"
+            else args.partial_interval_chunks
+        )
 
         peak_rss_mb = None
         cpu_utilization_percent = None
@@ -1590,13 +1592,14 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "mode": args.mode,
                 "rest_runs_per_sample": args.rest_runs,
                 "chunk_ms": stream_chunk_ms,
-                "partial_interval_chunks": args.partial_interval_chunks,
+                "partial_interval_chunks": stream_partial_interval_chunks,
                 "binary_frames": stream_binary_frames,
                 "source_frame_ms": stream_source_frame_ms,
                 "simulate_realtime": stream_simulate_realtime,
                 "partial_window_seconds": args.partial_window,
                 "max_buffer_seconds": args.max_buffer,
                 "partial_event_timeout_seconds": args.partial_event_timeout,
+                "partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
                 "request_retries": args.request_retries,
                 "request_retry_delay": args.request_retry_delay,
                 "pipecat_source_frame_ms": args.pipecat_source_frame_ms if args.mode == "pipecat-e2e" else None,
@@ -1608,10 +1611,13 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "spawn_server": args.spawn_server,
             },
             "integration": {
-                "name": "pipecat" if args.mode == "pipecat-e2e" else "local-stt",
+                "name": "pipecat" if args.mode == "pipecat-e2e" else "local-stt-v1",
+                "protocol": "local-stt-v1" if args.mode == "v1-stt-stream" else None,
+                "path": "/v1/stt/stream" if args.mode == "v1-stt-stream" else None,
                 "transport": args.mode,
                 "source_frame_ms": stream_source_frame_ms,
                 "bridge_chunk_ms": stream_chunk_ms,
+                "partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
                 "send_binary_frames": stream_binary_frames,
                 "simulate_realtime": stream_simulate_realtime,
             } if source_frame_mode else None,
@@ -1647,7 +1653,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "sample_count": sample_count,
                 "transport": args.mode,
                 "chunk_ms": stream_chunk_ms,
-                "partial_interval_chunks": args.partial_interval_chunks,
+                "aggregation_ms": args.v1_aggregation_ms if args.mode == "v1-stt-stream" else None,
+                "partial_interval_chunks": stream_partial_interval_chunks,
+                "partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
                 "binary_frames": stream_binary_frames,
                 "source_frame_ms": stream_source_frame_ms,
                 "simulate_realtime": stream_simulate_realtime,
@@ -1703,7 +1711,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "partial_transcript_churn_char_p95": partial_churn_char_summary["p95"] if partial_churn_char_summary else None,
                 "partial_transcript_churn_word_mean": partial_churn_word_summary["mean"] if partial_churn_word_summary else None,
                 "partial_transcript_churn_word_p95": partial_churn_word_summary["p95"] if partial_churn_word_summary else None,
-                "bridge": streaming_samples[0].get("bridge") if streaming_samples and args.mode == "pipecat-e2e" else None,
+                "bridge": streaming_samples[0].get("bridge") if streaming_samples and source_frame_mode else None,
                 "final_event_received_count": final_event_received_count,
                 "closeout_event_types": closeout_event_types,
                 "accuracy": summarize_accuracy(streaming_accuracy_samples),
