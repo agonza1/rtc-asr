@@ -109,9 +109,9 @@
       "lane": "Local Python Apple Silicon",
       "status": "validated",
       "target_sample_count": 10,
-      "artifact": "qwen-mps-2026-06-10.json",
-      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact.",
-      "run_command": "make benchmark-qwen-mps",
+      "artifact": "qwen-mps-2026-06-20.json",
+      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact refreshed on 2026-06-20 with comparable first-partial live metrics.",
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 make benchmark-qwen-mps",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     },
     {
