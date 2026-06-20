@@ -126,6 +126,8 @@ The current checked-in artifacts already cover warmed service latency, first vis
 - dropped or late frames for bridged RTC lanes
 - transcript churn across partial updates, including per-revision churn ratios
 
+Power and thermal values are optional because they usually come from platform tools outside the Python process; when supplied, the benchmark artifact records them under `environment.package_power_watts` and `environment.thermal_state`.
+
 When testing buffered websocket ASR against RTC-shaped traffic, start with separate lanes for `80`, `100`, `160`, and `200` ms websocket chunks. Sweep `partial_window_seconds` across `0.75`, `1.0`, `1.5`, and `2.0` seconds when you want to compare responsiveness against transcript stability.
 
 ## Reproduce
