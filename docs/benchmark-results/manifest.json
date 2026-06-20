@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-20T03:11:45Z",
+  "generated_at": "2026-06-20T03:52:20Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
-    "artifact_file_count": 15,
+    "artifact_file_count": 16,
     "validated_count": 7,
     "legacy_count": 0,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-20T03:05:34Z",
+    "latest_measured_at": "2026-06-20T03:50:30Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -22,7 +22,7 @@
     "ranges": {
       "rest_mean_ms": {
         "min": 141.9,
-        "max": 3799.0
+        "max": 3553.8
       },
       "partial_mean_ms": {
         "min": 74.5,
@@ -30,7 +30,7 @@
       },
       "first_partial_end_to_end_mean_ms": {
         "min": 557.4,
-        "max": 3365.4
+        "max": 3297.7
       },
       "partial_gap_mean_ms": {
         "min": 145.3,
@@ -42,7 +42,7 @@
       },
       "rtf_mean": {
         "min": 0.019,
-        "max": 0.522
+        "max": 0.488
       },
       "overall_score": {
         "min": 39.5,
@@ -88,7 +88,7 @@
         "backend": "qwen-asr",
         "model": "Qwen/Qwen3-ASR-0.6B",
         "value": 0.0,
-        "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json"
+        "artifact_path": "benchmark-results/qwen-compose-2026-06-19.json"
       },
       "fastest_final": {
         "label": "Fastest streaming finalization delay",
@@ -611,19 +611,19 @@
       "lane": "Docker Compose CPU",
       "runtime": "cpu / float16",
       "status": "validated",
-      "status_detail": "Validated 5-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
+      "status_detail": "Validated 5-sample Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
       "target_sample_count": 5,
-      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
+      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-15T20:09:37Z",
+      "measured_at": "2026-06-20T03:50:30Z",
       "sample_count": 5,
-      "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
-      "artifact_sha256": "66a12e0a85d30be6d3f9365946783e3d622cbd06acbdbe17856adeb6ad390e26",
-      "artifact_size_bytes": 25756,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-19.json",
+      "artifact_sha256": "165f9f6c382241034ca1c84f04ace6f231de9fc2d29a104cc8e5b3a594518deb",
+      "artifact_size_bytes": 27048,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
-        "python": "3.14.5",
+        "python": "3.14.6",
         "cpu_logical_cores": 10,
         "memory_total_mb": 24576.0,
         "peak_rss_mb": null,
@@ -637,27 +637,27 @@
         "partial_interval_chunks": 8,
         "partial_window_seconds": 2.0,
         "binary_frames": false,
-        "sample_rate": 22050,
+        "sample_rate": 16000,
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 3799.0,
-        "p95_ms": 4475.0,
-        "rtf_mean": 0.522
+        "mean_ms": 3553.8,
+        "p95_ms": 4215.3,
+        "rtf_mean": 0.488
       },
       "streaming": {
-        "partial_mean_ms": 3118.4,
-        "partial_p95_ms": 4677.0,
-        "first_partial_end_to_end_mean_ms": 3365.4,
-        "first_partial_end_to_end_p95_ms": 3537.3,
-        "partial_gap_mean_ms": 4312.3,
-        "partial_gap_p95_ms": 6917.1,
+        "partial_mean_ms": 3581.5,
+        "partial_p95_ms": 7396.4,
+        "first_partial_end_to_end_mean_ms": 3297.7,
+        "first_partial_end_to_end_p95_ms": 3345.3,
+        "partial_gap_mean_ms": 2341.3,
+        "partial_gap_p95_ms": 6262.6,
         "partial_transcript_churn_char_mean": 0.863,
         "partial_transcript_churn_word_mean": 1.0,
         "late_partial_events": 0,
         "late_partial_ratio": 0.0,
-        "final_mean_ms": 7318.6,
-        "final_p95_ms": 8168.1
+        "final_mean_ms": 7049.6,
+        "final_p95_ms": 7728.3
       },
       "warnings": {
         "received_total": null,
@@ -668,18 +668,18 @@
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 38.1,
-        "live_caption_score": 44.8,
-        "partial_backlog_score": 50.4,
+        "latency_score": 42.2,
+        "live_caption_score": 45.3,
+        "partial_backlog_score": 36.9,
         "finalization_score": 0.0,
-        "stability_score": 94.2,
-        "efficiency_score": 49.3,
-        "overall_score": 41.9,
+        "stability_score": 90.5,
+        "efficiency_score": 52.8,
+        "overall_score": 43.1,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.178,
-        "partial_jitter_ratio": 1.5,
-        "final_jitter_ratio": 1.116
+        "rest_jitter_ratio": 1.186,
+        "partial_jitter_ratio": 2.065,
+        "final_jitter_ratio": 1.096
       }
     },
     {
@@ -765,6 +765,65 @@
     }
   ],
   "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "runtime": "cpu / float16",
+      "measured_at": "2026-06-20T03:50:30Z",
+      "sample_count": 5,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-19.json",
+      "artifact_sha256": "165f9f6c382241034ca1c84f04ace6f231de9fc2d29a104cc8e5b3a594518deb",
+      "artifact_size_bytes": 27048,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 8,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 16000,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 3553.8,
+        "p95_ms": 4215.3,
+        "rtf_mean": 0.488
+      },
+      "streaming": {
+        "partial_mean_ms": 3581.5,
+        "partial_p95_ms": 7396.4,
+        "first_partial_end_to_end_mean_ms": 3297.7,
+        "first_partial_end_to_end_p95_ms": 3345.3,
+        "partial_gap_mean_ms": 2341.3,
+        "partial_gap_p95_ms": 6262.6,
+        "partial_transcript_churn_char_mean": 0.863,
+        "partial_transcript_churn_word_mean": 1.0,
+        "late_partial_events": 0,
+        "late_partial_ratio": 0.0,
+        "final_mean_ms": 7049.6,
+        "final_p95_ms": 7728.3
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "Qwen/Qwen3-ASR-0.6B"
+    },
     {
       "kind": "asr",
       "backend": "parakeet-nemo",
@@ -2139,19 +2198,19 @@
       "lane": "Docker Compose CPU",
       "runtime": "cpu / float16",
       "status": "validated",
-      "status_detail": "Validated 5-sample Compose CPU artifact using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
+      "status_detail": "Validated 5-sample Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
       "target_sample_count": 5,
-      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen",
+      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-15T20:09:37Z",
+      "measured_at": "2026-06-20T03:50:30Z",
       "sample_count": 5,
-      "artifact_path": "benchmark-results/qwen-compose-2026-06-15.json",
-      "artifact_sha256": "66a12e0a85d30be6d3f9365946783e3d622cbd06acbdbe17856adeb6ad390e26",
-      "artifact_size_bytes": 25756,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-19.json",
+      "artifact_sha256": "165f9f6c382241034ca1c84f04ace6f231de9fc2d29a104cc8e5b3a594518deb",
+      "artifact_size_bytes": 27048,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
-        "python": "3.14.5",
+        "python": "3.14.6",
         "cpu_logical_cores": 10,
         "memory_total_mb": 24576.0,
         "peak_rss_mb": null,
@@ -2165,27 +2224,27 @@
         "partial_interval_chunks": 8,
         "partial_window_seconds": 2.0,
         "binary_frames": false,
-        "sample_rate": 22050,
+        "sample_rate": 16000,
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 3799.0,
-        "p95_ms": 4475.0,
-        "rtf_mean": 0.522
+        "mean_ms": 3553.8,
+        "p95_ms": 4215.3,
+        "rtf_mean": 0.488
       },
       "streaming": {
-        "partial_mean_ms": 3118.4,
-        "partial_p95_ms": 4677.0,
-        "first_partial_end_to_end_mean_ms": 3365.4,
-        "first_partial_end_to_end_p95_ms": 3537.3,
-        "partial_gap_mean_ms": 4312.3,
-        "partial_gap_p95_ms": 6917.1,
+        "partial_mean_ms": 3581.5,
+        "partial_p95_ms": 7396.4,
+        "first_partial_end_to_end_mean_ms": 3297.7,
+        "first_partial_end_to_end_p95_ms": 3345.3,
+        "partial_gap_mean_ms": 2341.3,
+        "partial_gap_p95_ms": 6262.6,
         "partial_transcript_churn_char_mean": 0.863,
         "partial_transcript_churn_word_mean": 1.0,
         "late_partial_events": 0,
         "late_partial_ratio": 0.0,
-        "final_mean_ms": 7318.6,
-        "final_p95_ms": 8168.1
+        "final_mean_ms": 7049.6,
+        "final_p95_ms": 7728.3
       },
       "warnings": {
         "received_total": null,
@@ -2196,18 +2255,18 @@
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 38.1,
-        "live_caption_score": 44.8,
-        "partial_backlog_score": 50.4,
+        "latency_score": 42.2,
+        "live_caption_score": 45.3,
+        "partial_backlog_score": 36.9,
         "finalization_score": 0.0,
-        "stability_score": 94.2,
-        "efficiency_score": 49.3,
-        "overall_score": 41.9,
+        "stability_score": 90.5,
+        "efficiency_score": 52.8,
+        "overall_score": 43.1,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.178,
-        "partial_jitter_ratio": 1.5,
-        "final_jitter_ratio": 1.116
+        "rest_jitter_ratio": 1.186,
+        "partial_jitter_ratio": 2.065,
+        "final_jitter_ratio": 1.096
       }
     },
     {
