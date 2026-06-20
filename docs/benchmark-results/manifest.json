@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-20T18:11:35Z",
+  "generated_at": "2026-06-20T19:09:32Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -20,8 +20,8 @@
     "backend_count": 5,
     "lane_count": 5,
     "system_coverage": {
-      "memory_total_mb_count": 5,
-      "peak_rss_mb_count": 3,
+      "memory_total_mb_count": 10,
+      "peak_rss_mb_count": 7,
       "cpu_utilization_percent_count": 2,
       "package_power_watts_count": 0,
       "thermal_peak_celsius_count": 0,

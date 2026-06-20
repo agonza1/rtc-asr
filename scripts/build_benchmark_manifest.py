@@ -643,7 +643,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "sample_contract": catalog.get("sample_contract", {}),
         "backend_count": len({entry["backend"] for entry in tracks}),
         "lane_count": len({entry["lane"] for entry in tracks}),
-        "system_coverage": build_system_coverage(artifact_backed),
+        "system_coverage": build_system_coverage(artifact_history),
         "ranges": ranges,
         "highlights": {
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),

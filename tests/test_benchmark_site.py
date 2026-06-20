@@ -289,8 +289,8 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert track["system"]["memory_total_mb"] is None
 
     coverage = manifest["summary"]["system_coverage"]
-    assert coverage["memory_total_mb_count"] == 5
-    assert coverage["peak_rss_mb_count"] == 3
+    assert coverage["memory_total_mb_count"] == 10
+    assert coverage["peak_rss_mb_count"] == 7
     assert coverage["cpu_utilization_percent_count"] == 2
     assert coverage["package_power_watts_count"] == 0
     assert coverage["thermal_peak_celsius_count"] == 0
