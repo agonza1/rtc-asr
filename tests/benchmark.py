@@ -1147,8 +1147,11 @@ async def run_v1_stt_stream_benchmark(
                 return False
             recorded_partial_revisions.add(event.revision)
 
+        chunk_index = getattr(event, "chunks_received", 0)
         audio_offset_ms = float(event.audio_received_ms or 0)
-        if audio_offset_ms <= 0 and chunk_audio_offsets_ms:
+        if audio_offset_ms <= 0 and 0 < chunk_index <= len(chunk_audio_offsets_ms):
+            audio_offset_ms = chunk_audio_offsets_ms[chunk_index - 1]
+        elif audio_offset_ms <= 0 and chunk_audio_offsets_ms:
             audio_offset_ms = chunk_audio_offsets_ms[-1]
         audio_offset_ms = min(round(audio_offset_ms, 1), total_audio_ms)
         end_to_end_ms = round((received_at - stream_started_at) * 1000, 1)
@@ -1473,6 +1476,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             streaming_samples.append({
                 "sample": index + 1,
                 "transport": ws.get("transport", "direct"),
+                "chunk_ms": ws.get("chunk_ms"),
+                "aggregation_ms": ws.get("aggregation_ms"),
                 "source_frame_ms": ws.get("source_frame_ms"),
                 "source_frame_count": ws.get("source_frame_count"),
                 "aggregation_frame_count": ws.get("aggregation_frame_count"),

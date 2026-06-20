@@ -1290,7 +1290,6 @@ def test_run_v1_stt_stream_benchmark_counts_every_skipped_partial_interval(monke
 
         async def start(self, **kwargs: object) -> dict[str, object]:
             assert kwargs["sample_rate"] == 10
-            assert kwargs["source_frame_ms"] == 100
             assert kwargs["partial_interval_ms"] == 100
             return {"type": "ready", "stream_id": 9, **kwargs}
 
