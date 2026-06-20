@@ -280,8 +280,11 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
         ),
         "thermal_observation": first_defined(
             environment.get("thermal_observation"),
+            environment.get("thermal_state"),
             system.get("thermal_observation"),
+            system.get("thermal_state"),
             metrics.get("thermal_observation"),
+            metrics.get("thermal_state"),
         ),
     }
 

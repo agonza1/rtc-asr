@@ -15,6 +15,7 @@ SPEC.loader.exec_module(manifest_module)
 DEFAULT_RESULTS_DIR = manifest_module.DEFAULT_RESULTS_DIR
 build_manifest = manifest_module.build_manifest
 comparable_manifest = manifest_module.comparable_manifest
+extract_system_signals = manifest_module.extract_system_signals
 render_manifest = manifest_module.render_manifest
 
 PRERENDER_MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prerender_benchmark_homepage.py"
@@ -294,6 +295,12 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert coverage["package_power_watts_count"] == 0
     assert coverage["thermal_peak_celsius_count"] == 0
     assert coverage["thermal_observation_count"] == 0
+
+
+def test_manifest_counts_thermal_state_as_system_evidence() -> None:
+    system = extract_system_signals({"environment": {"thermal_state": "stable after 5 minutes"}})
+
+    assert system["thermal_observation"] == "stable after 5 minutes"
 
 
 def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
