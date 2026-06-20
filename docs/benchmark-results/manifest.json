@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-20T03:52:20Z",
+  "generated_at": "2026-06-20T12:41:04Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
-    "artifact_file_count": 16,
+    "artifact_file_count": 17,
     "validated_count": 7,
     "legacy_count": 0,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-20T03:50:30Z",
+    "latest_measured_at": "2026-06-20T12:39:19Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -29,7 +29,7 @@
         "max": 12134.1
       },
       "first_partial_end_to_end_mean_ms": {
-        "min": 557.4,
+        "min": 436.9,
         "max": 3297.7
       },
       "partial_gap_mean_ms": {
@@ -68,11 +68,11 @@
       },
       "fastest_first_partial": {
         "label": "Fastest first visible partial",
-        "slug": "parakeet-mlx-service-110m",
-        "backend": "parakeet-mlx",
-        "model": "mlx-community/parakeet-tdt_ctc-110m",
-        "value": 557.4,
-        "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json"
+        "slug": "qwen-mps",
+        "backend": "qwen-asr",
+        "model": "Qwen/Qwen3-ASR-0.6B",
+        "value": 436.9,
+        "artifact_path": "benchmark-results/qwen-mps-2026-06-20.json"
       },
       "tightest_partial_cadence": {
         "label": "Tightest partial cadence",
@@ -203,85 +203,6 @@
         "rest_jitter_ratio": 1.198,
         "partial_jitter_ratio": 1.301,
         "final_jitter_ratio": 1.17
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "qwen-mps",
-      "label": "Qwen MPS",
-      "backend": "qwen-asr",
-      "model": "Qwen/Qwen3-ASR-0.6B",
-      "lane": "Local Python Apple Silicon",
-      "runtime": "mps / auto",
-      "status": "validated",
-      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-qwen-mps",
-      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-10T17:19:07Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
-      "artifact_sha256": "3d72b21c7813d95f06c0c33ba4ecad5b4b356c57d5b47aa5a9109d28a9504648",
-      "artifact_size_bytes": 32873,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.14.4",
-        "cpu_logical_cores": null,
-        "memory_total_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 1,
-        "partial_window_seconds": 2,
-        "binary_frames": false,
-        "sample_rate": 22050
-      },
-      "rest": {
-        "mean_ms": 1186.2,
-        "p95_ms": 1261.2,
-        "rtf_mean": 0.163
-      },
-      "streaming": {
-        "partial_mean_ms": 352,
-        "partial_p95_ms": 445.5,
-        "first_partial_end_to_end_mean_ms": null,
-        "first_partial_end_to_end_p95_ms": null,
-        "partial_gap_mean_ms": null,
-        "partial_gap_p95_ms": null,
-        "partial_transcript_churn_char_mean": null,
-        "partial_transcript_churn_word_mean": null,
-        "late_partial_events": null,
-        "late_partial_ratio": null,
-        "final_mean_ms": 1189.6,
-        "final_p95_ms": 1248.2
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 85.0,
-        "live_caption_score": null,
-        "partial_backlog_score": 94.4,
-        "finalization_score": 82.6,
-        "stability_score": 97.3,
-        "efficiency_score": 86.3,
-        "overall_score": 87.0,
-        "confidence_score": 100.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.063,
-        "partial_jitter_ratio": 1.266,
-        "final_jitter_ratio": 1.049
       }
     },
     {
@@ -441,6 +362,86 @@
         "rest_jitter_ratio": 1.701,
         "partial_jitter_ratio": 2.153,
         "final_jitter_ratio": 2.019
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "qwen-mps",
+      "label": "Qwen MPS",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "lane": "Local Python Apple Silicon",
+      "runtime": "mps / auto",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact refreshed on 2026-06-20 with comparable first-partial live metrics.",
+      "target_sample_count": 10,
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 make benchmark-qwen-mps",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "measured_at": "2026-06-20T12:39:19Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-mps-2026-06-20.json",
+      "artifact_sha256": "7289bef6897a8abe58c3ca095990975e74b6f31ea4e5ea134ae379041ec41116",
+      "artifact_size_bytes": 51691,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.7",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 841.0,
+        "cpu_utilization_percent": 26.1,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 16000,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 1134.5,
+        "p95_ms": 1195.4,
+        "rtf_mean": 0.156
+      },
+      "streaming": {
+        "partial_mean_ms": 5643.7,
+        "partial_p95_ms": 8866.6,
+        "first_partial_end_to_end_mean_ms": 436.9,
+        "first_partial_end_to_end_p95_ms": 485.0,
+        "partial_gap_mean_ms": 386.3,
+        "partial_gap_p95_ms": 2424.0,
+        "partial_transcript_churn_char_mean": 0.228,
+        "partial_transcript_churn_word_mean": 0.276,
+        "late_partial_events": 86,
+        "late_partial_ratio": 0.287,
+        "final_mean_ms": 8410.5,
+        "final_p95_ms": 8857.7
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 85.9,
+        "live_caption_score": 72.4,
+        "partial_backlog_score": 14.2,
+        "finalization_score": 0.0,
+        "stability_score": 95.3,
+        "efficiency_score": 87.0,
+        "overall_score": 67.3,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.054,
+        "partial_jitter_ratio": 1.571,
+        "final_jitter_ratio": 1.053
       }
     },
     {
@@ -765,6 +766,65 @@
     }
   ],
   "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "runtime": "mps / auto",
+      "measured_at": "2026-06-20T12:39:19Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-mps-2026-06-20.json",
+      "artifact_sha256": "7289bef6897a8abe58c3ca095990975e74b6f31ea4e5ea134ae379041ec41116",
+      "artifact_size_bytes": 51691,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.7",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 841.0,
+        "cpu_utilization_percent": 26.1,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 16000,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 1134.5,
+        "p95_ms": 1195.4,
+        "rtf_mean": 0.156
+      },
+      "streaming": {
+        "partial_mean_ms": 5643.7,
+        "partial_p95_ms": 8866.6,
+        "first_partial_end_to_end_mean_ms": 436.9,
+        "first_partial_end_to_end_p95_ms": 485.0,
+        "partial_gap_mean_ms": 386.3,
+        "partial_gap_p95_ms": 2424.0,
+        "partial_transcript_churn_char_mean": 0.228,
+        "partial_transcript_churn_word_mean": 0.276,
+        "late_partial_events": 86,
+        "late_partial_ratio": 0.287,
+        "final_mean_ms": 8410.5,
+        "final_p95_ms": 8857.7
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "Qwen/Qwen3-ASR-0.6B"
+    },
     {
       "kind": "asr",
       "backend": "qwen-asr",
@@ -1794,85 +1854,6 @@
     },
     {
       "kind": "asr",
-      "slug": "qwen-mps",
-      "label": "Qwen MPS",
-      "backend": "qwen-asr",
-      "model": "Qwen/Qwen3-ASR-0.6B",
-      "lane": "Local Python Apple Silicon",
-      "runtime": "mps / auto",
-      "status": "validated",
-      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-qwen-mps",
-      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-10T17:19:07Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/qwen-mps-2026-06-10.json",
-      "artifact_sha256": "3d72b21c7813d95f06c0c33ba4ecad5b4b356c57d5b47aa5a9109d28a9504648",
-      "artifact_size_bytes": 32873,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.14.4",
-        "cpu_logical_cores": null,
-        "memory_total_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 1,
-        "partial_window_seconds": 2,
-        "binary_frames": false,
-        "sample_rate": 22050
-      },
-      "rest": {
-        "mean_ms": 1186.2,
-        "p95_ms": 1261.2,
-        "rtf_mean": 0.163
-      },
-      "streaming": {
-        "partial_mean_ms": 352,
-        "partial_p95_ms": 445.5,
-        "first_partial_end_to_end_mean_ms": null,
-        "first_partial_end_to_end_p95_ms": null,
-        "partial_gap_mean_ms": null,
-        "partial_gap_p95_ms": null,
-        "partial_transcript_churn_char_mean": null,
-        "partial_transcript_churn_word_mean": null,
-        "late_partial_events": null,
-        "late_partial_ratio": null,
-        "final_mean_ms": 1189.6,
-        "final_p95_ms": 1248.2
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 85.0,
-        "live_caption_score": null,
-        "partial_backlog_score": 94.4,
-        "finalization_score": 82.6,
-        "stability_score": 97.3,
-        "efficiency_score": 86.3,
-        "overall_score": 87.0,
-        "confidence_score": 100.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.063,
-        "partial_jitter_ratio": 1.266,
-        "final_jitter_ratio": 1.049
-      }
-    },
-    {
-      "kind": "asr",
       "slug": "faster-whisper-small",
       "label": "Faster-Whisper Small",
       "backend": "faster-whisper",
@@ -2028,6 +2009,86 @@
         "rest_jitter_ratio": 1.701,
         "partial_jitter_ratio": 2.153,
         "final_jitter_ratio": 2.019
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "qwen-mps",
+      "label": "Qwen MPS",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "lane": "Local Python Apple Silicon",
+      "runtime": "mps / auto",
+      "status": "validated",
+      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact refreshed on 2026-06-20 with comparable first-partial live metrics.",
+      "target_sample_count": 10,
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 make benchmark-qwen-mps",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "measured_at": "2026-06-20T12:39:19Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-mps-2026-06-20.json",
+      "artifact_sha256": "7289bef6897a8abe58c3ca095990975e74b6f31ea4e5ea134ae379041ec41116",
+      "artifact_size_bytes": 51691,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.13.7",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 841.0,
+        "cpu_utilization_percent": 26.1,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 250,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 16000,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 1134.5,
+        "p95_ms": 1195.4,
+        "rtf_mean": 0.156
+      },
+      "streaming": {
+        "partial_mean_ms": 5643.7,
+        "partial_p95_ms": 8866.6,
+        "first_partial_end_to_end_mean_ms": 436.9,
+        "first_partial_end_to_end_p95_ms": 485.0,
+        "partial_gap_mean_ms": 386.3,
+        "partial_gap_p95_ms": 2424.0,
+        "partial_transcript_churn_char_mean": 0.228,
+        "partial_transcript_churn_word_mean": 0.276,
+        "late_partial_events": 86,
+        "late_partial_ratio": 0.287,
+        "final_mean_ms": 8410.5,
+        "final_p95_ms": 8857.7
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 85.9,
+        "live_caption_score": 72.4,
+        "partial_backlog_score": 14.2,
+        "finalization_score": 0.0,
+        "stability_score": 95.3,
+        "efficiency_score": 87.0,
+        "overall_score": 67.3,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.054,
+        "partial_jitter_ratio": 1.571,
+        "final_jitter_ratio": 1.053
       }
     },
     {
