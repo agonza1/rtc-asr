@@ -1133,7 +1133,7 @@ async def run_v1_stt_stream_benchmark(
 
     def expected_partial_for_audio_offset(audio_offset_ms: float) -> None:
         nonlocal expected_partial_events, next_expected_partial_audio_ms
-        if audio_offset_ms + 0.5 >= next_expected_partial_audio_ms:
+        while audio_offset_ms + 0.5 >= next_expected_partial_audio_ms:
             expected_partial_events += 1
             next_expected_partial_audio_ms += float(partial_interval_ms)
 
@@ -1560,7 +1560,19 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
         partial_churn_char_summary = summarize_ratio_series(partial_churn_char_all) if partial_churn_char_all else None
         partial_churn_word_summary = summarize_ratio_series(partial_churn_word_all) if partial_churn_word_all else None
         source_frame_mode = args.mode in {"pipecat-e2e", "v1-stt-stream"}
-        stream_chunk_ms = args.v1_aggregation_ms if args.mode == "v1-stt-stream" else args.chunk_ms
+        first_streaming_sample = streaming_samples[0] if streaming_samples else None
+        stream_chunk_ms = (
+            first_streaming_sample.get("chunk_ms", first_streaming_sample.get("aggregation_ms", args.v1_aggregation_ms))
+            if args.mode == "v1-stt-stream" and first_streaming_sample is not None
+            else args.v1_aggregation_ms if args.mode == "v1-stt-stream"
+            else args.chunk_ms
+        )
+        stream_aggregation_ms = (
+            first_streaming_sample.get("aggregation_ms", stream_chunk_ms)
+            if args.mode == "v1-stt-stream" and first_streaming_sample is not None
+            else args.v1_aggregation_ms if args.mode == "v1-stt-stream"
+            else None
+        )
         stream_source_frame_ms = (
             args.pipecat_source_frame_ms if args.mode == "pipecat-e2e"
             else args.v1_source_frame_ms if args.mode == "v1-stt-stream"
@@ -1606,7 +1618,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "request_retry_delay": args.request_retry_delay,
                 "pipecat_source_frame_ms": args.pipecat_source_frame_ms if args.mode == "pipecat-e2e" else None,
                 "v1_source_frame_ms": args.v1_source_frame_ms if args.mode == "v1-stt-stream" else None,
-                "v1_aggregation_ms": args.v1_aggregation_ms if args.mode == "v1-stt-stream" else None,
+                "v1_aggregation_ms": stream_aggregation_ms,
                 "v1_partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
                 "preload_model": args.preload_model,
                 "require_preloaded_service": args.require_preloaded_service,
@@ -1655,7 +1667,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "sample_count": sample_count,
                 "transport": args.mode,
                 "chunk_ms": stream_chunk_ms,
-                "aggregation_ms": args.v1_aggregation_ms if args.mode == "v1-stt-stream" else None,
+                "aggregation_ms": stream_aggregation_ms,
                 "partial_interval_chunks": stream_partial_interval_chunks,
                 "partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
                 "binary_frames": stream_binary_frames,
