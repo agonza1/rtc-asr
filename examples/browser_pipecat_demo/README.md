@@ -138,6 +138,34 @@ The browser will:
 8. Stream live speech or real-time file playback through Pipecat into `rtc-asr`
 9. Render transcript events received over the data channel
 
+## Docker Compose Sidecar
+
+The repository compose stack can run the browser Pipecat demo beside `rtc-asr` with Docker service discovery:
+
+```text
+browser/client -> browser-pipecat-demo -> asr-service /v1/stt/stream
+```
+
+Start both services from the repository root:
+
+```bash
+PYTHON_BASE_IMAGE=python:3.11-slim docker compose up --build asr-service browser-pipecat-demo
+```
+
+The compose file sets:
+
+```bash
+RTC_ASR_WS_URL=ws://asr-service:8080/v1/stt/stream
+RTC_ASR_CHUNK_MS=100
+RTC_ASR_MAX_BUFFER_SECONDS=5
+```
+
+Open `http://127.0.0.1:8090/rtc-asr` after both health checks pass. Use `PIPECAT_DEMO_PORT` when `8090` is already in use, and keep the host-facing `PORT` value aligned with any custom `asr-service` port mapping.
+
+The sidecar path is intentionally different from Pipecat's built-in local Whisper STT baseline. Pipecat Whisper runs local/offline inside the Pipecat process and emits segmented STT results. This demo uses Pipecat for WebRTC/session handling, then streams normalized `16` kHz mono PCM16 audio to a warmed `rtc-asr` sidecar so Local STT v1 can produce partial/final transcript events and latency metrics independently of the Pipecat worker.
+
+Recommended Local STT defaults for this example are `sample_rate=16000`, `channels=1`, `format=pcm_s16le`, `frame_ms=20`, `partial_interval_ms=100`, and `partial_window_seconds=1.0`. Increase `RTC_ASR_CHUNK_MS` toward `160` when websocket overhead matters more than first-partial latency; lower it toward `80` when you are comparing low-latency sidecar behavior against the built-in Whisper baseline.
+
 ## Troubleshooting
 
 ### `PIPECAT_WEBRTC_DEPENDENCY_MISSING`
