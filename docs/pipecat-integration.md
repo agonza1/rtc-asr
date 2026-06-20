@@ -177,6 +177,7 @@ python3 -m compileall src tests
 ## Related Docs
 
 - [API Reference](./api-reference.md)
+- [Browser Pipecat Demo](../examples/browser_pipecat_demo/README.md)
 - [LiveKit Integration](./livekit-integration.md)
 - [Troubleshooting](./troubleshooting.md)
 - [README](../README.md)
