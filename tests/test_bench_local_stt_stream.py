@@ -290,6 +290,18 @@ def test_receive_latency_ignores_empty_poll_timeouts() -> None:
     }
 
 
+def test_summarize_samples_preserves_small_rtf_precision() -> None:
+    summary = benchmark_module.summarize_samples(
+        [
+            {"audio_end_finalization_rtf": 0.015, "time_to_first_interim_ms": 1.24},
+            {"audio_end_finalization_rtf": 0.024, "time_to_first_interim_ms": 2.26},
+        ]
+    )
+
+    assert summary["audio_end_finalization_rtf"] == {"p50": 0.015, "p95": 0.024, "p99": 0.024}
+    assert summary["time_to_first_interim_ms"] == {"p50": 1.2, "p95": 2.3, "p99": 2.3}
+
+
 def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
     benchmark_module.print_summary(
         {

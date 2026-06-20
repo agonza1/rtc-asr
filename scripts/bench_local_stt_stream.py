@@ -102,6 +102,15 @@ def percentile(values: list[float], q: float) -> float | None:
     return round(ordered[index], 1)
 
 
+def summarize_percentile(metric: str, values: list[float], q: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, max(0, round((len(ordered) - 1) * q)))
+    precision = 3 if metric.endswith("_rtf") else 1
+    return round(ordered[index], precision)
+
+
 def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, float | None]]:
     keys = [
         "time_to_first_interim_ms",
@@ -130,9 +139,9 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
     for key in keys:
         values = [float(sample[key]) for sample in samples if sample.get(key) is not None]
         summary[key] = {
-            "p50": percentile(values, 0.50),
-            "p95": percentile(values, 0.95),
-            "p99": percentile(values, 0.99),
+            "p50": summarize_percentile(key, values, 0.50),
+            "p95": summarize_percentile(key, values, 0.95),
+            "p99": summarize_percentile(key, values, 0.99),
         }
     return summary
 
