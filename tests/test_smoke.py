@@ -1223,8 +1223,8 @@ def test_local_stt_v1_stream_cancel_clears_buffer_and_suppresses_final_transcrip
                 "metadata": {
                     "stream_id": 1,
                     "chunks_received": 1,
-                    "buffered_bytes": len(chunk),
-                    "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES - len(chunk),
+                    "buffered_bytes": 0,
+                    "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
                 },
                 "retryable": False,
             }
@@ -1244,6 +1244,37 @@ def test_local_stt_v1_stream_cancel_clears_buffer_and_suppresses_final_transcrip
     assert transcriber.calls == [
         {"audio_size": len(chunk), "language": None, "sample_rate": HOT_PATH_SAMPLE_RATE, "prefix": chunk[:4]}
     ]
+
+
+def test_local_stt_v1_stream_rejects_audio_that_exceeds_buffer_limit() -> None:
+    transcriber = FakeTranscriber()
+    config = AppConfig(stream_max_buffer_bytes=8)
+
+    with TestClient(create_app(config=config, transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                }
+            )
+            assert websocket.receive_json()["type"] == "ready"
+
+            websocket.send_bytes(b"overflow!!")
+            error_event = websocket.receive_json()
+
+    assert error_event == {
+        "type": "error",
+        "code": "buffer_limit_exceeded",
+        "message": "Stream buffer exceeded 8 bytes; send stop and start a new stream",
+        "metadata": {"max_buffer_bytes": 8},
+        "retryable": False,
+        "fatal": True,
+    }
+    assert transcriber.calls == []
 
 
 def test_local_stt_v1_closes_when_worker_lazy_load_fails() -> None:
