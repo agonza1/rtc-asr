@@ -79,9 +79,9 @@
       "lane": "Docker Compose CPU",
       "status": "validated",
       "target_sample_count": 10,
-      "artifact": "parakeet-nemo-110m-compose-2026-06-09.json",
-      "status_detail": "Validated 10-sample Compose CPU artifact with an 8-chunk partial cadence.",
-      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-09",
+      "artifact": "parakeet-nemo-110m-compose-2026-06-19.json",
+      "status_detail": "Validated 10-sample Compose CPU artifact refreshed on 2026-06-19 with an 8-chunk partial cadence.",
+      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-19",
       "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
     },
     {
