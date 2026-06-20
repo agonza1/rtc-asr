@@ -41,6 +41,13 @@ class FakeLocalSttClient:
                     chunks_received=1,
                     buffered_bytes=len(chunk),
                     remaining_buffer_bytes=0,
+                    metadata={
+                        "audio_send_queue_depth_ms": 1.0,
+                        "asr_receive_loop_append_ms": 2.0,
+                        "asr_queue_delay_ms": 3.0,
+                        "asr_decode_ms": 4.0,
+                        "websocket_roundtrip_ms": 5.0,
+                    },
                 )
             )
         if len(self.sent) == 2:
@@ -53,6 +60,13 @@ class FakeLocalSttClient:
                     chunks_received=2,
                     buffered_bytes=len(chunk),
                     remaining_buffer_bytes=0,
+                    metadata={
+                        "audio_send_queue_depth_ms": 1.5,
+                        "asr_receive_loop_append_ms": 2.5,
+                        "asr_queue_delay_ms": 3.5,
+                        "asr_decode_ms": 4.5,
+                        "websocket_roundtrip_ms": 5.5,
+                    },
                 )
             )
 
@@ -79,6 +93,13 @@ class FakeLocalSttClient:
                 chunks_received=len(self.sent),
                 buffered_bytes=sum(len(chunk) for chunk in self.sent),
                 remaining_buffer_bytes=0,
+                metadata={
+                    "audio_send_queue_depth_ms": 2.0,
+                    "asr_receive_loop_append_ms": 3.0,
+                    "asr_queue_delay_ms": 4.0,
+                    "asr_decode_ms": 5.0,
+                    "websocket_roundtrip_ms": 6.0,
+                },
             )
         )
 
@@ -220,17 +241,23 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["audio_end_finalization_rtf"] >= 0
     assert sample["audio_send_duration_ms"] is not None
     assert sample["send_receive_overlap_ms"] is not None
-    assert sample["audio_send_queue_depth_p95_ms"] is None
+    assert sample["audio_send_queue_depth_p95_ms"] == 2.0
     assert sample["audio_send_latency_p95_ms"] is not None
     assert sample["partial_cadence_p95_ms"] is not None
     assert sample["pcm16_normalization_p95_ms"] is not None
-    assert sample["asr_queue_delay_p95_ms"] is None
-    assert sample["asr_decode_p95_ms"] is None
+    assert sample["asr_receive_loop_append_p95_ms"] == 3.0
+    assert sample["asr_queue_delay_p95_ms"] == 4.0
+    assert sample["asr_decode_p95_ms"] == 5.0
+    assert sample["websocket_roundtrip_p95_ms"] == 6.0
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
     assert payload["summary"]["audio_end_finalization_rtf"]["p95"] >= 0
     assert payload["summary"]["audio_send_duration_ms"]["p95"] >= 0
     assert payload["summary"]["send_receive_overlap_ms"]["p95"] >= 0
-    assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
+    assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["summary"]["asr_receive_loop_append_p95_ms"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
+    assert payload["summary"]["asr_queue_delay_p95_ms"] == {"p50": 4.0, "p95": 4.0, "p99": 4.0}
+    assert payload["summary"]["asr_decode_p95_ms"] == {"p50": 5.0, "p95": 5.0, "p99": 5.0}
+    assert payload["summary"]["websocket_roundtrip_p95_ms"] == {"p50": 6.0, "p95": 6.0, "p99": 6.0}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
