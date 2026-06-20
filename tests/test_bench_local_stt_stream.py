@@ -232,6 +232,13 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
     assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["summary"]["audio_frames_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["summary"]["audio_frames_dropped"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+    assert payload["summary"]["interim_events_received"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["summary"]["interim_transcript_changes"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["summary"]["final_events_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["summary"]["reconnects"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+    assert payload["summary"]["protocol_errors"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
 
 
 def test_send_receive_overlap_proves_receive_loop_runs_during_audio_send() -> None:
@@ -273,6 +280,9 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
         {
             "summary": {
                 "warnings_received": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
+                "audio_frames_sent": {"p50": 4.0, "p95": 4.0, "p99": 4.0},
+                "interim_transcript_changes": {"p50": 2.0, "p95": 3.0, "p99": 3.0},
+                "reconnects": {"p50": 0.0, "p95": 1.0, "p99": 1.0},
                 "time_to_first_interim_ms": {"p50": 4.0, "p95": 5.0, "p99": None},
             }
         }
@@ -280,7 +290,10 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
 
     lines = capsys.readouterr().out.splitlines()
     assert lines[0] == "warnings_received: p50=1.0 p95=2.0 p99=3.0"
-    assert lines[1] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
+    assert lines[1] == "audio_frames_sent: p50=4.0 p95=4.0 p99=4.0"
+    assert lines[2] == "interim_transcript_changes: p50=2.0 p95=3.0 p99=3.0"
+    assert lines[3] == "reconnects: p50=0.0 p95=1.0 p99=1.0"
+    assert lines[4] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
 
 
 def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> None:

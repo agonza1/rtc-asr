@@ -117,6 +117,13 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "asr_decode_p95_ms",
         "websocket_roundtrip_p95_ms",
         "warnings_received",
+        "audio_frames_sent",
+        "audio_frames_dropped",
+        "interim_events_received",
+        "interim_transcript_changes",
+        "final_events_received",
+        "reconnects",
+        "protocol_errors",
     ]
     summary: dict[str, dict[str, float]] = {}
     for key in keys:
@@ -411,7 +418,15 @@ def print_summary(payload: dict[str, Any]) -> None:
 
 
 def _format_summary_value(metric: str, value: float | None) -> str:
-    if metric.endswith("_received") or metric.endswith("_events") or metric.endswith("_errors"):
+    if (
+        metric.endswith("_received")
+        or metric.endswith("_events")
+        or metric.endswith("_errors")
+        or metric.endswith("_sent")
+        or metric.endswith("_dropped")
+        or metric.endswith("_changes")
+        or metric == "reconnects"
+    ):
         return "n/a" if value is None else str(value)
     return _format_ms(value)
 
