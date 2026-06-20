@@ -581,7 +581,7 @@ def test_checked_in_benchmark_artifacts_include_current_harness_metadata() -> No
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "qwen-compose-2026-06-15.json": {
+        "qwen-compose-2026-06-19.json": {
             "partial_interval_chunks": 8,
             "binary_frames": False,
             "partial_window_seconds": 2.0,
@@ -605,7 +605,7 @@ def test_checked_in_benchmark_artifacts_include_streaming_sample_binary_frame_me
         "faster-whisper-small.en-int8-2026-06-10.json",
         "parakeet-compose-2026-06-10.json",
         "parakeet-nemo-110m-compose-2026-06-09.json",
-        "qwen-compose-2026-06-15.json",
+        "qwen-compose-2026-06-19.json",
     ]
 
     for artifact_name in validated_artifacts:
