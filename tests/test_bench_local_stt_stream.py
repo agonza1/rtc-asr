@@ -242,22 +242,32 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["audio_send_duration_ms"] is not None
     assert sample["send_receive_overlap_ms"] is not None
     assert sample["audio_send_queue_depth_p95_ms"] == 2.0
+    assert sample["audio_send_queue_depth_samples"] == 3
     assert sample["audio_send_latency_p95_ms"] is not None
     assert sample["partial_cadence_p95_ms"] is not None
     assert sample["pcm16_normalization_p95_ms"] is not None
     assert sample["asr_receive_loop_append_p95_ms"] == 3.0
+    assert sample["asr_receive_loop_append_samples"] == 3
     assert sample["asr_queue_delay_p95_ms"] == 4.0
+    assert sample["asr_queue_delay_samples"] == 3
     assert sample["asr_decode_p95_ms"] == 5.0
+    assert sample["asr_decode_samples"] == 3
     assert sample["websocket_roundtrip_p95_ms"] == 6.0
+    assert sample["websocket_roundtrip_samples"] == 3
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
     assert payload["summary"]["audio_end_finalization_rtf"]["p95"] >= 0
     assert payload["summary"]["audio_send_duration_ms"]["p95"] >= 0
     assert payload["summary"]["send_receive_overlap_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["summary"]["audio_send_queue_depth_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["asr_receive_loop_append_p95_ms"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
+    assert payload["summary"]["asr_receive_loop_append_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["asr_queue_delay_p95_ms"] == {"p50": 4.0, "p95": 4.0, "p99": 4.0}
+    assert payload["summary"]["asr_queue_delay_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["asr_decode_p95_ms"] == {"p50": 5.0, "p95": 5.0, "p99": 5.0}
+    assert payload["summary"]["asr_decode_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["websocket_roundtrip_p95_ms"] == {"p50": 6.0, "p95": 6.0, "p99": 6.0}
+    assert payload["summary"]["websocket_roundtrip_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
@@ -337,6 +347,7 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
                 "audio_frames_sent": {"p50": 4.0, "p95": 4.0, "p99": 4.0},
                 "interim_transcript_changes": {"p50": 2.0, "p95": 3.0, "p99": 3.0},
                 "reconnects": {"p50": 0.0, "p95": 1.0, "p99": 1.0},
+                "asr_decode_samples": {"p50": 3.0, "p95": 4.0, "p99": 4.0},
                 "audio_end_finalization_rtf": {"p50": 0.5, "p95": 0.75, "p99": None},
                 "time_to_first_interim_ms": {"p50": 4.0, "p95": 5.0, "p99": None},
             }
@@ -348,8 +359,9 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
     assert lines[1] == "audio_frames_sent: p50=4.0 p95=4.0 p99=4.0"
     assert lines[2] == "interim_transcript_changes: p50=2.0 p95=3.0 p99=3.0"
     assert lines[3] == "reconnects: p50=0.0 p95=1.0 p99=1.0"
-    assert lines[4] == "audio_end_finalization_rtf: p50=0.5 p95=0.75 p99=n/a"
-    assert lines[5] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
+    assert lines[4] == "asr_decode_samples: p50=3.0 p95=4.0 p99=4.0"
+    assert lines[5] == "audio_end_finalization_rtf: p50=0.5 p95=0.75 p99=n/a"
+    assert lines[6] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
 
 
 def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> None:

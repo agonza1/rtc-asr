@@ -119,13 +119,18 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "audio_send_duration_ms",
         "send_receive_overlap_ms",
         "audio_send_queue_depth_p95_ms",
+        "audio_send_queue_depth_samples",
         "audio_send_latency_p95_ms",
         "partial_cadence_p95_ms",
         "pcm16_normalization_p95_ms",
         "asr_receive_loop_append_p95_ms",
+        "asr_receive_loop_append_samples",
         "asr_queue_delay_p95_ms",
+        "asr_queue_delay_samples",
         "asr_decode_p95_ms",
+        "asr_decode_samples",
         "websocket_roundtrip_p95_ms",
+        "websocket_roundtrip_samples",
         "warnings_received",
         "audio_frames_sent",
         "audio_frames_dropped",
@@ -347,13 +352,18 @@ async def _run_once(
             )
         ),
         "audio_send_queue_depth_p95_ms": percentile(audio_send_queue_depth_latencies, 0.95),
+        "audio_send_queue_depth_samples": len(audio_send_queue_depth_latencies),
         "audio_send_latency_p95_ms": send_p95,
         "partial_cadence_p95_ms": percentile(partial_cadences, 0.95),
         "pcm16_normalization_p95_ms": percentile(pcm16_normalization_latencies, 0.95),
         "asr_receive_loop_append_p95_ms": _coalesce_optional_ms(percentile(asr_receive_loop_append_latencies, 0.95), receive_p95),
+        "asr_receive_loop_append_samples": len(asr_receive_loop_append_latencies),
         "asr_queue_delay_p95_ms": percentile(asr_queue_delay_latencies, 0.95),
+        "asr_queue_delay_samples": len(asr_queue_delay_latencies),
         "asr_decode_p95_ms": percentile(asr_decode_latencies, 0.95),
+        "asr_decode_samples": len(asr_decode_latencies),
         "websocket_roundtrip_p95_ms": _coalesce_optional_ms(percentile(websocket_roundtrip_latencies, 0.95), receive_p95),
+        "websocket_roundtrip_samples": len(websocket_roundtrip_latencies),
         "audio_frames_sent": frames_sent,
         "audio_frames_dropped": max(0, len(audio.frames) - frames_sent),
         "interim_events_received": interim_events,
@@ -467,6 +477,7 @@ def _format_summary_value(metric: str, value: float | None) -> str:
         or metric.endswith("_sent")
         or metric.endswith("_dropped")
         or metric.endswith("_changes")
+        or metric.endswith("_samples")
         or metric == "reconnects"
     ):
         return "n/a" if value is None else str(value)
