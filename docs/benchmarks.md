@@ -7,7 +7,7 @@ The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/man
 
 Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. The homepage stays latency-first, and this notes page carries the issue #46 methodology decision about how reference WER should be labeled until the repo has its own reproducible quality track.
 
-Current publication policy: checked-in `/ws/stream` artifacts remain visible only as legacy supporting evidence. The live leaderboard now waits for paced `/v1/stt/stream` artifacts with `streaming.live_metrics_comparable == true`.
+Current publication policy: checked-in `/ws/stream` artifacts remain visible only as legacy supporting evidence. Paced `/v1/stt/stream` artifacts with `streaming.live_metrics_comparable == true` now populate the primary live leaderboard as they are regenerated.
 
 ## Accuracy Publishing Policy
 
@@ -53,7 +53,7 @@ Required methodology fields for any future published WER:
 
 | Track | Backend | Model | Lane | Runtime | Status | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | legacy artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-15.json` |
+| `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-20.json` |
 | `faster-whisper-base-c80-w075-json-preview` | `faster-whisper` | `base.en` | Local Python CPU Sweep Preview | `cpu / int8` | preview artifact | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
 | `pipecat-e2e-faster-whisper-base` | `faster-whisper` | `base.en` | Pipecat E2E Local Python CPU | `cpu / int8` | blocked integration artifact | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json` |
 | `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | legacy artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |

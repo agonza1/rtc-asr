@@ -563,11 +563,11 @@ def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
         assert f"--backend {backend}" in block
 
 
-def test_checked_in_legacy_benchmark_artifacts_include_current_harness_metadata() -> None:
+def test_checked_in_publishable_benchmark_artifacts_include_current_harness_metadata() -> None:
     artifact_expectations = {
-        "faster-whisper-base.en-int8-2026-06-15.json": {
-            "partial_interval_chunks": 1,
-            "binary_frames": False,
+        "faster-whisper-base.en-int8-2026-06-20.json": {
+            "partial_interval_chunks": None,
+            "binary_frames": True,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
             "request_retries": 3,
@@ -630,10 +630,10 @@ def test_checked_in_legacy_benchmark_artifacts_include_current_harness_metadata(
             assert benchmark_metadata[key] == expected
 
 
-def test_checked_in_legacy_benchmark_artifacts_include_streaming_sample_binary_frame_metadata() -> None:
+def test_checked_in_publishable_benchmark_artifacts_include_streaming_sample_binary_frame_metadata() -> None:
     results_dir = Path("docs") / "benchmark-results"
-    legacy_artifacts = [
-        "faster-whisper-base.en-int8-2026-06-15.json",
+    publishable_artifacts = [
+        "faster-whisper-base.en-int8-2026-06-20.json",
         "faster-whisper-small.en-int8-2026-06-10.json",
         "parakeet-compose-2026-06-10.json",
         "parakeet-nemo-110m-compose-2026-06-19.json",
@@ -642,7 +642,7 @@ def test_checked_in_legacy_benchmark_artifacts_include_streaming_sample_binary_f
         "qwen-compose-2026-06-19.json",
     ]
 
-    for artifact_name in legacy_artifacts:
+    for artifact_name in publishable_artifacts:
         payload = json.loads((results_dir / artifact_name).read_text(encoding="utf-8"))
         benchmark_binary_frames = payload["benchmark"]["binary_frames"]
         streaming_samples = payload["samples"]["streaming"]
@@ -665,15 +665,19 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
     assert sample_contract["binary_frames"] is True
     assert sample_contract["live_metrics_comparable"] is True
 
-    published_tracks = [track for track in payload["tracks"] if track["status"] != "blocked"]
-    assert published_tracks
-    for track in published_tracks:
-        assert track["status"] == "legacy"
+    validated_tracks = [track for track in payload["tracks"] if track["status"] == "validated"]
+    assert [track["slug"] for track in validated_tracks] == ["faster-whisper-base"]
+    assert validated_tracks[0]["artifact"] == "faster-whisper-base.en-int8-2026-06-20.json"
+    assert "/v1/stt/stream" in validated_tracks[0]["status_detail"]
+
+    legacy_tracks = [track for track in payload["tracks"] if track["status"] == "legacy"]
+    assert legacy_tracks
+    for track in legacy_tracks:
         assert "/ws/stream" in track["status_detail"]
         assert "/v1/stt/stream" in track["status_detail"]
 
 
-def test_benchmarks_doc_legacy_artifact_rows_reference_checked_in_current_schema_artifacts() -> None:
+def test_benchmarks_doc_publishable_artifact_rows_reference_checked_in_current_schema_artifacts() -> None:
     benchmarks_doc = (Path("docs") / "benchmarks.md").read_text(encoding="utf-8")
     results_dir = Path("docs") / "benchmark-results"
     required_metadata_keys = {
@@ -685,17 +689,16 @@ def test_benchmarks_doc_legacy_artifact_rows_reference_checked_in_current_schema
         "request_retry_delay",
     }
 
-    legacy_rows = [
+    publishable_rows = [
         line
         for line in benchmarks_doc.splitlines()
         if line.startswith("| `")
-        and "| legacy artifact" in line
+        and ("| legacy artifact" in line or "| validated artifact" in line)
         and "text-generation feasibility benchmark" not in line
     ]
-    assert legacy_rows
-    assert "| validated artifact" not in benchmarks_doc
+    assert publishable_rows
 
-    for row in legacy_rows:
+    for row in publishable_rows:
         artifact_name = row.split("`docs/benchmark-results/", 1)[1].split("`", 1)[0]
         artifact_path = results_dir / artifact_name
         assert artifact_path.exists(), f"documented artifact missing: {artifact_name}"

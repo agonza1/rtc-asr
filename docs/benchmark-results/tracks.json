@@ -22,10 +22,10 @@
       "device": "cpu",
       "compute": "int8",
       "lane": "Local Python CPU",
-      "status": "legacy",
+      "status": "validated",
       "target_sample_count": 10,
-      "artifact": "faster-whisper-base.en-int8-2026-06-15.json",
-      "status_detail": "Legacy /ws/stream artifact refreshed on 2026-06-15. It stays published as buffered-WebSocket supporting evidence only until a paced /v1/stt/stream replacement is checked in.",
+      "artifact": "faster-whisper-base.en-int8-2026-06-20.json",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane now anchors the primary comparable live leaderboard while the remaining /ws/stream artifacts stay published as supporting evidence.",
       "run_command": "make benchmark-faster-whisper-base",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
     },
