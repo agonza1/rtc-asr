@@ -50,6 +50,18 @@ def format_celsius(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.1f} C"
 
 
+def format_count(value: float | int | None) -> str:
+    if value is None:
+        return "n/a"
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
+
+
+def format_list(values: list[str]) -> str:
+    return ", ".join(values) if values else "none recorded"
+
+
 def format_bytes(value: int | None) -> str:
     if value is None:
         return "n/a"
@@ -286,6 +298,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     confidence = "n/a" if derived.get("confidence_score") is None else f"{derived['confidence_score']:.1f} / 100"
     contract_value = "n/a" if contract.get("chunk_ms") is None else f"{contract['chunk_ms']} ms chunks"
     official_wer_reference = entry.get("official_wer_reference")
+    warnings = entry.get("warnings") or {}
     run_command = entry.get("run_command")
     artifact_sha256 = entry.get("artifact_sha256")
     artifact_size_bytes = entry.get("artifact_size_bytes")
@@ -411,6 +424,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
         <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Sample rate {contract.get("sample_rate") or 'n/a'} Hz · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">{html.escape(official_wer_reference or 'No external WER reference')}</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
+        <article class="card"><span class="label">Warnings</span><div class="value">{format_count(warnings.get("received_total"))}</div><p>Codes: {html.escape(format_list(warnings.get("codes") or []))}</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
         <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p><p>Size {format_bytes(artifact_size_bytes)}</p></article>
         <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>{html.escape(artifact_name or 'n/a')}</code></div><p>Manifest path {html.escape(entry.get('artifact_path') or 'n/a')}</p><p>Generated detail page {html.escape(Path(detail_page_path(entry)).name)}</p></article>
