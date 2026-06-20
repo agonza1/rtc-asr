@@ -287,6 +287,14 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert track["system"]["peak_rss_mb"] is None
     assert track["system"]["memory_total_mb"] is None
 
+    coverage = manifest["summary"]["system_coverage"]
+    assert coverage["memory_total_mb_count"] == 5
+    assert coverage["peak_rss_mb_count"] == 3
+    assert coverage["cpu_utilization_percent_count"] == 2
+    assert coverage["package_power_watts_count"] == 0
+    assert coverage["thermal_peak_celsius_count"] == 0
+    assert coverage["thermal_observation_count"] == 0
+
 
 def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")

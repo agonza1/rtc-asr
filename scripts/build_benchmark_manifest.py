@@ -546,6 +546,19 @@ def build_metric_range(entries: list[dict[str, Any]], getter) -> dict[str, float
     return {"min": round(min(values), 3), "max": round(max(values), 3)}
 
 
+def build_system_coverage(entries: list[dict[str, Any]]) -> dict[str, int]:
+    return {
+        "memory_total_mb_count": sum(1 for entry in entries if entry["system"].get("memory_total_mb") is not None),
+        "peak_rss_mb_count": sum(1 for entry in entries if entry["system"].get("peak_rss_mb") is not None),
+        "cpu_utilization_percent_count": sum(
+            1 for entry in entries if entry["system"].get("cpu_utilization_percent") is not None
+        ),
+        "package_power_watts_count": sum(1 for entry in entries if entry["system"].get("package_power_watts") is not None),
+        "thermal_peak_celsius_count": sum(1 for entry in entries if entry["system"].get("thermal_peak_celsius") is not None),
+        "thermal_observation_count": sum(1 for entry in entries if entry["system"].get("thermal_observation") is not None),
+    }
+
+
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
     latest: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     artifacts_by_name: dict[str, tuple[str, Path, dict[str, Any]]] = {}
@@ -627,6 +640,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "sample_contract": catalog.get("sample_contract", {}),
         "backend_count": len({entry["backend"] for entry in tracks}),
         "lane_count": len({entry["lane"] for entry in tracks}),
+        "system_coverage": build_system_coverage(artifact_backed),
         "ranges": ranges,
         "highlights": {
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),
