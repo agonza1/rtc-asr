@@ -118,14 +118,6 @@ class MyPipecatProcessor:
 
 Start with `100` to `200` ms PCM16 websocket chunks for service benchmarking. Use `20` ms only at the RTC edge, then aggregate before websocket transmission unless you are intentionally measuring per-frame transport overhead.
 
-| Chunk duration | RTC frames | Payload size at 16 kHz mono PCM16 |
-| --- | --- | --- |
-| `20` ms | `1` | `640` bytes |
-| `80` ms | `4` | `2560` bytes |
-| `100` ms | `5` | `3200` bytes |
-| `160` ms | `8` | `5120` bytes |
-| `200` ms | `10` | `6400` bytes |
-
 `80` to `160` ms is the practical sweet spot for this architecture because it keeps perceived latency low, reduces websocket overhead, gives the backend enough context for steadier partials, maps cleanly from Pipecat's frame cadence, and avoids excessive ASR invocation rates on smaller devices.
 
 ## Architecture Boundary
