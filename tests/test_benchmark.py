@@ -1103,6 +1103,76 @@ def test_run_pipecat_e2e_benchmark_simulates_realtime_frame_pacing(monkeypatch: 
     asyncio.run(scenario())
 
 
+def test_run_v1_stt_stream_benchmark_aggregates_local_stt_frames(monkeypatch: pytest.MonkeyPatch) -> None:
+    sent_chunks: list[bytes] = []
+
+    class FakeLocalSttClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.ws_url = ws_url
+            self.connect_fn = connect_fn
+            self.events = [
+                {"type": "transcript", "text": "first", "is_final": False, "metadata": {"chunks_received": 1}},
+                {"type": "transcript", "text": "second", "is_final": False, "metadata": {"chunks_received": 2}},
+                {"type": "transcript", "text": "done", "is_final": True, "metadata": {"chunks_received": 2}},
+            ]
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            assert kwargs["sample_rate"] == 10
+            assert kwargs["partial_interval_ms"] == 400
+            assert kwargs["partial_window_seconds"] == 1.5
+            return {"type": "ready", "stream_id": 7, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, on_sent=None) -> None:
+            sent_chunks.append(chunk)
+            if on_sent is not None:
+                on_sent()
+
+        async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False):
+            if not self.events:
+                return None
+            return self.events.pop(0)
+
+        async def finalize(self) -> None:
+            return None
+
+        async def close(self, *, graceful: bool = True):
+            return {"type": "closed"}
+
+    perf_values = iter(chain([1.0, 1.0, 1.03, 2.0, 2.0, 2.02, 3.0, 3.1], repeat(3.1)))
+    monkeypatch.setattr(benchmark, "AsyncLocalSttClient", FakeLocalSttClient)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    async def scenario() -> None:
+        result = await benchmark.run_v1_stt_stream_benchmark(
+            "ws://example.test/v1/stt/stream",
+            b"abcdefghijklmnop",
+            10,
+            400,
+            source_frame_ms=200,
+            partial_interval_ms=400,
+            partial_window_seconds=1.5,
+            partial_event_timeout_seconds=0.5,
+        )
+
+        assert sent_chunks == [b"abcdefgh", b"ijklmnop"]
+        assert result["transport"] == "v1-stt-stream"
+        assert result["binary_frames"] is True
+        assert result["chunks"] == 2
+        assert result["source_frame_count"] == 4
+        assert result["aggregation_frame_count"] == 2
+        assert result["partial_interval_chunks"] == 1
+        assert result["partial_audio_offsets_ms"] == [400.0, 800.0]
+        assert result["expected_partial_events"] == 2
+        assert result["observed_partial_events"] == 2
+        assert result["missing_partial_events"] == 0
+        assert result["final_transcript"] == "done"
+        assert result["final_event_received"] is True
+        assert result["bridge"]["protocol"] == "local-stt-v1"
+        assert result["partial_revision_count"] == 1
+
+    asyncio.run(scenario())
+
+
 def test_run_pipecat_e2e_benchmark_marks_audio_end_when_last_chunk_is_sent(monkeypatch: pytest.MonkeyPatch) -> None:
     clock = {"now": 0.0}
 

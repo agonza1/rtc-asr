@@ -102,7 +102,8 @@ def _protocol_catalog() -> list[dict[str, object]]:
             "transport": "websocket",
             "path": "/ws/stream",
             "docs": "/docs/api-reference.md#websocket-streaming",
-            "status": "stable",
+            "status": "legacy",
+            "notes": "Deprecated transport: buffered websocket contract; prefer /v1/stt/stream for native-local-stream compatibility and lower-latency framing guidance.",
             "message_format": "json-control-plus-binary-audio",
         },
         {
