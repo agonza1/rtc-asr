@@ -49,7 +49,7 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
     assert tracks["parakeet-mlx-service-110m"]["artifact_path"].endswith("parakeet-mlx-110m-service-2026-06-13.json")
-    assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-10.json")
+    assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-20.json")
     assert tracks["qwen-mps"]["status"] == "validated"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-15.json")
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
