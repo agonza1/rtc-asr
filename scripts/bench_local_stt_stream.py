@@ -109,6 +109,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "audio_send_duration_ms",
         "audio_send_queue_depth_p95_ms",
         "audio_send_latency_p95_ms",
+        "partial_cadence_p95_ms",
         "pcm16_normalization_p95_ms",
         "asr_receive_loop_append_p95_ms",
         "asr_queue_delay_p95_ms",
@@ -205,6 +206,7 @@ async def _run_once(
     interim_events = 0
     final_events = 0
     interim_transcript_changes = 0
+    interim_received_at: list[float] = []
     previous_interim_text: str | None = None
     final_transcript: str | None = None
     protocol_errors = 0
@@ -242,6 +244,7 @@ async def _run_once(
                     warning_codes.append(event.raw["code"])
                 continue
             if event.type == "partial":
+                interim_received_at.append(time.perf_counter())
                 interim_events += 1
                 if previous_interim_text is not None and event.text != previous_interim_text:
                     interim_transcript_changes += 1
@@ -286,6 +289,10 @@ async def _run_once(
 
     send_p95 = percentile(send_latencies, 0.95)
     receive_p95 = percentile(receive_latencies, 0.95)
+    partial_cadences = [
+        (received_at - previous_received_at) * 1000
+        for previous_received_at, received_at in zip(interim_received_at, interim_received_at[1:])
+    ]
     return {
         "index": index,
         "time_to_first_interim_ms": _rounded_or_none(first_interim_ms),
@@ -297,6 +304,7 @@ async def _run_once(
         ),
         "audio_send_queue_depth_p95_ms": None,
         "audio_send_latency_p95_ms": send_p95,
+        "partial_cadence_p95_ms": percentile(partial_cadences, 0.95),
         "pcm16_normalization_p95_ms": percentile(pcm16_normalization_latencies, 0.95),
         "asr_receive_loop_append_p95_ms": receive_p95,
         "asr_queue_delay_p95_ms": None,
