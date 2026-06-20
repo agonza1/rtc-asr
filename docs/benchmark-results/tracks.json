@@ -67,10 +67,10 @@
       "device": "cpu",
       "compute": "float32",
       "lane": "Docker Compose CPU",
-      "status": "legacy",
+      "status": "validated",
       "target_sample_count": 10,
-      "artifact": "parakeet-compose-2026-06-10.json",
-      "status_detail": "Legacy /ws/stream Compose CPU artifact. The buffered websocket contract is now treated as lower-performance supporting evidence pending /v1/stt/stream regeneration.",
+      "artifact": "parakeet-compose-2026-06-20.json",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This Compose lane now publishes comparable live partial and final timing, but it still finalizes more slowly than the Faster-Whisper Base local CPU baseline.",
       "run_command": "make benchmark-compose-parakeet",
       "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)"
     },
