@@ -114,6 +114,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "asr_queue_delay_p95_ms",
         "asr_decode_p95_ms",
         "websocket_roundtrip_p95_ms",
+        "warnings_received",
     ]
     summary: dict[str, dict[str, float]] = {}
     for key in keys:
@@ -207,6 +208,8 @@ async def _run_once(
     previous_interim_text: str | None = None
     final_transcript: str | None = None
     protocol_errors = 0
+    warnings_received = 0
+    warning_codes: list[str] = []
     reconnects = 0
     send_latencies: list[float] = []
     receive_latencies: list[float] = []
@@ -222,7 +225,7 @@ async def _run_once(
     receive_done = asyncio.Event()
 
     async def receive_loop() -> None:
-        nonlocal first_interim_ms, final_after_finalize_ms, interim_events, final_events, interim_transcript_changes, previous_interim_text, final_transcript, protocol_errors
+        nonlocal first_interim_ms, final_after_finalize_ms, interim_events, final_events, interim_transcript_changes, previous_interim_text, final_transcript, protocol_errors, warnings_received
         while not receive_done.is_set():
             wait_started = time.perf_counter()
             event = await client.recv_event(timeout=0.05, allow_error=True)
@@ -233,6 +236,11 @@ async def _run_once(
                 protocol_errors += 1
                 receive_done.set()
                 return
+            if event.type == "warning":
+                warnings_received += 1
+                if isinstance(event.raw, dict) and isinstance(event.raw.get("code"), str):
+                    warning_codes.append(event.raw["code"])
+                continue
             if event.type == "partial":
                 interim_events += 1
                 if previous_interim_text is not None and event.text != previous_interim_text:
@@ -300,6 +308,8 @@ async def _run_once(
         "interim_transcript_changes": interim_transcript_changes,
         "final_events_received": final_events,
         "final_transcript": final_transcript,
+        "warnings_received": warnings_received,
+        "warning_codes": warning_codes,
         "reconnects": reconnects,
         "protocol_errors": protocol_errors,
     }
