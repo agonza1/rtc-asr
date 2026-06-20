@@ -102,10 +102,20 @@ def percentile(values: list[float], q: float) -> float | None:
     return round(ordered[index], 1)
 
 
+def summarize_percentile(metric: str, values: list[float], q: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, max(0, round((len(ordered) - 1) * q)))
+    precision = 3 if metric.endswith("_rtf") else 1
+    return round(ordered[index], precision)
+
+
 def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, float | None]]:
     keys = [
         "time_to_first_interim_ms",
         "time_to_final_after_finalize_ms",
+        "audio_end_finalization_rtf",
         "audio_send_duration_ms",
         "send_receive_overlap_ms",
         "audio_send_queue_depth_p95_ms",
@@ -129,9 +139,9 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
     for key in keys:
         values = [float(sample[key]) for sample in samples if sample.get(key) is not None]
         summary[key] = {
-            "p50": percentile(values, 0.50),
-            "p95": percentile(values, 0.95),
-            "p99": percentile(values, 0.99),
+            "p50": summarize_percentile(key, values, 0.50),
+            "p95": summarize_percentile(key, values, 0.95),
+            "p99": summarize_percentile(key, values, 0.99),
         }
     return summary
 
@@ -311,6 +321,7 @@ async def _run_once(
         "index": index,
         "time_to_first_interim_ms": _rounded_or_none(first_interim_ms),
         "time_to_final_after_finalize_ms": _rounded_or_none(final_after_finalize_ms),
+        "audio_end_finalization_rtf": compute_audio_end_finalization_rtf(final_after_finalize_ms, audio),
         "audio_send_duration_ms": _rounded_or_none(
             None
             if audio_send_started_at is None or audio_send_completed_at is None
@@ -393,6 +404,15 @@ def compute_overlap_ms(
     return max(0.0, (overlap_completed_at - overlap_started_at) * 1000)
 
 
+def compute_audio_end_finalization_rtf(final_after_finalize_ms: float | None, audio: AudioInput) -> float | None:
+    if final_after_finalize_ms is None or not audio.frames:
+        return None
+    audio_duration_ms = len(audio.frames) * audio.frame_ms
+    if audio_duration_ms <= 0:
+        return None
+    return round(final_after_finalize_ms / audio_duration_ms, 3)
+
+
 def _read_pcm16_mono_wav(path: Path) -> tuple[bytes, int]:
     with wave.open(str(path), "rb") as wav_file:
         channels = wav_file.getnchannels()
@@ -427,6 +447,8 @@ def _format_summary_value(metric: str, value: float | None) -> str:
         or metric.endswith("_changes")
         or metric == "reconnects"
     ):
+        return "n/a" if value is None else str(value)
+    if metric.endswith("_rtf"):
         return "n/a" if value is None else str(value)
     return _format_ms(value)
 

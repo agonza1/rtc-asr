@@ -216,6 +216,8 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["protocol_errors"] == 0
     assert sample["time_to_first_interim_ms"] is not None
     assert sample["time_to_final_after_finalize_ms"] is not None
+    assert sample["audio_end_finalization_rtf"] is not None
+    assert sample["audio_end_finalization_rtf"] >= 0
     assert sample["audio_send_duration_ms"] is not None
     assert sample["send_receive_overlap_ms"] is not None
     assert sample["audio_send_queue_depth_p95_ms"] is None
@@ -225,6 +227,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["asr_queue_delay_p95_ms"] is None
     assert sample["asr_decode_p95_ms"] is None
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
+    assert payload["summary"]["audio_end_finalization_rtf"]["p95"] >= 0
     assert payload["summary"]["audio_send_duration_ms"]["p95"] >= 0
     assert payload["summary"]["send_receive_overlap_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
@@ -266,6 +269,18 @@ def test_send_receive_overlap_proves_receive_loop_runs_during_audio_send() -> No
     assert sample["send_receive_overlap_ms"] > 0
 
 
+def test_compute_audio_end_finalization_rtf_normalizes_by_audio_duration() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 640, b"c" * 640, b"d" * 640, b"e" * 640],
+    )
+
+    assert benchmark_module.compute_audio_end_finalization_rtf(150.0, audio) == 1.5
+    assert benchmark_module.compute_audio_end_finalization_rtf(None, audio) is None
+
+
 def test_receive_latency_ignores_empty_poll_timeouts() -> None:
     assert benchmark_module.percentile([], 0.95) is None
     assert benchmark_module.summarize_samples([{"websocket_roundtrip_p95_ms": None}])["websocket_roundtrip_p95_ms"] == {
@@ -273,6 +288,18 @@ def test_receive_latency_ignores_empty_poll_timeouts() -> None:
         "p95": None,
         "p99": None,
     }
+
+
+def test_summarize_samples_preserves_small_rtf_precision() -> None:
+    summary = benchmark_module.summarize_samples(
+        [
+            {"audio_end_finalization_rtf": 0.015, "time_to_first_interim_ms": 1.24},
+            {"audio_end_finalization_rtf": 0.024, "time_to_first_interim_ms": 2.26},
+        ]
+    )
+
+    assert summary["audio_end_finalization_rtf"] == {"p50": 0.015, "p95": 0.024, "p99": 0.024}
+    assert summary["time_to_first_interim_ms"] == {"p50": 1.2, "p95": 2.3, "p99": 2.3}
 
 
 def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
@@ -283,6 +310,7 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
                 "audio_frames_sent": {"p50": 4.0, "p95": 4.0, "p99": 4.0},
                 "interim_transcript_changes": {"p50": 2.0, "p95": 3.0, "p99": 3.0},
                 "reconnects": {"p50": 0.0, "p95": 1.0, "p99": 1.0},
+                "audio_end_finalization_rtf": {"p50": 0.5, "p95": 0.75, "p99": None},
                 "time_to_first_interim_ms": {"p50": 4.0, "p95": 5.0, "p99": None},
             }
         }
@@ -293,7 +321,8 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
     assert lines[1] == "audio_frames_sent: p50=4.0 p95=4.0 p99=4.0"
     assert lines[2] == "interim_transcript_changes: p50=2.0 p95=3.0 p99=3.0"
     assert lines[3] == "reconnects: p50=0.0 p95=1.0 p99=1.0"
-    assert lines[4] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
+    assert lines[4] == "audio_end_finalization_rtf: p50=0.5 p95=0.75 p99=n/a"
+    assert lines[5] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
 
 
 def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> None:
