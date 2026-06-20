@@ -213,6 +213,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["audio_send_duration_ms"] is not None
     assert sample["audio_send_queue_depth_p95_ms"] is None
     assert sample["audio_send_latency_p95_ms"] is not None
+    assert sample["partial_cadence_p95_ms"] is not None
     assert sample["pcm16_normalization_p95_ms"] is not None
     assert sample["asr_queue_delay_p95_ms"] is None
     assert sample["asr_decode_p95_ms"] is None
@@ -220,6 +221,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["audio_send_duration_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
+    assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
     assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
 
