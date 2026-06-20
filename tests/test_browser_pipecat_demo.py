@@ -210,6 +210,21 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
     }
 
 
+
+def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> None:
+    readme = (Path("examples") / "browser_pipecat_demo" / "README.md").read_text(encoding="utf-8")
+
+    assert "PYTHON_BASE_IMAGE=python:3.11-slim docker compose up --build asr-service browser-pipecat-demo" in readme
+    assert "RTC_ASR_WS_URL=ws://asr-service:8080/v1/stt/stream" in readme
+    assert "sample_rate=16000" in readme
+    assert "channels=1" in readme
+    assert "format=pcm_s16le" in readme
+    assert "frame_ms=20" in readme
+    assert "partial_interval_ms=100" in readme
+    assert "partial_window_seconds=1.0" in readme
+    assert "Pipecat Whisper runs local/offline inside the Pipecat process" in readme
+    assert "Local STT v1 can produce partial/final transcript events" in readme
+
 def test_offer_requires_offer_type() -> None:
     client = TestClient(app)
 
