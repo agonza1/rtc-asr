@@ -226,6 +226,8 @@ class StreamRuntime:
 
     def request_cancel(self) -> None:
         self.cancel_requested.set()
+        self.session.audio_buffer.clear()
+        self.session.last_partial_result = None
         self.audio_updated.set()
 
     def close(self) -> None:
