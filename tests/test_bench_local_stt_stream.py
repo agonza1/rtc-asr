@@ -233,6 +233,21 @@ def test_receive_latency_ignores_empty_poll_timeouts() -> None:
     }
 
 
+def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
+    benchmark_module.print_summary(
+        {
+            "summary": {
+                "warnings_received": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
+                "time_to_first_interim_ms": {"p50": 4.0, "p95": 5.0, "p99": None},
+            }
+        }
+    )
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "warnings_received: p50=1.0 p95=2.0 p99=3.0"
+    assert lines[1] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
+
+
 def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> None:
     raw_path = tmp_path / "clip.pcm"
     raw_path.write_bytes(b"a" * 640)

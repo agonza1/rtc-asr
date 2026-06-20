@@ -362,7 +362,18 @@ def _rounded_or_none(value: float | None) -> float | None:
 
 def print_summary(payload: dict[str, Any]) -> None:
     for metric, values in payload["summary"].items():
-        print(f"{metric}: p50={_format_ms(values['p50'])} p95={_format_ms(values['p95'])} p99={_format_ms(values['p99'])}")
+        print(
+            f"{metric}: "
+            f"p50={_format_summary_value(metric, values['p50'])} "
+            f"p95={_format_summary_value(metric, values['p95'])} "
+            f"p99={_format_summary_value(metric, values['p99'])}"
+        )
+
+
+def _format_summary_value(metric: str, value: float | None) -> str:
+    if metric.endswith("_received") or metric.endswith("_events") or metric.endswith("_errors"):
+        return "n/a" if value is None else str(value)
+    return _format_ms(value)
 
 
 def _format_ms(value: float | None) -> str:
