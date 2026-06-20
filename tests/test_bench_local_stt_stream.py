@@ -60,6 +60,18 @@ class FakeLocalSttClient:
         self.finalized = True
         await self._events.put(
             TranscriptEvent(
+                type="warning",
+                text="partial dropped",
+                stream_id=None,
+                is_final=False,
+                chunks_received=len(self.sent),
+                buffered_bytes=sum(len(chunk) for chunk in self.sent),
+                remaining_buffer_bytes=0,
+                raw={"type": "warning", "code": "partial_dropped", "message": "partial dropped"},
+            )
+        )
+        await self._events.put(
+            TranscriptEvent(
                 type="final",
                 text="hello",
                 stream_id=None,
@@ -193,6 +205,8 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["interim_transcript_changes"] == 1
     assert sample["final_events_received"] == 1
     assert sample["final_transcript"] == "hello"
+    assert sample["warnings_received"] == 1
+    assert sample["warning_codes"] == ["partial_dropped"]
     assert sample["protocol_errors"] == 0
     assert sample["time_to_first_interim_ms"] is not None
     assert sample["time_to_final_after_finalize_ms"] is not None
@@ -207,6 +221,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
+    assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
 
 
 def test_receive_latency_ignores_empty_poll_timeouts() -> None:
@@ -216,6 +231,21 @@ def test_receive_latency_ignores_empty_poll_timeouts() -> None:
         "p95": None,
         "p99": None,
     }
+
+
+def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
+    benchmark_module.print_summary(
+        {
+            "summary": {
+                "warnings_received": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
+                "time_to_first_interim_ms": {"p50": 4.0, "p95": 5.0, "p99": None},
+            }
+        }
+    )
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "warnings_received: p50=1.0 p95=2.0 p99=3.0"
+    assert lines[1] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
 
 
 def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> None:
