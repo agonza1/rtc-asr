@@ -119,13 +119,18 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "audio_send_duration_ms",
         "send_receive_overlap_ms",
         "audio_send_queue_depth_p95_ms",
+        "audio_send_queue_depth_samples",
         "audio_send_latency_p95_ms",
         "partial_cadence_p95_ms",
         "pcm16_normalization_p95_ms",
         "asr_receive_loop_append_p95_ms",
+        "asr_receive_loop_append_samples",
         "asr_queue_delay_p95_ms",
+        "asr_queue_delay_samples",
         "asr_decode_p95_ms",
+        "asr_decode_samples",
         "websocket_roundtrip_p95_ms",
+        "websocket_roundtrip_samples",
         "warnings_received",
         "audio_frames_sent",
         "audio_frames_dropped",
@@ -235,6 +240,11 @@ async def _run_once(
     reconnects = 0
     send_latencies: list[float] = []
     receive_latencies: list[float] = []
+    audio_send_queue_depth_latencies: list[float] = []
+    asr_receive_loop_append_latencies: list[float] = []
+    asr_queue_delay_latencies: list[float] = []
+    asr_decode_latencies: list[float] = []
+    websocket_roundtrip_latencies: list[float] = []
     audio_send_started_at: float | None = None
     audio_send_completed_at: float | None = None
     pcm16_normalization_latencies = measure_pcm16_normalization_latencies(
@@ -267,6 +277,12 @@ async def _run_once(
                 if isinstance(event.raw, dict) and isinstance(event.raw.get("code"), str):
                     warning_codes.append(event.raw["code"])
                 continue
+            metadata = event.metadata or {}
+            _append_optional_ms(audio_send_queue_depth_latencies, metadata.get("audio_send_queue_depth_ms"))
+            _append_optional_ms(asr_receive_loop_append_latencies, metadata.get("asr_receive_loop_append_ms"))
+            _append_optional_ms(asr_queue_delay_latencies, metadata.get("asr_queue_delay_ms"))
+            _append_optional_ms(asr_decode_latencies, metadata.get("asr_decode_ms"))
+            _append_optional_ms(websocket_roundtrip_latencies, metadata.get("websocket_roundtrip_ms"))
             if event.type == "partial":
                 interim_received_at.append(time.perf_counter())
                 interim_events += 1
@@ -335,14 +351,19 @@ async def _run_once(
                 last_event_received_at,
             )
         ),
-        "audio_send_queue_depth_p95_ms": None,
+        "audio_send_queue_depth_p95_ms": percentile(audio_send_queue_depth_latencies, 0.95),
+        "audio_send_queue_depth_samples": len(audio_send_queue_depth_latencies),
         "audio_send_latency_p95_ms": send_p95,
         "partial_cadence_p95_ms": percentile(partial_cadences, 0.95),
         "pcm16_normalization_p95_ms": percentile(pcm16_normalization_latencies, 0.95),
-        "asr_receive_loop_append_p95_ms": receive_p95,
-        "asr_queue_delay_p95_ms": None,
-        "asr_decode_p95_ms": None,
-        "websocket_roundtrip_p95_ms": receive_p95,
+        "asr_receive_loop_append_p95_ms": _coalesce_optional_ms(percentile(asr_receive_loop_append_latencies, 0.95), receive_p95),
+        "asr_receive_loop_append_samples": len(asr_receive_loop_append_latencies),
+        "asr_queue_delay_p95_ms": percentile(asr_queue_delay_latencies, 0.95),
+        "asr_queue_delay_samples": len(asr_queue_delay_latencies),
+        "asr_decode_p95_ms": percentile(asr_decode_latencies, 0.95),
+        "asr_decode_samples": len(asr_decode_latencies),
+        "websocket_roundtrip_p95_ms": _coalesce_optional_ms(percentile(websocket_roundtrip_latencies, 0.95), receive_p95),
+        "websocket_roundtrip_samples": len(websocket_roundtrip_latencies),
         "audio_frames_sent": frames_sent,
         "audio_frames_dropped": max(0, len(audio.frames) - frames_sent),
         "interim_events_received": interim_events,
@@ -354,6 +375,17 @@ async def _run_once(
         "reconnects": reconnects,
         "protocol_errors": protocol_errors,
     }
+
+
+def _coalesce_optional_ms(value: float | None, fallback: float | None) -> float | None:
+    return fallback if value is None else value
+
+
+def _append_optional_ms(values: list[float], value: object) -> None:
+    if isinstance(value, bool) or value is None:
+        return
+    if isinstance(value, (int, float)):
+        values.append(float(value))
 
 
 def normalize_pcm16_buffer(audio_data: bytes) -> np.ndarray:
@@ -445,6 +477,7 @@ def _format_summary_value(metric: str, value: float | None) -> str:
         or metric.endswith("_sent")
         or metric.endswith("_dropped")
         or metric.endswith("_changes")
+        or metric.endswith("_samples")
         or metric == "reconnects"
     ):
         return "n/a" if value is None else str(value)
