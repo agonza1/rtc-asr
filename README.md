@@ -214,7 +214,7 @@ curl http://localhost:8080/api/models
 
 Use the checked-in benchmark flow when you need reproducible latency artifacts:
 
-For pre/post optimization comparisons, keep the audio fixture, `--frame-ms`, `--partial-interval-ms`, backend, model, device, compute type, preload setting, and run count unchanged between artifacts. Compare `summary.time_to_first_interim_ms`, `summary.time_to_final_after_finalize_ms`, `summary.audio_send_duration_ms`, `summary.pcm16_normalization_p95_ms`, and protocol error counts first; `summary.asr_decode_p95_ms` stays reserved for server-side backend decode timing when exposed separately. Then inspect raw per-run samples for outliers before claiming a regression or win.
+For pre/post optimization comparisons, keep the audio fixture, `--frame-ms`, `--partial-interval-ms`, backend, model, device, compute type, preload setting, and run count unchanged between artifacts. Compare `summary.time_to_first_interim_ms`, `summary.partial_cadence_p95_ms`, `summary.time_to_final_after_finalize_ms`, `summary.audio_send_duration_ms`, `summary.pcm16_normalization_p95_ms`, warning counts, and protocol error counts first; `summary.asr_decode_p95_ms` stays reserved for server-side backend decode timing when exposed separately. Then inspect raw per-run samples for outliers before claiming a regression or win.
 
 ```bash
 make benchmark-faster-whisper-matrix
