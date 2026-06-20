@@ -111,6 +111,12 @@ def parse_args() -> argparse.Namespace:
         default=0.1,
         help="Seconds to wait for an eligible streaming partial before moving on",
     )
+    parser.add_argument(
+        "--final-event-timeout",
+        type=non_negative_float,
+        default=10.0,
+        help="Seconds to wait for the final streaming transcript after finalize",
+    )
     parser.add_argument("--request-retries", type=positive_int, default=3, help="REST request attempts before failing a sample")
     parser.add_argument("--request-retry-delay", type=non_negative_float, default=2.0, help="Seconds to wait between REST request retries")
     parser.add_argument("--package-power-watts", type=non_negative_float, help="Optional externally measured package power average in watts")
@@ -1096,6 +1102,7 @@ async def run_v1_stt_stream_benchmark(
     partial_window_seconds: float | None = None,
     max_buffer_seconds: float | None = None,
     partial_event_timeout_seconds: float = 0.1,
+    final_event_timeout_seconds: float = 10.0,
     simulate_realtime: bool = False,
     sleep_fn=None,
     connect_fn=None,
@@ -1114,6 +1121,7 @@ async def run_v1_stt_stream_benchmark(
     partial_end_to_end_ms = []
     partial_gap_ms: list[float] = []
     partial_texts: list[str] = []
+    last_partial_text = ""
     chunk_audio_offsets_ms: list[float] = []
     last_partial_visible_ms = 0.0
     last_partial_audio_offset_ms: float | None = None
@@ -1127,7 +1135,7 @@ async def run_v1_stt_stream_benchmark(
         *,
         fallback_chunk_index: int,
     ) -> int | None:
-        nonlocal last_partial_visible_ms, last_partial_received_at, last_partial_audio_offset_ms
+        nonlocal last_partial_text, last_partial_visible_ms, last_partial_received_at, last_partial_audio_offset_ms
         chunk_index = event.chunks_received
         if chunk_index < 1:
             chunk_index = fallback_chunk_index
@@ -1144,6 +1152,7 @@ async def run_v1_stt_stream_benchmark(
         partial_audio_offsets_ms.append(audio_offset_ms)
         partial_end_to_end_ms.append(visible_elapsed_ms)
         partial_texts.append(event.text)
+        last_partial_text = event.text
         if last_partial_received_at is not None:
             partial_gap_ms.append(round((received_at - last_partial_received_at) * 1000, 1))
         last_partial_visible_ms = visible_elapsed_ms
@@ -1234,8 +1243,9 @@ async def run_v1_stt_stream_benchmark(
             await collect_partial_events(chunk_count)
 
         await client.finalize()
-        while True:
-            event = await recv_event_with_timeout(partial_event_timeout_seconds)
+        final_deadline = time.perf_counter() + final_event_timeout_seconds
+        while time.perf_counter() < final_deadline:
+            event = await recv_event_with_timeout(max(0.0, final_deadline - time.perf_counter()))
             if event is None:
                 break
             if event.type == "partial":
@@ -1294,7 +1304,7 @@ async def run_v1_stt_stream_benchmark(
         "final_ms": round(final_ms, 1),
         "time_to_final_from_audio_end_ms": round(time_to_final_from_audio_end_ms, 1),
         "ready": ready_event,
-        "last_partial": final_event.text if final_event is not None else "",
+        "last_partial": last_partial_text,
         "final_transcript": final_event.text if final_event is not None else "",
         "expected_partial_events": expected_partial_events,
         "observed_partial_events": len(recorded_partial_chunks),
@@ -1413,6 +1423,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                     partial_window_seconds=args.partial_window,
                     max_buffer_seconds=args.max_buffer,
                     partial_event_timeout_seconds=args.partial_event_timeout,
+                    final_event_timeout_seconds=args.final_event_timeout,
                     simulate_realtime=args.simulate_realtime,
                 )
             else:

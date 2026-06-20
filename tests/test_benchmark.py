@@ -1165,10 +1165,66 @@ def test_run_v1_stt_stream_benchmark_aggregates_local_stt_frames(monkeypatch: py
         assert result["expected_partial_events"] == 2
         assert result["observed_partial_events"] == 2
         assert result["missing_partial_events"] == 0
+        assert result["last_partial"] == "second"
         assert result["final_transcript"] == "done"
         assert result["final_event_received"] is True
         assert result["bridge"]["protocol"] == "local-stt-v1"
         assert result["partial_revision_count"] == 1
+
+    asyncio.run(scenario())
+
+
+def test_run_v1_stt_stream_benchmark_waits_for_final_beyond_partial_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    observed_timeouts: list[float] = []
+
+    class FakeLocalSttClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.ws_url = ws_url
+            self.connect_fn = connect_fn
+            self.finalized = False
+            self.events = [
+                {"type": "transcript", "text": "interim", "is_final": False, "metadata": {"chunks_received": 1}},
+            ]
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            return {"type": "ready", "stream_id": 3, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, on_sent=None) -> None:
+            if on_sent is not None:
+                on_sent()
+
+        async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False):
+            observed_timeouts.append(timeout)
+            if self.events:
+                return self.events.pop(0)
+            if self.finalized and timeout > 1.0:
+                return {"type": "transcript", "text": "final changed", "is_final": True, "metadata": {"chunks_received": 1}}
+            return None
+
+        async def finalize(self) -> None:
+            self.finalized = True
+
+        async def close(self, *, graceful: bool = True):
+            return {"type": "closed"}
+
+    monkeypatch.setattr(benchmark, "AsyncLocalSttClient", FakeLocalSttClient)
+
+    async def scenario() -> None:
+        result = await benchmark.run_v1_stt_stream_benchmark(
+            "ws://example.test/v1/stt/stream",
+            b"abcdefgh",
+            10,
+            400,
+            source_frame_ms=400,
+            partial_interval_ms=400,
+            partial_event_timeout_seconds=0.05,
+            final_event_timeout_seconds=2.0,
+        )
+
+        assert result["last_partial"] == "interim"
+        assert result["final_transcript"] == "final changed"
+        assert result["final_event_received"] is True
+        assert max(observed_timeouts) > 1.0
 
     asyncio.run(scenario())
 
@@ -1288,6 +1344,7 @@ def test_run_pipecat_e2e_benchmark_aggregates_source_frames_and_reports_end_to_e
         assert result["expected_partial_events"] == 3
         assert result["observed_partial_events"] == 2
         assert result["missing_partial_events"] == 1
+        assert result["last_partial"] == "second"
         assert result["final_transcript"] == "done"
         assert result["final_event_received"] is True
 
