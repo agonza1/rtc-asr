@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-20T22:33:06Z",
+  "generated_at": "2026-06-20T22:54:22Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
-    "artifact_file_count": 18,
-    "validated_count": 1,
-    "legacy_count": 6,
+    "artifact_file_count": 19,
+    "validated_count": 2,
+    "legacy_count": 5,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-20T22:32:01Z",
+    "latest_measured_at": "2026-06-20T22:54:17Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -25,10 +25,10 @@
     "backend_count": 5,
     "lane_count": 5,
     "system_coverage": {
-      "memory_total_mb_count": 11,
-      "peak_rss_mb_count": 8,
+      "memory_total_mb_count": 12,
+      "peak_rss_mb_count": 9,
       "accelerator_count": 0,
-      "cpu_utilization_percent_count": 3,
+      "cpu_utilization_percent_count": 4,
       "package_power_watts_count": 0,
       "thermal_peak_celsius_count": 0,
       "thermal_observation_count": 0
@@ -69,7 +69,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 671.8,
+        "value": 479.9,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       },
       "lowest_partial_backlog": {
@@ -77,7 +77,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 126.3,
+        "value": 114.5,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       },
       "fastest_first_partial": {
@@ -85,7 +85,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 1439.1,
+        "value": 676.5,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       },
       "tightest_partial_cadence": {
@@ -93,7 +93,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 380.8,
+        "value": 318.4,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       },
       "lowest_late_partial_ratio": {
@@ -101,7 +101,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 0.663,
+        "value": 0.62,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       },
       "fastest_final": {
@@ -109,7 +109,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 898.1,
+        "value": 768.8,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       },
       "best_overall": {
@@ -117,7 +117,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 79.9,
+        "value": 85.6,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       },
       "best_live_caption": {
@@ -125,7 +125,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 51.3,
+        "value": 58.1,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       },
       "best_partial_backlog": {
@@ -133,7 +133,7 @@
         "slug": "faster-whisper-base",
         "backend": "faster-whisper",
         "model": "base.en",
-        "value": 66.1,
+        "value": 66.3,
         "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json"
       }
     }
@@ -152,11 +152,11 @@
       "target_sample_count": 10,
       "run_command": "make benchmark-faster-whisper-base",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
-      "measured_at": "2026-06-20T22:32:01Z",
+      "measured_at": "2026-06-20T22:51:08Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json",
-      "artifact_sha256": "b9b8067aef19a4a5894189761e1421d8de041d8afffdbf8b6807acab20b15815",
-      "artifact_size_bytes": 54456,
+      "artifact_sha256": "e49ba5696bbebe54cb622e5bd1fef2c51f00791ed73657109997489d83eafea4",
+      "artifact_size_bytes": 56204,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -164,15 +164,15 @@
         "cpu_logical_cores": 10,
         "accelerator": null,
         "memory_total_mb": 24576.0,
-        "peak_rss_mb": 1128.3,
-        "cpu_utilization_percent": 362.6,
+        "peak_rss_mb": 827.3,
+        "cpu_utilization_percent": 412.0,
         "package_power_watts": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
       "contract": {
         "chunk_ms": 100,
-        "partial_interval_chunks": null,
+        "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
         "binary_frames": true,
         "sample_rate": 16000,
@@ -187,25 +187,25 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 671.8,
-        "p95_ms": 1354.4,
-        "rtf_mean": 0.092
+        "mean_ms": 479.9,
+        "p95_ms": 587.3,
+        "rtf_mean": 0.066
       },
       "streaming": {
         "transport": "v1-stt-stream",
         "live_metrics_comparable": true,
-        "partial_mean_ms": 126.3,
-        "partial_p95_ms": 210.0,
-        "first_partial_end_to_end_mean_ms": 1439.1,
-        "first_partial_end_to_end_p95_ms": 4892.0,
-        "partial_gap_mean_ms": 380.8,
-        "partial_gap_p95_ms": 558.6,
-        "partial_transcript_churn_char_mean": 0.374,
-        "partial_transcript_churn_word_mean": 0.463,
-        "late_partial_events": 110,
-        "late_partial_ratio": 0.663,
-        "final_mean_ms": 898.1,
-        "final_p95_ms": 1157.5
+        "partial_mean_ms": 114.5,
+        "partial_p95_ms": 190.3,
+        "first_partial_end_to_end_mean_ms": 676.5,
+        "first_partial_end_to_end_p95_ms": 686.9,
+        "partial_gap_mean_ms": 318.4,
+        "partial_gap_p95_ms": 395.6,
+        "partial_transcript_churn_char_mean": 0.306,
+        "partial_transcript_churn_word_mean": 0.386,
+        "late_partial_events": 137,
+        "late_partial_ratio": 0.62,
+        "final_mean_ms": 768.8,
+        "final_p95_ms": 957.0
       },
       "warnings": {
         "received_total": null,
@@ -216,18 +216,109 @@
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 88.8,
-        "live_caption_score": 51.3,
-        "partial_backlog_score": 66.1,
-        "finalization_score": 86.3,
-        "stability_score": 84.7,
-        "efficiency_score": 93.6,
-        "overall_score": 79.9,
+        "latency_score": 96.2,
+        "live_caption_score": 58.1,
+        "partial_backlog_score": 66.3,
+        "finalization_score": 89.2,
+        "stability_score": 91.7,
+        "efficiency_score": 96.3,
+        "overall_score": 85.6,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 2.016,
-        "partial_jitter_ratio": 1.663,
-        "final_jitter_ratio": 1.289
+        "rest_jitter_ratio": 1.224,
+        "partial_jitter_ratio": 1.662,
+        "final_jitter_ratio": 1.245
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "faster-whisper-small",
+      "label": "Faster-Whisper Small",
+      "backend": "faster-whisper",
+      "model": "small.en",
+      "lane": "Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane is now directly comparable on the live leaderboard, even though Faster-Whisper Base remains the stronger default for turn-taking.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-small",
+      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)",
+      "measured_at": "2026-06-20T22:54:17Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-20.json",
+      "artifact_sha256": "cb4b68e44c707854d3f82a1a1637e6edf3a1048fc35a55a24d7745e25e4544ca",
+      "artifact_size_bytes": 52332,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 1253.3,
+        "cpu_utilization_percent": 408.1,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 1382.5,
+        "p95_ms": 1567.2,
+        "rtf_mean": 0.19
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 119.1,
+        "partial_p95_ms": 185.8,
+        "first_partial_end_to_end_mean_ms": 1921.7,
+        "first_partial_end_to_end_p95_ms": 2102.7,
+        "partial_gap_mean_ms": 1025.7,
+        "partial_gap_p95_ms": 1216.2,
+        "partial_transcript_churn_char_mean": 0.708,
+        "partial_transcript_churn_word_mean": 0.781,
+        "late_partial_events": 39,
+        "late_partial_ratio": 0.661,
+        "final_mean_ms": 1939.4,
+        "final_p95_ms": 2288.2
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 81.0,
+        "live_caption_score": 32.7,
+        "partial_backlog_score": 66.3,
+        "finalization_score": 67.0,
+        "stability_score": 93.7,
+        "efficiency_score": 83.5,
+        "overall_score": 69.7,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.134,
+        "partial_jitter_ratio": 1.56,
+        "final_jitter_ratio": 1.18
       }
     },
     {
@@ -314,89 +405,6 @@
         "rest_jitter_ratio": 1.198,
         "partial_jitter_ratio": 1.301,
         "final_jitter_ratio": 1.17
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "faster-whisper-small",
-      "label": "Faster-Whisper Small",
-      "backend": "faster-whisper",
-      "model": "small.en",
-      "lane": "Local Python CPU",
-      "runtime": "cpu / int8",
-      "status": "legacy",
-      "status_detail": "Legacy /ws/stream artifact using the default service model. It remains visible only as supporting evidence until a paced /v1/stt/stream replacement lands.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-faster-whisper-small",
-      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)",
-      "measured_at": "2026-06-10T02:23:49Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
-      "artifact_sha256": "8f12040623941ba0c0e299861bce5a18724e6b5106fa58671c4c117449a18251",
-      "artifact_size_bytes": 32810,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.13.12",
-        "cpu_logical_cores": null,
-        "accelerator": null,
-        "memory_total_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 1,
-        "partial_window_seconds": 2,
-        "binary_frames": false,
-        "sample_rate": 22050,
-        "live_metrics_comparable": false
-      },
-      "rest": {
-        "mean_ms": 1378.3,
-        "p95_ms": 1531.1,
-        "rtf_mean": 0.189
-      },
-      "streaming": {
-        "transport": null,
-        "live_metrics_comparable": false,
-        "partial_mean_ms": 1023.2,
-        "partial_p95_ms": 1202.4,
-        "first_partial_end_to_end_mean_ms": null,
-        "first_partial_end_to_end_p95_ms": null,
-        "partial_gap_mean_ms": null,
-        "partial_gap_p95_ms": null,
-        "partial_transcript_churn_char_mean": null,
-        "partial_transcript_churn_word_mean": null,
-        "late_partial_events": null,
-        "late_partial_ratio": null,
-        "final_mean_ms": 1420.6,
-        "final_p95_ms": 1514
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 81.3,
-        "live_caption_score": null,
-        "partial_backlog_score": 79.8,
-        "finalization_score": 78.2,
-        "stability_score": 97.4,
-        "efficiency_score": 83.6,
-        "overall_score": 79.1,
-        "confidence_score": 85.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.111,
-        "partial_jitter_ratio": 1.175,
-        "final_jitter_ratio": 1.066
       }
     },
     {
@@ -832,13 +840,13 @@
     {
       "kind": "asr",
       "backend": "faster-whisper",
-      "model": "base.en",
+      "model": "small.en",
       "runtime": "cpu / int8",
-      "measured_at": "2026-06-20T22:32:01Z",
+      "measured_at": "2026-06-20T22:54:17Z",
       "sample_count": 10,
-      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json",
-      "artifact_sha256": "b9b8067aef19a4a5894189761e1421d8de041d8afffdbf8b6807acab20b15815",
-      "artifact_size_bytes": 54456,
+      "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-20.json",
+      "artifact_sha256": "cb4b68e44c707854d3f82a1a1637e6edf3a1048fc35a55a24d7745e25e4544ca",
+      "artifact_size_bytes": 52332,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -846,15 +854,15 @@
         "cpu_logical_cores": 10,
         "accelerator": null,
         "memory_total_mb": 24576.0,
-        "peak_rss_mb": 1128.3,
-        "cpu_utilization_percent": 362.6,
+        "peak_rss_mb": 1253.3,
+        "cpu_utilization_percent": 408.1,
         "package_power_watts": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
       "contract": {
         "chunk_ms": 100,
-        "partial_interval_chunks": null,
+        "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
         "binary_frames": true,
         "sample_rate": 16000,
@@ -869,25 +877,95 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 671.8,
-        "p95_ms": 1354.4,
-        "rtf_mean": 0.092
+        "mean_ms": 1382.5,
+        "p95_ms": 1567.2,
+        "rtf_mean": 0.19
       },
       "streaming": {
         "transport": "v1-stt-stream",
         "live_metrics_comparable": true,
-        "partial_mean_ms": 126.3,
-        "partial_p95_ms": 210.0,
-        "first_partial_end_to_end_mean_ms": 1439.1,
-        "first_partial_end_to_end_p95_ms": 4892.0,
-        "partial_gap_mean_ms": 380.8,
-        "partial_gap_p95_ms": 558.6,
-        "partial_transcript_churn_char_mean": 0.374,
-        "partial_transcript_churn_word_mean": 0.463,
-        "late_partial_events": 110,
-        "late_partial_ratio": 0.663,
-        "final_mean_ms": 898.1,
-        "final_p95_ms": 1157.5
+        "partial_mean_ms": 119.1,
+        "partial_p95_ms": 185.8,
+        "first_partial_end_to_end_mean_ms": 1921.7,
+        "first_partial_end_to_end_p95_ms": 2102.7,
+        "partial_gap_mean_ms": 1025.7,
+        "partial_gap_p95_ms": 1216.2,
+        "partial_transcript_churn_char_mean": 0.708,
+        "partial_transcript_churn_word_mean": 0.781,
+        "late_partial_events": 39,
+        "late_partial_ratio": 0.661,
+        "final_mean_ms": 1939.4,
+        "final_p95_ms": 2288.2
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "small.en"
+    },
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-20T22:51:08Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json",
+      "artifact_sha256": "e49ba5696bbebe54cb622e5bd1fef2c51f00791ed73657109997489d83eafea4",
+      "artifact_size_bytes": 56204,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 827.3,
+        "cpu_utilization_percent": 412.0,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 479.9,
+        "p95_ms": 587.3,
+        "rtf_mean": 0.066
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 114.5,
+        "partial_p95_ms": 190.3,
+        "first_partial_end_to_end_mean_ms": 676.5,
+        "first_partial_end_to_end_p95_ms": 686.9,
+        "partial_gap_mean_ms": 318.4,
+        "partial_gap_p95_ms": 395.6,
+        "partial_transcript_churn_char_mean": 0.306,
+        "partial_transcript_churn_word_mean": 0.386,
+        "late_partial_events": 137,
+        "late_partial_ratio": 0.62,
+        "final_mean_ms": 768.8,
+        "final_p95_ms": 957.0
       },
       "warnings": {
         "received_total": null,
@@ -2095,11 +2173,11 @@
       "target_sample_count": 10,
       "run_command": "make benchmark-faster-whisper-base",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
-      "measured_at": "2026-06-20T22:32:01Z",
+      "measured_at": "2026-06-20T22:51:08Z",
       "sample_count": 10,
       "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-20.json",
-      "artifact_sha256": "b9b8067aef19a4a5894189761e1421d8de041d8afffdbf8b6807acab20b15815",
-      "artifact_size_bytes": 54456,
+      "artifact_sha256": "e49ba5696bbebe54cb622e5bd1fef2c51f00791ed73657109997489d83eafea4",
+      "artifact_size_bytes": 56204,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -2107,15 +2185,15 @@
         "cpu_logical_cores": 10,
         "accelerator": null,
         "memory_total_mb": 24576.0,
-        "peak_rss_mb": 1128.3,
-        "cpu_utilization_percent": 362.6,
+        "peak_rss_mb": 827.3,
+        "cpu_utilization_percent": 412.0,
         "package_power_watts": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
       "contract": {
         "chunk_ms": 100,
-        "partial_interval_chunks": null,
+        "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
         "binary_frames": true,
         "sample_rate": 16000,
@@ -2130,25 +2208,25 @@
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 671.8,
-        "p95_ms": 1354.4,
-        "rtf_mean": 0.092
+        "mean_ms": 479.9,
+        "p95_ms": 587.3,
+        "rtf_mean": 0.066
       },
       "streaming": {
         "transport": "v1-stt-stream",
         "live_metrics_comparable": true,
-        "partial_mean_ms": 126.3,
-        "partial_p95_ms": 210.0,
-        "first_partial_end_to_end_mean_ms": 1439.1,
-        "first_partial_end_to_end_p95_ms": 4892.0,
-        "partial_gap_mean_ms": 380.8,
-        "partial_gap_p95_ms": 558.6,
-        "partial_transcript_churn_char_mean": 0.374,
-        "partial_transcript_churn_word_mean": 0.463,
-        "late_partial_events": 110,
-        "late_partial_ratio": 0.663,
-        "final_mean_ms": 898.1,
-        "final_p95_ms": 1157.5
+        "partial_mean_ms": 114.5,
+        "partial_p95_ms": 190.3,
+        "first_partial_end_to_end_mean_ms": 676.5,
+        "first_partial_end_to_end_p95_ms": 686.9,
+        "partial_gap_mean_ms": 318.4,
+        "partial_gap_p95_ms": 395.6,
+        "partial_transcript_churn_char_mean": 0.306,
+        "partial_transcript_churn_word_mean": 0.386,
+        "late_partial_events": 137,
+        "late_partial_ratio": 0.62,
+        "final_mean_ms": 768.8,
+        "final_p95_ms": 957.0
       },
       "warnings": {
         "received_total": null,
@@ -2159,101 +2237,18 @@
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 88.8,
-        "live_caption_score": 51.3,
-        "partial_backlog_score": 66.1,
-        "finalization_score": 86.3,
-        "stability_score": 84.7,
-        "efficiency_score": 93.6,
-        "overall_score": 79.9,
+        "latency_score": 96.2,
+        "live_caption_score": 58.1,
+        "partial_backlog_score": 66.3,
+        "finalization_score": 89.2,
+        "stability_score": 91.7,
+        "efficiency_score": 96.3,
+        "overall_score": 85.6,
         "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 2.016,
-        "partial_jitter_ratio": 1.663,
-        "final_jitter_ratio": 1.289
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "faster-whisper-small",
-      "label": "Faster-Whisper Small",
-      "backend": "faster-whisper",
-      "model": "small.en",
-      "lane": "Local Python CPU",
-      "runtime": "cpu / int8",
-      "status": "legacy",
-      "status_detail": "Legacy /ws/stream artifact using the default service model. It remains visible only as supporting evidence until a paced /v1/stt/stream replacement lands.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-faster-whisper-small",
-      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)",
-      "measured_at": "2026-06-10T02:23:49Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-10.json",
-      "artifact_sha256": "8f12040623941ba0c0e299861bce5a18724e6b5106fa58671c4c117449a18251",
-      "artifact_size_bytes": 32810,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.13.12",
-        "cpu_logical_cores": null,
-        "accelerator": null,
-        "memory_total_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 1,
-        "partial_window_seconds": 2,
-        "binary_frames": false,
-        "sample_rate": 22050,
-        "live_metrics_comparable": false
-      },
-      "rest": {
-        "mean_ms": 1378.3,
-        "p95_ms": 1531.1,
-        "rtf_mean": 0.189
-      },
-      "streaming": {
-        "transport": null,
-        "live_metrics_comparable": false,
-        "partial_mean_ms": 1023.2,
-        "partial_p95_ms": 1202.4,
-        "first_partial_end_to_end_mean_ms": null,
-        "first_partial_end_to_end_p95_ms": null,
-        "partial_gap_mean_ms": null,
-        "partial_gap_p95_ms": null,
-        "partial_transcript_churn_char_mean": null,
-        "partial_transcript_churn_word_mean": null,
-        "late_partial_events": null,
-        "late_partial_ratio": null,
-        "final_mean_ms": 1420.6,
-        "final_p95_ms": 1514
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 81.3,
-        "live_caption_score": null,
-        "partial_backlog_score": 79.8,
-        "finalization_score": 78.2,
-        "stability_score": 97.4,
-        "efficiency_score": 83.6,
-        "overall_score": 79.1,
-        "confidence_score": 85.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.111,
-        "partial_jitter_ratio": 1.175,
-        "final_jitter_ratio": 1.066
+        "rest_jitter_ratio": 1.224,
+        "partial_jitter_ratio": 1.662,
+        "final_jitter_ratio": 1.245
       }
     },
     {
@@ -2340,6 +2335,97 @@
         "rest_jitter_ratio": 1.701,
         "partial_jitter_ratio": 2.153,
         "final_jitter_ratio": 2.019
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "faster-whisper-small",
+      "label": "Faster-Whisper Small",
+      "backend": "faster-whisper",
+      "model": "small.en",
+      "lane": "Local Python CPU",
+      "runtime": "cpu / int8",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane is now directly comparable on the live leaderboard, even though Faster-Whisper Base remains the stronger default for turn-taking.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-small",
+      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)",
+      "measured_at": "2026-06-20T22:54:17Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/faster-whisper-small.en-int8-2026-06-20.json",
+      "artifact_sha256": "cb4b68e44c707854d3f82a1a1637e6edf3a1048fc35a55a24d7745e25e4544ca",
+      "artifact_size_bytes": 52332,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 1253.3,
+        "cpu_utilization_percent": 408.1,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 1382.5,
+        "p95_ms": 1567.2,
+        "rtf_mean": 0.19
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 119.1,
+        "partial_p95_ms": 185.8,
+        "first_partial_end_to_end_mean_ms": 1921.7,
+        "first_partial_end_to_end_p95_ms": 2102.7,
+        "partial_gap_mean_ms": 1025.7,
+        "partial_gap_p95_ms": 1216.2,
+        "partial_transcript_churn_char_mean": 0.708,
+        "partial_transcript_churn_word_mean": 0.781,
+        "late_partial_events": 39,
+        "late_partial_ratio": 0.661,
+        "final_mean_ms": 1939.4,
+        "final_p95_ms": 2288.2
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 81.0,
+        "live_caption_score": 32.7,
+        "partial_backlog_score": 66.3,
+        "finalization_score": 67.0,
+        "stability_score": 93.7,
+        "efficiency_score": 83.5,
+        "overall_score": 69.7,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.134,
+        "partial_jitter_ratio": 1.56,
+        "final_jitter_ratio": 1.18
       }
     },
     {

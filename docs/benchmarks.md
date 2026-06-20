@@ -56,7 +56,7 @@ Required methodology fields for any future published WER:
 | `faster-whisper-base` | `faster-whisper` | `base.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-20.json` |
 | `faster-whisper-base-c80-w075-json-preview` | `faster-whisper` | `base.en` | Local Python CPU Sweep Preview | `cpu / int8` | preview artifact | `docs/benchmark-results/faster-whisper-base.en-int8-c80-w0_75-json-2026-06-10.json` |
 | `pipecat-e2e-faster-whisper-base` | `faster-whisper` | `base.en` | Pipecat E2E Local Python CPU | `cpu / int8` | blocked integration artifact | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json` |
-| `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | legacy artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-10.json` |
+| `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-20.json` |
 | `parakeet-compose` | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU | `cpu / float32` | legacy artifact | `docs/benchmark-results/parakeet-compose-2026-06-10.json` |
 | `parakeet-nemo-compose` | `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU | `cpu / float32` | legacy artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-19.json` |
 | `parakeet-mlx-service-110m` | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Local Python Apple Silicon MLX Service | `apple-silicon / auto` | legacy artifact | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |

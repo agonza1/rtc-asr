@@ -566,16 +566,16 @@ def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
 def test_checked_in_publishable_benchmark_artifacts_include_current_harness_metadata() -> None:
     artifact_expectations = {
         "faster-whisper-base.en-int8-2026-06-20.json": {
-            "partial_interval_chunks": None,
+            "partial_interval_chunks": 1,
             "binary_frames": True,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "faster-whisper-small.en-int8-2026-06-10.json": {
+        "faster-whisper-small.en-int8-2026-06-20.json": {
             "partial_interval_chunks": 1,
-            "binary_frames": False,
+            "binary_frames": True,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
             "request_retries": 3,
@@ -634,7 +634,7 @@ def test_checked_in_publishable_benchmark_artifacts_include_streaming_sample_bin
     results_dir = Path("docs") / "benchmark-results"
     publishable_artifacts = [
         "faster-whisper-base.en-int8-2026-06-20.json",
-        "faster-whisper-small.en-int8-2026-06-10.json",
+        "faster-whisper-small.en-int8-2026-06-20.json",
         "parakeet-compose-2026-06-10.json",
         "parakeet-nemo-110m-compose-2026-06-19.json",
         "parakeet-mlx-110m-service-2026-06-13.json",
@@ -666,9 +666,13 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
     assert sample_contract["live_metrics_comparable"] is True
 
     validated_tracks = [track for track in payload["tracks"] if track["status"] == "validated"]
-    assert [track["slug"] for track in validated_tracks] == ["faster-whisper-base"]
-    assert validated_tracks[0]["artifact"] == "faster-whisper-base.en-int8-2026-06-20.json"
-    assert "/v1/stt/stream" in validated_tracks[0]["status_detail"]
+    assert [track["slug"] for track in validated_tracks] == ["faster-whisper-base", "faster-whisper-small"]
+    assert [track["artifact"] for track in validated_tracks] == [
+        "faster-whisper-base.en-int8-2026-06-20.json",
+        "faster-whisper-small.en-int8-2026-06-20.json",
+    ]
+    for track in validated_tracks:
+        assert "/v1/stt/stream" in track["status_detail"]
 
     legacy_tracks = [track for track in payload["tracks"] if track["status"] == "legacy"]
     assert legacy_tracks
@@ -1267,6 +1271,138 @@ def test_run_v1_stt_stream_benchmark_waits_for_final_beyond_partial_timeout(monk
         assert max(observed_timeouts) > 1.0
 
     asyncio.run(scenario())
+
+
+def test_async_main_v1_forwards_final_timeout_and_preserves_partial_interval_chunks(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    async def fake_fetch_service_metadata(_: str) -> dict[str, object]:
+        return {
+            "backend": "demo",
+            "model": "demo-v1",
+            "capabilities": {"device": "cpu", "compute_type": "int8"},
+            "preload_enabled": True,
+        }
+
+    async def fake_run_rest_benchmark(*args, **kwargs) -> dict[str, object]:
+        return {
+            "durations_ms": [100.0],
+            "mean_ms": 100.0,
+            "p90_ms": 100.0,
+            "p95_ms": 100.0,
+            "min_ms": 100.0,
+            "max_ms": 100.0,
+            "rtf_mean": 0.1,
+            "transcript": "done",
+        }
+
+    async def fake_run_v1_stt_stream_benchmark(*args, **kwargs) -> dict[str, object]:
+        captured_kwargs.update(kwargs)
+        return {
+            "transport": "v1-stt-stream",
+            "chunk_ms": 100,
+            "aggregation_ms": 100,
+            "source_frame_ms": 20,
+            "source_frame_count": 4,
+            "aggregation_frame_count": 5,
+            "partial_interval_ms": 100,
+            "partial_interval_chunks": 1,
+            "binary_frames": True,
+            "simulate_realtime": True,
+            "partial_latencies_ms": [25.0],
+            "partial_audio_offsets_ms": [100.0],
+            "partial_end_to_end_ms": [125.0],
+            "partial_gap_ms": [],
+            "partial_mean_ms": 25.0,
+            "partial_p90_ms": 25.0,
+            "partial_p95_ms": 25.0,
+            "partial_first_ms": 25.0,
+            "partial_last_ms": 25.0,
+            "first_partial_audio_ms": 100.0,
+            "first_partial_end_to_end_ms": 125.0,
+            "partial_gap_mean_ms": None,
+            "partial_gap_p95_ms": None,
+            "final_ms": 75.0,
+            "time_to_final_from_audio_end_ms": 125.0,
+            "ready": {"type": "ready"},
+            "last_partial": "partial",
+            "final_transcript": "done",
+            "expected_partial_events": 1,
+            "observed_partial_events": 1,
+            "missing_partial_events": 0,
+            "late_partial_events": 0,
+            "late_partial_ratio": 0.0,
+            "partial_revision_count": 0,
+            "partial_transcript_churn_char_mean": None,
+            "partial_transcript_churn_char_p95": None,
+            "partial_transcript_churn_word_mean": None,
+            "partial_transcript_churn_word_p95": None,
+            "bridge": {
+                "protocol": "local-stt-v1",
+                "path": "/v1/stt/stream",
+                "source_frame_ms": 20,
+                "source_frame_count": 4,
+                "chunk_count": 1,
+                "aggregation_frame_count": 5,
+                "chunk_ms": 100,
+                "partial_interval_ms": 100,
+                "simulate_realtime": True,
+            },
+            "final_event_received": True,
+            "closeout_event_type": "final",
+        }
+
+    monkeypatch.setattr(benchmark, "benchmark_audio_path", lambda args: benchmark.FIXTURE_PATH)
+    monkeypatch.setattr(benchmark, "resolve_reference_text", lambda args, synthesized=False: None)
+    monkeypatch.setattr(benchmark, "load_audio", lambda path: (np.zeros(8, dtype=np.float32), 4))
+    monkeypatch.setattr(benchmark, "make_wav_bytes", lambda samples, sample_rate: b"wav")
+    monkeypatch.setattr(benchmark, "fetch_service_metadata", fake_fetch_service_metadata)
+    monkeypatch.setattr(benchmark, "run_rest_benchmark", fake_run_rest_benchmark)
+    monkeypatch.setattr(benchmark, "run_v1_stt_stream_benchmark", fake_run_v1_stt_stream_benchmark)
+
+    args = argparse.Namespace(
+        audio_file=None,
+        speech_text=benchmark.DEFAULT_TEXT,
+        reference_text=None,
+        reference_file=None,
+        spawn_server=False,
+        backend="demo",
+        model="demo-v1",
+        sample_count=1,
+        rest_runs=1,
+        chunk_ms=250,
+        partial_interval_chunks=1,
+        partial_window=2.0,
+        max_buffer=None,
+        binary_frames=False,
+        output=None,
+        device="cpu",
+        compute_type="int8",
+        qwen_dtype=None,
+        parakeet_dtype=None,
+        mode="v1-stt-stream",
+        url="http://127.0.0.1:8090",
+        ws_url="ws://127.0.0.1:8090/ws/stream",
+        v1_ws_url="ws://127.0.0.1:8090/v1/stt/stream",
+        pipecat_source_frame_ms=20,
+        v1_source_frame_ms=20,
+        v1_aggregation_ms=100,
+        v1_partial_interval_ms=100,
+        simulate_realtime=True,
+        partial_event_timeout=0.1,
+        final_event_timeout=3.5,
+        request_retries=1,
+        request_retry_delay=0.0,
+        preload_model=True,
+        require_preloaded_service=False,
+    )
+
+    result = asyncio.run(benchmark.async_main(args))
+
+    assert captured_kwargs["final_event_timeout_seconds"] == 3.5
+    assert result["benchmark"]["partial_interval_chunks"] == 1
+    assert result["streaming"]["partial_interval_chunks"] == 1
+    assert result["samples"]["streaming"][0]["partial_interval_chunks"] == 1
 
 
 def test_run_pipecat_e2e_benchmark_marks_audio_end_when_last_chunk_is_sent(monkeypatch: pytest.MonkeyPatch) -> None:

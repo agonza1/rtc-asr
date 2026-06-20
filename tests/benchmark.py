@@ -1421,6 +1421,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                     partial_window_seconds=args.partial_window,
                     max_buffer_seconds=args.max_buffer,
                     partial_event_timeout_seconds=args.partial_event_timeout,
+                    final_event_timeout_seconds=args.final_event_timeout,
                     simulate_realtime=args.simulate_realtime,
                 )
             else:
@@ -1475,6 +1476,7 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "source_frame_ms": ws.get("source_frame_ms"),
                 "source_frame_count": ws.get("source_frame_count"),
                 "aggregation_frame_count": ws.get("aggregation_frame_count"),
+                "partial_interval_chunks": ws.get("partial_interval_chunks"),
                 "binary_frames": ws["binary_frames"],
                 "simulate_realtime": ws.get("simulate_realtime"),
                 "partial_mean_ms": ws["partial_mean_ms"],

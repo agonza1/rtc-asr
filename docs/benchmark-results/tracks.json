@@ -52,10 +52,10 @@
       "device": "cpu",
       "compute": "int8",
       "lane": "Local Python CPU",
-      "status": "legacy",
+      "status": "validated",
       "target_sample_count": 10,
-      "artifact": "faster-whisper-small.en-int8-2026-06-10.json",
-      "status_detail": "Legacy /ws/stream artifact using the default service model. It remains visible only as supporting evidence until a paced /v1/stt/stream replacement lands.",
+      "artifact": "faster-whisper-small.en-int8-2026-06-20.json",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane is now directly comparable on the live leaderboard, even though Faster-Whisper Base remains the stronger default for turn-taking.",
       "run_command": "make benchmark-faster-whisper-small",
       "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)"
     },

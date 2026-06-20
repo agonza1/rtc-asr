@@ -480,7 +480,17 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
 def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_dir: Path) -> dict[Path, str]:
     results_dir = manifest_path.parent
     pages: dict[Path, str] = {}
+    detail_entries: dict[str, dict[str, Any]] = {}
+    for entry in manifest.get("artifacts", []):
+        artifact_path = entry.get("artifact_path")
+        if artifact_path:
+            detail_entries[str(artifact_path)] = entry
     for entry in manifest.get("tracks", []):
+        artifact_path = entry.get("artifact_path")
+        if artifact_path:
+            detail_entries[str(artifact_path)] = entry
+
+    for entry in detail_entries.values():
         if not entry.get("artifact_path"):
             continue
         artifact_payload = None
