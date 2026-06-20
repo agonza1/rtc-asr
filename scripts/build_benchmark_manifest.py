@@ -256,6 +256,35 @@ def summarize_accuracy(rest: dict[str, Any], streaming: dict[str, Any]) -> dict[
     }
 
 
+def summarize_warnings(payload: dict[str, Any]) -> dict[str, Any]:
+    summary = payload.get("summary") or {}
+    raw_samples = payload.get("samples") or []
+    samples = [sample for sample in raw_samples if isinstance(sample, dict)] if isinstance(raw_samples, list) else []
+    warning_summary = summary.get("warnings_received")
+    warning_codes = sorted(
+        {
+            code
+            for sample in samples
+            for code in sample.get("warning_codes", [])
+            if isinstance(code, str) and code
+        }
+    )
+
+    counts = [sample.get("warnings_received") for sample in samples]
+    numeric_counts = [value for value in counts if isinstance(value, (int, float))]
+    if numeric_counts:
+        total = sum(numeric_counts)
+    elif isinstance(warning_summary, (int, float)):
+        total = warning_summary
+    else:
+        total = None
+
+    return {
+        "received_total": total,
+        "codes": warning_codes,
+    }
+
+
 def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     backend = payload["backend"]
     rest = payload["rest"]
@@ -293,6 +322,7 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
             "final_mean_ms": streaming.get("time_to_final_from_audio_end_mean_ms", streaming.get("final_mean_ms", streaming.get("time_to_final_from_audio_end_ms", streaming.get("final_ms")))),
             "final_p95_ms": streaming.get("time_to_final_from_audio_end_p95_ms", streaming.get("final_p95_ms", streaming.get("time_to_final_from_audio_end_ms", streaming.get("final_ms")))),
         },
+        "warnings": summarize_warnings(payload),
         "accuracy": summarize_accuracy(rest, streaming),
     }
 
@@ -451,6 +481,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
             "final_mean_ms": None,
             "final_p95_ms": None,
         },
+        "warnings": {"received_total": None, "codes": []},
         "accuracy": {"word_error_rate_mean": None, "character_error_rate_mean": None},
     }
     if artifact is not None:
@@ -467,6 +498,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
                 "contract": measured["contract"],
                 "rest": measured["rest"],
                 "streaming": measured["streaming"],
+                "warnings": measured["warnings"],
             }
         )
 

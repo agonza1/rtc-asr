@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-20T00:16:43Z",
+  "generated_at": "2026-06-20T02:12:33Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -182,6 +182,10 @@
         "final_mean_ms": 210.6,
         "final_p95_ms": 246.3
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -256,6 +260,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 379,
         "final_p95_ms": 633.5
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,
@@ -332,6 +340,10 @@
         "final_mean_ms": 1189.6,
         "final_p95_ms": 1248.2
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -406,6 +418,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 1420.6,
         "final_p95_ms": 1514
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,
@@ -483,6 +499,10 @@
         "final_mean_ms": 13498.8,
         "final_p95_ms": 15429.3
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -557,6 +577,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 2215.8,
         "final_p95_ms": 3080.4
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,
@@ -634,6 +658,10 @@
         "final_mean_ms": 7318.6,
         "final_p95_ms": 8168.1
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -710,6 +738,10 @@
         "late_partial_ratio": 0.296,
         "final_mean_ms": 10844.6,
         "final_p95_ms": 10844.6
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,
@@ -782,6 +814,10 @@
         "final_mean_ms": 10844.6,
         "final_p95_ms": 10844.6
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
@@ -837,6 +873,10 @@
         "late_partial_ratio": 0.118,
         "final_mean_ms": 24382.3,
         "final_p95_ms": 24382.3
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,
@@ -894,6 +934,10 @@
         "final_mean_ms": 205.0,
         "final_p95_ms": 205.0
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -949,6 +993,10 @@
         "late_partial_ratio": 0.085,
         "final_mean_ms": 16492.0,
         "final_p95_ms": 16492.0
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
@@ -1006,6 +1054,10 @@
         "final_mean_ms": 25446.8,
         "final_p95_ms": 25446.8
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
@@ -1060,6 +1112,10 @@
         "late_partial_ratio": 0.033,
         "final_mean_ms": 13498.8,
         "final_p95_ms": 15429.3
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
@@ -1116,6 +1172,10 @@
         "final_mean_ms": 7318.6,
         "final_p95_ms": 8168.1
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0.0
@@ -1170,6 +1230,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 210.6,
         "final_p95_ms": 246.3
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": 0.19,
@@ -1227,6 +1291,10 @@
         "final_mean_ms": 22619.0,
         "final_p95_ms": 22619.0
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -1280,6 +1348,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 1189.6,
         "final_p95_ms": 1248.2
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
@@ -1335,6 +1407,10 @@
         "final_mean_ms": 379,
         "final_p95_ms": 633.5
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": 0.19,
         "character_error_rate_mean": 0
@@ -1388,6 +1464,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 1420.6,
         "final_p95_ms": 1514
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
@@ -1443,6 +1523,10 @@
         "final_mean_ms": 560.2,
         "final_p95_ms": 761.2
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": 0.095,
         "character_error_rate_mean": 0
@@ -1496,6 +1580,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 2215.8,
         "final_p95_ms": 3080.4
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": 0.095,
@@ -1561,6 +1649,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 210.6,
         "final_p95_ms": 246.3
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,
@@ -1637,6 +1729,10 @@
         "final_mean_ms": 379,
         "final_p95_ms": 633.5
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -1712,6 +1808,10 @@
         "final_mean_ms": 1189.6,
         "final_p95_ms": 1248.2
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -1786,6 +1886,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 1420.6,
         "final_p95_ms": 1514
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,
@@ -1863,6 +1967,10 @@
         "final_mean_ms": 13498.8,
         "final_p95_ms": 15429.3
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -1937,6 +2045,10 @@
         "late_partial_ratio": null,
         "final_mean_ms": 2215.8,
         "final_p95_ms": 3080.4
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,
@@ -2014,6 +2126,10 @@
         "final_mean_ms": 7318.6,
         "final_p95_ms": 8168.1
       },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
@@ -2090,6 +2206,10 @@
         "late_partial_ratio": 0.296,
         "final_mean_ms": 10844.6,
         "final_p95_ms": 10844.6
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
       },
       "accuracy": {
         "word_error_rate_mean": null,

@@ -851,3 +851,53 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     assert "SHA-256" in homepage
     assert "open JSON" not in homepage
     assert "Loading benchmark manifest..." not in homepage
+
+
+def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "demo-warnings-2026-06-20.json"
+    artifact_path.write_text(
+        json.dumps(
+            {
+                "backend": {"name": "demo", "model": "warn-v1", "device": "cpu", "compute_type": "int8"},
+                "rest": {"mean_ms": 100, "p95_ms": 140, "rtf_mean": 0.4},
+                "streaming": {"partial_mean_ms": 50, "partial_p95_ms": 80, "final_mean_ms": 120, "final_p95_ms": 180},
+                "environment": {"date_utc": "2026-06-20T00:00:00Z"},
+                "samples": [
+                    {"warnings_received": 1, "warning_codes": ["partial_dropped"]},
+                    {"warnings_received": 2, "warning_codes": ["stream_canceled", "partial_dropped"]},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    tracks_path = tmp_path / "tracks.json"
+    tracks_path.write_text(
+        json.dumps(
+            {
+                "tracks": [
+                    {
+                        "slug": "demo-warnings",
+                        "label": "demo warnings",
+                        "backend": "demo",
+                        "model": "warn-v1",
+                        "device": "cpu",
+                        "compute": "int8",
+                        "lane": "local",
+                        "status": "validated",
+                        "status_detail": "warning coverage",
+                        "target_sample_count": 2,
+                        "run_command": "make benchmark",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifest = build_manifest(tmp_path, tracks_path)
+    track = manifest["tracks"][0]
+    detail = render_detail_page(track, json.loads(artifact_path.read_text(encoding="utf-8")))
+
+    assert track["warnings"] == {"received_total": 3, "codes": ["partial_dropped", "stream_canceled"]}
+    assert "<span class=\"label\">Warnings</span><div class=\"value\">3</div>" in detail
+    assert "Codes: partial_dropped, stream_canceled" in detail
