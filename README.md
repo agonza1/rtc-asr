@@ -191,7 +191,7 @@ For low-power claims, latency alone is not enough. Recommended benchmark fields:
 - sustained thermal behavior over `5` to `10` minutes
 - transcript churn across partial updates
 
-The checked-in artifacts already cover warmed service latency, first partial responsiveness, `RTF`, and Local STT interim transcript churn. Memory, power, and thermal reporting are the next useful additions for low-power benchmarking.
+The checked-in artifacts already cover warmed service latency, first partial responsiveness, `RTF`, Local STT interim transcript churn, process RSS, and CPU utilization. Use `--package-power-watts` and `--thermal-state` to attach external power and thermal observations when those measurements are available.
 
 ## Known Limitations
 

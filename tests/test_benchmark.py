@@ -125,6 +125,19 @@ def test_parse_args_rejects_zero_or_negative_runtime_values(monkeypatch: pytest.
     with pytest.raises(SystemExit):
         benchmark.parse_args()
 
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--package-power-watts", "-1"])
+    with pytest.raises(SystemExit):
+        benchmark.parse_args()
+
+
+def test_parse_args_accepts_external_low_power_observations(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--package-power-watts", "4.8", "--thermal-state", "nominal"])
+
+    args = benchmark.parse_args()
+
+    assert args.package_power_watts == 4.8
+    assert args.thermal_state == "nominal"
+
 
 def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPatch) -> None:
     requested_pids: list[int] = []
@@ -151,6 +164,8 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
         service_pid=4321,
         peak_rss_mb=384.0,
         cpu_utilization_percent=47.5,
+        package_power_watts=4.8,
+        thermal_state="nominal",
     )
 
     assert payload["machine"] == "arm64"
@@ -159,6 +174,8 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
     assert payload["process_rss_mb"] == 256.0
     assert payload["peak_rss_mb"] == 384.0
     assert payload["cpu_utilization_percent"] == 47.5
+    assert payload["package_power_watts"] == 4.8
+    assert payload["thermal_state"] == "nominal"
     assert requested_pids == [4321]
 
 
@@ -350,6 +367,8 @@ def test_async_main_stops_process_monitor_before_reporting_environment(monkeypat
         request_retry_delay=0.0,
         preload_model=True,
         require_preloaded_service=True,
+        package_power_watts=None,
+        thermal_state=None,
     )
 
     result = asyncio.run(benchmark.async_main(args))

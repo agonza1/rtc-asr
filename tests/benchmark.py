@@ -112,6 +112,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--request-retries", type=positive_int, default=3, help="REST request attempts before failing a sample")
     parser.add_argument("--request-retry-delay", type=non_negative_float, default=2.0, help="Seconds to wait between REST request retries")
+    parser.add_argument("--package-power-watts", type=non_negative_float, help="Optional externally measured package power average in watts")
+    parser.add_argument("--thermal-state", help="Optional externally observed sustained thermal state for the benchmark run")
     parser.add_argument(
         "--pipecat-source-frame-ms",
         type=positive_int,
@@ -387,6 +389,8 @@ def describe_environment(
     service_pid: int | None = None,
     peak_rss_mb: float | None = None,
     cpu_utilization_percent: float | None = None,
+    package_power_watts: float | None = None,
+    thermal_state: str | None = None,
 ) -> dict[str, object]:
     cpu_logical_cores = os.cpu_count()
     memory_total_mb: float | None = None
@@ -418,6 +422,8 @@ def describe_environment(
         "process_rss_mb": process_rss_mb,
         "peak_rss_mb": measured_peak_rss_mb,
         "cpu_utilization_percent": cpu_utilization_percent,
+        "package_power_watts": package_power_watts,
+        "thermal_state": thermal_state,
     }
 
 
@@ -1292,6 +1298,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 service_pid=server.process.pid if server is not None and server.process is not None else None,
                 peak_rss_mb=peak_rss_mb,
                 cpu_utilization_percent=cpu_utilization_percent,
+                package_power_watts=getattr(args, "package_power_watts", None),
+                thermal_state=getattr(args, "thermal_state", None),
             ),
             "benchmark": {
                 "sample_count": sample_count,
