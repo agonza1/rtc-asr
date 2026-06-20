@@ -207,6 +207,14 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
             system.get("cpu_logical_cores"),
             metrics.get("cpu_logical_cores"),
         ),
+        "accelerator": first_defined(
+            environment.get("accelerator"),
+            environment.get("gpu"),
+            system.get("accelerator"),
+            system.get("gpu"),
+            metrics.get("accelerator"),
+            metrics.get("gpu"),
+        ),
         "memory_total_mb": first_defined(
             environment.get("memory_total_mb"),
             system.get("memory_total_mb"),
@@ -458,6 +466,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
             "processor": None,
             "python": None,
             "cpu_logical_cores": None,
+            "accelerator": None,
             "memory_total_mb": None,
             "peak_rss_mb": None,
             "cpu_utilization_percent": None,
@@ -553,6 +562,7 @@ def build_system_coverage(entries: list[dict[str, Any]]) -> dict[str, int]:
     return {
         "memory_total_mb_count": sum(1 for entry in entries if entry["system"].get("memory_total_mb") is not None),
         "peak_rss_mb_count": sum(1 for entry in entries if entry["system"].get("peak_rss_mb") is not None),
+        "accelerator_count": sum(1 for entry in entries if entry["system"].get("accelerator") is not None),
         "cpu_utilization_percent_count": sum(
             1 for entry in entries if entry["system"].get("cpu_utilization_percent") is not None
         ),

@@ -291,6 +291,7 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     coverage = manifest["summary"]["system_coverage"]
     assert coverage["memory_total_mb_count"] == 10
     assert coverage["peak_rss_mb_count"] == 7
+    assert coverage["accelerator_count"] == 0
     assert coverage["cpu_utilization_percent_count"] == 2
     assert coverage["package_power_watts_count"] == 0
     assert coverage["thermal_peak_celsius_count"] == 0
@@ -301,6 +302,14 @@ def test_manifest_counts_thermal_state_as_system_evidence() -> None:
     system = extract_system_signals({"environment": {"thermal_state": "stable after 5 minutes"}})
 
     assert system["thermal_observation"] == "stable after 5 minutes"
+
+
+def test_manifest_preserves_accelerator_metadata_aliases() -> None:
+    environment_system = extract_system_signals({"environment": {"accelerator": "Apple Neural Engine"}})
+    metrics_system = extract_system_signals({"metrics": {"gpu": "Apple M-series GPU"}})
+
+    assert environment_system["accelerator"] == "Apple Neural Engine"
+    assert metrics_system["accelerator"] == "Apple M-series GPU"
 
 
 def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
@@ -569,6 +578,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
             'platform': 'macOS',
             'processor': 'arm64',
             'python': '3.14.5',
+            'accelerator': 'Apple M-series GPU',
             'process_rss_mb': 23.6,
         },
         'metrics': {
@@ -584,6 +594,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'System profile' in detail_html
     assert 'macOS' in detail_html
     assert 'Peak RSS 23.6 MB' in detail_html
+    assert 'Accelerator Apple M-series GPU' in detail_html
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
     assert 'Thermal 63.5 C' in detail_html

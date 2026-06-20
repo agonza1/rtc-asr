@@ -252,6 +252,14 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
             system.get("cpu_logical_cores"),
             metrics.get("cpu_logical_cores"),
         ),
+        "accelerator": first_defined(
+            environment.get("accelerator"),
+            environment.get("gpu"),
+            system.get("accelerator"),
+            system.get("gpu"),
+            metrics.get("accelerator"),
+            metrics.get("gpu"),
+        ),
         "memory_total_mb": first_defined(
             environment.get("memory_total_mb"),
             system.get("memory_total_mb"),
@@ -364,6 +372,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     efficiency_summary = " · ".join(
         [
             f"Logical cores {format_system_text(system_signals.get('cpu_logical_cores'))}",
+            f"Accelerator {format_system_text(system_signals.get('accelerator'))}",
             f"System RAM {format_mb(system_signals.get('memory_total_mb'))}",
             f"CPU {format_percent(system_signals.get('cpu_utilization_percent') / 100) if system_signals.get('cpu_utilization_percent') is not None else 'n/a'}",
             f"Power {format_watts(system_signals.get('package_power_watts'))}",
