@@ -4,7 +4,7 @@
 
 The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, and `parakeet-nemo` backends behind the same API surface.
 
-> Benchmark status: the repo includes checked-in latency baselines for validated local and Compose-backed runs.
+<img width="1497" height="728" alt="high-level-flow-diagram" src="https://github.com/user-attachments/assets/d8182afc-af8b-42a0-8753-a83d03f76038" />
 
 ## What It Ships Today
 
