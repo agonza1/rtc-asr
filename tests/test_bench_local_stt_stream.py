@@ -95,6 +95,12 @@ class FakeLocalSttClient:
         return None
 
 
+class OverlapLocalSttClient(FakeLocalSttClient):
+    async def send_audio(self, chunk: bytes) -> None:
+        await super().send_audio(chunk)
+        await asyncio.sleep(0.01)
+
+
 def test_split_pcm_frames_uses_20_ms_pcm16_boundaries() -> None:
     pcm = b"a" * 640 + b"b" * 640 + b"tail"
 
@@ -211,6 +217,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["time_to_first_interim_ms"] is not None
     assert sample["time_to_final_after_finalize_ms"] is not None
     assert sample["audio_send_duration_ms"] is not None
+    assert sample["send_receive_overlap_ms"] is not None
     assert sample["audio_send_queue_depth_p95_ms"] is None
     assert sample["audio_send_latency_p95_ms"] is not None
     assert sample["partial_cadence_p95_ms"] is not None
@@ -219,11 +226,37 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["asr_decode_p95_ms"] is None
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_duration_ms"]["p95"] >= 0
+    assert payload["summary"]["send_receive_overlap_ms"]["p95"] >= 0
     assert payload["summary"]["audio_send_queue_depth_p95_ms"] == {"p50": None, "p95": None, "p99": None}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
     assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+
+
+def test_send_receive_overlap_proves_receive_loop_runs_during_audio_send() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 640, b"c" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=OverlapLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["audio_frames_sent"] == 3
+    assert sample["interim_events_received"] == 2
+    assert sample["send_receive_overlap_ms"] > 0
 
 
 def test_receive_latency_ignores_empty_poll_timeouts() -> None:

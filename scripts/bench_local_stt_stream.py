@@ -107,6 +107,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "time_to_first_interim_ms",
         "time_to_final_after_finalize_ms",
         "audio_send_duration_ms",
+        "send_receive_overlap_ms",
         "audio_send_queue_depth_p95_ms",
         "audio_send_latency_p95_ms",
         "partial_cadence_p95_ms",
@@ -207,6 +208,8 @@ async def _run_once(
     final_events = 0
     interim_transcript_changes = 0
     interim_received_at: list[float] = []
+    first_event_received_at: float | None = None
+    last_event_received_at: float | None = None
     previous_interim_text: str | None = None
     final_transcript: str | None = None
     protocol_errors = 0
@@ -227,13 +230,17 @@ async def _run_once(
     receive_done = asyncio.Event()
 
     async def receive_loop() -> None:
-        nonlocal first_interim_ms, final_after_finalize_ms, interim_events, final_events, interim_transcript_changes, previous_interim_text, final_transcript, protocol_errors, warnings_received
+        nonlocal first_interim_ms, final_after_finalize_ms, interim_events, final_events, interim_transcript_changes, previous_interim_text, final_transcript, protocol_errors, warnings_received, first_event_received_at, last_event_received_at
         while not receive_done.is_set():
             wait_started = time.perf_counter()
             event = await client.recv_event(timeout=0.05, allow_error=True)
             if event is None:
                 continue
-            receive_latencies.append((time.perf_counter() - wait_started) * 1000)
+            event_received_at = time.perf_counter()
+            if first_event_received_at is None:
+                first_event_received_at = event_received_at
+            last_event_received_at = event_received_at
+            receive_latencies.append((event_received_at - wait_started) * 1000)
             if event.type == "error":
                 protocol_errors += 1
                 receive_done.set()
@@ -302,6 +309,14 @@ async def _run_once(
             if audio_send_started_at is None or audio_send_completed_at is None
             else (audio_send_completed_at - audio_send_started_at) * 1000
         ),
+        "send_receive_overlap_ms": _rounded_or_none(
+            compute_overlap_ms(
+                audio_send_started_at,
+                audio_send_completed_at,
+                first_event_received_at,
+                last_event_received_at,
+            )
+        ),
         "audio_send_queue_depth_p95_ms": None,
         "audio_send_latency_p95_ms": send_p95,
         "partial_cadence_p95_ms": percentile(partial_cadences, 0.95),
@@ -352,6 +367,23 @@ def measure_pcm16_normalization_latencies(frames: list[bytes], *, frame_ms: int,
         normalize_pcm16_buffer(audio_data)
         latencies.append((time.perf_counter() - started_at) * 1000)
     return latencies
+
+
+def compute_overlap_ms(
+    send_started_at: float | None,
+    send_completed_at: float | None,
+    receive_started_at: float | None,
+    receive_completed_at: float | None,
+) -> float | None:
+    if None in (send_started_at, send_completed_at, receive_started_at, receive_completed_at):
+        return None
+    assert send_started_at is not None
+    assert send_completed_at is not None
+    assert receive_started_at is not None
+    assert receive_completed_at is not None
+    overlap_started_at = max(send_started_at, receive_started_at)
+    overlap_completed_at = min(send_completed_at, receive_completed_at)
+    return max(0.0, (overlap_completed_at - overlap_started_at) * 1000)
 
 
 def _read_pcm16_mono_wav(path: Path) -> tuple[bytes, int]:
