@@ -462,7 +462,7 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
@@ -521,7 +521,8 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "curl -sf http://127.0.0.1:8090/ready >/dev/null" in mlx_service_block
     assert "PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --mode v1-stt-stream --url http://127.0.0.1:8090 --v1-ws-url ws://127.0.0.1:8090/v1/stt/stream --backend parakeet-mlx" in mlx_service_block
     assert "PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service" in makefile
-    assert makefile.count("ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE=\"$${base_image}\" docker compose up -d --build; \\") == 6
+    assert "benchmark-compose-qwen-legacy: venv" in makefile
+    assert makefile.count("ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE=\"$${base_image}\" docker compose up -d --build; \\") == 7
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m")):
         assert target_name in makefile
         line = next(
@@ -532,6 +533,9 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
         assert "--sample-count $(BENCHMARK_SAMPLE_COUNT)" in line
         assert "--request-retries $(BENCHMARK_REQUEST_RETRIES)" in line
         assert "--request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY)" in line
+    legacy_qwen_block = makefile.split("benchmark-compose-qwen-legacy: venv\n", 1)[1].split("\n\n", 1)[0]
+    assert "--ws-url $(COMPOSE_WS_URL)" in legacy_qwen_block
+    assert "--partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS)" in legacy_qwen_block
 
 
 def test_makefile_pipecat_target_synthesizes_speech_when_no_audio_file_is_configured() -> None:
@@ -552,7 +556,7 @@ def test_makefile_pipecat_target_synthesizes_speech_when_no_audio_file_is_config
 def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
-    for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo")):
+    for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-qwen-legacy", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo")):
         block = makefile.split(f"{target}: venv\n", 1)[1].split("\n\n", 1)[0]
         assert "@{ set -e; \\" in block
         assert "trap cleanup EXIT INT TERM" in block

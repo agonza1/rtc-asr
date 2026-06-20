@@ -131,7 +131,7 @@
       "target_sample_count": 5,
       "artifact": "qwen-compose-2026-06-19.json",
       "status_detail": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk cadence. It now stays in supporting context only until /v1/stt/stream regeneration replaces it.",
-      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen",
+      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen-legacy",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     }
   ],

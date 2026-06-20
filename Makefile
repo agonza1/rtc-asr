@@ -66,7 +66,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -90,6 +90,7 @@ help:
 	@echo "  make benchmark-pipecat-e2e - Run a Pipecat-style end-to-end streaming benchmark against a local backend"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
+	@echo "  make benchmark-compose-qwen-legacy - Start compose, wait for readiness, and benchmark qwen-asr over legacy /ws/stream"
 	@echo "  make benchmark-compose-qwen-low-latency-sweep - Start compose and sweep qwen-asr low-latency settings"
 	@echo "  make benchmark-compose-parakeet - Start compose, wait for readiness, and benchmark parakeet"
 	@echo "  make benchmark-compose-parakeet-low-latency-sweep - Start compose and sweep parakeet low-latency settings"
@@ -250,6 +251,34 @@ benchmark-compose-qwen: venv
 	ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	PYTHONPATH=. $(PYTHON) tests/benchmark.py --mode v1-stt-stream --url $(COMPOSE_URL) --v1-ws-url $(COMPOSE_V1_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
+
+benchmark-compose-qwen-legacy: venv
+	@echo "Starting docker compose stack with qwen-asr on CPU for legacy /ws/stream benchmarking..."
+	@mkdir -p .cache/huggingface
+	@{ set -e; \
+	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+	trap cleanup EXIT INT TERM; \
+	base_image="$(PYTHON_BASE_IMAGE)"; \
+	if [ -z "$${base_image}" ]; then \
+		base_image="python:3.11-slim"; \
+		if ! docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			if docker image inspect mirror.gcr.io/library/python:3.11-slim >/dev/null 2>&1; then \
+				echo "Using cached mirror image mirror.gcr.io/library/python:3.11-slim"; \
+				base_image="mirror.gcr.io/library/python:3.11-slim"; \
+			elif docker pull "$${base_image}" >/dev/null; then \
+				echo "Using pulled default base image $${base_image}"; \
+			else \
+				echo "Docker Hub pull failed for $${base_image}; retrying with mirror.gcr.io/library/python:3.11-slim" >&2; \
+				docker pull mirror.gcr.io/library/python:3.11-slim >/dev/null; \
+				base_image="mirror.gcr.io/library/python:3.11-slim"; \
+			fi; \
+		else \
+			echo "Using cached default base image $${base_image}"; \
+		fi; \
+	fi; \
+	ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
+	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-compose-qwen-low-latency-sweep: venv
 	@echo "Starting docker compose stack with qwen-asr on CPU for low-latency sweep..."
