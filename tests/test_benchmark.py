@@ -1413,6 +1413,7 @@ def test_run_pipecat_e2e_benchmark_records_late_partial_before_final(monkeypatch
             self.sent: list[dict[str, object]] = []
             self.responses = [
                 {"type": "partial", "text": "late", "chunks_received": 2},
+                {"type": "partial", "text": "stale", "chunks_received": 1},
                 {"type": "final", "text": "done", "chunks_received": 2},
             ]
 

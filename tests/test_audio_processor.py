@@ -43,7 +43,7 @@ def test_wav_bytes_keep_generic_decoder_even_when_sample_rate_is_provided(monkey
 
     monkeypatch.setattr(processor, "_decode_wav", fake_decode_wav)
 
-    decoded = processor.load_audio(b"RIFF-not-real-wav", sample_rate=16000)
+    decoded = processor.load_audio(b"RIFF-not-real-wav", sample_rate=22050)
 
     assert called
     assert decoded.samples.tolist() == [0.0, 0.0]

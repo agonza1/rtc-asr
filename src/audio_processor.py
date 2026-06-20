@@ -111,10 +111,10 @@ class AudioProcessor:
     def _should_use_pcm16_fast_path(self, audio_data: bytes, sample_rate: int | None) -> bool:
         if not self.config.enable_pcm16_fast_path or sample_rate is None:
             return False
-        if self.config.require_target_sample_rate and sample_rate != self.config.sample_rate:
-            raise ValueError(f"Raw PCM16 audio sample_rate must be {self.config.sample_rate}")
         if audio_data.startswith(b"RIFF") or audio_data.startswith(b"FORM"):
             return False
+        if self.config.require_target_sample_rate and sample_rate != self.config.sample_rate:
+            raise ValueError(f"Raw PCM16 audio sample_rate must be {self.config.sample_rate}")
         return True
 
     def _resample(self, samples: np.ndarray, source_rate: int, target_rate: int) -> np.ndarray:

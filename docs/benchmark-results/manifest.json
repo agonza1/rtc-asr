@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-19T15:42:54Z",
+  "generated_at": "2026-06-20T00:16:43Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
-    "artifact_file_count": 13,
+    "artifact_file_count": 14,
     "validated_count": 7,
     "legacy_count": 0,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-16T03:51:29Z",
+    "latest_measured_at": "2026-06-20T00:15:51Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -26,7 +26,7 @@
       },
       "partial_mean_ms": {
         "min": 74.5,
-        "max": 15441.5
+        "max": 12134.1
       },
       "first_partial_end_to_end_mean_ms": {
         "min": 557.4,
@@ -38,14 +38,14 @@
       },
       "final_mean_ms": {
         "min": 210.6,
-        "max": 16492.0
+        "max": 13498.8
       },
       "rtf_mean": {
         "min": 0.019,
         "max": 0.522
       },
       "overall_score": {
-        "min": 40.2,
+        "min": 39.5,
         "max": 97.2
       }
     },
@@ -662,23 +662,23 @@
       "lane": "Pipecat E2E Local Python CPU",
       "runtime": "cpu / int8",
       "status": "blocked",
-      "status_detail": "Checked-in single-sample Pipecat E2E artifact refreshed on 2026-06-16 using synthesized real-time speech, 20 ms source frames, and 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
+      "status_detail": "Checked-in single-sample Pipecat E2E artifact refreshed on 2026-06-19 using synthesized real-time speech normalized to 16 kHz, 20 ms source frames, and 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
       "target_sample_count": 1,
       "run_command": "make benchmark-pipecat-e2e",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
-      "measured_at": "2026-06-16T03:51:29Z",
+      "measured_at": "2026-06-20T00:15:51Z",
       "sample_count": 1,
-      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
-      "artifact_sha256": "b36bf13185f6cfa8e6cc8a8b162cda6e7b91dfbc1d61c5925bbbb310386a6f85",
-      "artifact_size_bytes": 14037,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json",
+      "artifact_sha256": "7a8274630d8f181bc83890276ca6714f5a8c62a6f349550e31bf07199abe65d6",
+      "artifact_size_bytes": 14976,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
-        "python": "3.14.5",
+        "python": "3.14.6",
         "cpu_logical_cores": 10,
         "memory_total_mb": 24576.0,
-        "peak_rss_mb": 1096.8,
-        "cpu_utilization_percent": null,
+        "peak_rss_mb": 1125.0,
+        "cpu_utilization_percent": 421.8,
         "package_power_watts": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
@@ -688,50 +688,106 @@
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
         "binary_frames": false,
-        "sample_rate": 22050,
+        "sample_rate": 16000,
         "source_frame_ms": 20,
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 551.1,
-        "p95_ms": 551.1,
-        "rtf_mean": 0.076
+        "mean_ms": 441.2,
+        "p95_ms": 441.2,
+        "rtf_mean": 0.061
       },
       "streaming": {
-        "partial_mean_ms": 15441.5,
-        "partial_p95_ms": 21110.8,
-        "first_partial_end_to_end_mean_ms": 1412.8,
-        "first_partial_end_to_end_p95_ms": 1412.8,
-        "partial_gap_mean_ms": 408.0,
-        "partial_gap_p95_ms": 1911.3,
-        "partial_transcript_churn_char_mean": 0.138,
-        "partial_transcript_churn_word_mean": 0.228,
-        "late_partial_events": 6,
-        "late_partial_ratio": 0.085,
-        "final_mean_ms": 16492.0,
-        "final_p95_ms": 16492.0
+        "partial_mean_ms": 9432.6,
+        "partial_p95_ms": 15077.5,
+        "first_partial_end_to_end_mean_ms": 702.8,
+        "first_partial_end_to_end_p95_ms": 702.8,
+        "partial_gap_mean_ms": 337.8,
+        "partial_gap_p95_ms": 2529.6,
+        "partial_transcript_churn_char_mean": 0.139,
+        "partial_transcript_churn_word_mean": 0.217,
+        "late_partial_events": 21,
+        "late_partial_ratio": 0.296,
+        "final_mean_ms": 10844.6,
+        "final_p95_ms": 10844.6
       },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 95.9,
-        "live_caption_score": 78.5,
-        "partial_backlog_score": 27.7,
+        "latency_score": 97.7,
+        "live_caption_score": 71.0,
+        "partial_backlog_score": 13.6,
         "finalization_score": 0.0,
-        "stability_score": 97.6,
-        "efficiency_score": 95.3,
-        "overall_score": 40.2,
+        "stability_score": 96.0,
+        "efficiency_score": 96.8,
+        "overall_score": 39.5,
         "confidence_score": 62.5,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.0,
-        "partial_jitter_ratio": 1.367,
+        "partial_jitter_ratio": 1.598,
         "final_jitter_ratio": 1.0
       }
     }
   ],
   "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "faster-whisper",
+      "model": "base.en",
+      "runtime": "cpu / int8",
+      "measured_at": "2026-06-20T00:15:51Z",
+      "sample_count": 1,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json",
+      "artifact_sha256": "7a8274630d8f181bc83890276ca6714f5a8c62a6f349550e31bf07199abe65d6",
+      "artifact_size_bytes": 14976,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "memory_total_mb": 24576.0,
+        "peak_rss_mb": 1125.0,
+        "cpu_utilization_percent": 421.8,
+        "package_power_watts": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": false,
+        "sample_rate": 16000,
+        "source_frame_ms": 20,
+        "partial_event_timeout_seconds": 0.1
+      },
+      "rest": {
+        "mean_ms": 441.2,
+        "p95_ms": 441.2,
+        "rtf_mean": 0.061
+      },
+      "streaming": {
+        "partial_mean_ms": 9432.6,
+        "partial_p95_ms": 15077.5,
+        "first_partial_end_to_end_mean_ms": 702.8,
+        "first_partial_end_to_end_p95_ms": 702.8,
+        "partial_gap_mean_ms": 337.8,
+        "partial_gap_p95_ms": 2529.6,
+        "partial_transcript_churn_char_mean": 0.139,
+        "partial_transcript_churn_word_mean": 0.217,
+        "late_partial_events": 21,
+        "late_partial_ratio": 0.296,
+        "final_mean_ms": 10844.6,
+        "final_p95_ms": 10844.6
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "base.en"
+    },
     {
       "kind": "asr",
       "backend": "faster-whisper",
@@ -1986,23 +2042,23 @@
       "lane": "Pipecat E2E Local Python CPU",
       "runtime": "cpu / int8",
       "status": "blocked",
-      "status_detail": "Checked-in single-sample Pipecat E2E artifact refreshed on 2026-06-16 using synthesized real-time speech, 20 ms source frames, and 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
+      "status_detail": "Checked-in single-sample Pipecat E2E artifact refreshed on 2026-06-19 using synthesized real-time speech normalized to 16 kHz, 20 ms source frames, and 100 ms websocket chunks. It stays out of the homepage leaderboard until comparable Pipecat E2E artifacts exist across multiple backends.",
       "target_sample_count": 1,
       "run_command": "make benchmark-pipecat-e2e",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
-      "measured_at": "2026-06-16T03:51:29Z",
+      "measured_at": "2026-06-20T00:15:51Z",
       "sample_count": 1,
-      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json",
-      "artifact_sha256": "b36bf13185f6cfa8e6cc8a8b162cda6e7b91dfbc1d61c5925bbbb310386a6f85",
-      "artifact_size_bytes": 14037,
+      "artifact_path": "benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json",
+      "artifact_sha256": "7a8274630d8f181bc83890276ca6714f5a8c62a6f349550e31bf07199abe65d6",
+      "artifact_size_bytes": 14976,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
-        "python": "3.14.5",
+        "python": "3.14.6",
         "cpu_logical_cores": 10,
         "memory_total_mb": 24576.0,
-        "peak_rss_mb": 1096.8,
-        "cpu_utilization_percent": null,
+        "peak_rss_mb": 1125.0,
+        "cpu_utilization_percent": 421.8,
         "package_power_watts": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
@@ -2012,45 +2068,45 @@
         "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
         "binary_frames": false,
-        "sample_rate": 22050,
+        "sample_rate": 16000,
         "source_frame_ms": 20,
         "partial_event_timeout_seconds": 0.1
       },
       "rest": {
-        "mean_ms": 551.1,
-        "p95_ms": 551.1,
-        "rtf_mean": 0.076
+        "mean_ms": 441.2,
+        "p95_ms": 441.2,
+        "rtf_mean": 0.061
       },
       "streaming": {
-        "partial_mean_ms": 15441.5,
-        "partial_p95_ms": 21110.8,
-        "first_partial_end_to_end_mean_ms": 1412.8,
-        "first_partial_end_to_end_p95_ms": 1412.8,
-        "partial_gap_mean_ms": 408.0,
-        "partial_gap_p95_ms": 1911.3,
-        "partial_transcript_churn_char_mean": 0.138,
-        "partial_transcript_churn_word_mean": 0.228,
-        "late_partial_events": 6,
-        "late_partial_ratio": 0.085,
-        "final_mean_ms": 16492.0,
-        "final_p95_ms": 16492.0
+        "partial_mean_ms": 9432.6,
+        "partial_p95_ms": 15077.5,
+        "first_partial_end_to_end_mean_ms": 702.8,
+        "first_partial_end_to_end_p95_ms": 702.8,
+        "partial_gap_mean_ms": 337.8,
+        "partial_gap_p95_ms": 2529.6,
+        "partial_transcript_churn_char_mean": 0.139,
+        "partial_transcript_churn_word_mean": 0.217,
+        "late_partial_events": 21,
+        "late_partial_ratio": 0.296,
+        "final_mean_ms": 10844.6,
+        "final_p95_ms": 10844.6
       },
       "accuracy": {
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 95.9,
-        "live_caption_score": 78.5,
-        "partial_backlog_score": 27.7,
+        "latency_score": 97.7,
+        "live_caption_score": 71.0,
+        "partial_backlog_score": 13.6,
         "finalization_score": 0.0,
-        "stability_score": 97.6,
-        "efficiency_score": 95.3,
-        "overall_score": 40.2,
+        "stability_score": 96.0,
+        "efficiency_score": 96.8,
+        "overall_score": 39.5,
         "confidence_score": 62.5,
         "sample_coverage_pct": 100.0,
         "rest_jitter_ratio": 1.0,
-        "partial_jitter_ratio": 1.367,
+        "partial_jitter_ratio": 1.598,
         "final_jitter_ratio": 1.0
       }
     }

@@ -56,7 +56,7 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-15.json")
     assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
     assert tracks["qwen-compose"]["target_sample_count"] == 5
-    assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.json")
+    assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     assert len(tracks["qwen-mps"]["artifact_sha256"]) == 64
