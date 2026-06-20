@@ -225,6 +225,18 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "Pipecat Whisper runs local/offline inside the Pipecat process" in readme
     assert "Local STT v1 can produce partial/final transcript events" in readme
 
+
+def test_browser_pipecat_demo_is_linked_from_repo_docs() -> None:
+    docs_index = Path("docs/index.md").read_text(encoding="utf-8")
+    pipecat_guide = Path("docs/pipecat-integration.md").read_text(encoding="utf-8")
+    readme = Path("README.md").read_text(encoding="utf-8")
+    link = "examples/browser_pipecat_demo/README.md"
+
+    assert f"../{link}" in docs_index
+    assert f"../{link}" in pipecat_guide
+    assert f"./{link}" in readme
+
+
 def test_offer_requires_offer_type() -> None:
     client = TestClient(app)
 
