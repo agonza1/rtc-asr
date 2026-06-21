@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import py_compile
+from pathlib import Path
+
+
+EXAMPLE_DIR = Path("examples") / "pipecat_local_stt_bot"
+
+
+def test_pipecat_local_stt_bot_example_documents_sidecar_contract() -> None:
+    readme = (EXAMPLE_DIR / "README.md").read_text(encoding="utf-8")
+
+    assert "browser/client -> Pipecat transport -> LocalStreamingSTTService -> rtc-asr /v1/stt/stream" in readme
+    assert "This is not WebRTC-to-ASR" in readme
+    assert "This is not Deepgram/OpenAI-compatible" in readme
+    assert "ws://rtc-asr:8080/v1/stt/stream" in readme
+    assert "sample_rate=16000" in readme
+    assert "channels=1" in readme
+    assert "format=pcm_s16le" in readme
+    assert "frame_ms=20" in readme
+    assert "partial_interval_ms=100" in readme
+    assert "partial_window_seconds=1.0" in readme
+    assert "Pipecat Whisper is local/offline" in readme
+    assert "Connection failures" in readme
+    assert "Wrong sample rates" in readme
+    assert "Missing interim transcripts" in readme
+
+
+def test_pipecat_local_stt_bot_example_compose_uses_sidecar_service_discovery() -> None:
+    compose = (EXAMPLE_DIR / "docker-compose.yml").read_text(encoding="utf-8")
+    requirements = (EXAMPLE_DIR / "requirements.txt").read_text(encoding="utf-8")
+
+    assert "rtc-asr:" in compose
+    assert "pipecat-local-stt-bot:" in compose
+    assert "RTC_ASR_WS_URL: ws://rtc-asr:8080/v1/stt/stream" in compose
+    assert 'LOCAL_STT_SAMPLE_RATE: "16000"' in compose
+    assert 'LOCAL_STT_CHANNELS: "1"' in compose
+    assert 'LOCAL_STT_FRAME_MS: "20"' in compose
+    assert 'LOCAL_STT_PARTIAL_INTERVAL_MS: "100"' in compose
+    assert "pipecat-ai[webrtc]>=1.3.0" in requirements
+    assert "pipecat-local-stt" in requirements
+
+
+def test_pipecat_local_stt_bot_example_is_syntax_valid() -> None:
+    py_compile.compile(str(EXAMPLE_DIR / "bot.py"), doraise=True)
+    bot_source = (EXAMPLE_DIR / "bot.py").read_text(encoding="utf-8")
+
+    assert "LocalStreamingSTTService" in bot_source
+    assert "RtcAsrSTTService" in bot_source
+    assert "transport.input()" in bot_source
+    assert "context_aggregator.user()" in bot_source
+    assert "transport.output()" in bot_source
