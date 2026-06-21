@@ -725,6 +725,7 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
             )
         finally:
             runtime.decode_in_flight = False
+            runtime.partial_decode_started = False
 
         if runtime.cancel_requested.is_set() or runtime.final_emitted or runtime.closed:
             return
