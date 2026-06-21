@@ -112,11 +112,11 @@
       "device": "mps",
       "compute": "auto",
       "lane": "Local Python Apple Silicon",
-      "status": "legacy",
+      "status": "validated",
       "target_sample_count": 10,
-      "artifact": "qwen-mps-2026-06-20.json",
-      "status_detail": "Legacy /ws/stream local Apple Silicon MPS artifact refreshed on 2026-06-20. It stays visible as supporting evidence only until a paced /v1/stt/stream replacement is checked in.",
-      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 make benchmark-qwen-mps-legacy",
+      "artifact": "qwen-mps-2026-06-21.json",
+      "status_detail": "Validated paced /v1/stt/stream local Apple Silicon MPS artifact refreshed on 2026-06-21. This lane now publishes comparable live partial and final timing, with much faster audio-end finalization than the legacy /ws/stream result it replaces.",
+      "run_command": "make benchmark-qwen-mps",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     },
     {

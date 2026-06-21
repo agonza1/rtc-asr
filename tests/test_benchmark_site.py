@@ -45,14 +45,14 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
 
     assert manifest["summary"]["asr_count"] == 8
     assert manifest["summary"]["tracked_count"] == 8
-    assert manifest["summary"]["validated_count"] == 6
-    assert manifest["summary"]["legacy_count"] == 1
+    assert manifest["summary"]["validated_count"] == 7
+    assert manifest["summary"]["legacy_count"] == 0
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
     assert tracks["parakeet-mlx-service-110m"]["artifact_path"].endswith("parakeet-mlx-110m-service-2026-06-21.json")
-    assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-20.json")
-    assert tracks["qwen-mps"]["status"] == "legacy"
+    assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-21.json")
+    assert tracks["qwen-mps"]["status"] == "validated"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-20.json")
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-21.json")
@@ -64,6 +64,27 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert len(tracks["qwen-mps"]["artifact_sha256"]) == 64
     assert tracks["qwen-mps"]["artifact_size_bytes"] > 0
 
+
+
+def test_historical_detail_pages_keep_track_context() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    artifact = next(
+        entry
+        for entry in manifest["artifacts"]
+        if entry["artifact_path"].endswith("qwen-mps-2026-06-20.json")
+    )
+
+    assert artifact["label"] == "Qwen MPS"
+    assert artifact["lane"] == "Local Python Apple Silicon"
+    assert artifact["status"] == "legacy"
+    assert artifact["derived"]["confidence_score"] == 85.0
+
+    detail = render_detail_page(artifact, None)
+
+    assert "Qwen MPS" in detail
+    assert "Local Python Apple Silicon" in detail
+    assert "Status: legacy" in detail
+    assert "unknown · Qwen/Qwen3-ASR-0.6B" not in detail
 
 def test_checked_in_manifest_matches_generated_output() -> None:
     manifest_path = RESULTS_DIR / "manifest.json"
@@ -193,7 +214,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
 
     assert derived["overall_score"] is not None
     assert derived["partial_backlog_score"] is not None
-    assert derived["confidence_score"] == 85.0
+    assert derived["confidence_score"] == 100.0
     assert derived["sample_coverage_pct"] == 100.0
 
     summary = manifest["summary"]
@@ -297,11 +318,11 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert track["system"]["memory_total_mb"] == 24576.0
 
     coverage = manifest["summary"]["system_coverage"]
-    assert coverage["memory_total_mb_count"] == 14
-    assert coverage["process_rss_mb_count"] == 9
-    assert coverage["peak_rss_mb_count"] == 9
+    assert coverage["memory_total_mb_count"] == 16
+    assert coverage["process_rss_mb_count"] == 10
+    assert coverage["peak_rss_mb_count"] == 10
     assert coverage["accelerator_count"] == 0
-    assert coverage["cpu_utilization_percent_count"] == 4
+    assert coverage["cpu_utilization_percent_count"] == 5
     assert coverage["package_power_watts_count"] == 0
     assert coverage["energy_per_audio_second_j_count"] == 0
     assert coverage["thermal_peak_celsius_count"] == 0
@@ -450,6 +471,67 @@ def test_render_homepage_omits_unpublished_registry_gap_copy() -> None:
 
     assert 'Unpublished Lane' not in html
     assert 'waiting on artifact' not in html
+
+
+def test_render_homepage_keeps_historical_supporting_artifacts_discoverable() -> None:
+    homepage = """<!-- BEGIN GENERATED:static-summary -->\nold\n<!-- END GENERATED:static-summary -->\n<!-- BEGIN GENERATED:generated-at -->\nold\n<!-- END GENERATED:generated-at -->"""
+    manifest = {
+        "summary": {},
+        "tracks": [
+            {
+                "slug": "qwen-mps",
+                "label": "Qwen MPS",
+                "status": "validated",
+                "status_detail": "Validated paced /v1/stt/stream local Apple Silicon MPS artifact refreshed on 2026-06-21.",
+                "artifact_path": "benchmark-results/qwen-mps-2026-06-21.json",
+                "lane": "Local Python Apple Silicon",
+                "runtime": "mps / auto",
+                "backend": "qwen-asr",
+                "model": "Qwen/Qwen3-ASR-0.6B",
+                "rest": {"mean_ms": 10},
+                "streaming": {
+                    "live_metrics_comparable": True,
+                    "first_partial_end_to_end_mean_ms": 20,
+                    "partial_mean_ms": 30,
+                    "partial_gap_mean_ms": 5,
+                    "final_mean_ms": 40,
+                },
+                "contract": {"path": "/v1/stt/stream", "transport": "v1-stt-stream"},
+                "derived": {"overall_score": 90.0},
+                "measured_at": "2026-06-21T14:11:13Z",
+            },
+        ],
+        "artifacts": [
+            {
+                "slug": "qwen-mps",
+                "label": "Qwen MPS",
+                "status": "legacy",
+                "status_detail": "Historical supporting artifact for Qwen MPS; current tracked artifact is qwen-mps-2026-06-21.json.",
+                "artifact_path": "benchmark-results/qwen-mps-2026-06-20.json",
+                "lane": "Local Python Apple Silicon",
+                "runtime": "mps / auto",
+                "backend": "qwen-asr",
+                "model": "Qwen/Qwen3-ASR-0.6B",
+                "rest": {"mean_ms": 12},
+                "streaming": {
+                    "live_metrics_comparable": False,
+                    "first_partial_end_to_end_mean_ms": 25,
+                    "partial_mean_ms": 35,
+                    "partial_gap_mean_ms": 7,
+                    "final_mean_ms": 45,
+                },
+                "contract": {"path": "/ws/stream", "transport": "direct"},
+                "derived": {"overall_score": 60.0},
+                "measured_at": "2026-06-20T12:39:19Z",
+            },
+        ],
+    }
+
+    html = render_homepage(manifest, homepage)
+
+    assert "1 supporting lanes stay below the fold" in html
+    assert "qwen-mps-2026-06-20.html" in html
+    assert "Deprecated /ws/stream artifact" in html
 
 
 def test_docs_index_live_labels_match_streaming_framing() -> None:
@@ -607,6 +689,17 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Benchmark homepage" in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
     assert "Artifact does not record sustained thermal notes yet." in rss_detail
+
+    legacy_qwen_detail = (Path("docs") / "benchmark-results/pages/qwen-mps-2026-06-20.html").read_text(encoding="utf-8")
+    assert "Qwen MPS" in legacy_qwen_detail
+    assert "Local Python Apple Silicon" in legacy_qwen_detail
+    assert "Status: legacy" in legacy_qwen_detail
+    assert "BENCHMARK_RESULT_DATE=2026-06-20 BENCHMARK_SAMPLE_COUNT=10 BENCHMARK_REST_RUNS=5 make benchmark-qwen-mps-legacy" in legacy_qwen_detail
+
+    legacy_pipecat_detail = (Path("docs") / "benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17.html").read_text(encoding="utf-8")
+    assert "Pipecat E2E Faster-Whisper Base" in legacy_pipecat_detail
+    assert "Pipecat E2E Local Python CPU" in legacy_pipecat_detail
+    assert "make benchmark-pipecat-e2e" in legacy_pipecat_detail
 
 
 def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:

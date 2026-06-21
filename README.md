@@ -259,19 +259,19 @@ Longer term, we may want to tighten that naming story further, but the intended 
 
 ## Documentation
 
-If you are trying to decide where to start in the repo:
+Start here, depending on what you need:
 
-- start with `src/main.py` for the HTTP/websocket entrypoints
-- start with `src/model_loader.py` for backend-specific behavior
-- start with `docs/local-stt-v1.md` for the primary streaming contract
-- start with `docs/benchmarks.md` for the checked-in latency evidence
-- start with `pipecat-local-stt/` and `examples/pipecat_local_stt_bot/` when you are working on Pipecat-facing integration code
+- Service entrypoints: `src/main.py`
+- Backend loading and selection: `src/model_loader.py`
+- Primary streaming contract: [Local STT v1](./docs/local-stt-v1.md)
+- Benchmarks and published results: [Benchmarks](./docs/benchmarks.md)
+- Pipecat integration code: `pipecat-local-stt/` and `examples/pipecat_local_stt_bot/`
+
+Reference docs:
 
 - [Docs Index](./docs/index.md)
-- [Local STT v1](./docs/local-stt-v1.md)
 - [API Reference](./docs/api-reference.md)
 - [Pipecat Integration](./docs/pipecat-integration.md)
 - [Browser Pipecat Demo](./examples/browser_pipecat_demo/README.md)
 - [LiveKit Integration](./docs/livekit-integration.md)
-- [Benchmarks](./docs/benchmarks.md)
 - [Troubleshooting](./docs/troubleshooting.md)

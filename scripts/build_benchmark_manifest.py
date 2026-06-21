@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -419,6 +420,10 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
             "mean_ms": rest.get("mean_ms"),
             "p95_ms": rest.get("p95_ms"),
             "rtf_mean": rest.get("rtf_mean"),
+            "runs_per_sample": first_defined(
+                rest.get("runs_per_sample"),
+                nested_value(payload, "benchmark", "rest_runs_per_sample"),
+            ),
         },
         "streaming": {
             "transport": contract.get("transport"),
@@ -457,6 +462,135 @@ def is_asr_payload(payload: dict[str, Any]) -> bool:
 def build_artifact_history_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     entry = build_asr_entry(path, payload)
     entry["label"] = payload["backend"]["model"]
+    return entry
+
+
+def benchmark_key_from_entry(entry: dict[str, Any]) -> str:
+    device, _, compute = str(entry.get("runtime") or "unknown").partition(" / ")
+    return "asr::{backend}::{model}::{device}::{compute}".format(
+        backend=entry.get("backend", "unknown"),
+        model=entry.get("model", "unknown"),
+        device=device or "unknown",
+        compute=compute or "default",
+    )
+
+
+def artifact_transport(entry: dict[str, Any]) -> str | None:
+    contract = entry.get("contract") or {}
+    streaming = entry.get("streaming") or {}
+    return contract.get("transport") or streaming.get("transport")
+
+
+def artifact_path_hint(path: str | None) -> str | None:
+    artifact_name = Path(path or "").name
+    if "pipecat-e2e" in artifact_name:
+        return "pipecat-e2e"
+    return None
+
+
+def track_history_match_score(entry: dict[str, Any], track: dict[str, Any]) -> tuple[int, int]:
+    entry_artifact_name = Path(entry.get("artifact_path") or "").name
+    track_artifact_name = Path(track.get("artifact_path") or "").name
+    entry_transport = artifact_transport(entry)
+    track_transport = artifact_transport(track)
+    entry_hint = artifact_path_hint(entry.get("artifact_path"))
+    track_hint = artifact_path_hint(track.get("artifact_path"))
+
+    return (
+        1 if entry_artifact_name and entry_artifact_name == track_artifact_name else 0,
+        sum(
+            (
+                1 if entry_hint and track_hint and entry_hint == track_hint else 0,
+                1 if entry_transport and track_transport and entry_transport == track_transport else 0,
+            )
+        ),
+    )
+
+
+def artifact_date_hint(entry: dict[str, Any]) -> str | None:
+    artifact_name = Path(entry.get("artifact_path") or "").name
+    match = re.search(r"(\d{4}-\d{2}-\d{2})", artifact_name)
+    if match:
+        return match.group(1)
+    measured_at = entry.get("measured_at")
+    if isinstance(measured_at, str) and len(measured_at) >= 10:
+        return measured_at[:10]
+    return None
+
+
+def historical_run_command(entry: dict[str, Any], track: dict[str, Any], current_artifact: str | None) -> str:
+    base_command = track.get("run_command") or "No checked-in run command"
+    transport = artifact_transport(entry)
+    if transport not in {"direct", "ws/stream"}:
+        return base_command
+    if not base_command.startswith("make "):
+        return base_command
+
+    target = base_command.removeprefix("make ").strip()
+    if not target or target.endswith("-legacy"):
+        return base_command
+
+    legacy_target = f"{target}-legacy"
+    prefixes: list[str] = []
+    artifact_date = artifact_date_hint(entry)
+    if artifact_date:
+        prefixes.append(f"BENCHMARK_RESULT_DATE={artifact_date}")
+    if entry.get("sample_count") is not None:
+        prefixes.append(f"BENCHMARK_SAMPLE_COUNT={entry['sample_count']}")
+    rest_runs = nested_value(entry, "rest", "runs_per_sample")
+    if rest_runs is not None:
+        prefixes.append(f"BENCHMARK_REST_RUNS={rest_runs}")
+    partial_interval_chunks = nested_value(entry, "contract", "partial_interval_chunks")
+    if partial_interval_chunks not in (None, 1):
+        prefixes.append(f"BENCHMARK_PARTIAL_INTERVAL_CHUNKS={partial_interval_chunks}")
+
+    runtime = str(track.get("runtime") or "")
+    if track.get("slug") == "qwen-compose" and runtime.endswith("/ float16"):
+        prefixes.append("QWEN_COMPOSE_DTYPE=float16")
+
+    historical = " ".join(prefixes + [f"make {legacy_target}"])
+    if current_artifact:
+        return f"{historical}  # current tracked artifact: {current_artifact}"
+    return historical
+
+
+def enrich_artifact_history_entry(entry: dict[str, Any], tracks: list[dict[str, Any]]) -> dict[str, Any]:
+    matching_tracks = [track for track in tracks if benchmark_key_from_entry(track) == benchmark_key_from_entry(entry)]
+    if not matching_tracks:
+        entry["status"] = "legacy"
+        entry["status_detail"] = "Historical benchmark artifact retained as supporting evidence."
+        entry["target_sample_count"] = entry.get("sample_count")
+        entry["derived"] = derive_track_metrics(entry)
+        return entry
+
+    track = max(matching_tracks, key=lambda candidate: track_history_match_score(entry, candidate))
+    current_artifact = track.get("artifact") or Path(track.get("artifact_path") or "").name or None
+    artifact_name = Path(entry.get("artifact_path") or "").name
+    is_current = bool(current_artifact) and artifact_name == current_artifact
+    entry.update(
+        {
+            "slug": track["slug"],
+            "label": track["label"],
+            "lane": track["lane"],
+            "target_sample_count": track["target_sample_count"],
+            "run_command": track["run_command"],
+            "official_wer_reference": track.get("official_wer_reference"),
+        }
+    )
+    if is_current:
+        entry["status"] = track["status"]
+        entry["status_detail"] = track["status_detail"]
+        entry["run_command"] = track["run_command"]
+    else:
+        entry["status"] = "legacy"
+        entry["status_detail"] = (
+            f"Historical supporting artifact for {track['label']}; current tracked artifact is "
+            f"{current_artifact or 'selected from the newest matching benchmark'}."
+        )
+        entry["run_command"] = historical_run_command(entry, track, current_artifact)
+    if not accuracy_is_publishable(entry):
+        entry["accuracy"] = {"word_error_rate_mean": None, "character_error_rate_mean": None}
+    entry["derived"] = derive_track_metrics(entry)
     return entry
 
 
@@ -685,6 +819,8 @@ def build_system_coverage(entries: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
+    catalog = load_catalog(tracks_path)
+    catalog_tracks = catalog.get("tracks", [])
     latest: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     artifacts_by_name: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     artifact_history: list[dict[str, Any]] = []
@@ -702,14 +838,14 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         if previous is None or stamp > previous[0]:
             latest[key] = (stamp, path, payload)
 
-    catalog = load_catalog(tracks_path)
     tracks = [
         build_track_entry(
             track,
             artifacts_by_name.get(track.get("artifact")) if track.get("artifact") else latest.get(track_key(track)),
         )
-        for track in catalog.get("tracks", [])
+        for track in catalog_tracks
     ]
+    artifact_history = [enrich_artifact_history_entry(entry, tracks) for entry in artifact_history]
     tracks.sort(
         key=lambda item: (
             STATUS_ORDER.get(item["status"], 99),

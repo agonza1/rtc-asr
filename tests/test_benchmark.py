@@ -639,9 +639,9 @@ def test_checked_in_publishable_benchmark_artifacts_include_current_harness_meta
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "qwen-mps-2026-06-20.json": {
+        "qwen-mps-2026-06-21.json": {
             "partial_interval_chunks": 1,
-            "binary_frames": False,
+            "binary_frames": True,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
             "request_retries": 3,
@@ -672,7 +672,7 @@ def test_checked_in_publishable_benchmark_artifacts_include_streaming_sample_bin
         "parakeet-compose-2026-06-20.json",
         "parakeet-nemo-110m-compose-2026-06-21.json",
         "parakeet-mlx-110m-service-2026-06-21.json",
-        "qwen-mps-2026-06-20.json",
+        "qwen-mps-2026-06-21.json",
         "qwen-compose-2026-06-21.json",
     ]
 
@@ -706,6 +706,7 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         "parakeet-compose",
         "parakeet-nemo-compose",
         "parakeet-mlx-service-110m",
+        "qwen-mps",
         "qwen-compose",
     ]
     assert [track["artifact"] for track in validated_tracks] == [
@@ -714,16 +715,14 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         "parakeet-compose-2026-06-20.json",
         "parakeet-nemo-110m-compose-2026-06-21.json",
         "parakeet-mlx-110m-service-2026-06-21.json",
+        "qwen-mps-2026-06-21.json",
         "qwen-compose-2026-06-21.json",
     ]
     for track in validated_tracks:
         assert "/v1/stt/stream" in track["status_detail"]
 
     legacy_tracks = [track for track in payload["tracks"] if track["status"] == "legacy"]
-    assert legacy_tracks
-    for track in legacy_tracks:
-        assert "/ws/stream" in track["status_detail"]
-        assert "/v1/stt/stream" in track["status_detail"]
+    assert not legacy_tracks
 
 
 def test_benchmarks_doc_publishable_artifact_rows_reference_checked_in_current_schema_artifacts() -> None:
