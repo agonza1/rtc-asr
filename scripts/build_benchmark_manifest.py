@@ -240,6 +240,7 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
     metrics = payload.get("metrics") or {}
     power = payload.get("power") or {}
     thermal = payload.get("thermal") or {}
+    memory = payload.get("memory") or {}
     return {
         "platform": first_defined(environment.get("platform"), system.get("platform")),
         "processor": first_defined(environment.get("processor"), environment.get("machine"), system.get("processor")),
@@ -261,16 +262,24 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
             environment.get("memory_total_mb"),
             system.get("memory_total_mb"),
             metrics.get("memory_total_mb"),
+            memory.get("total_mb"),
+            nested_value(metrics, "memory", "total_mb"),
         ),
         "process_rss_mb": first_defined(
             environment.get("process_rss_mb"),
             system.get("process_rss_mb"),
             metrics.get("process_rss_mb"),
+            memory.get("process_rss_mb"),
+            nested_value(metrics, "memory", "process_rss_mb"),
         ),
         "peak_rss_mb": first_defined(
             environment.get("peak_rss_mb"),
             system.get("peak_rss_mb"),
             metrics.get("peak_rss_mb"),
+            memory.get("peak_rss_mb"),
+            memory.get("rss_peak_mb"),
+            nested_value(metrics, "memory", "peak_rss_mb"),
+            nested_value(metrics, "memory", "rss_peak_mb"),
         ),
         "cpu_utilization_percent": first_defined(
             environment.get("cpu_utilization_percent"),
