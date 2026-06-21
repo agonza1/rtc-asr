@@ -1,12 +1,12 @@
 # Pipecat Integration Guide
 
-This guide shows how to bridge Pipecat audio into the current `rtc-asr` websocket API.
+This guide shows how to bridge Pipecat audio into the current `rtc-asr` Local STT v1 websocket API.
 
-The backend is configurable, but partials and finals are always emitted on `ws://.../ws/stream`; do not call `POST /api/stream`, and there is no `/api/flush` route.
+The backend is configurable, but new Pipecat integrations should use `ws://.../v1/stt/stream`. The older `ws://.../ws/stream` route remains available only for legacy buffered-websocket comparisons. Do not call `POST /api/stream`, and there is no `/api/flush` route.
 
 ## Protocol Summary
 
-The current contract is buffered websocket ASR, not a true frame-synchronous streaming decoder API. Pipecat should stay responsible for WebRTC transport, jitter handling, audio decode, and media-edge timing. `rtc-asr` should stay responsible for normalized audio ingestion, partial refreshes over buffered windows, and final transcript generation.
+The current integration contract is Local STT v1: JSON control messages plus binary PCM16 audio frames on `ws://.../v1/stt/stream`. Pipecat should stay responsible for WebRTC transport, jitter handling, audio decode, and media-edge timing. `rtc-asr` should stay responsible for normalized audio ingestion, Local STT transcript events, backend readiness, and final transcript generation.
 
 ## Why A Local STT Service Instead Of Only Pipecat Plugins
 
@@ -19,56 +19,60 @@ Use native Pipecat/provider plugins when you want the provider experience direct
 Open one websocket per utterance or per continuous stream and use this event order:
 
 ```json
-{ "type": "start", "language": "en", "sample_rate": 16000, "partial_interval_chunks": 1, "partial_window_seconds": 1.0, "max_buffer_seconds": 10.0 }
+{ "type": "start", "version": "local-stt.v1", "audio": { "sample_rate": 16000, "channels": 1, "format": "pcm_s16le", "frame_ms": 20, "bytes_per_frame": 640 }, "language": "en", "interim_results": true, "partial_interval_ms": 100, "partial_window_seconds": 1.0, "max_buffer_seconds": 10.0 }
 ```
 
 ```json
-{ "type": "stop" }
+{ "type": "finalize" }
 ```
 
 The server responds with:
 
 - `ready` after `start`
-- `partial` after each configured chunk interval
-- `final` after `stop`
+- `transcript` events with `is_final=false` for partial updates
+- one `transcript` event with `is_final=true` after `finalize`
 - `error` before close if the event order or audio payload is invalid
+- `closed` after the client sends `close`
 
-After `start`, Pipecat can send audio as JSON base64 events or raw binary websocket frames. Prefer binary frames when you already have PCM16 bytes available.
+After `start`, Pipecat sends raw binary PCM16 frames. Local STT v1 does not base64-wrap audio.
 
 ## Recommended Client Helper
 
 This repo includes tested websocket helpers in `src/rtc_client.py` and `src/streaming.py`. If your Pipecat app lives in another repository, vendor one of those helpers instead of duplicating the websocket protocol.
 
 ```python
-from src.rtc_client import AsyncASRClient
+from src.rtc_client import AsyncLocalSttClient
 
 
 class PipecatASRBridge:
-    def __init__(self, ws_url: str = "ws://localhost:8080/ws/stream") -> None:
+    def __init__(self, ws_url: str = "ws://localhost:8080/v1/stt/stream") -> None:
         self._ws_url = ws_url
-        self._client: AsyncASRClient | None = None
+        self._client: AsyncLocalSttClient | None = None
 
     async def start_stream(self, *, language: str | None = "en", sample_rate: int = 16000) -> dict:
-        self._client = AsyncASRClient(self._ws_url)
+        self._client = AsyncLocalSttClient(self._ws_url)
         return await self._client.start(
             language=language,
             sample_rate=sample_rate,
-            partial_interval_chunks=1,
+            partial_interval_ms=100,
             partial_window_seconds=1.0,
             max_buffer_seconds=10.0,
-            send_binary_frames=True,
         )
 
     async def send_audio_chunk(self, pcm16_chunk: bytes) -> str:
         if self._client is None:
             raise RuntimeError("Call start_stream() before send_audio_chunk()")
-        event = await self._client.send_audio(pcm16_chunk)
+        await self._client.send_audio(pcm16_chunk)
+        event = await self._client.recv_event(timeout=0.01)
         return "" if event is None else event.text
 
     async def stop_stream(self) -> str:
         if self._client is None:
             raise RuntimeError("Call start_stream() before stop_stream()")
-        final_event = await self._client.stop()
+        await self._client.finalize()
+        final_event = None
+        while final_event is None or not final_event.is_final:
+            final_event = await self._client.recv_event()
         await self._client.close()
         self._client = None
         return final_event.text
@@ -80,7 +84,7 @@ Pipecat APIs move between releases, so keep the websocket bridge stable and adap
 
 Typical flow:
 
-1. Start an `AsyncASRClient` when Pipecat begins a new speech segment.
+1. Start an `AsyncLocalSttClient` when Pipecat begins a new speech segment.
 2. Receive Pipecat `InputAudioRawFrame` values, which are typically decoded PCM frames at about `20` ms cadence.
 3. Aggregate `4` to `8` source frames into one websocket chunk before calling `send_audio_chunk()`.
 4. Forward non-empty `partial` text into your transcript or event pipeline.
@@ -131,8 +135,8 @@ Pipecat transport
   -> decoded PCM frames, usually ~20 ms
 Chunk aggregator
   -> binary PCM16 websocket frame every 80-160 ms
-rtc-asr /ws/stream
-  -> partial/final transcript events
+rtc-asr /v1/stt/stream
+  -> Local STT transcript events
 Voice agent pipeline
 ```
 
