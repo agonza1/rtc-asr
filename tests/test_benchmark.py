@@ -437,8 +437,8 @@ def test_makefile_venv_target_repairs_broken_virtualenvs_before_benchmarks() -> 
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
     venv_block = makefile.split("venv:\n", 1)[1].split("\n\n", 1)[0]
-    assert 'if [ -x $(PYTHON) ] && $(PYTHON) -c "import sys" >/dev/null 2>&1; then \\' in venv_block
-    assert 'echo "  Rebuilding $(VENV) because the interpreter is missing or broken..."; \\' in venv_block
+    assert 'if [ -x $(PYTHON) ] && $(PYTHON) -c "import fastapi, httpx, numpy, soundfile, torch, uvicorn, websockets" >/dev/null 2>&1; then \\' in venv_block
+    assert 'echo "  Rebuilding $(VENV) because the benchmark runtime is missing or broken..."; \\' in venv_block
     assert "rm -rf $(VENV); \\" in venv_block
     assert "python3 -m venv $(VENV); \\" in venv_block
     assert "$(PIP) install --upgrade pip; \\" in venv_block
@@ -606,9 +606,9 @@ def test_checked_in_publishable_benchmark_artifacts_include_current_harness_meta
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "parakeet-nemo-110m-compose-2026-06-19.json": {
-            "partial_interval_chunks": 8,
-            "binary_frames": False,
+        "parakeet-nemo-110m-compose-2026-06-21.json": {
+            "partial_interval_chunks": 1,
+            "binary_frames": True,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
             "request_retries": 3,
@@ -653,7 +653,7 @@ def test_checked_in_publishable_benchmark_artifacts_include_streaming_sample_bin
         "faster-whisper-base.en-int8-2026-06-20.json",
         "faster-whisper-small.en-int8-2026-06-20.json",
         "parakeet-compose-2026-06-20.json",
-        "parakeet-nemo-110m-compose-2026-06-19.json",
+        "parakeet-nemo-110m-compose-2026-06-21.json",
         "parakeet-mlx-110m-service-2026-06-21.json",
         "qwen-mps-2026-06-20.json",
         "qwen-compose-2026-06-19.json",
@@ -687,12 +687,14 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         "faster-whisper-base",
         "faster-whisper-small",
         "parakeet-compose",
+        "parakeet-nemo-compose",
         "parakeet-mlx-service-110m",
     ]
     assert [track["artifact"] for track in validated_tracks] == [
         "faster-whisper-base.en-int8-2026-06-20.json",
         "faster-whisper-small.en-int8-2026-06-20.json",
         "parakeet-compose-2026-06-20.json",
+        "parakeet-nemo-110m-compose-2026-06-21.json",
         "parakeet-mlx-110m-service-2026-06-21.json",
     ]
     for track in validated_tracks:

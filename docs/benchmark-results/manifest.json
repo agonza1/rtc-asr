@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-21T07:10:48Z",
+  "generated_at": "2026-06-21T13:27:37Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
-    "artifact_file_count": 21,
-    "validated_count": 4,
-    "legacy_count": 3,
+    "artifact_file_count": 22,
+    "validated_count": 5,
+    "legacy_count": 2,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-21T00:13:11Z",
+    "latest_measured_at": "2026-06-21T13:26:50Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -25,7 +25,7 @@
     "backend_count": 5,
     "lane_count": 5,
     "system_coverage": {
-      "memory_total_mb_count": 14,
+      "memory_total_mb_count": 15,
       "process_rss_mb_count": 9,
       "peak_rss_mb_count": 9,
       "accelerator_count": 0,
@@ -100,11 +100,11 @@
       },
       "lowest_late_partial_ratio": {
         "label": "Lowest late partial ratio",
-        "slug": "parakeet-compose",
-        "backend": "parakeet",
-        "model": "nvidia/parakeet-tdt-0.6b-v3",
-        "value": 0.582,
-        "artifact_path": "benchmark-results/parakeet-compose-2026-06-20.json"
+        "slug": "parakeet-nemo-compose",
+        "backend": "parakeet-nemo",
+        "model": "nvidia/parakeet-tdt_ctc-110m",
+        "value": 0.554,
+        "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-21.json"
       },
       "fastest_final": {
         "label": "Fastest streaming finalization delay",
@@ -329,6 +329,100 @@
     },
     {
       "kind": "asr",
+      "slug": "parakeet-nemo-compose",
+      "label": "Parakeet 110M NeMo",
+      "backend": "parakeet-nemo",
+      "model": "nvidia/parakeet-tdt_ctc-110m",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float32",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream Compose CPU artifact refreshed on 2026-06-21.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet-nemo",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
+      "measured_at": "2026-06-21T13:26:50Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-21.json",
+      "artifact_sha256": "eac8db232c8a8eda15554195bb50be6ec0c14ca49e283247761ca871702d3ffa",
+      "artifact_size_bytes": 64143,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "process_rss_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "energy_per_audio_second_j": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1,
+        "final_event_timeout_seconds": 10.0
+      },
+      "rest": {
+        "mean_ms": 508.8,
+        "p95_ms": 1001.7,
+        "rtf_mean": 0.07
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 107.1,
+        "partial_p95_ms": 178.8,
+        "first_partial_end_to_end_mean_ms": 348.1,
+        "first_partial_end_to_end_p95_ms": 412.3,
+        "partial_gap_mean_ms": 183.8,
+        "partial_gap_p95_ms": 260.5,
+        "partial_transcript_churn_char_mean": 0.253,
+        "partial_transcript_churn_word_mean": 0.309,
+        "late_partial_events": 219,
+        "late_partial_ratio": 0.554,
+        "final_mean_ms": 622.1,
+        "final_p95_ms": 862.0
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 92.8,
+        "live_caption_score": 63.5,
+        "partial_backlog_score": 66.4,
+        "finalization_score": 91.4,
+        "stability_score": 84.2,
+        "efficiency_score": 95.9,
+        "overall_score": 85.0,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.969,
+        "partial_jitter_ratio": 1.669,
+        "final_jitter_ratio": 1.386
+      }
+    },
+    {
+      "kind": "asr",
       "slug": "faster-whisper-small",
       "label": "Faster-Whisper Small",
       "backend": "faster-whisper",
@@ -511,94 +605,6 @@
         "rest_jitter_ratio": 2.269,
         "partial_jitter_ratio": 1.657,
         "final_jitter_ratio": 2.172
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "parakeet-nemo-compose",
-      "label": "Parakeet 110M NeMo",
-      "backend": "parakeet-nemo",
-      "model": "nvidia/parakeet-tdt_ctc-110m",
-      "lane": "Docker Compose CPU",
-      "runtime": "cpu / float32",
-      "status": "legacy",
-      "status_detail": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19. It stays in the supporting section until a paced /v1/stt/stream replacement is checked in.",
-      "target_sample_count": 10,
-      "run_command": "make benchmark-compose-parakeet-nemo-legacy BENCHMARK_RESULT_DATE=2026-06-19",
-      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
-      "measured_at": "2026-06-20T03:05:34Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-19.json",
-      "artifact_sha256": "97a7f62b2deadde68b6c8b2fa8f1787578f8d73f29f4c3ec36d84e4737872fbe",
-      "artifact_size_bytes": 44841,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.14.6",
-        "cpu_logical_cores": 10,
-        "accelerator": null,
-        "memory_total_mb": 24576.0,
-        "process_rss_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "energy_per_audio_second_j": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 8,
-        "partial_window_seconds": 2.0,
-        "binary_frames": false,
-        "sample_rate": 16000,
-        "live_metrics_comparable": false,
-        "transport": "direct",
-        "path": "/ws/stream",
-        "partial_event_timeout_seconds": 0.1
-      },
-      "rest": {
-        "mean_ms": 302.7,
-        "p95_ms": 514.9,
-        "rtf_mean": 0.042
-      },
-      "streaming": {
-        "transport": "direct",
-        "live_metrics_comparable": false,
-        "partial_mean_ms": 184.0,
-        "partial_p95_ms": 396.1,
-        "first_partial_end_to_end_mean_ms": 2144.3,
-        "first_partial_end_to_end_p95_ms": 2264.6,
-        "partial_gap_mean_ms": 145.3,
-        "partial_gap_p95_ms": 191.5,
-        "partial_transcript_churn_char_mean": 0.882,
-        "partial_transcript_churn_word_mean": 1.0,
-        "late_partial_events": 19,
-        "late_partial_ratio": 0.633,
-        "final_mean_ms": 406.6,
-        "final_p95_ms": 821.1
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 98.3,
-        "live_caption_score": 51.8,
-        "partial_backlog_score": 64.6,
-        "finalization_score": 94.0,
-        "stability_score": 78.0,
-        "efficiency_score": 98.8,
-        "overall_score": 79.0,
-        "confidence_score": 85.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.701,
-        "partial_jitter_ratio": 2.153,
-        "final_jitter_ratio": 2.019
       }
     },
     {
@@ -868,6 +874,79 @@
     }
   ],
   "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "parakeet-nemo",
+      "model": "nvidia/parakeet-tdt_ctc-110m",
+      "runtime": "cpu / float32",
+      "measured_at": "2026-06-21T13:26:50Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-21.json",
+      "artifact_sha256": "eac8db232c8a8eda15554195bb50be6ec0c14ca49e283247761ca871702d3ffa",
+      "artifact_size_bytes": 64143,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "process_rss_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "energy_per_audio_second_j": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1,
+        "final_event_timeout_seconds": 10.0
+      },
+      "rest": {
+        "mean_ms": 508.8,
+        "p95_ms": 1001.7,
+        "rtf_mean": 0.07
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 107.1,
+        "partial_p95_ms": 178.8,
+        "first_partial_end_to_end_mean_ms": 348.1,
+        "first_partial_end_to_end_p95_ms": 412.3,
+        "partial_gap_mean_ms": 183.8,
+        "partial_gap_p95_ms": 260.5,
+        "partial_transcript_churn_char_mean": 0.253,
+        "partial_transcript_churn_word_mean": 0.309,
+        "late_partial_events": 219,
+        "late_partial_ratio": 0.554,
+        "final_mean_ms": 622.1,
+        "final_p95_ms": 862.0
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.19,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "nvidia/parakeet-tdt_ctc-110m"
+    },
     {
       "kind": "asr",
       "backend": "parakeet-mlx",
@@ -2481,16 +2560,16 @@
       "model": "nvidia/parakeet-tdt_ctc-110m",
       "lane": "Docker Compose CPU",
       "runtime": "cpu / float32",
-      "status": "legacy",
-      "status_detail": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19. It stays in the supporting section until a paced /v1/stt/stream replacement is checked in.",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream Compose CPU artifact refreshed on 2026-06-21.",
       "target_sample_count": 10,
-      "run_command": "make benchmark-compose-parakeet-nemo-legacy BENCHMARK_RESULT_DATE=2026-06-19",
+      "run_command": "make benchmark-compose-parakeet-nemo",
       "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
-      "measured_at": "2026-06-20T03:05:34Z",
+      "measured_at": "2026-06-21T13:26:50Z",
       "sample_count": 10,
-      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-19.json",
-      "artifact_sha256": "97a7f62b2deadde68b6c8b2fa8f1787578f8d73f29f4c3ec36d84e4737872fbe",
-      "artifact_size_bytes": 44841,
+      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-21.json",
+      "artifact_sha256": "eac8db232c8a8eda15554195bb50be6ec0c14ca49e283247761ca871702d3ffa",
+      "artifact_size_bytes": 64143,
       "system": {
         "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
         "processor": "arm",
@@ -2507,36 +2586,42 @@
         "thermal_observation": null
       },
       "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 8,
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
         "partial_window_seconds": 2.0,
-        "binary_frames": false,
+        "binary_frames": true,
         "sample_rate": 16000,
-        "live_metrics_comparable": false,
-        "transport": "direct",
-        "path": "/ws/stream",
-        "partial_event_timeout_seconds": 0.1
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1,
+        "final_event_timeout_seconds": 10.0
       },
       "rest": {
-        "mean_ms": 302.7,
-        "p95_ms": 514.9,
-        "rtf_mean": 0.042
+        "mean_ms": 508.8,
+        "p95_ms": 1001.7,
+        "rtf_mean": 0.07
       },
       "streaming": {
-        "transport": "direct",
-        "live_metrics_comparable": false,
-        "partial_mean_ms": 184.0,
-        "partial_p95_ms": 396.1,
-        "first_partial_end_to_end_mean_ms": 2144.3,
-        "first_partial_end_to_end_p95_ms": 2264.6,
-        "partial_gap_mean_ms": 145.3,
-        "partial_gap_p95_ms": 191.5,
-        "partial_transcript_churn_char_mean": 0.882,
-        "partial_transcript_churn_word_mean": 1.0,
-        "late_partial_events": 19,
-        "late_partial_ratio": 0.633,
-        "final_mean_ms": 406.6,
-        "final_p95_ms": 821.1
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 107.1,
+        "partial_p95_ms": 178.8,
+        "first_partial_end_to_end_mean_ms": 348.1,
+        "first_partial_end_to_end_p95_ms": 412.3,
+        "partial_gap_mean_ms": 183.8,
+        "partial_gap_p95_ms": 260.5,
+        "partial_transcript_churn_char_mean": 0.253,
+        "partial_transcript_churn_word_mean": 0.309,
+        "late_partial_events": 219,
+        "late_partial_ratio": 0.554,
+        "final_mean_ms": 622.1,
+        "final_p95_ms": 862.0
       },
       "warnings": {
         "received_total": null,
@@ -2547,18 +2632,18 @@
         "character_error_rate_mean": null
       },
       "derived": {
-        "latency_score": 98.3,
-        "live_caption_score": 51.8,
-        "partial_backlog_score": 64.6,
-        "finalization_score": 94.0,
-        "stability_score": 78.0,
-        "efficiency_score": 98.8,
-        "overall_score": 79.0,
-        "confidence_score": 85.0,
+        "latency_score": 92.8,
+        "live_caption_score": 63.5,
+        "partial_backlog_score": 66.4,
+        "finalization_score": 91.4,
+        "stability_score": 84.2,
+        "efficiency_score": 95.9,
+        "overall_score": 85.0,
+        "confidence_score": 100.0,
         "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.701,
-        "partial_jitter_ratio": 2.153,
-        "final_jitter_ratio": 2.019
+        "rest_jitter_ratio": 1.969,
+        "partial_jitter_ratio": 1.669,
+        "final_jitter_ratio": 1.386
       }
     },
     {
