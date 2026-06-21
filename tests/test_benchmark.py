@@ -647,9 +647,9 @@ def test_checked_in_publishable_benchmark_artifacts_include_current_harness_meta
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "qwen-compose-2026-06-19.json": {
-            "partial_interval_chunks": 8,
-            "binary_frames": False,
+        "qwen-compose-2026-06-21.json": {
+            "partial_interval_chunks": 1,
+            "binary_frames": True,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
             "request_retries": 3,
@@ -673,7 +673,7 @@ def test_checked_in_publishable_benchmark_artifacts_include_streaming_sample_bin
         "parakeet-nemo-110m-compose-2026-06-21.json",
         "parakeet-mlx-110m-service-2026-06-21.json",
         "qwen-mps-2026-06-20.json",
-        "qwen-compose-2026-06-19.json",
+        "qwen-compose-2026-06-21.json",
     ]
 
     for artifact_name in publishable_artifacts:
@@ -706,6 +706,7 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         "parakeet-compose",
         "parakeet-nemo-compose",
         "parakeet-mlx-service-110m",
+        "qwen-compose",
     ]
     assert [track["artifact"] for track in validated_tracks] == [
         "faster-whisper-base.en-int8-2026-06-20.json",
@@ -713,6 +714,7 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         "parakeet-compose-2026-06-20.json",
         "parakeet-nemo-110m-compose-2026-06-21.json",
         "parakeet-mlx-110m-service-2026-06-21.json",
+        "qwen-compose-2026-06-21.json",
     ]
     for track in validated_tracks:
         assert "/v1/stt/stream" in track["status_detail"]

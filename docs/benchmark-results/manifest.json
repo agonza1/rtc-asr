@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-06-21T13:52:02Z",
+  "generated_at": "2026-06-21T13:56:52Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
-    "artifact_file_count": 20,
-    "validated_count": 5,
-    "legacy_count": 2,
+    "artifact_file_count": 21,
+    "validated_count": 6,
+    "legacy_count": 1,
     "blocked_count": 1,
-    "latest_measured_at": "2026-06-21T13:26:50Z",
+    "latest_measured_at": "2026-06-21T13:55:27Z",
     "sample_contract": {
       "default_sample_count": 10,
       "rest_runs_per_sample": 5,
@@ -25,7 +25,7 @@
     "backend_count": 5,
     "lane_count": 5,
     "system_coverage": {
-      "memory_total_mb_count": 14,
+      "memory_total_mb_count": 15,
       "process_rss_mb_count": 9,
       "peak_rss_mb_count": 9,
       "accelerator_count": 0,
@@ -38,7 +38,7 @@
     "ranges": {
       "rest_mean_ms": {
         "min": 150.1,
-        "max": 3553.8
+        "max": 5589.9
       },
       "partial_mean_ms": {
         "min": 104.8,
@@ -46,11 +46,11 @@
       },
       "first_partial_end_to_end_mean_ms": {
         "min": 250.7,
-        "max": 3297.7
+        "max": 1921.7
       },
       "partial_gap_mean_ms": {
         "min": 101.8,
-        "max": 2341.3
+        "max": 1509.9
       },
       "final_mean_ms": {
         "min": 251.8,
@@ -58,10 +58,10 @@
       },
       "rtf_mean": {
         "min": 0.021,
-        "max": 0.488
+        "max": 0.768
       },
       "overall_score": {
-        "min": 39.5,
+        "min": 23.7,
         "max": 91.5
       }
     },
@@ -609,6 +609,100 @@
     },
     {
       "kind": "asr",
+      "slug": "qwen-compose",
+      "label": "Qwen Compose",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float16",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream Compose CPU artifact refreshed on 2026-06-21 using float16.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-qwen",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "measured_at": "2026-06-21T13:55:27Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-21.json",
+      "artifact_sha256": "99d6fa7d7433a1144567db58beb9efef82dbd8a22b4c31503fd3698bede78b3d",
+      "artifact_size_bytes": 55607,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "process_rss_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "energy_per_audio_second_j": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1,
+        "final_event_timeout_seconds": 10.0
+      },
+      "rest": {
+        "mean_ms": 5589.9,
+        "p95_ms": 9021.8,
+        "rtf_mean": 0.768
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 2196.9,
+        "partial_p95_ms": 5071.1,
+        "first_partial_end_to_end_mean_ms": 680.1,
+        "first_partial_end_to_end_p95_ms": 748.4,
+        "partial_gap_mean_ms": 1509.9,
+        "partial_gap_p95_ms": 2227.5,
+        "partial_transcript_churn_char_mean": 0.742,
+        "partial_transcript_churn_word_mean": 0.764,
+        "late_partial_events": 50,
+        "late_partial_ratio": 1.0,
+        "final_mean_ms": 5802.5,
+        "final_p95_ms": 6954.6
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 3.5,
+        "live_caption_score": 30.3,
+        "partial_backlog_score": 22.9,
+        "finalization_score": 0.3,
+        "stability_score": 84.5,
+        "efficiency_score": 23.9,
+        "overall_score": 23.7,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.614,
+        "partial_jitter_ratio": 2.308,
+        "final_jitter_ratio": 1.199
+      }
+    },
+    {
+      "kind": "asr",
       "slug": "qwen-mps",
       "label": "Qwen MPS",
       "backend": "qwen-asr",
@@ -693,94 +787,6 @@
         "rest_jitter_ratio": 1.054,
         "partial_jitter_ratio": 1.571,
         "final_jitter_ratio": 1.053
-      }
-    },
-    {
-      "kind": "asr",
-      "slug": "qwen-compose",
-      "label": "Qwen Compose",
-      "backend": "qwen-asr",
-      "model": "Qwen/Qwen3-ASR-0.6B",
-      "lane": "Docker Compose CPU",
-      "runtime": "cpu / float16",
-      "status": "legacy",
-      "status_detail": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk cadence. It now stays in supporting context only until /v1/stt/stream regeneration replaces it.",
-      "target_sample_count": 5,
-      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen-legacy",
-      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-20T03:50:30Z",
-      "sample_count": 5,
-      "artifact_path": "benchmark-results/qwen-compose-2026-06-19.json",
-      "artifact_sha256": "165f9f6c382241034ca1c84f04ace6f231de9fc2d29a104cc8e5b3a594518deb",
-      "artifact_size_bytes": 27048,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.14.6",
-        "cpu_logical_cores": 10,
-        "accelerator": null,
-        "memory_total_mb": 24576.0,
-        "process_rss_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "energy_per_audio_second_j": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 8,
-        "partial_window_seconds": 2.0,
-        "binary_frames": false,
-        "sample_rate": 16000,
-        "live_metrics_comparable": false,
-        "transport": "direct",
-        "path": "/ws/stream",
-        "partial_event_timeout_seconds": 0.1
-      },
-      "rest": {
-        "mean_ms": 3553.8,
-        "p95_ms": 4215.3,
-        "rtf_mean": 0.488
-      },
-      "streaming": {
-        "transport": "direct",
-        "live_metrics_comparable": false,
-        "partial_mean_ms": 3581.5,
-        "partial_p95_ms": 7396.4,
-        "first_partial_end_to_end_mean_ms": 3297.7,
-        "first_partial_end_to_end_p95_ms": 3345.3,
-        "partial_gap_mean_ms": 2341.3,
-        "partial_gap_p95_ms": 6262.6,
-        "partial_transcript_churn_char_mean": 0.863,
-        "partial_transcript_churn_word_mean": 1.0,
-        "late_partial_events": 0,
-        "late_partial_ratio": 0.0,
-        "final_mean_ms": 7049.6,
-        "final_p95_ms": 7728.3
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 42.2,
-        "live_caption_score": 45.3,
-        "partial_backlog_score": 36.9,
-        "finalization_score": 0.0,
-        "stability_score": 90.5,
-        "efficiency_score": 52.8,
-        "overall_score": 40.5,
-        "confidence_score": 85.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.186,
-        "partial_jitter_ratio": 2.065,
-        "final_jitter_ratio": 1.096
       }
     },
     {
@@ -874,6 +880,79 @@
     }
   ],
   "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "runtime": "cpu / float16",
+      "measured_at": "2026-06-21T13:55:27Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-21.json",
+      "artifact_sha256": "99d6fa7d7433a1144567db58beb9efef82dbd8a22b4c31503fd3698bede78b3d",
+      "artifact_size_bytes": 55607,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "process_rss_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "energy_per_audio_second_j": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1,
+        "final_event_timeout_seconds": 10.0
+      },
+      "rest": {
+        "mean_ms": 5589.9,
+        "p95_ms": 9021.8,
+        "rtf_mean": 0.768
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 2196.9,
+        "partial_p95_ms": 5071.1,
+        "first_partial_end_to_end_mean_ms": 680.1,
+        "first_partial_end_to_end_p95_ms": 748.4,
+        "partial_gap_mean_ms": 1509.9,
+        "partial_gap_p95_ms": 2227.5,
+        "partial_transcript_churn_char_mean": 0.742,
+        "partial_transcript_churn_word_mean": 0.764,
+        "late_partial_events": 50,
+        "late_partial_ratio": 1.0,
+        "final_mean_ms": 5802.5,
+        "final_p95_ms": 6954.6
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "Qwen/Qwen3-ASR-0.6B"
+    },
     {
       "kind": "asr",
       "backend": "parakeet-nemo",
@@ -2788,94 +2867,6 @@
     },
     {
       "kind": "asr",
-      "slug": "qwen-compose",
-      "label": "Qwen Compose",
-      "backend": "qwen-asr",
-      "model": "Qwen/Qwen3-ASR-0.6B",
-      "lane": "Docker Compose CPU",
-      "runtime": "cpu / float16",
-      "status": "legacy",
-      "status_detail": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk cadence. It now stays in supporting context only until /v1/stt/stream regeneration replaces it.",
-      "target_sample_count": 5,
-      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen-legacy",
-      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
-      "measured_at": "2026-06-20T03:50:30Z",
-      "sample_count": 5,
-      "artifact_path": "benchmark-results/qwen-compose-2026-06-19.json",
-      "artifact_sha256": "165f9f6c382241034ca1c84f04ace6f231de9fc2d29a104cc8e5b3a594518deb",
-      "artifact_size_bytes": 27048,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.14.6",
-        "cpu_logical_cores": 10,
-        "accelerator": null,
-        "memory_total_mb": 24576.0,
-        "process_rss_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "energy_per_audio_second_j": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 8,
-        "partial_window_seconds": 2.0,
-        "binary_frames": false,
-        "sample_rate": 16000,
-        "live_metrics_comparable": false,
-        "transport": "direct",
-        "path": "/ws/stream",
-        "partial_event_timeout_seconds": 0.1
-      },
-      "rest": {
-        "mean_ms": 3553.8,
-        "p95_ms": 4215.3,
-        "rtf_mean": 0.488
-      },
-      "streaming": {
-        "transport": "direct",
-        "live_metrics_comparable": false,
-        "partial_mean_ms": 3581.5,
-        "partial_p95_ms": 7396.4,
-        "first_partial_end_to_end_mean_ms": 3297.7,
-        "first_partial_end_to_end_p95_ms": 3345.3,
-        "partial_gap_mean_ms": 2341.3,
-        "partial_gap_p95_ms": 6262.6,
-        "partial_transcript_churn_char_mean": 0.863,
-        "partial_transcript_churn_word_mean": 1.0,
-        "late_partial_events": 0,
-        "late_partial_ratio": 0.0,
-        "final_mean_ms": 7049.6,
-        "final_p95_ms": 7728.3
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": null,
-        "character_error_rate_mean": null
-      },
-      "derived": {
-        "latency_score": 42.2,
-        "live_caption_score": 45.3,
-        "partial_backlog_score": 36.9,
-        "finalization_score": 0.0,
-        "stability_score": 90.5,
-        "efficiency_score": 52.8,
-        "overall_score": 40.5,
-        "confidence_score": 85.0,
-        "sample_coverage_pct": 100.0,
-        "rest_jitter_ratio": 1.186,
-        "partial_jitter_ratio": 2.065,
-        "final_jitter_ratio": 1.096
-      }
-    },
-    {
-      "kind": "asr",
       "slug": "pipecat-e2e-faster-whisper-base",
       "label": "Pipecat E2E Faster-Whisper Base",
       "backend": "faster-whisper",
@@ -2961,6 +2952,100 @@
         "rest_jitter_ratio": 1.0,
         "partial_jitter_ratio": 1.598,
         "final_jitter_ratio": 1.0
+      }
+    },
+    {
+      "kind": "asr",
+      "slug": "qwen-compose",
+      "label": "Qwen Compose",
+      "backend": "qwen-asr",
+      "model": "Qwen/Qwen3-ASR-0.6B",
+      "lane": "Docker Compose CPU",
+      "runtime": "cpu / float16",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream Compose CPU artifact refreshed on 2026-06-21 using float16.",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-qwen",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "measured_at": "2026-06-21T13:55:27Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/qwen-compose-2026-06-21.json",
+      "artifact_sha256": "99d6fa7d7433a1144567db58beb9efef82dbd8a22b4c31503fd3698bede78b3d",
+      "artifact_size_bytes": 55607,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "process_rss_mb": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "energy_per_audio_second_j": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1,
+        "final_event_timeout_seconds": 10.0
+      },
+      "rest": {
+        "mean_ms": 5589.9,
+        "p95_ms": 9021.8,
+        "rtf_mean": 0.768
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 2196.9,
+        "partial_p95_ms": 5071.1,
+        "first_partial_end_to_end_mean_ms": 680.1,
+        "first_partial_end_to_end_p95_ms": 748.4,
+        "partial_gap_mean_ms": 1509.9,
+        "partial_gap_p95_ms": 2227.5,
+        "partial_transcript_churn_char_mean": 0.742,
+        "partial_transcript_churn_word_mean": 0.764,
+        "late_partial_events": 50,
+        "late_partial_ratio": 1.0,
+        "final_mean_ms": 5802.5,
+        "final_p95_ms": 6954.6
+      },
+      "warnings": {
+        "received_total": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
+      },
+      "derived": {
+        "latency_score": 3.5,
+        "live_caption_score": 30.3,
+        "partial_backlog_score": 22.9,
+        "finalization_score": 0.3,
+        "stability_score": 84.5,
+        "efficiency_score": 23.9,
+        "overall_score": 23.7,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.614,
+        "partial_jitter_ratio": 2.308,
+        "final_jitter_ratio": 1.199
       }
     }
   ]
