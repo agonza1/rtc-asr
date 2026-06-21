@@ -470,8 +470,40 @@ def benchmark_key_from_entry(entry: dict[str, Any]) -> str:
     )
 
 
+def artifact_transport(entry: dict[str, Any]) -> str | None:
+    contract = entry.get("contract") or {}
+    streaming = entry.get("streaming") or {}
+    return contract.get("transport") or streaming.get("transport")
+
+
+def artifact_path_hint(path: str | None) -> str | None:
+    artifact_name = Path(path or "").name
+    if "pipecat-e2e" in artifact_name:
+        return "pipecat-e2e"
+    return None
+
+
+def track_history_match_score(entry: dict[str, Any], track: dict[str, Any]) -> tuple[int, int]:
+    entry_artifact_name = Path(entry.get("artifact_path") or "").name
+    track_artifact_name = Path(track.get("artifact_path") or "").name
+    entry_transport = artifact_transport(entry)
+    track_transport = artifact_transport(track)
+    entry_hint = artifact_path_hint(entry.get("artifact_path"))
+    track_hint = artifact_path_hint(track.get("artifact_path"))
+
+    return (
+        1 if entry_artifact_name and entry_artifact_name == track_artifact_name else 0,
+        sum(
+            (
+                1 if entry_hint and track_hint and entry_hint == track_hint else 0,
+                1 if entry_transport and track_transport and entry_transport == track_transport else 0,
+            )
+        ),
+    )
+
+
 def enrich_artifact_history_entry(entry: dict[str, Any], tracks: list[dict[str, Any]]) -> dict[str, Any]:
-    matching_tracks = [track for track in tracks if track_key(track) == benchmark_key_from_entry(entry)]
+    matching_tracks = [track for track in tracks if benchmark_key_from_entry(track) == benchmark_key_from_entry(entry)]
     if not matching_tracks:
         entry["status"] = "legacy"
         entry["status_detail"] = "Historical benchmark artifact retained as supporting evidence."
@@ -479,8 +511,8 @@ def enrich_artifact_history_entry(entry: dict[str, Any], tracks: list[dict[str, 
         entry["derived"] = derive_track_metrics(entry)
         return entry
 
-    track = matching_tracks[0]
-    current_artifact = track.get("artifact")
+    track = max(matching_tracks, key=lambda candidate: track_history_match_score(entry, candidate))
+    current_artifact = track.get("artifact") or Path(track.get("artifact_path") or "").name or None
     artifact_name = Path(entry.get("artifact_path") or "").name
     is_current = bool(current_artifact) and artifact_name == current_artifact
     entry.update(
@@ -752,7 +784,6 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         if previous is None or stamp > previous[0]:
             latest[key] = (stamp, path, payload)
 
-    artifact_history = [enrich_artifact_history_entry(entry, catalog_tracks) for entry in artifact_history]
     tracks = [
         build_track_entry(
             track,
@@ -760,6 +791,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         )
         for track in catalog_tracks
     ]
+    artifact_history = [enrich_artifact_history_entry(entry, tracks) for entry in artifact_history]
     tracks.sort(
         key=lambda item: (
             STATUS_ORDER.get(item["status"], 99),

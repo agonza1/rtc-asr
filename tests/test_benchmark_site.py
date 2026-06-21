@@ -634,6 +634,11 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Local Python Apple Silicon" in legacy_qwen_detail
     assert "Status: legacy" in legacy_qwen_detail
 
+    legacy_pipecat_detail = (Path("docs") / "benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17.html").read_text(encoding="utf-8")
+    assert "Pipecat E2E Faster-Whisper Base" in legacy_pipecat_detail
+    assert "Pipecat E2E Local Python CPU" in legacy_pipecat_detail
+    assert "make benchmark-pipecat-e2e" in legacy_pipecat_detail
+
 
 def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     entry = {

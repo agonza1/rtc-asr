@@ -722,10 +722,7 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         assert "/v1/stt/stream" in track["status_detail"]
 
     legacy_tracks = [track for track in payload["tracks"] if track["status"] == "legacy"]
-    assert legacy_tracks
-    for track in legacy_tracks:
-        assert "/ws/stream" in track["status_detail"]
-        assert "/v1/stt/stream" in track["status_detail"]
+    assert not legacy_tracks
 
 
 def test_benchmarks_doc_publishable_artifact_rows_reference_checked_in_current_schema_artifacts() -> None:
