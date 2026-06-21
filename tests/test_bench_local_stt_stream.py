@@ -160,7 +160,7 @@ def test_describe_environment_records_memory_when_psutil_is_available(monkeypatc
 
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] == 384.0
-    assert payload["peak_rss_mb"] == 384.0
+    assert payload["peak_rss_mb"] is None
 
 
 def test_normalize_pcm16_buffer_reports_float32_samples() -> None:
