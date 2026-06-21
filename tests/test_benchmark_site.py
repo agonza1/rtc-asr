@@ -646,6 +646,19 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     integer_energy_payload = {'metrics': {'energy_per_audio_second_j': 3}}
     integer_energy_html = render_detail_page(entry, integer_energy_payload)
     assert 'Energy/audio-sec 3.0 J' in integer_energy_html
+
+    nested_efficiency_payload = {
+        'metrics': {
+            'power': {'package_watts': 8.6, 'energy_per_audio_second_j': 2.9},
+            'thermal': {'peak_celsius': 64.2, 'state': 'warm but stable'},
+        }
+    }
+    nested_efficiency_html = render_detail_page(entry, nested_efficiency_payload)
+    assert 'Power 8.6 W' in nested_efficiency_html
+    assert 'Energy/audio-sec 2.9 J' in nested_efficiency_html
+    assert 'Thermal 64.2 C' in nested_efficiency_html
+    assert 'warm but stable' in nested_efficiency_html
+
     assert 'Thermal 63.5 C' in detail_html
     assert 'Sample rate 16000 Hz' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html

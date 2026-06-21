@@ -257,6 +257,15 @@ def first_defined(*values: Any) -> Any:
     return None
 
 
+def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
+    current: Any = mapping
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
 def format_system_text(value: Any) -> str:
     return "n/a" if value is None else html.escape(str(value))
 
@@ -280,6 +289,8 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
     environment = artifact_payload.get("environment", {})
     system = artifact_payload.get("system", {})
     metrics = artifact_payload.get("metrics", {})
+    power = artifact_payload.get("power", {})
+    thermal = artifact_payload.get("thermal", {})
     return {
         "platform": first_defined(environment.get("platform"), system.get("platform")),
         "processor": first_defined(environment.get("processor"), environment.get("machine"), system.get("processor")),
@@ -321,16 +332,27 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
             environment.get("package_power_watts"),
             system.get("package_power_watts"),
             metrics.get("package_power_watts"),
+            metrics.get("package_power_avg_watts"),
+            nested_value(metrics, "power", "package_watts"),
+            nested_value(metrics, "power", "package_power_watts"),
+            power.get("package_watts"),
+            power.get("package_power_watts"),
         ),
         "energy_per_audio_second_j": first_defined(
             environment.get("energy_per_audio_second_j"),
             system.get("energy_per_audio_second_j"),
             metrics.get("energy_per_audio_second_j"),
+            nested_value(metrics, "power", "energy_per_audio_second_j"),
+            power.get("energy_per_audio_second_j"),
         ),
         "thermal_peak_celsius": first_defined(
             environment.get("thermal_peak_celsius"),
             system.get("thermal_peak_celsius"),
             metrics.get("thermal_peak_celsius"),
+            nested_value(metrics, "thermal", "peak_celsius"),
+            nested_value(metrics, "thermal", "thermal_peak_celsius"),
+            thermal.get("peak_celsius"),
+            thermal.get("thermal_peak_celsius"),
         ),
         "thermal_observation": first_defined(
             environment.get("thermal_observation"),
@@ -339,6 +361,10 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
             system.get("thermal_state"),
             metrics.get("thermal_observation"),
             metrics.get("thermal_state"),
+            nested_value(metrics, "thermal", "observation"),
+            nested_value(metrics, "thermal", "state"),
+            thermal.get("observation"),
+            thermal.get("state"),
         ),
     }
 
