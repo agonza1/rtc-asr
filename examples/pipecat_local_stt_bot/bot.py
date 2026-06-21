@@ -17,6 +17,7 @@ class BotSettings:
     frame_ms: int = int(os.getenv("LOCAL_STT_FRAME_MS", "20"))
     partial_interval_ms: int = int(os.getenv("LOCAL_STT_PARTIAL_INTERVAL_MS", "100"))
     partial_window_seconds: float = float(os.getenv("LOCAL_STT_PARTIAL_WINDOW_SECONDS", "1.0"))
+    max_buffer_seconds: float = float(os.getenv("LOCAL_STT_MAX_BUFFER_SECONDS", "10.0"))
 
 
 def build_local_stt(settings: BotSettings) -> LocalStreamingSTTService:
@@ -30,6 +31,7 @@ def build_local_stt(settings: BotSettings) -> LocalStreamingSTTService:
             frame_ms=settings.frame_ms,
             partial_interval_ms=settings.partial_interval_ms,
             partial_window_seconds=settings.partial_window_seconds,
+            max_buffer_seconds=settings.max_buffer_seconds,
             interim_results=True,
         )
     )
@@ -44,6 +46,7 @@ def build_rtc_asr_stt(settings: BotSettings) -> RtcAsrSTTService:
         frame_ms=settings.frame_ms,
         partial_interval_ms=settings.partial_interval_ms,
         partial_window_seconds=settings.partial_window_seconds,
+        max_buffer_seconds=settings.max_buffer_seconds,
     )
 
 
@@ -77,7 +80,7 @@ def main() -> None:
         "Pipecat Local STT example configured for "
         f"service={settings.service}, {settings.ws_url} at sample_rate={settings.sample_rate}, "
         f"language={settings.language or 'auto'}, channels={settings.channels}, frame_ms={settings.frame_ms}, "
-        f"partial_interval_ms={settings.partial_interval_ms}."
+        f"partial_interval_ms={settings.partial_interval_ms}, max_buffer_seconds={settings.max_buffer_seconds}."
     )
     print(
         "Attach the returned STT service between transport.input() and "

@@ -43,8 +43,10 @@ RTC_ASR_WS_URL=ws://127.0.0.1:8080/v1/stt/stream python examples/pipecat_local_s
 - `frame_ms=20`
 - `partial_interval_ms=100`
 - `partial_window_seconds=1.0`
+- `max_buffer_seconds=10.0`
 
 Tune `partial_interval_ms` upward when a low-power device shows high CPU use or noisy partial churn. Tune it downward only after confirming the sidecar has enough headroom and partial gaps stay stable.
+Tune `LOCAL_STT_MAX_BUFFER_SECONDS` downward when you need a hard utterance-size cap for memory or latency tests.
 
 ## Service Choices
 

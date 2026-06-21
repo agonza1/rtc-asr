@@ -27,6 +27,7 @@ services:
       LOCAL_STT_FRAME_MS: "20"
       LOCAL_STT_PARTIAL_INTERVAL_MS: "100"
       LOCAL_STT_PARTIAL_WINDOW_SECONDS: "1.0"
+      LOCAL_STT_MAX_BUFFER_SECONDS: "10.0"
     volumes:
       - ../..:/app
     command: >-

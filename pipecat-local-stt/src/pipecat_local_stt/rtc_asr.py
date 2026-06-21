@@ -17,6 +17,7 @@ class RtcAsrSTTService(LocalStreamingSTTService):
         frame_ms: int = 20,
         partial_interval_ms: int = 100,
         partial_window_seconds: float = 1.0,
+        max_buffer_seconds: float = 10.0,
         connect_fn: ConnectFn | None = None,
         **kwargs: Any,
     ) -> None:
@@ -28,5 +29,6 @@ class RtcAsrSTTService(LocalStreamingSTTService):
             frame_ms=frame_ms,
             partial_interval_ms=partial_interval_ms,
             partial_window_seconds=partial_window_seconds,
+            max_buffer_seconds=max_buffer_seconds,
         )
         super().__init__(config, connect_fn=connect_fn, **kwargs)
