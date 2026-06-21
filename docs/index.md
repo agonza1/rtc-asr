@@ -28,6 +28,24 @@
 - `build_transcriber()` selects a backend adapter from environment configuration.
 - Client helpers in `src/rtc_client.py` and `src/streaming.py` keep the websocket protocol reusable across RTC integrations.
 
+## Repository Layout
+
+Use this map when you need to figure out whether something is core service code, benchmark plumbing, or an example:
+
+- `src/`: main `rtc-asr` service implementation
+- `tests/`: service, protocol, and benchmark tests
+- `docs/`: primary written documentation
+- `docs/benchmark-results/`: checked-in benchmark artifacts plus generated benchmark-site assets
+- `examples/browser_pipecat_demo/`: browser-facing Pipecat demo app
+- `examples/pipecat_local_stt_bot/`: example Pipecat bot wired to the Local STT flow
+- `pipecat-local-stt/`: separate package for reusable Pipecat Local STT adapter code
+- `scripts/`: benchmark manifest builders, homepage prerendering, and repo helpers
+
+Two similarly named paths serve different purposes:
+
+- `pipecat-local-stt/` is package code you can reuse
+- `examples/pipecat_local_stt_bot/` is an example application you can run or adapt
+
 ## Operator Checklist
 
 Before shipping a backend configuration, verify:
@@ -56,7 +74,9 @@ pytest tests/test_client.py tests/test_smoke.py -v
 - `src/rtc_client.py`: async websocket helper for integrations
 - `src/streaming.py`: reusable higher-level streaming helpers
 - `src/protocols/local_stt_v1.py`: vendor-neutral Local STT message schema and validators
+- `pipecat-local-stt/src/`: standalone Pipecat Local STT adapter package implementation
 - `examples/browser_pipecat_demo/`: local browser, Pipecat SmallWebRTC, and `rtc-asr` sidecar example
+- `examples/pipecat_local_stt_bot/`: Local STT example bot wiring for Pipecat
 - `docs/benchmarks.md`: checked-in latency artifacts and reproduction flow
 
 ## External References
