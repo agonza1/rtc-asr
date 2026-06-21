@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-21T05:41:32Z",
+  "generated_at": "2026-06-21T06:10:18Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -26,6 +26,7 @@
     "lane_count": 5,
     "system_coverage": {
       "memory_total_mb_count": 14,
+      "process_rss_mb_count": 9,
       "peak_rss_mb_count": 9,
       "accelerator_count": 0,
       "cpu_utilization_percent_count": 4,

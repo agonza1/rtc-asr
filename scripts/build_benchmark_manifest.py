@@ -507,6 +507,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
             "cpu_logical_cores": None,
             "accelerator": None,
             "memory_total_mb": None,
+            "process_rss_mb": None,
             "peak_rss_mb": None,
             "cpu_utilization_percent": None,
             "package_power_watts": None,
@@ -603,6 +604,7 @@ def build_metric_range(entries: list[dict[str, Any]], getter) -> dict[str, float
 def build_system_coverage(entries: list[dict[str, Any]]) -> dict[str, int]:
     return {
         "memory_total_mb_count": sum(1 for entry in entries if entry["system"].get("memory_total_mb") is not None),
+        "process_rss_mb_count": sum(1 for entry in entries if entry["system"].get("process_rss_mb") is not None),
         "peak_rss_mb_count": sum(1 for entry in entries if entry["system"].get("peak_rss_mb") is not None),
         "accelerator_count": sum(1 for entry in entries if entry["system"].get("accelerator") is not None),
         "cpu_utilization_percent_count": sum(
