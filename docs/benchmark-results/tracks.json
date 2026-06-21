@@ -97,11 +97,11 @@
       "device": "apple-silicon",
       "compute": "auto",
       "lane": "Local Python Apple Silicon MLX Service",
-      "status": "legacy",
+      "status": "validated",
       "target_sample_count": 10,
-      "artifact": "parakeet-mlx-110m-service-2026-06-13.json",
-      "status_detail": "Legacy /ws/stream local Apple Silicon MLX service artifact. It remains published for comparison history, but the live leaderboard now waits for a paced /v1/stt/stream replacement.",
-      "run_command": "make benchmark-parakeet-mlx-service-110m-legacy BENCHMARK_RESULT_DATE=2026-06-13",
+      "artifact": "parakeet-mlx-110m-service-2026-06-21.json",
+      "status_detail": "Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-06-21.",
+      "run_command": "make benchmark-parakeet-mlx-service-110m",
       "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
     },
     {

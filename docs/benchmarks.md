@@ -59,7 +59,7 @@ Required methodology fields for any future published WER:
 | `faster-whisper-small` | `faster-whisper` | `small.en` | Local Python CPU | `cpu / int8` | validated artifact | `docs/benchmark-results/faster-whisper-small.en-int8-2026-06-20.json` |
 | `parakeet-compose` | `parakeet` | `nvidia/parakeet-tdt-0.6b-v3` | Docker Compose CPU | `cpu / float32` | validated artifact | `docs/benchmark-results/parakeet-compose-2026-06-20.json` |
 | `parakeet-nemo-compose` | `parakeet-nemo` | `nvidia/parakeet-tdt_ctc-110m` | Docker Compose CPU | `cpu / float32` | legacy artifact | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-19.json` |
-| `parakeet-mlx-service-110m` | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Local Python Apple Silicon MLX Service | `apple-silicon / auto` | legacy artifact | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
+| `parakeet-mlx-service-110m` | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Local Python Apple Silicon MLX Service | `apple-silicon / auto` | validated artifact | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-21.json` |
 | `parakeet-mlx` | `parakeet-mlx` | `mlx-community/parakeet-tdt-0.6b-v3` | Local Apple Silicon MLX CLI | `apple-silicon / mlx` | preview artifact | `docs/benchmark-results/parakeet-mlx-2026-06-13.json` |
 | `parakeet-mlx-110m` | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Local Apple Silicon MLX CLI | `apple-silicon / mlx` | preview artifact | `docs/benchmark-results/parakeet-mlx-110m-2026-06-13.json` |
 | `qwen-mps` | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Local Python Apple Silicon | `mps / auto` | legacy artifact | `docs/benchmark-results/qwen-mps-2026-06-20.json` |
@@ -73,7 +73,7 @@ Status details from the track registry:
 - `faster-whisper-small`: validated 10-sample local CPU baseline using the default service model.
 - `parakeet-compose`: validated 10-sample Compose CPU artifact refreshed on `2026-06-20` with binary `/v1/stt/stream` framing and comparable live partial metrics.
 - `parakeet-nemo-compose`: validated 10-sample Compose CPU artifact refreshed on `2026-06-19` with an 8-chunk partial cadence.
-- `parakeet-mlx-service-110m`: validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness; its `141.9 ms` REST mean keeps the warmed service lane grounded to the checked-in artifact.
+- `parakeet-mlx-service-110m`: validated 10-sample local Apple Silicon MLX service artifact refreshed on `2026-06-21` with paced binary `/v1/stt/stream`; its `150.1 ms` REST mean keeps the warmed service lane grounded to the checked-in artifact.
 - `parakeet-mlx`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt-0.6b-v3`; its `1971.9 ms` mean latency reflects the checked-in cold CLI preview.
 - `parakeet-mlx-110m`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt_ctc-110m`; its `1360.7 ms` mean latency reflects the checked-in cold CLI preview.
 - `qwen-mps`: validated 10-sample local Apple Silicon MPS artifact refreshed on `2026-06-20` with comparable first-partial live metrics.
@@ -85,7 +85,7 @@ These rows match the current manifest entries used on the homepage, plus two doc
 
 | Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Audio-end Final / P95 | Reference WER | Artifact |
 | --- | ---: | --- | ---: | --- | --- | --- | --- |
-| `parakeet-mlx-service-110m` | 10 | 141.9 ms / 170.0 ms | 0.020 | 74.5 ms / 96.9 ms | 210.6 ms / 246.3 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json` |
+| `parakeet-mlx-service-110m` | 10 | 150.1 ms / 197.6 ms | 0.021 | 119.4 ms / 166.9 ms | 251.8 ms / 268.0 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-service-2026-06-21.json` |
 | `parakeet-nemo-compose` | 10 | 302.7 ms / 514.9 ms | 0.042 | 184.0 ms / 396.1 ms | 406.6 ms / 821.1 ms | `2.4 / 5.2` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt_ctc-110m` ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-nemo-110m-compose-2026-06-19.json` |
 | `faster-whisper-base` | 10 | 558.4 ms / 726.1 ms | 0.077 | 12134.1 ms / 16250.0 ms | 13498.8 ms / 15429.3 ms | `4.25 / 10.35` on LibriSpeech `clean / other` for `openai/whisper-base.en` ([HF discussion diff](https://huggingface.co/openai/whisper-base.en/discussions/18/files)) | `docs/benchmark-results/faster-whisper-base.en-int8-2026-06-15.json` |
 | `qwen-mps` | 10 | 1134.5 ms / 1195.4 ms | 0.156 | 5643.7 ms / 8866.6 ms | 8410.5 ms / 8857.7 ms | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` ([HF README](https://huggingface.co/Qwen/Qwen3-ASR-0.6B/blob/main/README.md)) | `docs/benchmark-results/qwen-mps-2026-06-20.json` |

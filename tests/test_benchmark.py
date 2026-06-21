@@ -614,9 +614,9 @@ def test_checked_in_publishable_benchmark_artifacts_include_current_harness_meta
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "parakeet-mlx-110m-service-2026-06-13.json": {
+        "parakeet-mlx-110m-service-2026-06-21.json": {
             "partial_interval_chunks": 1,
-            "binary_frames": False,
+            "binary_frames": True,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
             "request_retries": 3,
@@ -654,7 +654,7 @@ def test_checked_in_publishable_benchmark_artifacts_include_streaming_sample_bin
         "faster-whisper-small.en-int8-2026-06-20.json",
         "parakeet-compose-2026-06-20.json",
         "parakeet-nemo-110m-compose-2026-06-19.json",
-        "parakeet-mlx-110m-service-2026-06-13.json",
+        "parakeet-mlx-110m-service-2026-06-21.json",
         "qwen-mps-2026-06-20.json",
         "qwen-compose-2026-06-19.json",
     ]
@@ -683,11 +683,17 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
     assert sample_contract["live_metrics_comparable"] is True
 
     validated_tracks = [track for track in payload["tracks"] if track["status"] == "validated"]
-    assert [track["slug"] for track in validated_tracks] == ["faster-whisper-base", "faster-whisper-small", "parakeet-compose"]
+    assert [track["slug"] for track in validated_tracks] == [
+        "faster-whisper-base",
+        "faster-whisper-small",
+        "parakeet-compose",
+        "parakeet-mlx-service-110m",
+    ]
     assert [track["artifact"] for track in validated_tracks] == [
         "faster-whisper-base.en-int8-2026-06-20.json",
         "faster-whisper-small.en-int8-2026-06-20.json",
         "parakeet-compose-2026-06-20.json",
+        "parakeet-mlx-110m-service-2026-06-21.json",
     ]
     for track in validated_tracks:
         assert "/v1/stt/stream" in track["status_detail"]
