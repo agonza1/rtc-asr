@@ -297,6 +297,7 @@ def summarize_warnings(payload: dict[str, Any]) -> dict[str, Any]:
     raw_samples = payload.get("samples") or []
     samples = [sample for sample in raw_samples if isinstance(sample, dict)] if isinstance(raw_samples, list) else []
     warning_summary = summary.get("warnings_received")
+    summary_warning_codes = summary.get("warning_codes") or []
     warning_codes = sorted(
         {
             code
@@ -304,6 +305,7 @@ def summarize_warnings(payload: dict[str, Any]) -> dict[str, Any]:
             for code in sample.get("warning_codes", [])
             if isinstance(code, str) and code
         }
+        | {code for code in summary_warning_codes if isinstance(code, str) and code}
     )
 
     counts = [sample.get("warnings_received") for sample in samples]

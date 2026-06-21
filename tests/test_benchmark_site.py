@@ -890,6 +890,7 @@ def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
                 "rest": {"mean_ms": 100, "p95_ms": 140, "rtf_mean": 0.4},
                 "streaming": {"partial_mean_ms": 50, "partial_p95_ms": 80, "final_mean_ms": 120, "final_p95_ms": 180},
                 "environment": {"date_utc": "2026-06-20T00:00:00Z"},
+                "summary": {"warning_codes": ["stream_jitter", "partial_dropped"]},
                 "samples": [
                     {"warnings_received": 1, "warning_codes": ["partial_dropped"]},
                     {"warnings_received": 2, "warning_codes": ["stream_canceled", "partial_dropped"]},
@@ -926,6 +927,6 @@ def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
     track = manifest["tracks"][0]
     detail = render_detail_page(track, json.loads(artifact_path.read_text(encoding="utf-8")))
 
-    assert track["warnings"] == {"received_total": 3, "codes": ["partial_dropped", "stream_canceled"]}
+    assert track["warnings"] == {"received_total": 3, "codes": ["partial_dropped", "stream_canceled", "stream_jitter"]}
     assert "<span class=\"label\">Warnings</span><div class=\"value\">3</div>" in detail
-    assert "Codes: partial_dropped, stream_canceled" in detail
+    assert "Codes: partial_dropped, stream_canceled, stream_jitter" in detail
