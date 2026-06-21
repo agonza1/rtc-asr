@@ -1115,7 +1115,11 @@ async def run_v1_stt_stream_benchmark(
     )
     aggregation_ms = aggregation_frame_count * effective_source_frame_ms
     aggregation_bytes = pcm_chunk_size(sample_rate, aggregation_ms)
-    partial_interval_chunks = max(int(round(partial_interval_ms / max(aggregation_ms, 1))), 1)
+    effective_aggregation_ms = max(aggregation_ms, 1)
+    partial_interval_chunks = max(
+        (partial_interval_ms + effective_aggregation_ms - 1) // effective_aggregation_ms,
+        1,
+    )
     total_audio_ms = round((len(raw_pcm) / max(sample_rate * 2, 1)) * 1000, 1)
     sleep = sleep_fn or asyncio.sleep
     late_partial_threshold_ms = float(max(partial_interval_ms, 100))
