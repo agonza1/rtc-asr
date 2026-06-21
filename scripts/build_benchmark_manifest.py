@@ -241,6 +241,7 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
     power = payload.get("power") or {}
     thermal = payload.get("thermal") or {}
     memory = payload.get("memory") or {}
+    cpu = payload.get("cpu") or {}
     return {
         "platform": first_defined(environment.get("platform"), system.get("platform")),
         "processor": first_defined(environment.get("processor"), environment.get("machine"), system.get("processor")),
@@ -303,6 +304,11 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
             environment.get("cpu_utilization_percent"),
             system.get("cpu_utilization_percent"),
             metrics.get("cpu_utilization_percent"),
+            metrics.get("cpu_percent"),
+            nested_value(metrics, "cpu", "utilization_percent"),
+            nested_value(metrics, "cpu", "percent"),
+            cpu.get("utilization_percent"),
+            cpu.get("percent"),
         ),
         "package_power_watts": first_defined(
             environment.get("package_power_watts"),

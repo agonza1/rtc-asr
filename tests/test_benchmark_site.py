@@ -333,6 +333,14 @@ def test_manifest_preserves_nested_memory_metadata_aliases() -> None:
     assert system["peak_rss_mb"] == 512.5
 
 
+def test_manifest_preserves_nested_cpu_metadata_aliases() -> None:
+    nested_system = extract_system_signals({"metrics": {"cpu": {"percent": 42.5}}})
+    top_level_system = extract_system_signals({"cpu": {"utilization_percent": 37.25}})
+
+    assert nested_system["cpu_utilization_percent"] == 42.5
+    assert top_level_system["cpu_utilization_percent"] == 37.25
+
+
 def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
     system = extract_system_signals(
         {
