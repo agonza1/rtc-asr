@@ -37,6 +37,8 @@ def test_pipecat_local_stt_bot_example_documents_sidecar_contract() -> None:
     assert "frame_ms=20" in readme
     assert "partial_interval_ms=100" in readme
     assert "partial_window_seconds=1.0" in readme
+    assert "max_buffer_seconds=10.0" in readme
+    assert "LOCAL_STT_MAX_BUFFER_SECONDS" in readme
     assert "LOCAL_STT_SERVICE=local" in readme
     assert "LOCAL_STT_SERVICE=rtc-asr" in readme
     assert "Pipecat Whisper is local/offline" in readme
@@ -56,6 +58,7 @@ def test_pipecat_local_stt_bot_example_compose_uses_sidecar_service_discovery() 
     assert 'LOCAL_STT_CHANNELS: "1"' in compose
     assert 'LOCAL_STT_FRAME_MS: "20"' in compose
     assert 'LOCAL_STT_PARTIAL_INTERVAL_MS: "100"' in compose
+    assert 'LOCAL_STT_MAX_BUFFER_SECONDS: "10.0"' in compose
     assert "pipecat-ai[webrtc]>=1.3.0" in requirements
     assert "pipecat-local-stt" in requirements
 
@@ -91,6 +94,7 @@ def test_pipecat_local_stt_bot_example_applies_tuning_to_rtc_asr_service() -> No
             frame_ms=40,
             partial_interval_ms=250,
             partial_window_seconds=1.5,
+            max_buffer_seconds=6.0,
             language="es",
         )
     )
@@ -101,6 +105,7 @@ def test_pipecat_local_stt_bot_example_applies_tuning_to_rtc_asr_service() -> No
     assert stt.config.frame_ms == 40
     assert stt.config.partial_interval_ms == 250
     assert stt.config.partial_window_seconds == 1.5
+    assert stt.config.max_buffer_seconds == 6.0
 
 
 def test_pipecat_local_stt_bot_example_rejects_unknown_service() -> None:
