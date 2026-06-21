@@ -104,16 +104,6 @@ Notes:
 - The `parakeet-mlx-service-110m` row is the warmed service-style Apple Silicon MLX lane for the same 110M model, which makes it the right comparison point against `parakeet-nemo-compose` when you want steady-state runtime behavior instead of cold CLI startup cost.
 - local diagnostic WER from our small internal sample set remains intentionally unpublished.
 
-## Pipecat E2E Integration Track
-
-This repo now keeps Pipecat end-to-end results as a separate integration lane instead of mixing them into the backend-only homepage leaderboard. The checked-in artifact below uses a local `faster-whisper` base lane with synthesized real-time speech normalized to the service target of `16 kHz`, `20 ms` Pipecat-style source frames, and `100 ms` websocket chunks. That lets us capture metrics the homepage does not currently rank on its own: first useful partial timing, partial cadence/jitter, final closeout after audio end, and missing partial counts across the bridge.
-
-| Track | Samples | First Visible Partial | Backlog Delay Mean / P95 | Partial Gap Mean / P95 | Audio-end Final | Missing Partials | Artifact |
-| --- | ---: | --- | --- | --- | --- | ---: | --- |
-| `pipecat-e2e-faster-whisper-base` | 1 | 702.8 ms | 9432.6 ms / 15077.5 ms | 337.8 ms / 2529.6 ms | 10844.6 ms | 2 | `docs/benchmark-results/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json` |
-
-The artifact stays tracked in `docs/benchmark-results/tracks.json`, but it is intentionally excluded from `docs/index.html` because there is only one Pipecat E2E lane today. The June 19 refresh keeps real-time pacing, normalizes generated audio to `16 kHz`, and ignores stale partial events that arrive after newer chunk indexes have already been observed. `Backlog Delay` remains a diagnostic chunk-response metric, not perceived first-token latency; the `faster-whisper` partials are still too delayed to treat as a good live UX. That keeps backend-only and integration-level claims separate until there are comparable E2E artifacts across multiple backends.
-
 ## Recommended Low-Power Profiling Fields
 
 The current checked-in artifacts already cover warmed service latency, first visible partial timing, finalization delay, and `RTF`. For low-power claims, add these fields to each benchmark lane as the next step:
