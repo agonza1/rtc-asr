@@ -551,6 +551,23 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "--partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS)" in legacy_mlx_service_block
 
 
+def test_makefile_qwen_compose_target_uses_v1_stream_contract() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    block = makefile.split("benchmark-compose-qwen: venv\n", 1)[1].split("\n\n", 1)[0]
+
+    assert "benchmark qwen-asr over /v1/stt/stream" in makefile
+    assert "ASR_BACKEND=qwen-asr" in block
+    assert "ASR_DEVICE=cpu" in block
+    assert "--mode v1-stt-stream" in block
+    assert "--v1-ws-url $(COMPOSE_V1_WS_URL)" in block
+    assert "--v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS)" in block
+    assert "--v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS)" in block
+    assert "--v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS)" in block
+    assert "--partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS)" not in block
+    assert "--ws-url $(COMPOSE_WS_URL)" not in block
+
+
 def test_makefile_pipecat_target_synthesizes_speech_when_no_audio_file_is_configured() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
