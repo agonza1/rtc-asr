@@ -123,6 +123,42 @@ class OverlapLocalSttClient(FakeLocalSttClient):
         await asyncio.sleep(0.01)
 
 
+class BrokenSendLocalSttClient(FakeLocalSttClient):
+    async def send_audio(self, chunk: bytes) -> None:
+        if self.sent:
+            raise ConnectionError("forced send disconnect")
+        await super().send_audio(chunk)
+
+
+class MalformedReceiveLocalSttClient(FakeLocalSttClient):
+    def __init__(self, url: str) -> None:
+        super().__init__(url)
+        self._raised_malformed = False
+
+    async def recv_event(self, *, timeout=None, allow_error=True):
+        if not self._raised_malformed:
+            self._raised_malformed = True
+            raise ValueError("malformed protocol event")
+        return await super().recv_event(timeout=timeout, allow_error=allow_error)
+
+
+class ReconnectMetadataLocalSttClient(FakeLocalSttClient):
+    async def finalize(self) -> None:
+        self.finalized = True
+        await self._events.put(
+            TranscriptEvent(
+                type="final",
+                text="hello after reconnect",
+                stream_id=None,
+                is_final=True,
+                chunks_received=len(self.sent),
+                buffered_bytes=sum(len(chunk) for chunk in self.sent),
+                remaining_buffer_bytes=0,
+                metadata={"local_stt_reconnects_total": 2},
+            )
+        )
+
+
 def test_split_pcm_frames_uses_20_ms_pcm16_boundaries() -> None:
     pcm = b"a" * 640 + b"b" * 640 + b"tail"
 
@@ -297,6 +333,81 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["final_events_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["summary"]["reconnects"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["protocol_errors"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+
+
+def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_error() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 640, b"c" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=BrokenSendLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["audio_frames_sent"] == 1
+    assert sample["audio_frames_dropped"] == 2
+    assert sample["protocol_errors"] == 1
+    assert payload["summary"]["audio_frames_dropped"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["summary"]["protocol_errors"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+
+
+def test_run_benchmark_records_malformed_receive_event_as_protocol_error() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=MalformedReceiveLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["protocol_errors"] == 1
+    assert sample["final_events_received"] == 0
+
+
+def test_run_benchmark_records_reconnect_count_from_event_metadata() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=ReconnectMetadataLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["reconnects"] == 2
+    assert payload["summary"]["reconnects"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
 
 
 def test_send_receive_overlap_proves_receive_loop_runs_during_audio_send() -> None:

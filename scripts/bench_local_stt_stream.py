@@ -276,6 +276,7 @@ async def _run_once(
     warnings_received = 0
     warning_codes: list[str] = []
     reconnects = 0
+    frames_dropped = 0
     send_latencies: list[float] = []
     receive_latencies: list[float] = []
     audio_send_queue_depth_latencies: list[float] = []
@@ -295,10 +296,15 @@ async def _run_once(
     receive_done = asyncio.Event()
 
     async def receive_loop() -> None:
-        nonlocal first_interim_ms, final_after_finalize_ms, interim_events, final_events, interim_transcript_changes, previous_interim_text, final_transcript, protocol_errors, warnings_received, first_event_received_at, last_event_received_at
+        nonlocal first_interim_ms, final_after_finalize_ms, interim_events, final_events, interim_transcript_changes, previous_interim_text, final_transcript, protocol_errors, warnings_received, first_event_received_at, last_event_received_at, reconnects
         while not receive_done.is_set():
             wait_started = time.perf_counter()
-            event = await client.recv_event(timeout=0.05, allow_error=True)
+            try:
+                event = await client.recv_event(timeout=0.05, allow_error=True)
+            except Exception:
+                protocol_errors += 1
+                receive_done.set()
+                return
             if event is None:
                 continue
             event_received_at = time.perf_counter()
@@ -316,6 +322,9 @@ async def _run_once(
                     warning_codes.append(event.raw["code"])
                 continue
             metadata = event.metadata or {}
+            metadata_reconnects = _optional_int(metadata.get("reconnects")) or _optional_int(metadata.get("local_stt_reconnects_total"))
+            if metadata_reconnects is not None:
+                reconnects = max(reconnects, metadata_reconnects)
             _append_optional_ms(audio_send_queue_depth_latencies, metadata.get("audio_send_queue_depth_ms"))
             _append_optional_ms(asr_receive_loop_append_latencies, metadata.get("asr_receive_loop_append_ms"))
             _append_optional_ms(asr_queue_delay_latencies, metadata.get("asr_queue_delay_ms"))
@@ -340,13 +349,22 @@ async def _run_once(
     receive_task = asyncio.create_task(receive_loop())
     frames_sent = 0
     try:
-        for frame in audio.frames:
+        for frame_index, frame in enumerate(audio.frames):
+            if receive_done.is_set():
+                frames_dropped += len(audio.frames) - frame_index
+                break
             if audio_send_started_at is None:
                 audio_send_started_at = time.perf_counter()
             if first_audio_sent_at is None:
                 first_audio_sent_at = time.perf_counter()
             send_started = time.perf_counter()
-            await client.send_audio(frame)
+            try:
+                await client.send_audio(frame)
+            except Exception:
+                protocol_errors += 1
+                frames_dropped += len(audio.frames) - frame_index
+                receive_done.set()
+                break
             send_latencies.append((time.perf_counter() - send_started) * 1000)
             frames_sent += 1
             if realtime_pace:
@@ -354,16 +372,25 @@ async def _run_once(
         if audio_send_started_at is not None:
             audio_send_completed_at = time.perf_counter()
 
-        final_requested_at = time.perf_counter()
-        await client.finalize()
-        try:
-            await asyncio.wait_for(receive_done.wait(), timeout=receive_timeout_seconds)
-        except TimeoutError:
-            protocol_errors += 1
+        if not receive_done.is_set():
+            final_requested_at = time.perf_counter()
+            try:
+                await client.finalize()
+            except Exception:
+                protocol_errors += 1
+                receive_done.set()
+            else:
+                try:
+                    await asyncio.wait_for(receive_done.wait(), timeout=receive_timeout_seconds)
+                except TimeoutError:
+                    protocol_errors += 1
     finally:
         receive_done.set()
         await receive_task
-        await client.close(graceful=False)
+        try:
+            await client.close(graceful=False)
+        except Exception:
+            protocol_errors += 1
 
     send_p95 = percentile(send_latencies, 0.95)
     receive_p95 = percentile(receive_latencies, 0.95)
@@ -403,7 +430,7 @@ async def _run_once(
         "websocket_roundtrip_p95_ms": _coalesce_optional_ms(percentile(websocket_roundtrip_latencies, 0.95), receive_p95),
         "websocket_roundtrip_samples": len(websocket_roundtrip_latencies),
         "audio_frames_sent": frames_sent,
-        "audio_frames_dropped": max(0, len(audio.frames) - frames_sent),
+        "audio_frames_dropped": frames_dropped + max(0, len(audio.frames) - frames_sent - frames_dropped),
         "interim_events_received": interim_events,
         "interim_transcript_changes": interim_transcript_changes,
         "final_events_received": final_events,
@@ -424,6 +451,14 @@ def _append_optional_ms(values: list[float], value: object) -> None:
         return
     if isinstance(value, (int, float)):
         values.append(float(value))
+
+
+def _optional_int(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    return None
 
 
 def normalize_pcm16_buffer(audio_data: bytes) -> np.ndarray:
