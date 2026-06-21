@@ -90,7 +90,7 @@ help:
 	@echo "  make benchmark-qwen-mps-low-latency-sweep - Run qwen-asr low-latency sweep on Apple Silicon MPS"
 	@echo "  make benchmark-pipecat-e2e - Run a Pipecat-style end-to-end streaming benchmark against a local backend"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
-	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
+	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr over /v1/stt/stream"
 	@echo "  make benchmark-compose-qwen-legacy - Start compose, wait for readiness, and benchmark qwen-asr over legacy /ws/stream"
 	@echo "  make benchmark-compose-qwen-low-latency-sweep - Start compose and sweep qwen-asr low-latency settings"
 	@echo "  make benchmark-compose-parakeet - Start compose, wait for readiness, and benchmark parakeet"

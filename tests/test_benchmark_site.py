@@ -297,7 +297,7 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert track["system"]["memory_total_mb"] == 24576.0
 
     coverage = manifest["summary"]["system_coverage"]
-    assert coverage["memory_total_mb_count"] == 15
+    assert coverage["memory_total_mb_count"] == 14
     assert coverage["process_rss_mb_count"] == 9
     assert coverage["peak_rss_mb_count"] == 9
     assert coverage["accelerator_count"] == 0
@@ -406,7 +406,7 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     assert 'function secondaryEntries(entries)' in html
 
 
-def test_render_homepage_counts_unpublished_registry_gaps() -> None:
+def test_render_homepage_omits_unpublished_registry_gap_copy() -> None:
     homepage = """<!-- BEGIN GENERATED:static-summary -->\nold\n<!-- END GENERATED:static-summary -->\n<!-- BEGIN GENERATED:generated-at -->\nold\n<!-- END GENERATED:generated-at -->"""
     manifest = {
         "summary": {"validated_count": 1, "tracked_count": 2},
@@ -448,7 +448,6 @@ def test_render_homepage_counts_unpublished_registry_gaps() -> None:
 
     html = render_homepage(manifest, homepage)
 
-    assert '1 tracked lanes are blocked or unpublished' in html
     assert 'Unpublished Lane' not in html
     assert 'waiting on artifact' not in html
 
@@ -459,9 +458,6 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'Recommended default' in html
     assert 'Primary ranking scope' in html
     assert 'Best live numbers' in html
-    assert 'Registry coverage' in html
-    assert '5 of 8 validated' in html
-    assert 'tracked lanes are blocked or unpublished' in html
     assert 'data-label="Partial backlog latency"' in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html
