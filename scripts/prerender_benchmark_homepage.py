@@ -758,10 +758,10 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
 <div class="snapshot-grid">
   {''.join(summary_cards)}
 </div>
-<div class="story-grid">
+<div class="story-grid" id="story-grid">
 {top_cards}
 </div>
-<div class="comparison-wrap panel">
+<div class="comparison-wrap panel" id="comparison-wrap">
   <div class="comparison-scroll">
     <table>
       <thead>

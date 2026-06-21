@@ -946,16 +946,19 @@ def test_prerender_check_fails_for_orphaned_detail_pages(tmp_path: Path) -> None
 
 
 
-def test_homepage_highlights_advanced_asr_sections() -> None:
+def test_homepage_keeps_operator_sections_without_duplicate_matrix() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
-    assert "Advanced ASR comparison matrix" in html
+    assert "Advanced ASR comparison matrix" not in html
     assert "What matters for low-latency ASR" in html
     assert "Visible benchmark lanes" in html
     assert 'id="lane-toggle"' in html
     assert 'id="lane-panel" hidden' in html
+    assert 'id="archive-toggle"' in html
+    assert 'id="archive-panel" hidden' in html
     assert 'aria-expanded="false"' in html
     assert "Benchmark lanes" in html
+    assert "Appendix" in html
     assert "Best operator balance" in html
     assert "entry.derived?.overall_score" in html
 
