@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-06-21T13:36:18Z",
+  "generated_at": "2026-06-21T13:39:31Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
-    "artifact_file_count": 22,
+    "artifact_file_count": 20,
     "validated_count": 5,
     "legacy_count": 2,
     "blocked_count": 1,
@@ -25,7 +25,7 @@
     "backend_count": 5,
     "lane_count": 5,
     "system_coverage": {
-      "memory_total_mb_count": 15,
+      "memory_total_mb_count": 14,
       "process_rss_mb_count": 9,
       "peak_rss_mb_count": 9,
       "accelerator_count": 0,
@@ -1371,73 +1371,6 @@
     },
     {
       "kind": "asr",
-      "backend": "parakeet-nemo",
-      "model": "nvidia/parakeet-tdt_ctc-110m",
-      "runtime": "cpu / float32",
-      "measured_at": "2026-06-20T03:05:34Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/parakeet-nemo-110m-compose-2026-06-19.json",
-      "artifact_sha256": "97a7f62b2deadde68b6c8b2fa8f1787578f8d73f29f4c3ec36d84e4737872fbe",
-      "artifact_size_bytes": 44841,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.14.6",
-        "cpu_logical_cores": 10,
-        "accelerator": null,
-        "memory_total_mb": 24576.0,
-        "process_rss_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "energy_per_audio_second_j": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 8,
-        "partial_window_seconds": 2.0,
-        "binary_frames": false,
-        "sample_rate": 16000,
-        "live_metrics_comparable": false,
-        "transport": "direct",
-        "path": "/ws/stream",
-        "partial_event_timeout_seconds": 0.1
-      },
-      "rest": {
-        "mean_ms": 302.7,
-        "p95_ms": 514.9,
-        "rtf_mean": 0.042
-      },
-      "streaming": {
-        "transport": "direct",
-        "live_metrics_comparable": false,
-        "partial_mean_ms": 184.0,
-        "partial_p95_ms": 396.1,
-        "first_partial_end_to_end_mean_ms": 2144.3,
-        "first_partial_end_to_end_p95_ms": 2264.6,
-        "partial_gap_mean_ms": 145.3,
-        "partial_gap_p95_ms": 191.5,
-        "partial_transcript_churn_char_mean": 0.882,
-        "partial_transcript_churn_word_mean": 1.0,
-        "late_partial_events": 19,
-        "late_partial_ratio": 0.633,
-        "final_mean_ms": 406.6,
-        "final_p95_ms": 821.1
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": 0.19,
-        "character_error_rate_mean": 0.0
-      },
-      "label": "nvidia/parakeet-tdt_ctc-110m"
-    },
-    {
-      "kind": "asr",
       "backend": "faster-whisper",
       "model": "base.en",
       "runtime": "cpu / int8",
@@ -1909,73 +1842,6 @@
         "character_error_rate_mean": 0.0
       },
       "label": "Qwen/Qwen3-ASR-0.6B"
-    },
-    {
-      "kind": "asr",
-      "backend": "parakeet-mlx",
-      "model": "mlx-community/parakeet-tdt_ctc-110m",
-      "runtime": "apple-silicon / auto",
-      "measured_at": "2026-06-13T22:55:30Z",
-      "sample_count": 10,
-      "artifact_path": "benchmark-results/parakeet-mlx-110m-service-2026-06-13.json",
-      "artifact_sha256": "32726e579cf7cf219b3633596b5b4275b9c6a5be058cbe86546c7b37ee31848e",
-      "artifact_size_bytes": 45949,
-      "system": {
-        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-        "processor": "arm",
-        "python": "3.14.5",
-        "cpu_logical_cores": null,
-        "accelerator": null,
-        "memory_total_mb": null,
-        "process_rss_mb": null,
-        "peak_rss_mb": null,
-        "cpu_utilization_percent": null,
-        "package_power_watts": null,
-        "energy_per_audio_second_j": null,
-        "thermal_peak_celsius": null,
-        "thermal_observation": null
-      },
-      "contract": {
-        "chunk_ms": 250,
-        "partial_interval_chunks": 1,
-        "partial_window_seconds": 2.0,
-        "binary_frames": false,
-        "sample_rate": 22050,
-        "live_metrics_comparable": false,
-        "transport": "direct",
-        "path": "/ws/stream",
-        "partial_event_timeout_seconds": 0.1
-      },
-      "rest": {
-        "mean_ms": 141.9,
-        "p95_ms": 170.0,
-        "rtf_mean": 0.019
-      },
-      "streaming": {
-        "transport": "direct",
-        "live_metrics_comparable": false,
-        "partial_mean_ms": 74.5,
-        "partial_p95_ms": 96.9,
-        "first_partial_end_to_end_mean_ms": 557.4,
-        "first_partial_end_to_end_p95_ms": 565.0,
-        "partial_gap_mean_ms": 244.2,
-        "partial_gap_p95_ms": 262.5,
-        "partial_transcript_churn_char_mean": null,
-        "partial_transcript_churn_word_mean": null,
-        "late_partial_events": null,
-        "late_partial_ratio": null,
-        "final_mean_ms": 210.6,
-        "final_p95_ms": 246.3
-      },
-      "warnings": {
-        "received_total": null,
-        "codes": []
-      },
-      "accuracy": {
-        "word_error_rate_mean": 0.19,
-        "character_error_rate_mean": 0.0
-      },
-      "label": "mlx-community/parakeet-tdt_ctc-110m"
     },
     {
       "kind": "asr",
