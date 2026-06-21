@@ -45,8 +45,8 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
 
     assert manifest["summary"]["asr_count"] == 8
     assert manifest["summary"]["tracked_count"] == 8
-    assert manifest["summary"]["validated_count"] == 6
-    assert manifest["summary"]["legacy_count"] == 1
+    assert manifest["summary"]["validated_count"] == 7
+    assert manifest["summary"]["legacy_count"] == 0
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
@@ -607,6 +607,11 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Benchmark homepage" in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
     assert "Artifact does not record sustained thermal notes yet." in rss_detail
+
+    legacy_qwen_detail = (Path("docs") / "benchmark-results/pages/qwen-mps-2026-06-20.html").read_text(encoding="utf-8")
+    assert "Qwen MPS" in legacy_qwen_detail
+    assert "Local Python Apple Silicon" in legacy_qwen_detail
+    assert "Status: legacy" in legacy_qwen_detail
 
 
 def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:

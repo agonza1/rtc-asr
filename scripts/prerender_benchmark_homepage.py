@@ -245,6 +245,49 @@ def first_defined(*values: Any) -> Any:
     return None
 
 
+def inferred_artifact_status(entry: dict[str, Any]) -> str | None:
+    contract = entry.get("contract") or {}
+    streaming = entry.get("streaming") or {}
+    path = contract.get("path")
+    transport = contract.get("transport") or streaming.get("transport")
+    if path == "/ws/stream" or transport in {"direct", "ws/stream"}:
+        return "legacy"
+    if streaming.get("live_metrics_comparable") is True:
+        return "validated"
+    return None
+
+
+def historical_status_detail(entry: dict[str, Any], track: dict[str, Any] | None) -> str | None:
+    status = entry.get("status")
+    if status == "legacy":
+        if track and track.get("artifact_path") != entry.get("artifact_path"):
+            return "Historical /ws/stream artifact kept as supporting evidence after this lane moved to a newer /v1/stt/stream result."
+        return "Historical /ws/stream artifact kept as supporting evidence."
+    if status == "validated":
+        return "Checked-in /v1/stt/stream benchmark artifact."
+    return None
+
+
+def hydrate_detail_entry(entry: dict[str, Any], tracks: list[dict[str, Any]]) -> dict[str, Any]:
+    hydrated = dict(entry)
+    matched_track = next(
+        (
+            track
+            for track in tracks
+            if track.get("backend") == entry.get("backend")
+            and track.get("model") == entry.get("model")
+            and track.get("runtime") == entry.get("runtime")
+        ),
+        None,
+    )
+    if matched_track is not None:
+        for key in ("slug", "label", "lane", "runtime", "official_wer_reference", "run_command"):
+            hydrated[key] = first_defined(hydrated.get(key), matched_track.get(key))
+    hydrated["status"] = first_defined(hydrated.get("status"), inferred_artifact_status(hydrated), matched_track.get("status") if matched_track else None)
+    hydrated["status_detail"] = first_defined(hydrated.get("status_detail"), historical_status_detail(hydrated, matched_track), matched_track.get("status_detail") if matched_track else None)
+    return hydrated
+
+
 def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
     current: Any = mapping
     for key in keys:
@@ -555,11 +598,12 @@ def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_di
     results_dir = manifest_path.parent
     pages: dict[Path, str] = {}
     detail_entries: dict[str, dict[str, Any]] = {}
+    tracks = manifest.get("tracks", [])
     for entry in manifest.get("artifacts", []):
         artifact_path = entry.get("artifact_path")
         if artifact_path:
-            detail_entries[str(artifact_path)] = entry
-    for entry in manifest.get("tracks", []):
+            detail_entries[str(artifact_path)] = hydrate_detail_entry(entry, tracks)
+    for entry in tracks:
         artifact_path = entry.get("artifact_path")
         if artifact_path:
             detail_entries[str(artifact_path)] = entry
