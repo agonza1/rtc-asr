@@ -473,6 +473,67 @@ def test_render_homepage_omits_unpublished_registry_gap_copy() -> None:
     assert 'waiting on artifact' not in html
 
 
+def test_render_homepage_keeps_historical_supporting_artifacts_discoverable() -> None:
+    homepage = """<!-- BEGIN GENERATED:static-summary -->\nold\n<!-- END GENERATED:static-summary -->\n<!-- BEGIN GENERATED:generated-at -->\nold\n<!-- END GENERATED:generated-at -->"""
+    manifest = {
+        "summary": {},
+        "tracks": [
+            {
+                "slug": "qwen-mps",
+                "label": "Qwen MPS",
+                "status": "validated",
+                "status_detail": "Validated paced /v1/stt/stream local Apple Silicon MPS artifact refreshed on 2026-06-21.",
+                "artifact_path": "benchmark-results/qwen-mps-2026-06-21.json",
+                "lane": "Local Python Apple Silicon",
+                "runtime": "mps / auto",
+                "backend": "qwen-asr",
+                "model": "Qwen/Qwen3-ASR-0.6B",
+                "rest": {"mean_ms": 10},
+                "streaming": {
+                    "live_metrics_comparable": True,
+                    "first_partial_end_to_end_mean_ms": 20,
+                    "partial_mean_ms": 30,
+                    "partial_gap_mean_ms": 5,
+                    "final_mean_ms": 40,
+                },
+                "contract": {"path": "/v1/stt/stream", "transport": "v1-stt-stream"},
+                "derived": {"overall_score": 90.0},
+                "measured_at": "2026-06-21T14:11:13Z",
+            },
+        ],
+        "artifacts": [
+            {
+                "slug": "qwen-mps",
+                "label": "Qwen MPS",
+                "status": "legacy",
+                "status_detail": "Historical supporting artifact for Qwen MPS; current tracked artifact is qwen-mps-2026-06-21.json.",
+                "artifact_path": "benchmark-results/qwen-mps-2026-06-20.json",
+                "lane": "Local Python Apple Silicon",
+                "runtime": "mps / auto",
+                "backend": "qwen-asr",
+                "model": "Qwen/Qwen3-ASR-0.6B",
+                "rest": {"mean_ms": 12},
+                "streaming": {
+                    "live_metrics_comparable": False,
+                    "first_partial_end_to_end_mean_ms": 25,
+                    "partial_mean_ms": 35,
+                    "partial_gap_mean_ms": 7,
+                    "final_mean_ms": 45,
+                },
+                "contract": {"path": "/ws/stream", "transport": "direct"},
+                "derived": {"overall_score": 60.0},
+                "measured_at": "2026-06-20T12:39:19Z",
+            },
+        ],
+    }
+
+    html = render_homepage(manifest, homepage)
+
+    assert "1 supporting lanes stay below the fold" in html
+    assert "qwen-mps-2026-06-20.html" in html
+    assert "Deprecated /ws/stream artifact" in html
+
+
 def test_docs_index_live_labels_match_streaming_framing() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
@@ -633,6 +694,7 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Qwen MPS" in legacy_qwen_detail
     assert "Local Python Apple Silicon" in legacy_qwen_detail
     assert "Status: legacy" in legacy_qwen_detail
+    assert "BENCHMARK_RESULT_DATE=2026-06-20 BENCHMARK_SAMPLE_COUNT=10 BENCHMARK_REST_RUNS=5 make benchmark-qwen-mps-legacy" in legacy_qwen_detail
 
     legacy_pipecat_detail = (Path("docs") / "benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17.html").read_text(encoding="utf-8")
     assert "Pipecat E2E Faster-Whisper Base" in legacy_pipecat_detail

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -502,6 +503,53 @@ def track_history_match_score(entry: dict[str, Any], track: dict[str, Any]) -> t
     )
 
 
+def artifact_date_hint(entry: dict[str, Any]) -> str | None:
+    artifact_name = Path(entry.get("artifact_path") or "").name
+    match = re.search(r"(\d{4}-\d{2}-\d{2})", artifact_name)
+    if match:
+        return match.group(1)
+    measured_at = entry.get("measured_at")
+    if isinstance(measured_at, str) and len(measured_at) >= 10:
+        return measured_at[:10]
+    return None
+
+
+def historical_run_command(entry: dict[str, Any], track: dict[str, Any], current_artifact: str | None) -> str:
+    base_command = track.get("run_command") or "No checked-in run command"
+    transport = artifact_transport(entry)
+    if transport not in {"direct", "ws/stream"}:
+        return base_command
+    if not base_command.startswith("make "):
+        return base_command
+
+    target = base_command.removeprefix("make ").strip()
+    if not target or target.endswith("-legacy"):
+        return base_command
+
+    legacy_target = f"{target}-legacy"
+    prefixes: list[str] = []
+    artifact_date = artifact_date_hint(entry)
+    if artifact_date:
+        prefixes.append(f"BENCHMARK_RESULT_DATE={artifact_date}")
+    if entry.get("sample_count") is not None:
+        prefixes.append(f"BENCHMARK_SAMPLE_COUNT={entry['sample_count']}")
+    rest_runs = nested_value(entry, "rest", "runs_per_sample")
+    if rest_runs is not None:
+        prefixes.append(f"BENCHMARK_REST_RUNS={rest_runs}")
+    partial_interval_chunks = nested_value(entry, "contract", "partial_interval_chunks")
+    if partial_interval_chunks not in (None, 1):
+        prefixes.append(f"BENCHMARK_PARTIAL_INTERVAL_CHUNKS={partial_interval_chunks}")
+
+    runtime = str(track.get("runtime") or "")
+    if track.get("slug") == "qwen-compose" and runtime.endswith("/ float16"):
+        prefixes.append("QWEN_COMPOSE_DTYPE=float16")
+
+    historical = " ".join(prefixes + [f"make {legacy_target}"])
+    if current_artifact:
+        return f"{historical}  # current tracked artifact: {current_artifact}"
+    return historical
+
+
 def enrich_artifact_history_entry(entry: dict[str, Any], tracks: list[dict[str, Any]]) -> dict[str, Any]:
     matching_tracks = [track for track in tracks if benchmark_key_from_entry(track) == benchmark_key_from_entry(entry)]
     if not matching_tracks:
@@ -528,12 +576,14 @@ def enrich_artifact_history_entry(entry: dict[str, Any], tracks: list[dict[str, 
     if is_current:
         entry["status"] = track["status"]
         entry["status_detail"] = track["status_detail"]
+        entry["run_command"] = track["run_command"]
     else:
         entry["status"] = "legacy"
         entry["status_detail"] = (
             f"Historical supporting artifact for {track['label']}; current tracked artifact is "
             f"{current_artifact or 'selected from the newest matching benchmark'}."
         )
+        entry["run_command"] = historical_run_command(entry, track, current_artifact)
     if not accuracy_is_publishable(entry):
         entry["accuracy"] = {"word_error_rate_mean": None, "character_error_rate_mean": None}
     entry["derived"] = derive_track_metrics(entry)

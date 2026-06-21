@@ -94,6 +94,16 @@ def published_tracks(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     return [track for track in manifest.get("tracks", []) if track.get("artifact_path") and track.get("status") != "blocked"]
 
 
+def contract_signature(entry: dict[str, Any]) -> tuple[Any, Any, Any]:
+    contract = entry.get("contract", {})
+    streaming = entry.get("streaming", {})
+    return (
+        contract.get("path"),
+        contract.get("transport") or streaming.get("transport"),
+        streaming.get("live_metrics_comparable"),
+    )
+
+
 def status_rank(entry: dict[str, Any]) -> int:
     if entry.get("status") == "validated":
         return 0
@@ -151,6 +161,28 @@ def primary_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def secondary_entries(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     primary_slugs = {entry.get("slug") for entry in primary_entries(entries)}
     return [entry for entry in sort_entries(entries) if entry.get("slug") not in primary_slugs]
+
+
+def historical_supporting_entries(manifest: dict[str, Any], current_entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    current_by_slug = {entry.get("slug"): entry for entry in current_entries if entry.get("slug")}
+    current_paths = {entry.get("artifact_path") for entry in current_entries if entry.get("artifact_path")}
+    latest_by_slug: dict[str, dict[str, Any]] = {}
+    for entry in manifest.get("artifacts", []):
+        artifact_path = entry.get("artifact_path")
+        slug = entry.get("slug")
+        if not artifact_path or artifact_path in current_paths or not slug:
+            continue
+        current = current_by_slug.get(slug)
+        if current is None:
+            continue
+        if entry.get("status") != "legacy":
+            continue
+        if contract_signature(entry) == contract_signature(current):
+            continue
+        previous = latest_by_slug.get(slug)
+        if previous is None or (entry.get("measured_at") or "") > (previous.get("measured_at") or ""):
+            latest_by_slug[slug] = entry
+    return sort_entries(list(latest_by_slug.values()))
 
 
 def secondary_reason(entry: dict[str, Any]) -> str:
@@ -692,6 +724,9 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     ranked = sort_entries(entries)
     primary = sort_entries(primary_entries(ranked))
     secondary = secondary_entries(ranked)
+    historical_secondary = historical_supporting_entries(manifest, ranked)
+    secondary_paths = {entry.get("artifact_path") for entry in secondary if entry.get("artifact_path")}
+    secondary = sort_entries(secondary + [entry for entry in historical_secondary if entry.get("artifact_path") not in secondary_paths])
     baseline_entries = comparable_entries(primary)
     first_partial_baseline = min_defined([first_visible_partial(entry) for entry in baseline_entries])
     partial_baseline = min_defined([entry.get("streaming", {}).get("partial_mean_ms") for entry in primary])
