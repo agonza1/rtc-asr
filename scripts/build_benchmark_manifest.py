@@ -78,6 +78,25 @@ def manifests_match(current: dict[str, Any], generated: dict[str, Any]) -> bool:
     return comparable_manifest(current) == comparable_manifest(generated)
 
 
+def preserve_generated_at_when_unchanged(output: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    if not output.exists():
+        return manifest
+
+    try:
+        current = json.loads(output.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return manifest
+
+    if not manifests_match(current, manifest):
+        return manifest
+
+    generated_at = current.get("generated_at")
+    if isinstance(generated_at, str) and generated_at:
+        manifest = dict(manifest)
+        manifest["generated_at"] = generated_at
+    return manifest
+
+
 def load_payload(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -961,6 +980,8 @@ def main() -> None:
         return
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    manifest = preserve_generated_at_when_unchanged(args.output, manifest)
+    rendered = render_manifest(manifest)
     args.output.write_text(rendered, encoding="utf-8")
 
 
