@@ -920,6 +920,25 @@ def test_render_manifest_matches_checked_in_output() -> None:
     assert comparable_manifest(generated) == comparable_manifest(checked_in)
 
 
+def test_manifest_write_preserves_generated_at_when_content_is_unchanged(tmp_path: Path) -> None:
+    manifest = build_manifest(DEFAULT_RESULTS_DIR, TRACKS_PATH)
+    manifest["generated_at"] = "2026-06-20T00:00:00Z"
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(render_manifest(manifest), encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(MODULE_PATH), "--output", str(manifest_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    written = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert written["generated_at"] == "2026-06-20T00:00:00Z"
+    assert comparable_manifest(written) == comparable_manifest(build_manifest(DEFAULT_RESULTS_DIR, TRACKS_PATH))
+
+
 def test_manifest_check_fails_when_checked_in_file_is_stale(tmp_path: Path) -> None:
     artifact_path = tmp_path / "demo-2026-06-10.json"
     artifact_path.write_text(
