@@ -2,10 +2,15 @@
   "sample_contract": {
     "default_sample_count": 10,
     "rest_runs_per_sample": 5,
-    "chunk_ms": 250,
+    "chunk_ms": 100,
+    "source_frame_ms": 20,
     "partial_window_seconds": 2,
     "partial_interval_chunks": 1,
-    "binary_frames": false,
+    "partial_interval_ms": 100,
+    "transport": "v1-stt-stream",
+    "protocol": "local-stt-v1",
+    "binary_frames": true,
+    "live_metrics_comparable": true,
     "partial_event_timeout_seconds": 0.1
   },
   "tracks": [
@@ -19,8 +24,8 @@
       "lane": "Local Python CPU",
       "status": "validated",
       "target_sample_count": 10,
-      "artifact": "faster-whisper-base.en-int8-2026-06-15.json",
-      "status_detail": "Validated 10-sample local CPU baseline refreshed on 2026-06-15 with a preloaded model.",
+      "artifact": "faster-whisper-base.en-int8-2026-06-20.json",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane now anchors the primary comparable live leaderboard while the remaining /ws/stream artifacts stay published as supporting evidence.",
       "run_command": "make benchmark-faster-whisper-base",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)"
     },
@@ -49,8 +54,8 @@
       "lane": "Local Python CPU",
       "status": "validated",
       "target_sample_count": 10,
-      "artifact": "faster-whisper-small.en-int8-2026-06-10.json",
-      "status_detail": "Validated 10-sample local CPU baseline using the default service model.",
+      "artifact": "faster-whisper-small.en-int8-2026-06-20.json",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane is now directly comparable on the live leaderboard, even though Faster-Whisper Base remains the stronger default for turn-taking.",
       "run_command": "make benchmark-faster-whisper-small",
       "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)"
     },
@@ -64,8 +69,8 @@
       "lane": "Docker Compose CPU",
       "status": "validated",
       "target_sample_count": 10,
-      "artifact": "parakeet-compose-2026-06-10.json",
-      "status_detail": "Validated 10-sample Compose CPU artifact.",
+      "artifact": "parakeet-compose-2026-06-20.json",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This Compose lane now publishes comparable live partial and final timing, but it still finalizes more slowly than the Faster-Whisper Base local CPU baseline.",
       "run_command": "make benchmark-compose-parakeet",
       "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)"
     },
@@ -77,11 +82,11 @@
       "device": "cpu",
       "compute": "float32",
       "lane": "Docker Compose CPU",
-      "status": "validated",
+      "status": "legacy",
       "target_sample_count": 10,
       "artifact": "parakeet-nemo-110m-compose-2026-06-19.json",
-      "status_detail": "Validated 10-sample Compose CPU artifact refreshed on 2026-06-19 with an 8-chunk partial cadence.",
-      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-19",
+      "status_detail": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19. It stays in the supporting section until a paced /v1/stt/stream replacement is checked in.",
+      "run_command": "make benchmark-compose-parakeet-nemo-legacy BENCHMARK_RESULT_DATE=2026-06-19",
       "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
     },
     {
@@ -94,8 +99,8 @@
       "lane": "Local Python Apple Silicon MLX Service",
       "status": "validated",
       "target_sample_count": 10,
-      "artifact": "parakeet-mlx-110m-service-2026-06-13.json",
-      "status_detail": "Validated 10-sample local Apple Silicon MLX service artifact using the shared REST and websocket harness.",
+      "artifact": "parakeet-mlx-110m-service-2026-06-21.json",
+      "status_detail": "Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-06-21.",
       "run_command": "make benchmark-parakeet-mlx-service-110m",
       "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
     },
@@ -107,11 +112,11 @@
       "device": "mps",
       "compute": "auto",
       "lane": "Local Python Apple Silicon",
-      "status": "validated",
+      "status": "legacy",
       "target_sample_count": 10,
       "artifact": "qwen-mps-2026-06-20.json",
-      "status_detail": "Validated 10-sample local Apple Silicon MPS artifact refreshed on 2026-06-20 with comparable first-partial live metrics.",
-      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 make benchmark-qwen-mps",
+      "status_detail": "Legacy /ws/stream local Apple Silicon MPS artifact refreshed on 2026-06-20. It stays visible as supporting evidence only until a paced /v1/stt/stream replacement is checked in.",
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 make benchmark-qwen-mps-legacy",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     },
     {
@@ -122,11 +127,11 @@
       "device": "cpu",
       "compute": "float16",
       "lane": "Docker Compose CPU",
-      "status": "validated",
+      "status": "legacy",
       "target_sample_count": 5,
       "artifact": "qwen-compose-2026-06-19.json",
-      "status_detail": "Validated 5-sample Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
-      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen",
+      "status_detail": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk cadence. It now stays in supporting context only until /v1/stt/stream regeneration replaces it.",
+      "run_command": "BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen-legacy",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     }
   ],

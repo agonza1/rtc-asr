@@ -9,6 +9,7 @@ MLX_PYTHON := $(MLX_VENV)/bin/python
 UVICORN := $(VENV)/bin/uvicorn
 COMPOSE_URL ?= http://127.0.0.1:8080
 COMPOSE_WS_URL ?= ws://127.0.0.1:8080/ws/stream
+COMPOSE_V1_WS_URL ?= ws://127.0.0.1:8080/v1/stt/stream
 QWEN_COMPOSE_MODEL ?= Qwen/Qwen3-ASR-0.6B
 QWEN_COMPOSE_DTYPE ?= float32
 QWEN_COMPOSE_MAX_NEW_TOKENS ?= 64
@@ -39,6 +40,10 @@ BENCHMARK_PIPECAT_MODEL ?= base.en
 BENCHMARK_PIPECAT_COMPUTE_TYPE ?= int8
 BENCHMARK_PIPECAT_SOURCE_FRAME_MS ?= 20
 BENCHMARK_PIPECAT_REALTIME_FLAG ?= --simulate-realtime
+BENCHMARK_V1_SOURCE_FRAME_MS ?= 20
+BENCHMARK_V1_AGGREGATION_MS ?= 100
+BENCHMARK_V1_PARTIAL_INTERVAL_MS ?= 100
+BENCHMARK_V1_REALTIME_FLAG ?= --simulate-realtime
 BENCHMARK_REQUEST_RETRIES ?= 3
 BENCHMARK_REQUEST_RETRY_DELAY ?= 2.0
 FASTER_WHISPER_BASE_MODEL ?= base.en
@@ -61,7 +66,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -81,19 +86,22 @@ help:
 	@echo "  make benchmark-faster-whisper-base-low-latency-sweep - Run faster-whisper base.en low-latency sweep"
 	@echo "  make benchmark-faster-whisper-small-low-latency-sweep - Run faster-whisper small.en low-latency sweep"
 	@echo "  make benchmark-qwen-mps - Run qwen-asr locally on Apple Silicon MPS"
+	@echo "  make benchmark-qwen-mps-legacy - Run qwen-asr over legacy /ws/stream on Apple Silicon MPS"
 	@echo "  make benchmark-qwen-mps-low-latency-sweep - Run qwen-asr low-latency sweep on Apple Silicon MPS"
 	@echo "  make benchmark-pipecat-e2e - Run a Pipecat-style end-to-end streaming benchmark against a local backend"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr"
+	@echo "  make benchmark-compose-qwen-legacy - Start compose, wait for readiness, and benchmark qwen-asr over legacy /ws/stream"
 	@echo "  make benchmark-compose-qwen-low-latency-sweep - Start compose and sweep qwen-asr low-latency settings"
 	@echo "  make benchmark-compose-parakeet - Start compose, wait for readiness, and benchmark parakeet"
 	@echo "  make benchmark-compose-parakeet-low-latency-sweep - Start compose and sweep parakeet low-latency settings"
 	@echo "  make benchmark-compose-parakeet-nemo - Start compose and benchmark Parakeet 110M through NeMo"
+	@echo "  make benchmark-compose-parakeet-nemo-legacy - Start compose and benchmark Parakeet 110M through NeMo over legacy /ws/stream"
 	@echo "  make benchmark-compose-parakeet-nemo-low-latency-sweep - Start compose and sweep Parakeet 110M through NeMo"
 	@echo "  make benchmark-parakeet-mlx - Run a local Parakeet MLX ASR benchmark on Apple Silicon with synthesized speech by default"
 	@echo "  make benchmark-parakeet-mlx-110m - Run the 110M Parakeet MLX ASR benchmark with its own artifact slug"
-	@echo "  make benchmark-parakeet-mlx-service - Run the warmed MLX service benchmark through the shared REST/websocket harness"
-	@echo "  make benchmark-parakeet-mlx-service-110m - Run the warmed 110M MLX service benchmark through the shared REST/websocket harness"
+	@echo "  make benchmark-parakeet-mlx-service - Run the warmed MLX service benchmark through the /v1/stt/stream harness"
+	@echo "  make benchmark-parakeet-mlx-service-110m - Run the warmed 110M MLX service benchmark through the /v1/stt/stream harness"
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
 	@echo "  make docs           - Build documentation snapshot"
@@ -193,11 +201,11 @@ benchmark-faster-whisper-matrix: benchmark-faster-whisper-base benchmark-faster-
 
 benchmark-faster-whisper-base: venv
 	@echo "Running faster-whisper $(FASTER_WHISPER_BASE_MODEL) $(FASTER_WHISPER_COMPUTE_TYPE) latency benchmark..."
-	@PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_BASE_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_BASE_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
+	@PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --mode v1-stt-stream --model $(FASTER_WHISPER_BASE_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_BASE_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-faster-whisper-small: venv
 	@echo "Running faster-whisper $(FASTER_WHISPER_SMALL_MODEL) $(FASTER_WHISPER_COMPUTE_TYPE) latency benchmark..."
-	@PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --model $(FASTER_WHISPER_SMALL_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_SMALL_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
+	@PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --mode v1-stt-stream --model $(FASTER_WHISPER_SMALL_MODEL) --compute-type $(FASTER_WHISPER_COMPUTE_TYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/faster-whisper-$(FASTER_WHISPER_SMALL_MODEL)-$(FASTER_WHISPER_COMPUTE_TYPE)-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-faster-whisper-base-low-latency-sweep: venv
 	@echo "Running faster-whisper $(FASTER_WHISPER_BASE_MODEL) low-latency sweep..."
@@ -212,7 +220,14 @@ benchmark-qwen-mps: venv
 	@uname -s | grep -q '^Darwin$$' || (echo "benchmark-qwen-mps requires macOS." >&2; exit 1)
 	@$(PYTHON) -c "import torch; assert getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available(), 'benchmark-qwen-mps requires torch.backends.mps.is_available()'"
 	@mkdir -p .cache/huggingface
-	@ASR_BACKEND=qwen-asr ASR_DEVICE=mps ASR_QWEN_DEVICE_MAP= ASR_QWEN_MODEL=$(QWEN_MPS_MODEL) ASR_QWEN_DTYPE=$(QWEN_MPS_DTYPE) PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --backend qwen-asr --model $(QWEN_MPS_MODEL) --device mps --qwen-dtype $(QWEN_MPS_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-mps-$(BENCHMARK_RESULT_DATE).json
+	@ASR_BACKEND=qwen-asr ASR_DEVICE=mps ASR_QWEN_DEVICE_MAP= ASR_QWEN_MODEL=$(QWEN_MPS_MODEL) ASR_QWEN_DTYPE=$(QWEN_MPS_DTYPE) PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --mode v1-stt-stream --backend qwen-asr --model $(QWEN_MPS_MODEL) --device mps --qwen-dtype $(QWEN_MPS_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-mps-$(BENCHMARK_RESULT_DATE).json
+
+benchmark-qwen-mps-legacy: venv
+	@echo "Running qwen-asr $(QWEN_MPS_MODEL) legacy /ws/stream benchmark on Apple Silicon MPS..."
+	@uname -s | grep -q '^Darwin$$' || (echo "benchmark-qwen-mps-legacy requires macOS." >&2; exit 1)
+	@$(PYTHON) -c "import torch; assert getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available(), 'benchmark-qwen-mps-legacy requires torch.backends.mps.is_available()'"
+	@mkdir -p .cache/huggingface
+	@ASR_BACKEND=qwen-asr ASR_DEVICE=mps ASR_QWEN_DEVICE_MAP= ASR_QWEN_MODEL=$(QWEN_MPS_MODEL) ASR_QWEN_DTYPE=$(QWEN_MPS_DTYPE) PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --backend qwen-asr --model $(QWEN_MPS_MODEL) --device mps --qwen-dtype $(QWEN_MPS_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-mps-$(BENCHMARK_RESULT_DATE).json
 
 benchmark-qwen-mps-low-latency-sweep: venv
 	@echo "Running qwen-asr $(QWEN_MPS_MODEL) low-latency sweep on Apple Silicon MPS..."
@@ -244,7 +259,35 @@ benchmark-compose-qwen: venv
 	fi; \
 	ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
-	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
+	PYTHONPATH=. $(PYTHON) tests/benchmark.py --mode v1-stt-stream --url $(COMPOSE_URL) --v1-ws-url $(COMPOSE_V1_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
+
+benchmark-compose-qwen-legacy: venv
+	@echo "Starting docker compose stack with qwen-asr on CPU for legacy /ws/stream benchmarking..."
+	@mkdir -p .cache/huggingface
+	@{ set -e; \
+	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+	trap cleanup EXIT INT TERM; \
+	base_image="$(PYTHON_BASE_IMAGE)"; \
+	if [ -z "$${base_image}" ]; then \
+		base_image="python:3.11-slim"; \
+		if ! docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			if docker image inspect mirror.gcr.io/library/python:3.11-slim >/dev/null 2>&1; then \
+				echo "Using cached mirror image mirror.gcr.io/library/python:3.11-slim"; \
+				base_image="mirror.gcr.io/library/python:3.11-slim"; \
+			elif docker pull "$${base_image}" >/dev/null; then \
+				echo "Using pulled default base image $${base_image}"; \
+			else \
+				echo "Docker Hub pull failed for $${base_image}; retrying with mirror.gcr.io/library/python:3.11-slim" >&2; \
+				docker pull mirror.gcr.io/library/python:3.11-slim >/dev/null; \
+				base_image="mirror.gcr.io/library/python:3.11-slim"; \
+			fi; \
+		else \
+			echo "Using cached default base image $${base_image}"; \
+		fi; \
+	fi; \
+	ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
+	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-compose-qwen-low-latency-sweep: venv
 	@echo "Starting docker compose stack with qwen-asr on CPU for low-latency sweep..."
@@ -298,7 +341,7 @@ benchmark-compose-parakeet: venv
 	fi; \
 	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
-	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-compose-$(BENCHMARK_RESULT_DATE).json; }
+	PYTHONPATH=. $(PYTHON) tests/benchmark.py --mode v1-stt-stream --url $(COMPOSE_URL) --v1-ws-url $(COMPOSE_V1_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-compose-parakeet-low-latency-sweep: venv
 	@echo "Starting docker compose stack with parakeet on CPU for low-latency sweep..."
@@ -352,7 +395,29 @@ benchmark-compose-parakeet-nemo: venv
 	fi; \
 	ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
-	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json; }
+	PYTHONPATH=. $(PYTHON) tests/benchmark.py --mode v1-stt-stream --url $(COMPOSE_URL) --v1-ws-url $(COMPOSE_V1_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json; }
+
+benchmark-compose-parakeet-nemo-legacy: venv
+	@echo "Starting docker compose stack with Parakeet 110M through NeMo on CPU for legacy /ws/stream benchmarking..."
+	@mkdir -p .cache/huggingface
+	@{ set -e; \
+	cleanup() { docker compose down >/dev/null 2>&1 || true; }; \
+	trap cleanup EXIT INT TERM; \
+	base_image="$(PYTHON_BASE_IMAGE)"; \
+	if [ "$${base_image}" = "$(DEFAULT_PYTHON_BASE_IMAGE)" ]; then \
+		if docker image inspect "$${base_image}" >/dev/null 2>&1; then \
+			echo "Using cached default base image $${base_image}"; \
+		elif ! docker pull "$${base_image}"; then \
+			echo "Docker Hub pull failed for $${base_image}; retrying with $(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			base_image="$(PYTHON_BASE_IMAGE_FALLBACK)"; \
+			docker pull "$${base_image}"; \
+		fi; \
+	else \
+		echo "Using configured base image override $${base_image} without registry preflight"; \
+	fi; \
+	ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
+	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json; }
 
 benchmark-compose-parakeet-nemo-low-latency-sweep: venv
 	@echo "Starting docker compose stack with Parakeet 110M through NeMo on CPU for low-latency sweep..."
@@ -412,12 +477,20 @@ benchmark-parakeet-mlx-110m:
 	@$(MAKE) benchmark-parakeet-mlx PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_ARTIFACT_SLUG=parakeet-mlx-110m
 
 benchmark-parakeet-mlx-service: mlx-venv
-	@echo "Benchmarking $(PARAKEET_MLX_MODEL) through the warmed MLX service harness..."
+	@echo "Benchmarking $(PARAKEET_MLX_MODEL) through the warmed MLX /v1/stt/stream harness..."
 	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
-	@{ set -e; 	cleanup() { if [ -n "$$server_pid" ] && kill -0 "$$server_pid" >/dev/null 2>&1; then kill "$$server_pid" >/dev/null 2>&1 || true; wait "$$server_pid" 2>/dev/null || true; fi; rm -f "$$log_file"; }; 	trap cleanup EXIT INT TERM; 	log_file="$$(mktemp -t rtc-asr-parakeet-mlx.XXXXXX.log)"; 	PYTHONPATH=. ASR_BACKEND=parakeet-mlx ASR_DEVICE=apple-silicon ASR_PRELOAD_MODEL=true ASR_PARAKEET_MODEL=$(PARAKEET_MLX_MODEL) ASR_PARAKEET_DTYPE=auto $(MLX_PYTHON) -m uvicorn src.main:app --host 127.0.0.1 --port 8090 --log-level warning >"$$log_file" 2>&1 & 	server_pid=$$!; 	for attempt in $$(seq 1 180); do 		if curl -sf http://127.0.0.1:8090/ready >/dev/null; then break; fi; 		if ! kill -0 "$$server_pid" >/dev/null 2>&1; then cat "$$log_file"; exit 1; fi; 		sleep 1; 	done; 	curl -sf http://127.0.0.1:8090/ready >/dev/null || (cat "$$log_file"; exit 1); 	PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --url http://127.0.0.1:8090 --ws-url ws://127.0.0.1:8090/ws/stream --backend parakeet-mlx --model $(PARAKEET_MLX_MODEL) --device apple-silicon --parakeet-dtype auto --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(PARAKEET_MLX_SERVICE_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json; 	}
+	@{ set -e; 	cleanup() { if [ -n "$$server_pid" ] && kill -0 "$$server_pid" >/dev/null 2>&1; then kill "$$server_pid" >/dev/null 2>&1 || true; wait "$$server_pid" 2>/dev/null || true; fi; rm -f "$$log_file"; }; 	trap cleanup EXIT INT TERM; 	log_file="$$(mktemp -t rtc-asr-parakeet-mlx.XXXXXX.log)"; 	PYTHONPATH=. ASR_BACKEND=parakeet-mlx ASR_DEVICE=apple-silicon ASR_PRELOAD_MODEL=true ASR_PARAKEET_MODEL=$(PARAKEET_MLX_MODEL) ASR_PARAKEET_DTYPE=auto $(MLX_PYTHON) -m uvicorn src.main:app --host 127.0.0.1 --port 8090 --log-level warning >"$$log_file" 2>&1 & 	server_pid=$$!; 	for attempt in $$(seq 1 180); do 		if curl -sf http://127.0.0.1:8090/ready >/dev/null; then break; fi; 		if ! kill -0 "$$server_pid" >/dev/null 2>&1; then cat "$$log_file"; exit 1; fi; 		sleep 1; 	done; 	curl -sf http://127.0.0.1:8090/ready >/dev/null || (cat "$$log_file"; exit 1); 	PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --mode v1-stt-stream --url http://127.0.0.1:8090 --v1-ws-url ws://127.0.0.1:8090/v1/stt/stream --backend parakeet-mlx --model $(PARAKEET_MLX_MODEL) --device apple-silicon --parakeet-dtype auto --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(PARAKEET_MLX_SERVICE_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json; 	}
+
+benchmark-parakeet-mlx-service-legacy: mlx-venv
+	@echo "Benchmarking $(PARAKEET_MLX_MODEL) through the warmed MLX legacy /ws/stream harness..."
+	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
+	@{ set -e; 	cleanup() { if [ -n "$$server_pid" ] && kill -0 "$$server_pid" >/dev/null 2>&1; then kill "$$server_pid" >/dev/null 2>&1 || true; wait "$$server_pid" 2>/dev/null || true; fi; rm -f "$$log_file"; }; 	trap cleanup EXIT INT TERM; 	log_file="$$(mktemp -t rtc-asr-parakeet-mlx.XXXXXX.log)"; 	PYTHONPATH=. ASR_BACKEND=parakeet-mlx ASR_DEVICE=apple-silicon ASR_PRELOAD_MODEL=true ASR_PARAKEET_MODEL=$(PARAKEET_MLX_MODEL) ASR_PARAKEET_DTYPE=auto $(MLX_PYTHON) -m uvicorn src.main:app --host 127.0.0.1 --port 8090 --log-level warning >"$$log_file" 2>&1 & 	server_pid=$$!; 	for attempt in $$(seq 1 180); do 		if curl -sf http://127.0.0.1:8090/ready >/dev/null; then break; fi; 		if ! kill -0 "$$server_pid" >/dev/null 2>&1; then cat "$$log_file"; exit 1; fi; 		sleep 1; 	done; 	curl -sf http://127.0.0.1:8090/ready >/dev/null || (cat "$$log_file"; exit 1); 	PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --url http://127.0.0.1:8090 --ws-url ws://127.0.0.1:8090/ws/stream --backend parakeet-mlx --model $(PARAKEET_MLX_MODEL) --device apple-silicon --parakeet-dtype auto --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(PARAKEET_MLX_SERVICE_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json; 	}
 
 benchmark-parakeet-mlx-service-110m:
 	@$(MAKE) benchmark-parakeet-mlx-service PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service
+
+benchmark-parakeet-mlx-service-110m-legacy:
+	@$(MAKE) benchmark-parakeet-mlx-service-legacy PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service
 
 lint: venv
 	@echo "Running linter..."

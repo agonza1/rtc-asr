@@ -1,6 +1,6 @@
 # rtc-asr
 
-`rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST and buffered WebSockets. It is optimized for warmed, local or on-device inference paths, especially low-power CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
+`rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST plus a Local STT v1 websocket contract, with a legacy buffered websocket path still available for compatibility. It is optimized for warmed, local or on-device inference paths, especially low-power CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
 
 The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, and `parakeet-nemo` backends behind the same API surface.
 
@@ -13,8 +13,8 @@ The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parake
 - `GET /api/models` for backend/model capability metadata that RTC clients can inspect
 - `POST /api/transcribe` for one-shot base64 audio requests
 - `POST /api/transcribe/file` for uploaded file transcription
-- `ws://.../ws/stream` for buffered websocket transcription with `ready`, `partial`, `final`, `canceled`, and `error` events
 - `ws://.../v1/stt/stream` for Local STT v1 JSON-control plus binary-PCM websocket streaming
+- `ws://.../ws/stream` for the older buffered websocket transcription path with `ready`, `partial`, `final`, `canceled`, and `error` events
 - Shared client helpers in `src/rtc_client.py` and `src/streaming.py`
 - A browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr` when you run the companion demo service, installable locally as a PWA shell
 
@@ -95,13 +95,19 @@ Current checked-in benchmarks make the Apple Silicon story especially strong for
 
 ## Streaming Contract
 
-The websocket path is the main integration surface, but it is buffered websocket ASR rather than a frame-synchronous decoder contract. Partial transcripts are generated from buffered windows and backend behavior varies. A fast `partial` event does not always mean the backend is a true streaming ASR model.
+Prefer `ws://localhost:8080/v1/stt/stream` for new integrations. The Local STT v1 contract is the primary streaming surface for this repo, and [`docs/local-stt-v1.md`](./docs/local-stt-v1.md) is the canonical integration guide.
 
-1. Open `ws://localhost:8080/ws/stream`.
-2. Send a `start` event with `language`, `sample_rate`, and optional partial/buffer controls.
-3. Send audio as either JSON `audio` events with base64 payloads or raw binary websocket frames.
-4. Receive `partial` events on the configured cadence.
-5. Send `stop` to receive the final transcript, or `cancel` to discard the buffered utterance.
+Use the legacy `ws://localhost:8080/ws/stream` route only when you need backward compatibility with the older buffered websocket API or when comparing against historical benchmark artifacts. That route remains useful as a local buffered-websocket stress harness, but it is not the contract we want new clients to target.
+
+For the full Local STT v1 handshake, message types, and examples, start with [`docs/local-stt-v1.md`](./docs/local-stt-v1.md). At a high level:
+
+1. Open `ws://localhost:8080/v1/stt/stream`.
+2. Send the Local STT v1 control message that configures the stream.
+3. Send mono PCM16 audio as binary websocket frames.
+4. Read interim and final transcript events from the server.
+5. End the turn using the Local STT v1 finalize/close flow described in the spec.
+
+The legacy `/ws/stream` path is buffered websocket ASR rather than a frame-synchronous decoder contract. Partial transcripts are generated from buffered windows and backend behavior varies. A fast `partial` event there does not always mean the backend is a true streaming ASR model.
 
 Example start event:
 
@@ -131,7 +137,7 @@ Example ready event:
 }
 ```
 
-After a `final` event, the socket stays open so the client can start the next utterance without reconnecting.
+After a `final` event, the legacy `/ws/stream` socket stays open so the client can start the next utterance without reconnecting.
 
 ## Audio Assumptions
 
@@ -156,7 +162,7 @@ Pipecat transport
   -> decoded PCM frames, usually ~20 ms
 Chunk aggregator
   -> binary PCM16 websocket frame every 80-160 ms
-rtc-asr /ws/stream
+rtc-asr /v1/stt/stream
   -> partial/final transcript events
 Voice agent pipeline
 ```
@@ -195,6 +201,7 @@ The checked-in artifacts already cover warmed service latency, first partial res
 
 ## Known Limitations
 
+- Prefer `/v1/stt/stream` for active development and new clients; `/ws/stream` is the legacy buffered websocket path.
 - `/ws/stream` is buffered websocket ASR, not a native frame-synchronous decoder API.
 - Partial transcripts are computed from the current buffered window, so lower latency settings can increase transcript instability.
 - Backend behavior varies widely; equal chunk cadence does not guarantee equal partial quality or equal streaming semantics.
@@ -232,8 +239,8 @@ The benchmark harness now defaults to preloaded runs. Managed benchmark servers 
 ## Documentation
 
 - [Docs Index](./docs/index.md)
-- [API Reference](./docs/api-reference.md)
 - [Local STT v1](./docs/local-stt-v1.md)
+- [API Reference](./docs/api-reference.md)
 - [Pipecat Integration](./docs/pipecat-integration.md)
 - [Browser Pipecat Demo](./examples/browser_pipecat_demo/README.md)
 - [LiveKit Integration](./docs/livekit-integration.md)

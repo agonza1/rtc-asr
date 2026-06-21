@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Validated 5-sample Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.">
+    <meta name="description" content="Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk cadence. It now stays in supporting context only until /v1/stt/stream regeneration replaces it.">
     <link rel="canonical" href="qwen-compose-2026-06-19.html">
     <title>Qwen Compose | rtc-asr benchmark artifact</title>
     <script type="application/ld+json">
@@ -11,7 +11,7 @@
       "@context": "https://schema.org",
       "@type": "Dataset",
       "name": "rtc-asr benchmark artifact: Qwen Compose",
-      "description": "Validated 5-sample Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.",
+      "description": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk cadence. It now stays in supporting context only until /v1/stt/stream regeneration replaces it.",
       "url": "qwen-compose-2026-06-19.html",
       "datePublished": "2026-06-20T03:50:30Z",
       "measurementTechnique": "REST and buffered websocket ASR latency benchmark",
@@ -83,14 +83,14 @@
       <nav class="breadcrumb" aria-label="Breadcrumb"><a href="../../index.html">Benchmark homepage</a><span>Qwen Compose</span></nav>
       <div class="eyebrow">Artifact detail page</div>
       <h1>Qwen Compose</h1>
-      <p>Validated 5-sample Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk partial cadence to keep the constrained Qwen lane reproducible.</p>
+      <p>Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19 using float16, three REST runs per sample, and an 8-chunk cadence. It now stays in supporting context only until /v1/stt/stream regeneration replaces it.</p>
       <div class="actions">
         <div class="card"><span class="label">Lane</span><div class="value">Docker Compose CPU</div><p>qwen-asr · Qwen/Qwen3-ASR-0.6B</p></div>
-        <div class="card"><span class="label">Runtime</span><div class="value">cpu / float16</div><p>Status: validated · Samples: 5</p></div>
+        <div class="card"><span class="label">Runtime</span><div class="value">cpu / float16</div><p>Status: legacy · Samples: 5</p></div>
         <div class="card"><span class="label">Links</span><div><a href="../../index.html">Back to benchmark homepage</a></div><div><a href="../qwen-compose-2026-06-19.json">Open raw JSON artifact</a></div><div><a href="../qwen-compose-2026-06-19.json" download="qwen-compose-2026-06-19.json">Download raw JSON artifact</a></div><p>Measured Jun 20, 2026, 03:50 AM UTC</p></div>
       </div>
       <div class="grid">
-        <article class="card"><span class="label">Overall score</span><div class="value">43.1 / 100</div><p>Confidence 100.0 / 100</p></article>
+        <article class="card"><span class="label">Overall score</span><div class="value">40.5 / 100</div><p>Confidence 85.0 / 100</p></article>
         <article class="card"><span class="label">First visible partial</span><div class="value">3297.7 ms</div><p>P95 3345.3 ms</p></article>
         <article class="card"><span class="label">Partial backlog latency</span><div class="value">3581.5 ms</div><p>Diagnostic chunk-response delay. Gap 2341.3 ms · Late ratio 0.0%</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">7049.6 ms</div><p>P95 7728.3 ms</p></article>
@@ -98,7 +98,7 @@
         <article class="card"><span class="label">Buffered contract</span><div class="value">250 ms chunks</div><p>Window 2.0 s · Interval 8 · Sample rate 16000 Hz · Binary False</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Warnings</span><div class="value">n/a</div><p>Codes: none recorded</p></article>
-        <article class="card"><span class="label">Reproduction command</span><div class="value"><code>BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
+        <article class="card"><span class="label">Reproduction command</span><div class="value"><code>BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen-legacy</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
         <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>165f9f6c3822</code></div><p>SHA-256 165f9f6c382241034ca1c84f04ace6f231de9fc2d29a104cc8e5b3a594518deb</p><p>Size 26.4 KB</p></article>
         <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>qwen-compose-2026-06-19.json</code></div><p>Manifest path benchmark-results/qwen-compose-2026-06-19.json</p><p>Generated detail page qwen-compose-2026-06-19.html</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">cpu / float16</div><p>macOS-26.5.1-arm64-arm-64bit-Mach-O · arm · Python 3.14.6</p></article>

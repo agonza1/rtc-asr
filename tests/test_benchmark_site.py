@@ -210,11 +210,13 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
             {
                 "benchmark": {
                     "sample_count": 4,
+                    "mode": "v1-stt-stream",
                     "chunk_ms": 80,
                     "partial_interval_chunks": 2,
                     "partial_window_seconds": 0.75,
                     "binary_frames": True,
                     "partial_event_timeout_seconds": 0.25,
+                    "final_event_timeout_seconds": 3.5,
                 },
                 "backend": {"name": "demo", "model": "demo-v1", "device": "cpu", "compute_type": "int8"},
                 "rest": {"mean_ms": 42, "p95_ms": 64, "rtf_mean": 0.2},
@@ -227,6 +229,7 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
                     "partial_gap_p95_ms": 110,
                     "final_mean_ms": 30,
                     "final_p95_ms": 45,
+                    "live_metrics_comparable": True,
                 },
                 "environment": {"date_utc": "2026-06-10T00:00:00Z"},
             }
@@ -263,11 +266,15 @@ def test_manifest_surfaces_contract_and_first_partial_metrics(tmp_path: Path) ->
     track = manifest["tracks"][0]
     assert track["contract"] == {
         "chunk_ms": 80,
+        "transport": "v1-stt-stream",
+        "path": "/v1/stt/stream",
         "partial_interval_chunks": 2,
         "partial_window_seconds": 0.75,
         "binary_frames": True,
         "sample_rate": None,
+        "live_metrics_comparable": True,
         "partial_event_timeout_seconds": 0.25,
+        "final_event_timeout_seconds": 3.5,
     }
     assert track["streaming"]["first_partial_end_to_end_mean_ms"] == 185
     assert track["streaming"]["partial_gap_mean_ms"] == 95
@@ -890,6 +897,7 @@ def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
                 "rest": {"mean_ms": 100, "p95_ms": 140, "rtf_mean": 0.4},
                 "streaming": {"partial_mean_ms": 50, "partial_p95_ms": 80, "final_mean_ms": 120, "final_p95_ms": 180},
                 "environment": {"date_utc": "2026-06-20T00:00:00Z"},
+                "summary": {"warning_codes": ["stream_jitter", "partial_dropped"]},
                 "samples": [
                     {"warnings_received": 1, "warning_codes": ["partial_dropped"]},
                     {"warnings_received": 2, "warning_codes": ["stream_canceled", "partial_dropped"]},
@@ -926,6 +934,6 @@ def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
     track = manifest["tracks"][0]
     detail = render_detail_page(track, json.loads(artifact_path.read_text(encoding="utf-8")))
 
-    assert track["warnings"] == {"received_total": 3, "codes": ["partial_dropped", "stream_canceled"]}
+    assert track["warnings"] == {"received_total": 3, "codes": ["partial_dropped", "stream_canceled", "stream_jitter"]}
     assert "<span class=\"label\">Warnings</span><div class=\"value\">3</div>" in detail
-    assert "Codes: partial_dropped, stream_canceled" in detail
+    assert "Codes: partial_dropped, stream_canceled, stream_jitter" in detail

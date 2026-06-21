@@ -102,7 +102,8 @@ def _protocol_catalog() -> list[dict[str, object]]:
             "transport": "websocket",
             "path": "/ws/stream",
             "docs": "/docs/api-reference.md#websocket-streaming",
-            "status": "stable",
+            "status": "legacy",
+            "notes": "Deprecated transport: buffered websocket contract; prefer /v1/stt/stream for native-local-stream compatibility and lower-latency framing guidance.",
             "message_format": "json-control-plus-binary-audio",
         },
         {
@@ -212,6 +213,7 @@ class StreamRuntime:
     outgoing_events: asyncio.Queue[dict[str, Any]] = field(default_factory=asyncio.Queue)
     latest_revision: int = 0
     decode_in_flight: bool = False
+    partial_decode_started: bool = False
     dirty: bool = False
     closed: bool = False
     final_emitted: bool = False
@@ -704,11 +706,12 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
             runtime.closed = True
             return
 
-        if not session.interim_results or not session.should_emit_partial():
+        if runtime.partial_decode_started or not session.interim_results or not session.should_emit_partial():
             runtime.dirty = False
             continue
 
         runtime.dirty = False
+        runtime.partial_decode_started = True
         partial_audio_bytes = session.partial_audio_bytes()
         partial_chunks_received = session.chunks_received
         partial_audio_received_ms = session.audio_received_ms()
@@ -722,6 +725,7 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
             )
         finally:
             runtime.decode_in_flight = False
+            runtime.partial_decode_started = False
 
         if runtime.cancel_requested.is_set() or runtime.final_emitted or runtime.closed:
             return
