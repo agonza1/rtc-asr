@@ -499,6 +499,9 @@
         border-top: 1px solid rgba(25, 22, 18, 0.08);
       }
       .metric-row span { color: var(--muted); }
+      .archive-table {
+        min-width: 760px;
+      }
       .archive-card a,
       .contract-card a,
       .lane-actions a,
@@ -597,7 +600,7 @@
             <p class="lede">Compare low-latency ASR backends where turn-taking, barge-in, and transcript closeout matter most. The page now leads with a recommendation, keeps REST throughput in a supporting role, and separates incomplete lanes from the primary decision path.</p>
             <p class="hero-copy">Built by WebRTC.ventures, this benchmark is meant to help teams choose a live-ASR starting point fast, then inspect supporting artifacts only when they need deeper validation.</p>
             <div class="hero-actions">
-              <a class="action-link primary" href="#comparison">Open primary ranking</a>
+              <a class="action-link primary" href="#static-summary">Open primary ranking</a>
               <a class="action-link" href="benchmarks.md">Benchmark notes</a>
               <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
@@ -700,20 +703,6 @@ Published Jun 21, 2026, 07:10 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
         <div class="signal-grid" id="signal-grid"></div>
       </section>
 
-      <section id="comparison">
-        <div class="section-head">
-          <div>
-            <div class="section-kicker">Matrix</div>
-            <h2>Advanced ASR comparison matrix</h2>
-          </div>
-          <p class="subcopy">Sorted by websocket partial mean first, then final completion, then REST mean. Operator scores are derived from the checked-in manifest and deltas are shown against the fastest currently published lane.</p>
-        </div>
-        <div class="story-grid" id="story-grid"></div>
-        <div class="comparison-wrap panel">
-          <div class="comparison-scroll" id="comparison-wrap"></div>
-        </div>
-      </section>
-
       <section>
         <div class="section-head">
           <div>
@@ -803,9 +792,17 @@ Published Jun 21, 2026, 07:10 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
             <div class="section-kicker">Archive</div>
             <h2>Benchmark appendix</h2>
           </div>
-          <p class="subcopy">Use this appendix only when you need lane history or machine-readable artifacts after the primary recommendation flow.</p>
+          <button class="section-toggle" id="archive-toggle" type="button" aria-expanded="false" aria-controls="archive-panel">
+            <span>Appendix</span>
+            <span class="section-toggle-indicator" id="archive-toggle-label">show</span>
+          </button>
         </div>
-        <div class="archive-grid" id="archive-grid"></div>
+        <p class="subcopy">Use this appendix only when you need lane history or machine-readable artifacts after the primary recommendation flow.</p>
+        <div class="lane-panel" id="archive-panel" hidden>
+          <div class="comparison-wrap panel">
+            <div class="comparison-scroll" id="archive-grid"></div>
+          </div>
+        </div>
       </section>
 
       <footer>
@@ -1333,10 +1330,10 @@ Published Jun 21, 2026, 07:10 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           </article>
         `).join("");
       }
-      function setupLaneToggle() {
-        const button = document.getElementById("lane-toggle");
-        const panel = document.getElementById("lane-panel");
-        const label = document.getElementById("lane-toggle-label");
+      function setupToggle(buttonId, panelId, labelId) {
+        const button = document.getElementById(buttonId);
+        const panel = document.getElementById(panelId);
+        const label = document.getElementById(labelId);
         if (!button || !panel || !label) return;
 
         const sync = (expanded) => {
@@ -1382,19 +1379,30 @@ Published Jun 21, 2026, 07:10 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
       }
       function renderArchive(artifacts) {
         const target = document.getElementById("archive-grid");
-        target.innerHTML = artifacts.map((artifact) => {
+        if (!target) return;
+        if (!artifacts.length) {
+          target.innerHTML = '<div class="empty">No archived artifacts are available yet.</div>';
+          return;
+        }
+        const rows = artifacts.map((artifact) => {
           const detailHref = artifact.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html");
           return `
-            <article class="archive-card">
-              <div class="section-kicker">${artifact.backend}</div>
-              <h3>${artifact.model}</h3>
-              <p>${formatDate(artifact.measured_at)} · ${artifact.sample_count} samples</p>
-              <div class="artifact-actions">
-                <a href="${detailHref}">Open detail page</a>
-              </div>
-            </article>
+            <tr>
+              <td data-label="Backend"><strong>${artifact.backend || "unknown"}</strong><div class="tiny">${artifact.model || "unknown"}</div></td>
+              <td data-label="Measured">${formatDate(artifact.measured_at)}</td>
+              <td data-label="Samples">${artifact.sample_count ?? "n/a"}</td>
+              <td data-label="Artifact"><a href="${detailHref}">Detail page</a></td>
+            </tr>
           `;
         }).join("");
+        target.innerHTML = `
+          <table class="archive-table">
+            <thead>
+              <tr><th>Backend</th><th>Measured</th><th>Samples</th><th>Artifact</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
       }
       async function main() {
         const meta = document.getElementById("generated-at");
@@ -1409,17 +1417,17 @@ Published Jun 21, 2026, 07:10 AM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           renderHero(manifest.summary, visibleTracks);
           renderCoverage(manifest.summary, visibleTracks);
           renderSignals(manifest.summary, visibleTracks);
-          renderStories(visibleTracks);
-          renderComparison(visibleTracks);
           renderLanes(visibleTracks);
           renderContract(manifest.summary);
           renderArchive(manifest.artifacts || []);
         } catch (error) {
           meta.textContent = "Benchmark manifest unavailable.";
-          document.getElementById("comparison-wrap").innerHTML = `<div class="error">${error.message}</div>`;
+          const archive = document.getElementById("archive-grid");
+          if (archive) archive.innerHTML = `<div class="error">${error.message}</div>`;
         }
       }
-      setupLaneToggle();
+      setupToggle("lane-toggle", "lane-panel", "lane-toggle-label");
+      setupToggle("archive-toggle", "archive-panel", "archive-toggle-label");
       main();
     </script>
   </body>
