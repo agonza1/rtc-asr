@@ -318,6 +318,11 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
             system.get("package_power_watts"),
             metrics.get("package_power_watts"),
         ),
+        "energy_per_audio_second_j": first_defined(
+            environment.get("energy_per_audio_second_j"),
+            system.get("energy_per_audio_second_j"),
+            metrics.get("energy_per_audio_second_j"),
+        ),
         "thermal_peak_celsius": first_defined(
             environment.get("thermal_peak_celsius"),
             system.get("thermal_peak_celsius"),
@@ -414,6 +419,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
             f"Process RSS {format_mb(system_signals.get('process_rss_mb'))}",
             f"CPU {format_percent(system_signals.get('cpu_utilization_percent') / 100) if system_signals.get('cpu_utilization_percent') is not None else 'n/a'}",
             f"Power {format_watts(system_signals.get('package_power_watts'))}",
+            f"Energy/audio-sec {format_count(system_signals.get('energy_per_audio_second_j'))} J",
             f"Thermal {format_celsius(system_signals.get('thermal_peak_celsius'))}",
         ]
     )

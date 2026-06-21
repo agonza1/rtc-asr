@@ -303,6 +303,7 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert coverage["accelerator_count"] == 0
     assert coverage["cpu_utilization_percent_count"] == 4
     assert coverage["package_power_watts_count"] == 0
+    assert coverage["energy_per_audio_second_j_count"] == 0
     assert coverage["thermal_peak_celsius_count"] == 0
     assert coverage["thermal_observation_count"] == 0
 
@@ -311,6 +312,12 @@ def test_manifest_counts_thermal_state_as_system_evidence() -> None:
     system = extract_system_signals({"environment": {"thermal_state": "stable after 5 minutes"}})
 
     assert system["thermal_observation"] == "stable after 5 minutes"
+
+
+def test_manifest_preserves_energy_per_audio_second_metadata() -> None:
+    system = extract_system_signals({"metrics": {"energy_per_audio_second_j": 2.4}})
+
+    assert system["energy_per_audio_second_j"] == 2.4
 
 
 def test_manifest_preserves_accelerator_metadata_aliases() -> None:
@@ -603,6 +610,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'metrics': {
             'cpu_utilization_percent': 38.2,
             'package_power_watts': 7.4,
+            'energy_per_audio_second_j': 2.6,
             'thermal_peak_celsius': 63.5,
             'thermal_observation': 'Stable over 5 minutes.',
         },
@@ -617,6 +625,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'Accelerator Apple M-series GPU' in detail_html
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
+    assert 'Energy/audio-sec 2.6 J' in detail_html
     assert 'Thermal 63.5 C' in detail_html
     assert 'Sample rate 16000 Hz' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html
