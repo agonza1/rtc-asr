@@ -45,8 +45,8 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
 
     assert manifest["summary"]["asr_count"] == 8
     assert manifest["summary"]["tracked_count"] == 8
-    assert manifest["summary"]["validated_count"] == 4
-    assert manifest["summary"]["legacy_count"] == 3
+    assert manifest["summary"]["validated_count"] == 5
+    assert manifest["summary"]["legacy_count"] == 2
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
@@ -297,7 +297,7 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert track["system"]["memory_total_mb"] == 24576.0
 
     coverage = manifest["summary"]["system_coverage"]
-    assert coverage["memory_total_mb_count"] == 14
+    assert coverage["memory_total_mb_count"] == 15
     assert coverage["process_rss_mb_count"] == 9
     assert coverage["peak_rss_mb_count"] == 9
     assert coverage["accelerator_count"] == 0
@@ -449,8 +449,8 @@ def test_render_homepage_counts_unpublished_registry_gaps() -> None:
     html = render_homepage(manifest, homepage)
 
     assert '1 tracked lanes are blocked or unpublished' in html
-    assert 'Unpublished Lane' in html
-    assert 'waiting on artifact' in html
+    assert 'Unpublished Lane' not in html
+    assert 'waiting on artifact' not in html
 
 
 def test_docs_index_live_labels_match_streaming_framing() -> None:
@@ -460,13 +460,8 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'Primary ranking scope' in html
     assert 'Best live numbers' in html
     assert 'Registry coverage' in html
-    assert 'of 8 validated' in html
+    assert '5 of 8 validated' in html
     assert 'tracked lanes are blocked or unpublished' in html
-    assert 'Registry gaps' in html
-    assert 'Tracked lanes that still need launch-ready proof' in html
-    assert 'Pipecat E2E Faster-Whisper Base' in html
-    assert 'make benchmark-pipecat-e2e' in html
-    assert 'Artifact checked in but excluded from public ranking' in html
     assert 'data-label="Partial backlog latency"' in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html

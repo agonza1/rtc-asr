@@ -1162,7 +1162,9 @@ async def run_v1_stt_stream_benchmark(
             recorded_partial_revisions.add(event.revision)
 
         chunk_index = getattr(event, "chunks_received", 0)
-        audio_offset_ms = float(event.audio_received_ms or 0)
+        audio_offset_ms = float(event.audio_transcribed_ms or 0)
+        if audio_offset_ms <= 0:
+            audio_offset_ms = float(event.audio_received_ms or 0)
         if audio_offset_ms <= 0 and 0 < chunk_index <= len(chunk_audio_offsets_ms):
             audio_offset_ms = chunk_audio_offsets_ms[chunk_index - 1]
         elif audio_offset_ms <= 0 and chunk_audio_offsets_ms:

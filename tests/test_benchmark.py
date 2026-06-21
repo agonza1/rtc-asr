@@ -437,8 +437,8 @@ def test_makefile_venv_target_repairs_broken_virtualenvs_before_benchmarks() -> 
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
     venv_block = makefile.split("venv:\n", 1)[1].split("\n\n", 1)[0]
-    assert 'if [ -x $(PYTHON) ] && $(PYTHON) -c "import sys" >/dev/null 2>&1; then \\' in venv_block
-    assert 'echo "  Rebuilding $(VENV) because the interpreter is missing or broken..."; \\' in venv_block
+    assert 'if [ -x $(PYTHON) ] && $(PYTHON) -c "import fastapi, httpx, numpy, soundfile, torch, uvicorn, websockets" >/dev/null 2>&1; then \\' in venv_block
+    assert 'echo "  Rebuilding $(VENV) because the benchmark runtime is missing or broken..."; \\' in venv_block
     assert "rm -rf $(VENV); \\" in venv_block
     assert "python3 -m venv $(VENV); \\" in venv_block
     assert "$(PIP) install --upgrade pip; \\" in venv_block
@@ -606,9 +606,9 @@ def test_checked_in_publishable_benchmark_artifacts_include_current_harness_meta
             "request_retries": 3,
             "request_retry_delay": 2.0,
         },
-        "parakeet-nemo-110m-compose-2026-06-19.json": {
-            "partial_interval_chunks": 8,
-            "binary_frames": False,
+        "parakeet-nemo-110m-compose-2026-06-21.json": {
+            "partial_interval_chunks": 1,
+            "binary_frames": True,
             "partial_window_seconds": 2.0,
             "max_buffer_seconds": None,
             "request_retries": 3,
@@ -653,7 +653,7 @@ def test_checked_in_publishable_benchmark_artifacts_include_streaming_sample_bin
         "faster-whisper-base.en-int8-2026-06-20.json",
         "faster-whisper-small.en-int8-2026-06-20.json",
         "parakeet-compose-2026-06-20.json",
-        "parakeet-nemo-110m-compose-2026-06-19.json",
+        "parakeet-nemo-110m-compose-2026-06-21.json",
         "parakeet-mlx-110m-service-2026-06-21.json",
         "qwen-mps-2026-06-20.json",
         "qwen-compose-2026-06-19.json",
@@ -687,12 +687,14 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         "faster-whisper-base",
         "faster-whisper-small",
         "parakeet-compose",
+        "parakeet-nemo-compose",
         "parakeet-mlx-service-110m",
     ]
     assert [track["artifact"] for track in validated_tracks] == [
         "faster-whisper-base.en-int8-2026-06-20.json",
         "faster-whisper-small.en-int8-2026-06-20.json",
         "parakeet-compose-2026-06-20.json",
+        "parakeet-nemo-110m-compose-2026-06-21.json",
         "parakeet-mlx-110m-service-2026-06-21.json",
     ]
     for track in validated_tracks:
@@ -1350,6 +1352,70 @@ def test_run_v1_stt_stream_benchmark_uses_rounded_protocol_partial_interval(monk
         assert result["expected_partial_events"] == 2
         assert result["bridge"]["partial_interval_ms"] == 140
         assert result["bridge"]["requested_partial_interval_ms"] == 125
+
+    asyncio.run(scenario())
+
+
+def test_run_v1_stt_stream_benchmark_prefers_transcribed_audio_offset_for_partials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeLocalSttClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.events = [
+                {
+                    "type": "transcript",
+                    "text": "first",
+                    "is_final": False,
+                    "audio_received_ms": 400,
+                    "audio_transcribed_ms": 200,
+                    "metadata": {"chunks_received": 1},
+                },
+                {
+                    "type": "transcript",
+                    "text": "done",
+                    "is_final": True,
+                    "audio_received_ms": 400,
+                    "audio_transcribed_ms": 400,
+                    "metadata": {"chunks_received": 1},
+                },
+            ]
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            return {"type": "ready", "stream_id": 13, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, on_sent=None) -> None:
+            if on_sent is not None:
+                on_sent()
+
+        async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False):
+            if not self.events:
+                return None
+            return self.events.pop(0)
+
+        async def finalize(self) -> None:
+            return None
+
+        async def close(self, *, graceful: bool = True):
+            return {"type": "closed"}
+
+    perf_values = iter(chain([1.0, 1.0, 1.03, 2.0, 2.1], repeat(2.1)))
+    monkeypatch.setattr(benchmark, "AsyncLocalSttClient", FakeLocalSttClient)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    async def scenario() -> None:
+        result = await benchmark.run_v1_stt_stream_benchmark(
+            "ws://example.test/v1/stt/stream",
+            b"abcdefgh",
+            10,
+            400,
+            source_frame_ms=400,
+            partial_interval_ms=400,
+            partial_event_timeout_seconds=0.5,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [200.0]
+        assert result["partial_latencies_ms"][0] > 100.0
+        assert result["late_partial_events"] == 1
 
     asyncio.run(scenario())
 

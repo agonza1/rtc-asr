@@ -111,10 +111,10 @@ help:
 
 venv:
 	@echo "Preparing virtualenv..."
-	@if [ -x $(PYTHON) ] && $(PYTHON) -c "import sys" >/dev/null 2>&1; then \
+	@if [ -x $(PYTHON) ] && $(PYTHON) -c "import fastapi, httpx, numpy, soundfile, torch, uvicorn, websockets" >/dev/null 2>&1; then \
 		echo "  ✓ Reusing existing virtualenv at $(VENV)"; \
 	else \
-		echo "  Rebuilding $(VENV) because the interpreter is missing or broken..."; \
+		echo "  Rebuilding $(VENV) because the benchmark runtime is missing or broken..."; \
 		rm -rf $(VENV); \
 		python3 -m venv $(VENV); \
 		$(PIP) install --upgrade pip; \
