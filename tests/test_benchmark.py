@@ -462,7 +462,7 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
 
     assert "benchmark-site:" in makefile
     assert "benchmark-site-check:" in makefile
-    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-110m benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
+    assert ".PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status" in makefile
     assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
@@ -486,6 +486,10 @@ def test_makefile_qwen_mps_target_forces_runtime_env() -> None:
     assert "ASR_QWEN_DTYPE=$(QWEN_MPS_DTYPE)" in line
     assert "--backend qwen-asr" in line
     assert "--device mps" in line
+    assert "benchmark-qwen-mps-legacy: venv" in makefile
+    qwen_mps_legacy_block = makefile.split("benchmark-qwen-mps-legacy: venv\n", 1)[1].split("\n\n", 1)[0]
+    assert "--chunk-ms $(BENCHMARK_CHUNK_MS)" in qwen_mps_legacy_block
+    assert "--partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS)" in qwen_mps_legacy_block
 
 
 def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> None:
@@ -522,7 +526,10 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --mode v1-stt-stream --url http://127.0.0.1:8090 --v1-ws-url ws://127.0.0.1:8090/v1/stt/stream --backend parakeet-mlx" in mlx_service_block
     assert "PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service" in makefile
     assert "benchmark-compose-qwen-legacy: venv" in makefile
-    assert makefile.count("ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE=\"$${base_image}\" docker compose up -d --build; \\") == 7
+    assert "benchmark-compose-parakeet-nemo-legacy: venv" in makefile
+    assert "benchmark-parakeet-mlx-service-legacy: mlx-venv" in makefile
+    assert "benchmark-parakeet-mlx-service-110m-legacy:" in makefile
+    assert makefile.count("ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE=\"$${base_image}\" docker compose up -d --build; \\") == 8
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m")):
         assert target_name in makefile
         line = next(
@@ -536,6 +543,12 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     legacy_qwen_block = makefile.split("benchmark-compose-qwen-legacy: venv\n", 1)[1].split("\n\n", 1)[0]
     assert "--ws-url $(COMPOSE_WS_URL)" in legacy_qwen_block
     assert "--partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS)" in legacy_qwen_block
+    legacy_parakeet_nemo_block = makefile.split("benchmark-compose-parakeet-nemo-legacy: venv\n", 1)[1].split("\n\n", 1)[0]
+    assert "--ws-url $(COMPOSE_WS_URL)" in legacy_parakeet_nemo_block
+    assert "--partial-interval-chunks $(PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS)" in legacy_parakeet_nemo_block
+    legacy_mlx_service_block = makefile.split("benchmark-parakeet-mlx-service-legacy: mlx-venv\n", 1)[1].split("\n\n", 1)[0]
+    assert "--ws-url ws://127.0.0.1:8090/ws/stream" in legacy_mlx_service_block
+    assert "--partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS)" in legacy_mlx_service_block
 
 
 def test_makefile_pipecat_target_synthesizes_speech_when_no_audio_file_is_configured() -> None:
@@ -556,7 +569,7 @@ def test_makefile_pipecat_target_synthesizes_speech_when_no_audio_file_is_config
 def test_makefile_compose_benchmark_targets_cleanup_compose_stack() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
-    for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-qwen-legacy", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo")):
+    for target, backend in (("benchmark-compose-qwen", "qwen-asr"), ("benchmark-compose-qwen-legacy", "qwen-asr"), ("benchmark-compose-parakeet", "parakeet"), ("benchmark-compose-parakeet-nemo", "parakeet-nemo"), ("benchmark-compose-parakeet-nemo-legacy", "parakeet-nemo")):
         block = makefile.split(f"{target}: venv\n", 1)[1].split("\n\n", 1)[0]
         assert "@{ set -e; \\" in block
         assert "trap cleanup EXIT INT TERM" in block
@@ -1219,6 +1232,65 @@ def test_run_v1_stt_stream_benchmark_aggregates_local_stt_frames(monkeypatch: py
         assert result["final_event_received"] is True
         assert result["bridge"]["protocol"] == "local-stt-v1"
         assert result["partial_revision_count"] == 1
+
+    asyncio.run(scenario())
+
+
+def test_run_v1_stt_stream_benchmark_rounds_up_non_multiple_aggregation_cadence(monkeypatch: pytest.MonkeyPatch) -> None:
+    sent_chunks: list[bytes] = []
+
+    class FakeLocalSttClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.ws_url = ws_url
+            self.connect_fn = connect_fn
+            self.events = [
+                {"type": "transcript", "text": "first", "is_final": False, "metadata": {"chunks_received": 1}},
+                {"type": "transcript", "text": "second", "is_final": False, "metadata": {"chunks_received": 2}},
+                {"type": "transcript", "text": "done", "is_final": True, "metadata": {"chunks_received": 2}},
+            ]
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            assert kwargs["sample_rate"] == 100
+            assert kwargs["partial_interval_ms"] == 120
+            return {"type": "ready", "stream_id": 11, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, on_sent=None) -> None:
+            sent_chunks.append(chunk)
+            if on_sent is not None:
+                on_sent()
+
+        async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False):
+            if not self.events:
+                return None
+            return self.events.pop(0)
+
+        async def finalize(self) -> None:
+            return None
+
+        async def close(self, *, graceful: bool = True):
+            return {"type": "closed"}
+
+    perf_values = iter(chain([1.0, 1.0, 1.03, 2.0, 2.0, 2.02, 3.0, 3.1], repeat(3.1)))
+    monkeypatch.setattr(benchmark, "AsyncLocalSttClient", FakeLocalSttClient)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    async def scenario() -> None:
+        result = await benchmark.run_v1_stt_stream_benchmark(
+            "ws://example.test/v1/stt/stream",
+            b"abcdefghijklmnopqrstuvwx",
+            100,
+            100,
+            source_frame_ms=30,
+            partial_interval_ms=120,
+            partial_event_timeout_seconds=0.5,
+        )
+
+        assert sent_chunks == [b"abcdefghijkl", b"mnopqrstuvwx"]
+        assert result["chunk_ms"] == 120
+        assert result["aggregation_frame_count"] == 4
+        assert result["partial_audio_offsets_ms"] == [120.0, 240.0]
+        assert result["bridge"]["chunk_ms"] == 120
+        assert result["bridge"]["aggregation_frame_count"] == 4
 
     asyncio.run(scenario())
 

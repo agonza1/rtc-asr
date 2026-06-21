@@ -1108,7 +1108,12 @@ async def run_v1_stt_stream_benchmark(
     connect_fn=None,
 ) -> dict[str, object]:
     source_frames = chunk_pcm(raw_pcm, sample_rate, source_frame_ms)
-    aggregation_ms = max(chunk_ms, source_frame_ms)
+    effective_source_frame_ms = max(source_frame_ms, 1)
+    aggregation_frame_count = max(
+        (max(chunk_ms, effective_source_frame_ms) + effective_source_frame_ms - 1) // effective_source_frame_ms,
+        1,
+    )
+    aggregation_ms = aggregation_frame_count * effective_source_frame_ms
     aggregation_bytes = pcm_chunk_size(sample_rate, aggregation_ms)
     partial_interval_chunks = max(int(round(partial_interval_ms / max(aggregation_ms, 1))), 1)
     total_audio_ms = round((len(raw_pcm) / max(sample_rate * 2, 1)) * 1000, 1)
@@ -1291,7 +1296,7 @@ async def run_v1_stt_stream_benchmark(
         "source_frame_ms": source_frame_ms,
         "source_frame_count": len(source_frames),
         "simulate_realtime": simulate_realtime,
-        "aggregation_frame_count": max(int(round(aggregation_ms / max(source_frame_ms, 1))), 1),
+        "aggregation_frame_count": aggregation_frame_count,
         "partial_interval_ms": partial_interval_ms,
         "partial_interval_chunks": partial_interval_chunks,
         "partial_latencies_ms": [round(value, 1) for value in partial_latencies],
@@ -1319,7 +1324,7 @@ async def run_v1_stt_stream_benchmark(
             "source_frame_ms": source_frame_ms,
             "source_frame_count": len(source_frames),
             "chunk_count": chunk_count,
-            "aggregation_frame_count": max(int(round(aggregation_ms / max(source_frame_ms, 1))), 1),
+            "aggregation_frame_count": aggregation_frame_count,
             "chunk_ms": aggregation_ms,
             "partial_interval_ms": partial_interval_ms,
             "simulate_realtime": simulate_realtime,

@@ -86,7 +86,7 @@
       "target_sample_count": 10,
       "artifact": "parakeet-nemo-110m-compose-2026-06-19.json",
       "status_detail": "Legacy /ws/stream Compose CPU artifact refreshed on 2026-06-19. It stays in the supporting section until a paced /v1/stt/stream replacement is checked in.",
-      "run_command": "make benchmark-compose-parakeet-nemo BENCHMARK_RESULT_DATE=2026-06-19",
+      "run_command": "make benchmark-compose-parakeet-nemo-legacy BENCHMARK_RESULT_DATE=2026-06-19",
       "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
     },
     {
@@ -101,7 +101,7 @@
       "target_sample_count": 10,
       "artifact": "parakeet-mlx-110m-service-2026-06-13.json",
       "status_detail": "Legacy /ws/stream local Apple Silicon MLX service artifact. It remains published for comparison history, but the live leaderboard now waits for a paced /v1/stt/stream replacement.",
-      "run_command": "make benchmark-parakeet-mlx-service-110m",
+      "run_command": "make benchmark-parakeet-mlx-service-110m-legacy BENCHMARK_RESULT_DATE=2026-06-13",
       "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)"
     },
     {
@@ -116,7 +116,7 @@
       "target_sample_count": 10,
       "artifact": "qwen-mps-2026-06-20.json",
       "status_detail": "Legacy /ws/stream local Apple Silicon MPS artifact refreshed on 2026-06-20. It stays visible as supporting evidence only until a paced /v1/stt/stream replacement is checked in.",
-      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 make benchmark-qwen-mps",
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 make benchmark-qwen-mps-legacy",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
     },
     {
