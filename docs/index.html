@@ -605,7 +605,7 @@
               <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
             <p class="meta-line" id="generated-at"><!-- BEGIN GENERATED:generated-at -->
-Published Jun 21, 2026, 04:39 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
+Published Jun 21, 2026, 09:10 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
 <!-- END GENERATED:generated-at --></p>
           </div>
           <div class="hero-side" id="hero-side"></div>
@@ -882,6 +882,15 @@ Published Jun 21, 2026, 04:39 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
       function publishedTracks(manifest) {
         return (manifest.tracks || []).filter((track) => track.artifact_path && track.status !== "blocked");
       }
+      function contractSignature(entry) {
+        const contract = entry.contract || {};
+        const streaming = entry.streaming || {};
+        return [
+          contract.path || null,
+          contract.transport || streaming.transport || null,
+          streaming.live_metrics_comparable === true,
+        ].join("::");
+      }
       function statusRank(entry) {
         if (entry.status === "validated") return 0;
         if (entry.status === "legacy") return 1;
@@ -900,6 +909,23 @@ Published Jun 21, 2026, 04:39 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
       function secondaryEntries(entries) {
         const primarySlugs = new Set(primaryEntries(entries).map((entry) => entry.slug));
         return sortEntries(entries).filter((entry) => !primarySlugs.has(entry.slug));
+      }
+      function historicalSupportingEntries(manifest, currentEntries) {
+        const currentBySlug = new Map(currentEntries.filter((entry) => entry.slug).map((entry) => [entry.slug, entry]));
+        const currentPaths = new Set(currentEntries.map((entry) => entry.artifact_path).filter(Boolean));
+        const latestBySlug = new Map();
+        for (const entry of manifest.artifacts || []) {
+          if (!entry.artifact_path || currentPaths.has(entry.artifact_path) || !entry.slug) continue;
+          const current = currentBySlug.get(entry.slug);
+          if (!current) continue;
+          if (entry.status !== "legacy") continue;
+          if (contractSignature(entry) === contractSignature(current)) continue;
+          const previous = latestBySlug.get(entry.slug);
+          if (!previous || (entry.measured_at || "") > (previous.measured_at || "")) {
+            latestBySlug.set(entry.slug, entry);
+          }
+        }
+        return sortEntries(Array.from(latestBySlug.values()));
       }
       function toneClass(index) {
         return ["tone-moss", "tone-sage", "tone-olive"][index % 3];
@@ -1393,11 +1419,16 @@ Published Jun 21, 2026, 04:39 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           }
           const manifest = await response.json();
           const visibleTracks = publishedTracks(manifest);
-          meta.textContent = `Published ${formatDate(manifest.generated_at)} · ${visibleTracks.length} visible ASR lanes · ${manifest.summary.tracked_count} tracked lanes in the registry.`;
-          renderHero(manifest.summary, visibleTracks);
-          renderCoverage(manifest.summary, visibleTracks);
-          renderSignals(manifest.summary, visibleTracks);
-          renderLanes(visibleTracks);
+          const historicalSecondary = historicalSupportingEntries(manifest, visibleTracks);
+          const visiblePaths = new Set(visibleTracks.map((entry) => entry.artifact_path).filter(Boolean));
+          const visibleEntries = visibleTracks.concat(
+            historicalSecondary.filter((entry) => !visiblePaths.has(entry.artifact_path))
+          );
+          meta.textContent = `Published ${formatDate(manifest.generated_at)} · ${visibleEntries.length} visible ASR lanes · ${manifest.summary.tracked_count} tracked lanes in the registry.`;
+          renderHero(manifest.summary, visibleEntries);
+          renderCoverage(manifest.summary, visibleEntries);
+          renderSignals(manifest.summary, visibleEntries);
+          renderLanes(visibleEntries);
           renderContract(manifest.summary);
           renderArchive(manifest.artifacts || []);
         } catch (error) {
