@@ -236,7 +236,36 @@ For fair comparisons, benchmark the warmed service path when possible. One-shot 
 
 The benchmark harness now defaults to preloaded runs. Managed benchmark servers start with `ASR_PRELOAD_MODEL=true`, and benchmarks against an existing service fail by default unless `/api/models` reports `preload_enabled=true`. Use `--allow-unpreloaded-service` only when you intentionally want a cold-path diagnostic run.
 
+## Project Structure
+
+The repo has a few different roles in one place: the main ASR service, benchmark tooling, docs and generated artifacts, and Pipecat-facing examples or adapters. The quickest way to orient yourself is:
+
+- `src/`: main `rtc-asr` FastAPI service, backend adapters, audio normalization, shared client helpers, and Local STT v1 protocol code
+- `tests/`: service, protocol, benchmark, and integration-focused test coverage
+- `docs/`: human-facing docs, benchmark notes, and the checked-in site content
+- `docs/benchmark-results/`: tracked JSON benchmark artifacts, generated detail pages, and the homepage manifest used by `docs/index.html`
+- `examples/browser_pipecat_demo/`: browser + Pipecat demo that talks to `rtc-asr`
+- `examples/pipecat_local_stt_bot/`: example Pipecat bot that consumes the Local STT flow
+- `pipecat-local-stt/`: separate Python package for the reusable Pipecat Local STT adapter/plugin code
+- `scripts/`: manifest generation, homepage prerendering, and other repo maintenance helpers
+- `models/`: optional local model cache or runtime assets when you are experimenting outside Compose
+
+Two names are easy to confuse:
+
+- `pipecat-local-stt/` is the standalone adapter package
+- `examples/pipecat_local_stt_bot/` is an example app that uses that adapter
+
+Longer term, we may want to tighten that naming story further, but the intended split today is package vs example application.
+
 ## Documentation
+
+If you are trying to decide where to start in the repo:
+
+- start with `src/main.py` for the HTTP/websocket entrypoints
+- start with `src/model_loader.py` for backend-specific behavior
+- start with `docs/local-stt-v1.md` for the primary streaming contract
+- start with `docs/benchmarks.md` for the checked-in latency evidence
+- start with `pipecat-local-stt/` and `examples/pipecat_local_stt_bot/` when you are working on Pipecat-facing integration code
 
 - [Docs Index](./docs/index.md)
 - [Local STT v1](./docs/local-stt-v1.md)
