@@ -1301,6 +1301,59 @@ def test_run_v1_stt_stream_benchmark_rounds_up_non_multiple_aggregation_cadence(
     asyncio.run(scenario())
 
 
+def test_run_v1_stt_stream_benchmark_uses_rounded_protocol_partial_interval(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeLocalSttClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.events = [
+                {"type": "transcript", "text": "one", "is_final": False, "metadata": {"chunks_received": 1}},
+                {"type": "transcript", "text": "two", "is_final": False, "metadata": {"chunks_received": 2}},
+                {"type": "transcript", "text": "done", "is_final": True, "metadata": {"chunks_received": 3}},
+            ]
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            assert kwargs["partial_interval_ms"] == 125
+            return {"type": "ready", "stream_id": 12, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, on_sent=None) -> None:
+            if on_sent is not None:
+                on_sent()
+
+        async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False):
+            if not self.events:
+                return None
+            return self.events.pop(0)
+
+        async def finalize(self) -> None:
+            return None
+
+        async def close(self, *, graceful: bool = True):
+            return {"type": "closed"}
+
+    perf_values = iter(chain([1.0, 1.0, 1.02, 2.0, 2.0, 2.02, 3.0, 3.0, 3.02, 4.0, 4.1], repeat(4.1)))
+    monkeypatch.setattr(benchmark, "AsyncLocalSttClient", FakeLocalSttClient)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    async def scenario() -> None:
+        result = await benchmark.run_v1_stt_stream_benchmark(
+            "ws://example.test/v1/stt/stream",
+            b"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcd",
+            100,
+            100,
+            source_frame_ms=20,
+            partial_interval_ms=125,
+            partial_event_timeout_seconds=0.5,
+        )
+
+        assert result["requested_partial_interval_ms"] == 125
+        assert result["partial_interval_ms"] == 140
+        assert result["partial_interval_chunks"] == 2
+        assert result["expected_partial_events"] == 2
+        assert result["bridge"]["partial_interval_ms"] == 140
+        assert result["bridge"]["requested_partial_interval_ms"] == 125
+
+    asyncio.run(scenario())
+
+
 def test_run_v1_stt_stream_benchmark_waits_for_final_beyond_partial_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     observed_timeouts: list[float] = []
 
@@ -1491,8 +1544,10 @@ def test_async_main_v1_forwards_final_timeout_and_uses_effective_aggregation(mon
             "source_frame_ms": 120,
             "source_frame_count": 4,
             "aggregation_frame_count": 5,
-            "partial_interval_ms": 100,
+            "partial_interval_ms": 120,
+            "requested_partial_interval_ms": 100,
             "partial_interval_chunks": 1,
+            "final_event_timeout_seconds": 3.5,
             "binary_frames": True,
             "simulate_realtime": True,
             "partial_latencies_ms": [25.0],
@@ -1531,7 +1586,9 @@ def test_async_main_v1_forwards_final_timeout_and_uses_effective_aggregation(mon
                 "chunk_count": 1,
                 "aggregation_frame_count": 5,
                 "chunk_ms": 120,
-                "partial_interval_ms": 100,
+                "partial_interval_ms": 120,
+                "requested_partial_interval_ms": 100,
+                "final_event_timeout_seconds": 3.5,
                 "simulate_realtime": True,
             },
             "final_event_received": True,
@@ -1588,12 +1645,19 @@ def test_async_main_v1_forwards_final_timeout_and_uses_effective_aggregation(mon
     assert captured_kwargs["final_event_timeout_seconds"] == 3.5
     assert result["benchmark"]["chunk_ms"] == 120
     assert result["benchmark"]["partial_interval_chunks"] == 1
+    assert result["benchmark"]["partial_interval_ms"] == 120
+    assert result["benchmark"]["requested_partial_interval_ms"] == 100
+    assert result["benchmark"]["final_event_timeout_seconds"] == 3.5
     assert result["benchmark"]["v1_aggregation_ms"] == 120
     assert result["integration"]["bridge_chunk_ms"] == 120
     assert result["streaming"]["chunk_ms"] == 120
     assert result["streaming"]["aggregation_ms"] == 120
     assert result["streaming"]["partial_interval_chunks"] == 1
+    assert result["streaming"]["partial_interval_ms"] == 120
+    assert result["streaming"]["requested_partial_interval_ms"] == 100
+    assert result["streaming"]["final_event_timeout_seconds"] == 3.5
     assert result["samples"]["streaming"][0]["partial_interval_chunks"] == 1
+    assert result["samples"]["streaming"][0]["final_event_timeout_seconds"] == 3.5
 
 
 def test_run_pipecat_e2e_benchmark_marks_audio_end_when_last_chunk_is_sent(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -25,6 +25,7 @@ import soundfile as sf
 import websockets
 
 from src.rtc_client import AsyncASRClient, AsyncLocalSttClient, TranscriptEvent
+from src.protocols.local_stt_v1 import HOT_PATH_FRAME_MS
 
 DEFAULT_TEXT = (
     "The quick brown fox jumps over the lazy dog. "
@@ -1116,13 +1117,17 @@ async def run_v1_stt_stream_benchmark(
     aggregation_ms = aggregation_frame_count * effective_source_frame_ms
     aggregation_bytes = pcm_chunk_size(sample_rate, aggregation_ms)
     effective_aggregation_ms = max(aggregation_ms, 1)
+    effective_partial_interval_ms = max(
+        ((partial_interval_ms + HOT_PATH_FRAME_MS - 1) // HOT_PATH_FRAME_MS) * HOT_PATH_FRAME_MS,
+        HOT_PATH_FRAME_MS,
+    )
     partial_interval_chunks = max(
-        (partial_interval_ms + effective_aggregation_ms - 1) // effective_aggregation_ms,
+        (effective_partial_interval_ms + effective_aggregation_ms - 1) // effective_aggregation_ms,
         1,
     )
     total_audio_ms = round((len(raw_pcm) / max(sample_rate * 2, 1)) * 1000, 1)
     sleep = sleep_fn or asyncio.sleep
-    late_partial_threshold_ms = float(max(partial_interval_ms, 100))
+    late_partial_threshold_ms = float(max(effective_partial_interval_ms, 100))
 
     partial_latencies: list[float] = []
     partial_audio_offsets_ms: list[float] = []
@@ -1136,7 +1141,7 @@ async def run_v1_stt_stream_benchmark(
     source_audio_ms = 0.0
     late_partial_events = 0
     stream_started_at = 0.0
-    next_expected_partial_audio_ms = float(partial_interval_ms)
+    next_expected_partial_audio_ms = float(effective_partial_interval_ms)
     expected_partial_events = 0
     recorded_partial_revisions: set[int] = set()
 
@@ -1144,7 +1149,7 @@ async def run_v1_stt_stream_benchmark(
         nonlocal expected_partial_events, next_expected_partial_audio_ms
         while audio_offset_ms + 0.5 >= next_expected_partial_audio_ms:
             expected_partial_events += 1
-            next_expected_partial_audio_ms += float(partial_interval_ms)
+            next_expected_partial_audio_ms += float(effective_partial_interval_ms)
 
     def record_partial_event(event: TranscriptEvent, received_at: float) -> bool:
         nonlocal last_partial_received_at, last_partial_text, late_partial_events
@@ -1303,8 +1308,10 @@ async def run_v1_stt_stream_benchmark(
         "source_frame_count": len(source_frames),
         "simulate_realtime": simulate_realtime,
         "aggregation_frame_count": aggregation_frame_count,
-        "partial_interval_ms": partial_interval_ms,
+        "partial_interval_ms": effective_partial_interval_ms,
+        "requested_partial_interval_ms": partial_interval_ms,
         "partial_interval_chunks": partial_interval_chunks,
+        "final_event_timeout_seconds": final_event_timeout_seconds,
         "partial_latencies_ms": [round(value, 1) for value in partial_latencies],
         "partial_audio_offsets_ms": partial_audio_offsets_ms,
         "partial_end_to_end_ms": partial_end_to_end_ms,
@@ -1332,7 +1339,9 @@ async def run_v1_stt_stream_benchmark(
             "chunk_count": chunk_count,
             "aggregation_frame_count": aggregation_frame_count,
             "chunk_ms": aggregation_ms,
-            "partial_interval_ms": partial_interval_ms,
+            "partial_interval_ms": effective_partial_interval_ms,
+            "requested_partial_interval_ms": partial_interval_ms,
+            "final_event_timeout_seconds": final_event_timeout_seconds,
             "simulate_realtime": simulate_realtime,
         },
     }
@@ -1493,6 +1502,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "source_frame_count": ws.get("source_frame_count"),
                 "aggregation_frame_count": ws.get("aggregation_frame_count"),
                 "partial_interval_chunks": ws.get("partial_interval_chunks"),
+                "partial_interval_ms": ws.get("partial_interval_ms"),
+                "requested_partial_interval_ms": ws.get("requested_partial_interval_ms"),
+                "final_event_timeout_seconds": ws.get("final_event_timeout_seconds"),
                 "binary_frames": ws["binary_frames"],
                 "simulate_realtime": ws.get("simulate_realtime"),
                 "partial_mean_ms": ws["partial_mean_ms"],
@@ -1601,6 +1613,21 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
             if streaming_samples and args.mode == "v1-stt-stream"
             else args.partial_interval_chunks
         )
+        stream_partial_interval_ms = (
+            streaming_samples[0].get("partial_interval_ms")
+            if streaming_samples and args.mode == "v1-stt-stream"
+            else None
+        )
+        stream_requested_partial_interval_ms = (
+            streaming_samples[0].get("requested_partial_interval_ms")
+            if streaming_samples and args.mode == "v1-stt-stream"
+            else None
+        )
+        stream_final_event_timeout_seconds = (
+            streaming_samples[0].get("final_event_timeout_seconds")
+            if streaming_samples and args.mode == "v1-stt-stream"
+            else None
+        )
 
         peak_rss_mb = None
         cpu_utilization_percent = None
@@ -1629,13 +1656,16 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "partial_window_seconds": args.partial_window,
                 "max_buffer_seconds": args.max_buffer,
                 "partial_event_timeout_seconds": args.partial_event_timeout,
-                "partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
+                "final_event_timeout_seconds": stream_final_event_timeout_seconds,
+                "partial_interval_ms": stream_partial_interval_ms,
+                "requested_partial_interval_ms": stream_requested_partial_interval_ms,
                 "request_retries": args.request_retries,
                 "request_retry_delay": args.request_retry_delay,
                 "pipecat_source_frame_ms": args.pipecat_source_frame_ms if args.mode == "pipecat-e2e" else None,
                 "v1_source_frame_ms": args.v1_source_frame_ms if args.mode == "v1-stt-stream" else None,
                 "v1_aggregation_ms": stream_aggregation_ms,
-                "v1_partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
+                "v1_partial_interval_ms": stream_partial_interval_ms,
+                "v1_requested_partial_interval_ms": stream_requested_partial_interval_ms,
                 "preload_model": args.preload_model,
                 "require_preloaded_service": args.require_preloaded_service,
                 "spawn_server": args.spawn_server,
@@ -1647,7 +1677,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "transport": args.mode,
                 "source_frame_ms": stream_source_frame_ms,
                 "bridge_chunk_ms": stream_chunk_ms,
-                "partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
+                "partial_interval_ms": stream_partial_interval_ms,
+                "requested_partial_interval_ms": stream_requested_partial_interval_ms,
+                "final_event_timeout_seconds": stream_final_event_timeout_seconds,
                 "send_binary_frames": stream_binary_frames,
                 "simulate_realtime": stream_simulate_realtime,
             } if source_frame_mode else None,
@@ -1685,7 +1717,9 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 "chunk_ms": stream_chunk_ms,
                 "aggregation_ms": stream_aggregation_ms,
                 "partial_interval_chunks": stream_partial_interval_chunks,
-                "partial_interval_ms": args.v1_partial_interval_ms if args.mode == "v1-stt-stream" else None,
+                "partial_interval_ms": stream_partial_interval_ms,
+                "requested_partial_interval_ms": stream_requested_partial_interval_ms,
+                "final_event_timeout_seconds": stream_final_event_timeout_seconds,
                 "binary_frames": stream_binary_frames,
                 "source_frame_ms": stream_source_frame_ms,
                 "simulate_realtime": stream_simulate_realtime,
