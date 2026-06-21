@@ -4,7 +4,7 @@
 
 The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, and `parakeet-nemo` backends behind the same API surface.
 
-<img width="1497" height="728" alt="high-level-flow-diagram" src="https://github.com/user-attachments/assets/d8182afc-af8b-42a0-8753-a83d03f76038" />
+<img width="1497" height="728" alt="high-level-flow-diagram" src="https://github.com/user-attachments/assets/d8182afc-af8b-42a0-8753-a83d03f76038" style="max-width: 100%; height: auto;" />
 
 ## What It Ships Today
 

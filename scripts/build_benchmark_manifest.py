@@ -500,6 +500,16 @@ def artifact_transport(entry: dict[str, Any]) -> str | None:
     return contract.get("transport") or streaming.get("transport")
 
 
+def is_legacy_artifact(entry: dict[str, Any]) -> bool:
+    contract = entry.get("contract") or {}
+    streaming = entry.get("streaming") or {}
+    path = contract.get("path")
+    transport = artifact_transport(entry)
+    if path == "/ws/stream" or transport in {"direct", "ws/stream"}:
+        return True
+    return streaming.get("live_metrics_comparable") is False
+
+
 def artifact_path_hint(path: str | None) -> str | None:
     artifact_name = Path(path or "").name
     if "pipecat-e2e" in artifact_name:
@@ -539,8 +549,7 @@ def artifact_date_hint(entry: dict[str, Any]) -> str | None:
 
 def historical_run_command(entry: dict[str, Any], track: dict[str, Any], current_artifact: str | None) -> str:
     base_command = track.get("run_command") or "No checked-in run command"
-    transport = artifact_transport(entry)
-    if transport not in {"direct", "ws/stream"}:
+    if not is_legacy_artifact(entry):
         return base_command
     if not base_command.startswith("make "):
         return base_command

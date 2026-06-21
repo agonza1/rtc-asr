@@ -546,6 +546,8 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'function artifactHashLabel(entry)' in html
     assert '${artifactHashLabel(entry)}' in html
     assert 'Artifact-backed benchmark summary' not in html
+    assert 'function historicalSupportingEntries(manifest, currentEntries)' in html
+    assert 'const historicalSecondary = historicalSupportingEntries(manifest, visibleTracks);' in html
 
 
 def test_docs_parakeet_mlx_row_matches_checked_in_artifact_summary() -> None:
@@ -695,6 +697,8 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Local Python Apple Silicon" in legacy_qwen_detail
     assert "Status: legacy" in legacy_qwen_detail
     assert "BENCHMARK_RESULT_DATE=2026-06-20 BENCHMARK_SAMPLE_COUNT=10 BENCHMARK_REST_RUNS=5 make benchmark-qwen-mps-legacy" in legacy_qwen_detail
+    legacy_qwen_older_detail = (Path("docs") / "benchmark-results/pages/qwen-mps-2026-06-10.html").read_text(encoding="utf-8")
+    assert "BENCHMARK_RESULT_DATE=2026-06-10 BENCHMARK_SAMPLE_COUNT=10 BENCHMARK_REST_RUNS=5 make benchmark-qwen-mps-legacy" in legacy_qwen_older_detail
 
     legacy_pipecat_detail = (Path("docs") / "benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17.html").read_text(encoding="utf-8")
     assert "Pipecat E2E Faster-Whisper Base" in legacy_pipecat_detail
