@@ -34,7 +34,15 @@ def build_local_stt(settings: BotSettings) -> LocalStreamingSTTService:
 
 
 def build_rtc_asr_stt(settings: BotSettings) -> RtcAsrSTTService:
-    return RtcAsrSTTService(url=settings.ws_url, language="en")
+    return RtcAsrSTTService(
+        url=settings.ws_url,
+        language="en",
+        sample_rate=settings.sample_rate,
+        channels=settings.channels,
+        frame_ms=settings.frame_ms,
+        partial_interval_ms=settings.partial_interval_ms,
+        partial_window_seconds=settings.partial_window_seconds,
+    )
 
 
 def build_stt(settings: BotSettings) -> LocalStreamingSTTService | RtcAsrSTTService:

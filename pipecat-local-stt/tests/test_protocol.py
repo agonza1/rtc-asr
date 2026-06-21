@@ -47,3 +47,20 @@ def test_rtc_asr_wrapper_exports_default_service_config() -> None:
 
     assert service.config.url == "ws://localhost:8080/v1/stt/stream"
     assert service.config.language == "es"
+
+
+def test_rtc_asr_wrapper_accepts_stream_tuning_overrides() -> None:
+    service = RtcAsrSTTService(
+        url="ws://localhost:8080/v1/stt/stream",
+        sample_rate=8000,
+        channels=2,
+        frame_ms=40,
+        partial_interval_ms=250,
+        partial_window_seconds=1.5,
+    )
+
+    assert service.config.sample_rate == 8000
+    assert service.config.channels == 2
+    assert service.config.frame_ms == 40
+    assert service.config.partial_interval_ms == 250
+    assert service.config.partial_window_seconds == 1.5

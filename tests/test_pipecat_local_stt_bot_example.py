@@ -78,6 +78,27 @@ def test_pipecat_local_stt_bot_example_selects_supported_sidecar_services() -> N
     assert module.build_stt(module.BotSettings(service="rtc-asr")).__class__.__name__ == "RtcAsrSTTService"
 
 
+def test_pipecat_local_stt_bot_example_applies_tuning_to_rtc_asr_service() -> None:
+    module = load_bot_module()
+
+    stt = module.build_stt(
+        module.BotSettings(
+            service="rtc-asr",
+            sample_rate=8000,
+            channels=2,
+            frame_ms=40,
+            partial_interval_ms=250,
+            partial_window_seconds=1.5,
+        )
+    )
+
+    assert stt.config.sample_rate == 8000
+    assert stt.config.channels == 2
+    assert stt.config.frame_ms == 40
+    assert stt.config.partial_interval_ms == 250
+    assert stt.config.partial_window_seconds == 1.5
+
+
 def test_pipecat_local_stt_bot_example_rejects_unknown_service() -> None:
     module = load_bot_module()
 
