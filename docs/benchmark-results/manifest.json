@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-21T15:57:19Z",
+  "generated_at": "2026-06-21T16:39:44Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -193,7 +193,8 @@
       "rest": {
         "mean_ms": 150.1,
         "p95_ms": 197.6,
-        "rtf_mean": 0.021
+        "rtf_mean": 0.021,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -286,7 +287,8 @@
       "rest": {
         "mean_ms": 479.9,
         "p95_ms": 587.3,
-        "rtf_mean": 0.066
+        "rtf_mean": 0.066,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -380,7 +382,8 @@
       "rest": {
         "mean_ms": 508.8,
         "p95_ms": 1001.7,
-        "rtf_mean": 0.07
+        "rtf_mean": 0.07,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -474,7 +477,8 @@
       "rest": {
         "mean_ms": 1219.6,
         "p95_ms": 1286.6,
-        "rtf_mean": 0.168
+        "rtf_mean": 0.168,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -567,7 +571,8 @@
       "rest": {
         "mean_ms": 1382.5,
         "p95_ms": 1567.2,
-        "rtf_mean": 0.19
+        "rtf_mean": 0.19,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -660,7 +665,8 @@
       "rest": {
         "mean_ms": 1302.6,
         "p95_ms": 2955.6,
-        "rtf_mean": 0.179
+        "rtf_mean": 0.179,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -754,7 +760,8 @@
       "rest": {
         "mean_ms": 5589.9,
         "p95_ms": 9021.8,
-        "rtf_mean": 0.768
+        "rtf_mean": 0.768,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -843,7 +850,8 @@
       "rest": {
         "mean_ms": 441.2,
         "p95_ms": 441.2,
-        "rtf_mean": 0.061
+        "rtf_mean": 0.061,
+        "runs_per_sample": 1
       },
       "streaming": {
         "transport": "pipecat-e2e",
@@ -931,7 +939,8 @@
       "rest": {
         "mean_ms": 1219.6,
         "p95_ms": 1286.6,
-        "rtf_mean": 0.168
+        "rtf_mean": 0.168,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -1025,7 +1034,8 @@
       "rest": {
         "mean_ms": 5589.9,
         "p95_ms": 9021.8,
-        "rtf_mean": 0.768
+        "rtf_mean": 0.768,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -1119,7 +1129,8 @@
       "rest": {
         "mean_ms": 508.8,
         "p95_ms": 1001.7,
-        "rtf_mean": 0.07
+        "rtf_mean": 0.07,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -1212,7 +1223,8 @@
       "rest": {
         "mean_ms": 150.1,
         "p95_ms": 197.6,
-        "rtf_mean": 0.021
+        "rtf_mean": 0.021,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -1305,7 +1317,8 @@
       "rest": {
         "mean_ms": 1302.6,
         "p95_ms": 2955.6,
-        "rtf_mean": 0.179
+        "rtf_mean": 0.179,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -1398,7 +1411,8 @@
       "rest": {
         "mean_ms": 1382.5,
         "p95_ms": 1567.2,
-        "rtf_mean": 0.19
+        "rtf_mean": 0.19,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -1491,7 +1505,8 @@
       "rest": {
         "mean_ms": 479.9,
         "p95_ms": 587.3,
-        "rtf_mean": 0.066
+        "rtf_mean": 0.066,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -1579,7 +1594,8 @@
       "rest": {
         "mean_ms": 1134.5,
         "p95_ms": 1195.4,
-        "rtf_mean": 0.156
+        "rtf_mean": 0.156,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "direct",
@@ -1609,7 +1625,7 @@
       "slug": "qwen-mps",
       "lane": "Local Python Apple Silicon",
       "target_sample_count": 10,
-      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 BENCHMARK_SAMPLE_COUNT=10 make benchmark-qwen-mps-legacy  # current tracked artifact: qwen-mps-2026-06-21.json",
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-20 BENCHMARK_SAMPLE_COUNT=10 BENCHMARK_REST_RUNS=5 make benchmark-qwen-mps-legacy  # current tracked artifact: qwen-mps-2026-06-21.json",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
       "status": "legacy",
       "status_detail": "Historical supporting artifact for Qwen MPS; current tracked artifact is qwen-mps-2026-06-21.json.",
@@ -1667,7 +1683,8 @@
       "rest": {
         "mean_ms": 3553.8,
         "p95_ms": 4215.3,
-        "rtf_mean": 0.488
+        "rtf_mean": 0.488,
+        "runs_per_sample": 3
       },
       "streaming": {
         "transport": "direct",
@@ -1697,7 +1714,7 @@
       "slug": "qwen-compose",
       "lane": "Docker Compose CPU",
       "target_sample_count": 10,
-      "run_command": "BENCHMARK_RESULT_DATE=2026-06-19 BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 make benchmark-compose-qwen-legacy  # current tracked artifact: qwen-compose-2026-06-21.json",
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-19 BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 make benchmark-compose-qwen-legacy  # current tracked artifact: qwen-compose-2026-06-21.json",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
       "status": "legacy",
       "status_detail": "Historical supporting artifact for Qwen Compose; current tracked artifact is qwen-compose-2026-06-21.json.",
@@ -1756,7 +1773,8 @@
       "rest": {
         "mean_ms": 441.2,
         "p95_ms": 441.2,
-        "rtf_mean": 0.061
+        "rtf_mean": 0.061,
+        "runs_per_sample": 1
       },
       "streaming": {
         "transport": "pipecat-e2e",
@@ -1845,7 +1863,8 @@
       "rest": {
         "mean_ms": 564.8,
         "p95_ms": 564.8,
-        "rtf_mean": 0.072
+        "rtf_mean": 0.072,
+        "runs_per_sample": 1
       },
       "streaming": {
         "transport": "pipecat-e2e",
@@ -1934,7 +1953,8 @@
       "rest": {
         "mean_ms": 1.8,
         "p95_ms": 1.8,
-        "rtf_mean": 0.014
+        "rtf_mean": 0.014,
+        "runs_per_sample": 1
       },
       "streaming": {
         "transport": "pipecat-e2e",
@@ -2023,7 +2043,8 @@
       "rest": {
         "mean_ms": 551.1,
         "p95_ms": 551.1,
-        "rtf_mean": 0.076
+        "rtf_mean": 0.076,
+        "runs_per_sample": 1
       },
       "streaming": {
         "transport": "pipecat-e2e",
@@ -2112,7 +2133,8 @@
       "rest": {
         "mean_ms": 488.8,
         "p95_ms": 488.8,
-        "rtf_mean": 0.067
+        "rtf_mean": 0.067,
+        "runs_per_sample": 1
       },
       "streaming": {
         "transport": "pipecat-e2e",
@@ -2200,7 +2222,8 @@
       "rest": {
         "mean_ms": 558.4,
         "p95_ms": 726.1,
-        "rtf_mean": 0.077
+        "rtf_mean": 0.077,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "direct",
@@ -2230,7 +2253,7 @@
       "slug": "faster-whisper-base",
       "lane": "Local Python CPU",
       "target_sample_count": 10,
-      "run_command": "BENCHMARK_RESULT_DATE=2026-06-15 BENCHMARK_SAMPLE_COUNT=10 make benchmark-faster-whisper-base-legacy  # current tracked artifact: faster-whisper-base.en-int8-2026-06-20.json",
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-15 BENCHMARK_SAMPLE_COUNT=10 BENCHMARK_REST_RUNS=5 make benchmark-faster-whisper-base-legacy  # current tracked artifact: faster-whisper-base.en-int8-2026-06-20.json",
       "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
       "status": "legacy",
       "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
@@ -2288,7 +2311,8 @@
       "rest": {
         "mean_ms": 3799.0,
         "p95_ms": 4475.0,
-        "rtf_mean": 0.522
+        "rtf_mean": 0.522,
+        "runs_per_sample": 3
       },
       "streaming": {
         "transport": "direct",
@@ -2318,7 +2342,7 @@
       "slug": "qwen-compose",
       "lane": "Docker Compose CPU",
       "target_sample_count": 10,
-      "run_command": "BENCHMARK_RESULT_DATE=2026-06-15 BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 make benchmark-compose-qwen-legacy  # current tracked artifact: qwen-compose-2026-06-21.json",
+      "run_command": "BENCHMARK_RESULT_DATE=2026-06-15 BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS=8 QWEN_COMPOSE_DTYPE=float16 make benchmark-compose-qwen-legacy  # current tracked artifact: qwen-compose-2026-06-21.json",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
       "status": "legacy",
       "status_detail": "Historical supporting artifact for Qwen Compose; current tracked artifact is qwen-compose-2026-06-21.json.",
@@ -2376,7 +2400,8 @@
       "rest": {
         "mean_ms": 443.1,
         "p95_ms": 443.1,
-        "rtf_mean": 0.112
+        "rtf_mean": 0.112,
+        "runs_per_sample": 1
       },
       "streaming": {
         "transport": "pipecat-e2e",
@@ -2461,7 +2486,8 @@
       "rest": {
         "mean_ms": 1186.2,
         "p95_ms": 1261.2,
-        "rtf_mean": 0.163
+        "rtf_mean": 0.163,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": null,
@@ -2546,7 +2572,8 @@
       "rest": {
         "mean_ms": 331.4,
         "p95_ms": 511.5,
-        "rtf_mean": 0.046
+        "rtf_mean": 0.046,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": null,
@@ -2631,7 +2658,8 @@
       "rest": {
         "mean_ms": 1378.3,
         "p95_ms": 1531.1,
-        "rtf_mean": 0.189
+        "rtf_mean": 0.189,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": null,
@@ -2716,7 +2744,8 @@
       "rest": {
         "mean_ms": 573.3,
         "p95_ms": 741.1,
-        "rtf_mean": 0.079
+        "rtf_mean": 0.079,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": null,
@@ -2801,7 +2830,8 @@
       "rest": {
         "mean_ms": 2388.3,
         "p95_ms": 4098.1,
-        "rtf_mean": 0.328
+        "rtf_mean": 0.328,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": null,
@@ -2904,7 +2934,8 @@
       "rest": {
         "mean_ms": 150.1,
         "p95_ms": 197.6,
-        "rtf_mean": 0.021
+        "rtf_mean": 0.021,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -2997,7 +3028,8 @@
       "rest": {
         "mean_ms": 479.9,
         "p95_ms": 587.3,
-        "rtf_mean": 0.066
+        "rtf_mean": 0.066,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -3091,7 +3123,8 @@
       "rest": {
         "mean_ms": 508.8,
         "p95_ms": 1001.7,
-        "rtf_mean": 0.07
+        "rtf_mean": 0.07,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -3185,7 +3218,8 @@
       "rest": {
         "mean_ms": 1219.6,
         "p95_ms": 1286.6,
-        "rtf_mean": 0.168
+        "rtf_mean": 0.168,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -3278,7 +3312,8 @@
       "rest": {
         "mean_ms": 1382.5,
         "p95_ms": 1567.2,
-        "rtf_mean": 0.19
+        "rtf_mean": 0.19,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -3371,7 +3406,8 @@
       "rest": {
         "mean_ms": 1302.6,
         "p95_ms": 2955.6,
-        "rtf_mean": 0.179
+        "rtf_mean": 0.179,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",
@@ -3460,7 +3496,8 @@
       "rest": {
         "mean_ms": 441.2,
         "p95_ms": 441.2,
-        "rtf_mean": 0.061
+        "rtf_mean": 0.061,
+        "runs_per_sample": 1
       },
       "streaming": {
         "transport": "pipecat-e2e",
@@ -3554,7 +3591,8 @@
       "rest": {
         "mean_ms": 5589.9,
         "p95_ms": 9021.8,
-        "rtf_mean": 0.768
+        "rtf_mean": 0.768,
+        "runs_per_sample": 5
       },
       "streaming": {
         "transport": "v1-stt-stream",

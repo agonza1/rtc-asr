@@ -420,6 +420,10 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
             "mean_ms": rest.get("mean_ms"),
             "p95_ms": rest.get("p95_ms"),
             "rtf_mean": rest.get("rtf_mean"),
+            "runs_per_sample": first_defined(
+                rest.get("runs_per_sample"),
+                nested_value(payload, "benchmark", "rest_runs_per_sample"),
+            ),
         },
         "streaming": {
             "transport": contract.get("transport"),
