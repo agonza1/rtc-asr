@@ -753,7 +753,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
             f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Alternative lane</div><div class="headline-value">{html.escape(alternative.get("label") or "unknown")}</div><p>{html.escape(alternative.get("status_detail") or "Supporting lane")}</p></article>'
         )
     summary_cards.append(
-        f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">{len(primary)} fully comparable lanes</div><p>{len(secondary)} supporting lanes stay below the fold because they use the deprecated /ws/stream contract, lack a comparable live metric, or were published for a narrower benchmarking purpose.</p></article>'
+        f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">{len(primary)} fully comparable lanes</div><p>The main ranking only includes lanes with comparable live metrics. Historical and differently scoped artifacts remain available through the appendix and detail pages.</p></article>'
     )
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
@@ -771,37 +771,13 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
         render_row(entry, first_partial_baseline, partial_baseline, final_baseline, baseline_label, max_rest)
         for entry in primary
     )
-    secondary_rows = "".join(render_secondary_row(entry) for entry in secondary)
-    secondary_section = ""
-    if secondary_rows:
-        secondary_section = f"""
-<div class="comparison-wrap panel" style="margin-top: 16px;">
-  <div class="section-head">
-    <div>
-      <div class="section-kicker">Supporting lanes</div>
-      <h2>Artifacts kept out of the primary ranking</h2>
-    </div>
-    <p class="subcopy">These lanes still add context, but they use the deprecated /ws/stream path, miss a comparable live metric, or were published for a narrower benchmarking purpose.</p>
-  </div>
-  <div class="comparison-scroll">
-    <table>
-      <thead>
-        <tr><th>Lane</th><th>Why it is secondary</th><th>Visible live metrics</th><th>Details</th></tr>
-      </thead>
-      <tbody>
-{secondary_rows}
-      </tbody>
-    </table>
-  </div>
-</div>
-""".strip()
     static_summary = f"""
 <section class="section-head">
   <div>
     <div class="section-kicker">Launch readout</div>
     <h2>{html.escape(recommendation_title)}</h2>
   </div>
-  <p class="subcopy">{html.escape(recommendation_copy)} The main ranking now stays focused on fully comparable live lanes, while incomplete or differently scoped artifacts move into a labeled supporting section.</p>
+  <p class="subcopy">{html.escape(recommendation_copy)} The main ranking stays focused on fully comparable live lanes, while historical or differently scoped artifacts remain available through the appendix and detail pages.</p>
 </section>
 <div class="snapshot-grid">
   {''.join(summary_cards)}
@@ -821,7 +797,6 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     </table>
   </div>
 </div>
-{secondary_section}
 """.strip()
     generated_at = html.escape(
         f"Published {format_date(manifest.get('generated_at'))} . {len(entries)} visible ASR lanes . {summary.get('tracked_count', 0)} tracked lanes in the registry."
