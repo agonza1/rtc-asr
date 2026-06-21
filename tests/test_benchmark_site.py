@@ -529,9 +529,9 @@ def test_render_homepage_keeps_historical_supporting_artifacts_discoverable() ->
 
     html = render_homepage(manifest, homepage)
 
-    assert "1 supporting lanes stay below the fold" in html
-    assert "qwen-mps-2026-06-20.html" in html
-    assert "Deprecated /ws/stream artifact" in html
+    assert "Historical and differently scoped artifacts remain available through the appendix and detail pages." in html
+    assert "Artifacts kept out of the primary ranking" not in html
+    assert "qwen-mps-2026-06-20.html" not in html
 
 
 def test_docs_index_live_labels_match_streaming_framing() -> None:
@@ -1081,9 +1081,10 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
     assert "Launch readout" in homepage
-    assert "The main ranking now stays focused on fully comparable live lanes" in homepage
+    assert "The main ranking stays focused on fully comparable live lanes" in homepage
     assert "Recommended default" in homepage
-    assert "Artifacts kept out of the primary ranking" in homepage
+    assert "Benchmark appendix" in homepage
+    assert "Artifacts kept out of the primary ranking" not in homepage
     assert "Open detail page" in homepage
     assert "SHA-256" in homepage
     assert "open JSON" not in homepage
