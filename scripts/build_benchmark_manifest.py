@@ -251,9 +251,13 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
             system.get("memory_total_mb"),
             metrics.get("memory_total_mb"),
         ),
+        "process_rss_mb": first_defined(
+            environment.get("process_rss_mb"),
+            system.get("process_rss_mb"),
+            metrics.get("process_rss_mb"),
+        ),
         "peak_rss_mb": first_defined(
             environment.get("peak_rss_mb"),
-            environment.get("process_rss_mb"),
             system.get("peak_rss_mb"),
             metrics.get("peak_rss_mb"),
         ),

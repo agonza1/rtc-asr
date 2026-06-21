@@ -611,7 +611,8 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
 
     assert 'System profile' in detail_html
     assert 'macOS' in detail_html
-    assert 'Peak RSS 23.6 MB' in detail_html
+    assert 'Peak RSS n/a' in detail_html
+    assert 'Process RSS 23.6 MB' in detail_html
     assert 'Accelerator Apple M-series GPU' in detail_html
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
@@ -675,7 +676,8 @@ def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
     detail_html = render_detail_page(entry, payload)
 
     assert 'System profile' in detail_html
-    assert 'Peak RSS 23.6 MB' in detail_html
+    assert 'Peak RSS n/a' in detail_html
+    assert 'Process RSS 23.6 MB' in detail_html
     assert 'Logical cores 12' in detail_html
     assert 'System RAM 16384.0 MB' in detail_html
     assert 'Stable over 5 minutes.' in detail_html

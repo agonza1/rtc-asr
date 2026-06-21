@@ -5,6 +5,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from src.rtc_client import TranscriptEvent
 
@@ -144,6 +145,22 @@ def test_describe_environment_records_host_capacity(monkeypatch) -> None:
     assert payload["machine"] == "arm64"
     assert payload["cpu_logical_cores"] == 8
     assert payload["python"]
+
+
+def test_describe_environment_records_memory_when_psutil_is_available(monkeypatch) -> None:
+    fake_psutil = SimpleNamespace(
+        virtual_memory=lambda: SimpleNamespace(total=16 * 1024 * 1024 * 1024),
+        Process=lambda: SimpleNamespace(
+            memory_info=lambda: SimpleNamespace(rss=384 * 1024 * 1024),
+        ),
+    )
+    monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+
+    payload = benchmark_module.describe_environment()
+
+    assert payload["memory_total_mb"] == 16384.0
+    assert payload["process_rss_mb"] == 384.0
+    assert payload["peak_rss_mb"] is None
 
 
 def test_normalize_pcm16_buffer_reports_float32_samples() -> None:
