@@ -320,6 +320,19 @@ def test_manifest_preserves_energy_per_audio_second_metadata() -> None:
     assert system["energy_per_audio_second_j"] == 2.4
 
 
+def test_manifest_preserves_nested_memory_metadata_aliases() -> None:
+    system = extract_system_signals(
+        {
+            "memory": {"total_mb": 32768.0, "rss_peak_mb": 512.5},
+            "metrics": {"memory": {"process_rss_mb": 180.25}},
+        }
+    )
+
+    assert system["memory_total_mb"] == 32768.0
+    assert system["process_rss_mb"] == 180.25
+    assert system["peak_rss_mb"] == 512.5
+
+
 def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
     system = extract_system_signals(
         {
@@ -724,6 +737,17 @@ def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
     assert 'Logical cores 12' in detail_html
     assert 'System RAM 16384.0 MB' in detail_html
     assert 'Stable over 5 minutes.' in detail_html
+
+    memory_alias_html = render_detail_page(
+        entry,
+        {
+            'memory': {'total_mb': 32768.0, 'peak_rss_mb': 512.5},
+            'metrics': {'memory': {'process_rss_mb': 180.25}},
+        },
+    )
+    assert 'System RAM 32768.0 MB' in memory_alias_html
+    assert 'Peak RSS 512.5 MB' in memory_alias_html
+    assert 'Process RSS 180.2 MB' in memory_alias_html
 
 
 def test_homepage_head_includes_launch_seo_metadata() -> None:
