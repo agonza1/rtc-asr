@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-21T14:45:28Z",
+  "generated_at": "2026-06-21T15:12:26Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -954,10 +954,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "Qwen/Qwen3-ASR-0.6B"
+      "label": "Qwen MPS",
+      "slug": "qwen-mps",
+      "lane": "Local Python Apple Silicon",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-qwen-mps",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream local Apple Silicon MPS artifact refreshed on 2026-06-21. This lane now publishes comparable live partial and final timing, with much faster audio-end finalization than the legacy /ws/stream result it replaces.",
+      "derived": {
+        "latency_score": 84.5,
+        "live_caption_score": 59.5,
+        "partial_backlog_score": 24.2,
+        "finalization_score": 75.6,
+        "stability_score": 89.1,
+        "efficiency_score": 85.8,
+        "overall_score": 78.0,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.055,
+        "partial_jitter_ratio": 2.442,
+        "final_jitter_ratio": 1.097
+      }
     },
     {
       "kind": "asr",
@@ -1027,10 +1048,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "Qwen/Qwen3-ASR-0.6B"
+      "label": "Qwen Compose",
+      "slug": "qwen-compose",
+      "lane": "Docker Compose CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-qwen",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream Compose CPU artifact refreshed on 2026-06-21 using float16.",
+      "derived": {
+        "latency_score": 3.5,
+        "live_caption_score": 30.3,
+        "partial_backlog_score": 22.9,
+        "finalization_score": 0.3,
+        "stability_score": 84.5,
+        "efficiency_score": 23.9,
+        "overall_score": 23.7,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.614,
+        "partial_jitter_ratio": 2.308,
+        "final_jitter_ratio": 1.199
+      }
     },
     {
       "kind": "asr",
@@ -1100,10 +1142,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.19,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "nvidia/parakeet-tdt_ctc-110m"
+      "label": "Parakeet 110M NeMo",
+      "slug": "parakeet-nemo-compose",
+      "lane": "Docker Compose CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet-nemo",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream Compose CPU artifact refreshed on 2026-06-21.",
+      "derived": {
+        "latency_score": 92.8,
+        "live_caption_score": 63.5,
+        "partial_backlog_score": 66.4,
+        "finalization_score": 91.4,
+        "stability_score": 84.2,
+        "efficiency_score": 95.9,
+        "overall_score": 85.0,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.969,
+        "partial_jitter_ratio": 1.669,
+        "final_jitter_ratio": 1.386
+      }
     },
     {
       "kind": "asr",
@@ -1172,10 +1235,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.19,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "mlx-community/parakeet-tdt_ctc-110m"
+      "label": "Parakeet 110M NeMo MLX",
+      "slug": "parakeet-mlx-service-110m",
+      "lane": "Local Python Apple Silicon MLX Service",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-parakeet-mlx-service-110m",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-06-21.",
+      "derived": {
+        "latency_score": 100.0,
+        "live_caption_score": 66.2,
+        "partial_backlog_score": 66.4,
+        "finalization_score": 99.5,
+        "stability_score": 94.2,
+        "efficiency_score": 100.0,
+        "overall_score": 91.5,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.316,
+        "partial_jitter_ratio": 1.398,
+        "final_jitter_ratio": 1.064
+      }
     },
     {
       "kind": "asr",
@@ -1244,10 +1328,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "nvidia/parakeet-tdt-0.6b-v3"
+      "label": "Parakeet 0.6B Compose",
+      "slug": "parakeet-compose",
+      "lane": "Docker Compose CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet",
+      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This Compose lane now publishes comparable live partial and final timing, but it still finalizes more slowly than the Faster-Whisper Base local CPU baseline.",
+      "derived": {
+        "latency_score": 71.2,
+        "live_caption_score": 51.1,
+        "partial_backlog_score": 66.5,
+        "finalization_score": 45.4,
+        "stability_score": 75.3,
+        "efficiency_score": 84.6,
+        "overall_score": 63.7,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 2.269,
+        "partial_jitter_ratio": 1.657,
+        "final_jitter_ratio": 2.172
+      }
     },
     {
       "kind": "asr",
@@ -1316,10 +1421,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "small.en"
+      "label": "Faster-Whisper Small",
+      "slug": "faster-whisper-small",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-small",
+      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane is now directly comparable on the live leaderboard, even though Faster-Whisper Base remains the stronger default for turn-taking.",
+      "derived": {
+        "latency_score": 81.0,
+        "live_caption_score": 32.7,
+        "partial_backlog_score": 66.3,
+        "finalization_score": 67.0,
+        "stability_score": 93.7,
+        "efficiency_score": 83.5,
+        "overall_score": 69.7,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.134,
+        "partial_jitter_ratio": 1.56,
+        "final_jitter_ratio": 1.18
+      }
     },
     {
       "kind": "asr",
@@ -1388,10 +1514,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "validated",
+      "status_detail": "Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane now anchors the primary comparable live leaderboard while the remaining /ws/stream artifacts stay published as supporting evidence.",
+      "derived": {
+        "latency_score": 96.2,
+        "live_caption_score": 58.1,
+        "partial_backlog_score": 66.3,
+        "finalization_score": 89.2,
+        "stability_score": 91.7,
+        "efficiency_score": 96.3,
+        "overall_score": 85.6,
+        "confidence_score": 100.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.224,
+        "partial_jitter_ratio": 1.662,
+        "final_jitter_ratio": 1.245
+      }
     },
     {
       "kind": "asr",
@@ -1455,10 +1602,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "Qwen/Qwen3-ASR-0.6B"
+      "label": "Qwen MPS",
+      "slug": "qwen-mps",
+      "lane": "Local Python Apple Silicon",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-qwen-mps",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Qwen MPS; current tracked artifact is qwen-mps-2026-06-21.json.",
+      "derived": {
+        "latency_score": 85.9,
+        "live_caption_score": 72.4,
+        "partial_backlog_score": 14.2,
+        "finalization_score": 0.0,
+        "stability_score": 95.3,
+        "efficiency_score": 87.0,
+        "overall_score": 63.3,
+        "confidence_score": 85.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.054,
+        "partial_jitter_ratio": 1.571,
+        "final_jitter_ratio": 1.053
+      }
     },
     {
       "kind": "asr",
@@ -1522,10 +1690,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "Qwen/Qwen3-ASR-0.6B"
+      "label": "Qwen Compose",
+      "slug": "qwen-compose",
+      "lane": "Docker Compose CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-qwen",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Qwen Compose; current tracked artifact is qwen-compose-2026-06-21.json.",
+      "derived": {
+        "latency_score": 42.2,
+        "live_caption_score": 45.3,
+        "partial_backlog_score": 36.9,
+        "finalization_score": 0.0,
+        "stability_score": 90.5,
+        "efficiency_score": 52.8,
+        "overall_score": 40.5,
+        "confidence_score": 60.0,
+        "sample_coverage_pct": 50.0,
+        "rest_jitter_ratio": 1.186,
+        "partial_jitter_ratio": 2.065,
+        "final_jitter_ratio": 1.096
+      }
     },
     {
       "kind": "asr",
@@ -1590,10 +1779,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 97.7,
+        "live_caption_score": 71.0,
+        "partial_backlog_score": 13.6,
+        "finalization_score": 0.0,
+        "stability_score": 96.0,
+        "efficiency_score": 96.8,
+        "overall_score": 67.6,
+        "confidence_score": 40.0,
+        "sample_coverage_pct": 10.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 1.598,
+        "final_jitter_ratio": 1.0
+      }
     },
     {
       "kind": "asr",
@@ -1661,7 +1871,28 @@
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 95.7,
+        "live_caption_score": 67.8,
+        "partial_backlog_score": 25.5,
+        "finalization_score": 0.0,
+        "stability_score": 97.7,
+        "efficiency_score": 95.7,
+        "overall_score": 66.5,
+        "confidence_score": 40.0,
+        "sample_coverage_pct": 10.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 1.338,
+        "final_jitter_ratio": 1.0
+      }
     },
     {
       "kind": "asr",
@@ -1729,7 +1960,28 @@
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 100.0,
+        "live_caption_score": null,
+        "partial_backlog_score": null,
+        "finalization_score": 100.0,
+        "stability_score": 100.0,
+        "efficiency_score": 100.0,
+        "overall_score": 94.0,
+        "confidence_score": 40.0,
+        "sample_coverage_pct": 10.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": null,
+        "final_jitter_ratio": 1.0
+      }
     },
     {
       "kind": "asr",
@@ -1794,10 +2046,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 95.9,
+        "live_caption_score": 78.5,
+        "partial_backlog_score": 27.7,
+        "finalization_score": 0.0,
+        "stability_score": 97.6,
+        "efficiency_score": 95.3,
+        "overall_score": 68.7,
+        "confidence_score": 40.0,
+        "sample_coverage_pct": 10.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 1.367,
+        "final_jitter_ratio": 1.0
+      }
     },
     {
       "kind": "asr",
@@ -1862,10 +2135,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 96.8,
+        "live_caption_score": 41.6,
+        "partial_backlog_score": 23.0,
+        "finalization_score": 0.0,
+        "stability_score": 97.5,
+        "efficiency_score": 96.2,
+        "overall_score": 61.3,
+        "confidence_score": 40.0,
+        "sample_coverage_pct": 10.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 1.371,
+        "final_jitter_ratio": 1.0
+      }
     },
     {
       "kind": "asr",
@@ -1929,10 +2223,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 94.4,
+        "live_caption_score": 51.5,
+        "partial_backlog_score": 31.1,
+        "finalization_score": 0.0,
+        "stability_score": 94.0,
+        "efficiency_score": 95.2,
+        "overall_score": 62.0,
+        "confidence_score": 85.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.3,
+        "partial_jitter_ratio": 1.339,
+        "final_jitter_ratio": 1.143
+      }
     },
     {
       "kind": "asr",
@@ -1996,10 +2311,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0.0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "Qwen/Qwen3-ASR-0.6B"
+      "label": "Qwen Compose",
+      "slug": "qwen-compose",
+      "lane": "Docker Compose CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-qwen",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Qwen Compose; current tracked artifact is qwen-compose-2026-06-21.json.",
+      "derived": {
+        "latency_score": 38.1,
+        "live_caption_score": 44.8,
+        "partial_backlog_score": 50.4,
+        "finalization_score": 0.0,
+        "stability_score": 94.2,
+        "efficiency_score": 49.3,
+        "overall_score": 39.4,
+        "confidence_score": 60.0,
+        "sample_coverage_pct": 50.0,
+        "rest_jitter_ratio": 1.178,
+        "partial_jitter_ratio": 1.5,
+        "final_jitter_ratio": 1.116
+      }
     },
     {
       "kind": "asr",
@@ -2066,7 +2402,28 @@
         "word_error_rate_mean": null,
         "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 97.6,
+        "live_caption_score": 86.6,
+        "partial_backlog_score": 100.0,
+        "finalization_score": 0.0,
+        "stability_score": 92.1,
+        "efficiency_score": 91.5,
+        "overall_score": 69.7,
+        "confidence_score": 40.0,
+        "sample_coverage_pct": 10.0,
+        "rest_jitter_ratio": 1.0,
+        "partial_jitter_ratio": 2.182,
+        "final_jitter_ratio": 1.0
+      }
     },
     {
       "kind": "asr",
@@ -2127,10 +2484,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "Qwen/Qwen3-ASR-0.6B"
+      "label": "Qwen MPS",
+      "slug": "qwen-mps",
+      "lane": "Local Python Apple Silicon",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-qwen-mps",
+      "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Qwen MPS; current tracked artifact is qwen-mps-2026-06-21.json.",
+      "derived": {
+        "latency_score": 85.0,
+        "live_caption_score": null,
+        "partial_backlog_score": 94.4,
+        "finalization_score": 82.6,
+        "stability_score": 97.3,
+        "efficiency_score": 86.3,
+        "overall_score": 81.8,
+        "confidence_score": 85.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.063,
+        "partial_jitter_ratio": 1.266,
+        "final_jitter_ratio": 1.049
+      }
     },
     {
       "kind": "asr",
@@ -2191,10 +2569,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.19,
-        "character_error_rate_mean": 0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "nvidia/parakeet-tdt_ctc-110m"
+      "label": "Parakeet 110M NeMo",
+      "slug": "parakeet-nemo-compose",
+      "lane": "Docker Compose CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet-nemo",
+      "official_wer_reference": "2.4 / 5.2 LibriSpeech clean / other (nvidia/parakeet-tdt_ctc-110m)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Parakeet 110M NeMo; current tracked artifact is parakeet-nemo-110m-compose-2026-06-21.json.",
+      "derived": {
+        "latency_score": 98.1,
+        "live_caption_score": null,
+        "partial_backlog_score": 98.7,
+        "finalization_score": 95.7,
+        "stability_score": 85.5,
+        "efficiency_score": 98.4,
+        "overall_score": 89.3,
+        "confidence_score": 85.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.543,
+        "partial_jitter_ratio": 1.655,
+        "final_jitter_ratio": 1.672
+      }
     },
     {
       "kind": "asr",
@@ -2255,10 +2654,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "small.en"
+      "label": "Faster-Whisper Small",
+      "slug": "faster-whisper-small",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-small",
+      "official_wer_reference": "3.05 / 7.25 LibriSpeech clean / other (openai/whisper-small.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Small; current tracked artifact is faster-whisper-small.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 81.3,
+        "live_caption_score": null,
+        "partial_backlog_score": 79.8,
+        "finalization_score": 78.2,
+        "stability_score": 97.4,
+        "efficiency_score": 83.6,
+        "overall_score": 79.1,
+        "confidence_score": 85.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.111,
+        "partial_jitter_ratio": 1.175,
+        "final_jitter_ratio": 1.066
+      }
     },
     {
       "kind": "asr",
@@ -2319,10 +2739,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "base.en"
+      "label": "Faster-Whisper Base",
+      "slug": "faster-whisper-base",
+      "lane": "Local Python CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-faster-whisper-base",
+      "official_wer_reference": "4.25 / 10.35 LibriSpeech clean / other (openai/whisper-base.en)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Faster-Whisper Base; current tracked artifact is faster-whisper-base.en-int8-2026-06-20.json.",
+      "derived": {
+        "latency_score": 94.2,
+        "live_caption_score": null,
+        "partial_backlog_score": 76.1,
+        "finalization_score": 92.8,
+        "stability_score": 71.7,
+        "efficiency_score": 94.9,
+        "overall_score": 84.0,
+        "confidence_score": 85.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.293,
+        "partial_jitter_ratio": 4.433,
+        "final_jitter_ratio": 1.359
+      }
     },
     {
       "kind": "asr",
@@ -2383,10 +2824,31 @@
         "codes": []
       },
       "accuracy": {
-        "word_error_rate_mean": 0.095,
-        "character_error_rate_mean": 0
+        "word_error_rate_mean": null,
+        "character_error_rate_mean": null
       },
-      "label": "nvidia/parakeet-tdt-0.6b-v3"
+      "label": "Parakeet 0.6B Compose",
+      "slug": "parakeet-compose",
+      "lane": "Docker Compose CPU",
+      "target_sample_count": 10,
+      "run_command": "make benchmark-compose-parakeet",
+      "official_wer_reference": "1.93 / 3.59 LibriSpeech clean / other (nvidia/parakeet-tdt-0.6b-v3)",
+      "status": "legacy",
+      "status_detail": "Historical supporting artifact for Parakeet 0.6B Compose; current tracked artifact is parakeet-compose-2026-06-20.json.",
+      "derived": {
+        "latency_score": 53.2,
+        "live_caption_score": null,
+        "partial_backlog_score": 57.1,
+        "finalization_score": 58.2,
+        "stability_score": 85.9,
+        "efficiency_score": 69.3,
+        "overall_score": 59.5,
+        "confidence_score": 85.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.716,
+        "partial_jitter_ratio": 1.731,
+        "final_jitter_ratio": 1.39
+      }
     }
   ],
   "asr_benchmarks": [

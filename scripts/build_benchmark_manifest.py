@@ -460,6 +460,54 @@ def build_artifact_history_entry(path: Path, payload: dict[str, Any]) -> dict[st
     return entry
 
 
+def benchmark_key_from_entry(entry: dict[str, Any]) -> str:
+    device, _, compute = str(entry.get("runtime") or "unknown").partition(" / ")
+    return "asr::{backend}::{model}::{device}::{compute}".format(
+        backend=entry.get("backend", "unknown"),
+        model=entry.get("model", "unknown"),
+        device=device or "unknown",
+        compute=compute or "default",
+    )
+
+
+def enrich_artifact_history_entry(entry: dict[str, Any], tracks: list[dict[str, Any]]) -> dict[str, Any]:
+    matching_tracks = [track for track in tracks if track_key(track) == benchmark_key_from_entry(entry)]
+    if not matching_tracks:
+        entry["status"] = "legacy"
+        entry["status_detail"] = "Historical benchmark artifact retained as supporting evidence."
+        entry["target_sample_count"] = entry.get("sample_count")
+        entry["derived"] = derive_track_metrics(entry)
+        return entry
+
+    track = matching_tracks[0]
+    current_artifact = track.get("artifact")
+    artifact_name = Path(entry.get("artifact_path") or "").name
+    is_current = bool(current_artifact) and artifact_name == current_artifact
+    entry.update(
+        {
+            "slug": track["slug"],
+            "label": track["label"],
+            "lane": track["lane"],
+            "target_sample_count": track["target_sample_count"],
+            "run_command": track["run_command"],
+            "official_wer_reference": track.get("official_wer_reference"),
+        }
+    )
+    if is_current:
+        entry["status"] = track["status"]
+        entry["status_detail"] = track["status_detail"]
+    else:
+        entry["status"] = "legacy"
+        entry["status_detail"] = (
+            f"Historical supporting artifact for {track['label']}; current tracked artifact is "
+            f"{current_artifact or 'selected from the newest matching benchmark'}."
+        )
+    if not accuracy_is_publishable(entry):
+        entry["accuracy"] = {"word_error_rate_mean": None, "character_error_rate_mean": None}
+    entry["derived"] = derive_track_metrics(entry)
+    return entry
+
+
 def derive_track_metrics(entry: dict[str, Any]) -> dict[str, Any]:
     rest = entry["rest"]
     streaming = entry["streaming"]
@@ -685,6 +733,8 @@ def build_system_coverage(entries: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
+    catalog = load_catalog(tracks_path)
+    catalog_tracks = catalog.get("tracks", [])
     latest: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     artifacts_by_name: dict[str, tuple[str, Path, dict[str, Any]]] = {}
     artifact_history: list[dict[str, Any]] = []
@@ -702,13 +752,13 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         if previous is None or stamp > previous[0]:
             latest[key] = (stamp, path, payload)
 
-    catalog = load_catalog(tracks_path)
+    artifact_history = [enrich_artifact_history_entry(entry, catalog_tracks) for entry in artifact_history]
     tracks = [
         build_track_entry(
             track,
             artifacts_by_name.get(track.get("artifact")) if track.get("artifact") else latest.get(track_key(track)),
         )
-        for track in catalog.get("tracks", [])
+        for track in catalog_tracks
     ]
     tracks.sort(
         key=lambda item: (

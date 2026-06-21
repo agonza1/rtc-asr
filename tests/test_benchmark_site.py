@@ -65,6 +65,27 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["qwen-mps"]["artifact_size_bytes"] > 0
 
 
+
+def test_historical_detail_pages_keep_track_context() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    artifact = next(
+        entry
+        for entry in manifest["artifacts"]
+        if entry["artifact_path"].endswith("qwen-mps-2026-06-20.json")
+    )
+
+    assert artifact["label"] == "Qwen MPS"
+    assert artifact["lane"] == "Local Python Apple Silicon"
+    assert artifact["status"] == "legacy"
+    assert artifact["derived"]["confidence_score"] == 85.0
+
+    detail = render_detail_page(artifact, None)
+
+    assert "Qwen MPS" in detail
+    assert "Local Python Apple Silicon" in detail
+    assert "Status: legacy" in detail
+    assert "unknown · Qwen/Qwen3-ASR-0.6B" not in detail
+
 def test_checked_in_manifest_matches_generated_output() -> None:
     manifest_path = RESULTS_DIR / "manifest.json"
     checked_in = json.loads(manifest_path.read_text(encoding="utf-8"))
