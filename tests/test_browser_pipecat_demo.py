@@ -237,6 +237,16 @@ def test_browser_pipecat_demo_is_linked_from_repo_docs() -> None:
     assert f"./{link}" in readme
 
 
+def test_pipecat_guide_defaults_to_local_stt_v1() -> None:
+    guide = Path("docs/pipecat-integration.md").read_text(encoding="utf-8")
+
+    assert "ws://localhost:8080/v1/stt/stream" in guide
+    assert "from src.rtc_client import AsyncLocalSttClient" in guide
+    assert "partial_interval_ms=100" in guide
+    assert "Local STT v1 does not base64-wrap audio" in guide
+    assert "rtc-asr /v1/stt/stream" in guide
+
+
 def test_offer_requires_offer_type() -> None:
     client = TestClient(app)
 
