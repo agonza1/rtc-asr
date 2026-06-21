@@ -142,6 +142,23 @@ class MalformedReceiveLocalSttClient(FakeLocalSttClient):
         return await super().recv_event(timeout=timeout, allow_error=allow_error)
 
 
+class ErrorEventLocalSttClient(FakeLocalSttClient):
+    async def send_audio(self, chunk: bytes) -> None:
+        await super().send_audio(chunk)
+        await self._events.put(
+            TranscriptEvent(
+                type="error",
+                text="upstream disconnected",
+                stream_id=None,
+                is_final=False,
+                chunks_received=len(self.sent),
+                buffered_bytes=sum(len(sent) for sent in self.sent),
+                remaining_buffer_bytes=0,
+                raw={"type": "error", "code": "upstream_disconnect", "message": "upstream disconnected"},
+            )
+        )
+
+
 class ReconnectMetadataLocalSttClient(FakeLocalSttClient):
     async def finalize(self) -> None:
         self.finalized = True
@@ -289,6 +306,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["warnings_received"] == 1
     assert sample["warning_codes"] == ["partial_dropped"]
     assert sample["protocol_errors"] == 0
+    assert sample["protocol_error_codes"] == []
     assert sample["time_to_first_interim_ms"] is not None
     assert sample["time_to_final_after_finalize_ms"] is not None
     assert sample["audio_end_finalization_rtf"] is not None
@@ -358,6 +376,7 @@ def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_er
     assert sample["audio_frames_sent"] == 1
     assert sample["audio_frames_dropped"] == 2
     assert sample["protocol_errors"] == 1
+    assert sample["protocol_error_codes"] == ["send_exception"]
     assert payload["summary"]["audio_frames_dropped"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["protocol_errors"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
 
@@ -383,6 +402,32 @@ def test_run_benchmark_records_malformed_receive_event_as_protocol_error() -> No
 
     sample = payload["samples"][0]
     assert sample["protocol_errors"] == 1
+    assert sample["protocol_error_codes"] == ["receive_exception"]
+    assert sample["final_events_received"] == 0
+
+
+def test_run_benchmark_records_protocol_error_codes_from_error_events() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=ErrorEventLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["protocol_errors"] == 1
+    assert sample["protocol_error_codes"] == ["upstream_disconnect"]
     assert sample["final_events_received"] == 0
 
 

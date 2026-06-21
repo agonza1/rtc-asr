@@ -273,6 +273,7 @@ async def _run_once(
     previous_interim_text: str | None = None
     final_transcript: str | None = None
     protocol_errors = 0
+    protocol_error_codes: list[str] = []
     warnings_received = 0
     warning_codes: list[str] = []
     reconnects = 0
@@ -303,6 +304,7 @@ async def _run_once(
                 event = await client.recv_event(timeout=0.05, allow_error=True)
             except Exception:
                 protocol_errors += 1
+                protocol_error_codes.append("receive_exception")
                 receive_done.set()
                 return
             if event is None:
@@ -314,6 +316,10 @@ async def _run_once(
             receive_latencies.append((event_received_at - wait_started) * 1000)
             if event.type == "error":
                 protocol_errors += 1
+                if isinstance(event.raw, dict) and isinstance(event.raw.get("code"), str):
+                    protocol_error_codes.append(event.raw["code"])
+                else:
+                    protocol_error_codes.append("error_event")
                 receive_done.set()
                 return
             if event.type == "warning":
@@ -362,6 +368,7 @@ async def _run_once(
                 await client.send_audio(frame)
             except Exception:
                 protocol_errors += 1
+                protocol_error_codes.append("send_exception")
                 frames_dropped += len(audio.frames) - frame_index
                 receive_done.set()
                 break
@@ -378,12 +385,14 @@ async def _run_once(
                 await client.finalize()
             except Exception:
                 protocol_errors += 1
+                protocol_error_codes.append("finalize_exception")
                 receive_done.set()
             else:
                 try:
                     await asyncio.wait_for(receive_done.wait(), timeout=receive_timeout_seconds)
                 except TimeoutError:
                     protocol_errors += 1
+                    protocol_error_codes.append("final_timeout")
     finally:
         receive_done.set()
         await receive_task
@@ -391,6 +400,7 @@ async def _run_once(
             await client.close(graceful=False)
         except Exception:
             protocol_errors += 1
+            protocol_error_codes.append("close_exception")
 
     send_p95 = percentile(send_latencies, 0.95)
     receive_p95 = percentile(receive_latencies, 0.95)
@@ -439,6 +449,7 @@ async def _run_once(
         "warning_codes": warning_codes,
         "reconnects": reconnects,
         "protocol_errors": protocol_errors,
+        "protocol_error_codes": protocol_error_codes,
     }
 
 
