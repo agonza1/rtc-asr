@@ -1212,6 +1212,7 @@ async def run_v1_stt_stream_benchmark(
         max_buffer_seconds=max_buffer_seconds,
     )
     final_event = None
+    final_event_received = False
     audio_finished_at: float | None = None
     final_received_at = 0.0
     finalize_started_at = 0.0
@@ -1265,13 +1266,14 @@ async def run_v1_stt_stream_benchmark(
                 continue
             final_event = event
             if event.type == "final":
+                final_event_received = True
                 final_received_at = received_at
             break
     finally:
         await client.close(graceful=False)
 
     if final_event is None:
-        final_event = TranscriptEvent.from_payload({"type": "final", "text": "", "is_final": True, "chunks_received": chunk_count})
+        final_event = TranscriptEvent.from_payload({"type": "timeout", "text": "", "is_final": False, "chunks_received": chunk_count})
         final_received_at = time.perf_counter()
 
     final_ms = (final_received_at - finalize_started_at) * 1000
@@ -1315,7 +1317,7 @@ async def run_v1_stt_stream_benchmark(
         "missing_partial_events": max(expected_partial_events - len(partial_latencies), 0),
         "late_partial_events": late_partial_events,
         "late_partial_ratio": round(late_partial_events / len(partial_latencies), 3) if partial_latencies else None,
-        "final_event_received": final_event is not None and final_event.type == "final",
+        "final_event_received": final_event_received,
         "closeout_event_type": final_event.type if final_event is not None else None,
         **partial_churn,
         "bridge": {

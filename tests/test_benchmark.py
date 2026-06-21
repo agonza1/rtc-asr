@@ -1277,7 +1277,7 @@ def test_run_v1_stt_stream_benchmark_rounds_up_non_multiple_aggregation_cadence(
     async def scenario() -> None:
         result = await benchmark.run_v1_stt_stream_benchmark(
             "ws://example.test/v1/stt/stream",
-            b"abcdefghijklmnopqrstuvwx",
+            b"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuv",
             100,
             100,
             source_frame_ms=30,
@@ -1285,7 +1285,7 @@ def test_run_v1_stt_stream_benchmark_rounds_up_non_multiple_aggregation_cadence(
             partial_event_timeout_seconds=0.5,
         )
 
-        assert sent_chunks == [b"abcdefghijkl", b"mnopqrstuvwx"]
+        assert sent_chunks == [b"abcdefghijklmnopqrstuvwx", b"yzabcdefghijklmnopqrstuv"]
         assert result["chunk_ms"] == 120
         assert result["aggregation_frame_count"] == 4
         assert result["partial_audio_offsets_ms"] == [120.0, 240.0]
@@ -1346,6 +1346,49 @@ def test_run_v1_stt_stream_benchmark_waits_for_final_beyond_partial_timeout(monk
         assert result["final_transcript"] == "final changed"
         assert result["final_event_received"] is True
         assert max(observed_timeouts) > 1.0
+
+    asyncio.run(scenario())
+
+
+def test_run_v1_stt_stream_benchmark_reports_missing_final_on_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeLocalSttClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.ws_url = ws_url
+            self.connect_fn = connect_fn
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            return {"type": "ready", "stream_id": 4, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, on_sent=None) -> None:
+            if on_sent is not None:
+                on_sent()
+
+        async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False):
+            return None
+
+        async def finalize(self) -> None:
+            return None
+
+        async def close(self, *, graceful: bool = True):
+            return {"type": "closed"}
+
+    monkeypatch.setattr(benchmark, "AsyncLocalSttClient", FakeLocalSttClient)
+
+    async def scenario() -> None:
+        result = await benchmark.run_v1_stt_stream_benchmark(
+            "ws://example.test/v1/stt/stream",
+            b"abcdefgh",
+            10,
+            400,
+            source_frame_ms=400,
+            partial_interval_ms=400,
+            partial_event_timeout_seconds=0.01,
+            final_event_timeout_seconds=0.01,
+        )
+
+        assert result["final_event_received"] is False
+        assert result["closeout_event_type"] == "timeout"
+        assert result["final_transcript"] == ""
 
     asyncio.run(scenario())
 
