@@ -32,6 +32,7 @@ class LocalSttClient(Protocol):
 
 
 ClientFactory = Callable[[str], LocalSttClient]
+SUPPORTED_TRANSPORTS = {"tcp_ws"}
 
 
 @dataclass(slots=True)
@@ -51,7 +52,14 @@ def positive_int(value: str) -> int:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark Local STT v1 websocket latency")
+    parser.add_argument(
+        "--transport",
+        choices=("tcp_ws", "uds_ws"),
+        default="tcp_ws",
+        help="Local STT transport to benchmark. uds_ws is reserved for the optional colocated socket path.",
+    )
     parser.add_argument("--url", default="ws://localhost:8080/v1/stt/stream")
+    parser.add_argument("--uds-path", type=Path, help="Unix socket path for --transport uds_ws")
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--input-wav", type=Path)
     source.add_argument("--input-raw-pcm", type=Path)
@@ -67,7 +75,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--output", type=Path)
     parser.add_argument("--no-realtime-pace", action="store_true", help="Send frames without sleeping between frames")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    validate_transport_args(args.transport, args.uds_path)
+    return args
+
+
+def validate_transport_args(transport: str, uds_path: Path | None) -> None:
+    if transport == "tcp_ws":
+        return
+    if transport == "uds_ws" and uds_path is None:
+        raise argparse.ArgumentTypeError("--uds-path is required when --transport uds_ws")
+    raise argparse.ArgumentTypeError(
+        f"{transport} benchmark transport is documented for comparison but is not implemented by the current websocket client"
+    )
 
 
 def load_audio_input(*, input_wav: Path | None, input_raw_pcm: Path | None, sample_rate: int, frame_ms: int) -> AudioInput:
@@ -180,12 +200,16 @@ async def run_benchmark(
     *,
     url: str,
     audio: AudioInput,
+    transport: str = "tcp_ws",
+    uds_path: str | None = None,
     partial_interval_ms: int,
     runs: int,
     realtime_pace: bool = True,
     receive_timeout_seconds: int = 5,
     client_factory: ClientFactory | None = None,
 ) -> dict[str, Any]:
+    if transport not in SUPPORTED_TRANSPORTS:
+        raise ValueError(f"Unsupported benchmark transport: {transport}")
     factory = client_factory or (lambda ws_url: AsyncLocalSttClient(ws_url))
     samples = []
     for index in range(1, runs + 1):
@@ -204,7 +228,7 @@ async def run_benchmark(
     return {
         "kind": "local-stt-v1-latency-benchmark",
         "protocol": "local-stt.v1",
-        "target": {"url": url},
+        "target": {"transport": transport, "url": url, "uds_path": uds_path},
         "environment": describe_environment(),
         "audio": {
             "source": audio.source,
@@ -510,6 +534,8 @@ def main(argv: list[str] | None = None) -> int:
     payload = asyncio.run(
         run_benchmark(
             url=args.url,
+            transport=args.transport,
+            uds_path=str(args.uds_path) if args.uds_path is not None else None,
             audio=audio,
             partial_interval_ms=args.partial_interval_ms,
             runs=args.runs,

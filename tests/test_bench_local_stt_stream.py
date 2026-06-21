@@ -235,6 +235,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
 
     sample = payload["samples"][0]
     assert payload["kind"] == "local-stt-v1-latency-benchmark"
+    assert payload["target"] == {"transport": "tcp_ws", "url": "ws://example.test/v1/stt/stream", "uds_path": None}
     assert payload["environment"]["cpu_logical_cores"] is not None
     assert payload["audio"]["bytes_per_frame"] == 640
     assert payload["audio"]["duration_ms"] == 40
@@ -379,6 +380,30 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
     assert lines[4] == "asr_decode_samples: p50=3.0 p95=4.0 p99=4.0"
     assert lines[5] == "audio_end_finalization_rtf: p50=0.5 p95=0.75 p99=n/a"
     assert lines[6] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
+
+
+def test_parse_args_rejects_uds_ws_until_client_support_exists(tmp_path: Path) -> None:
+    raw_path = tmp_path / "clip.pcm"
+    raw_path.write_bytes(b"a" * 640)
+
+    try:
+        benchmark_module.parse_args(["--transport", "uds_ws", "--uds-path", "/tmp/stt.sock", "--input-raw-pcm", str(raw_path)])
+    except Exception as exc:
+        assert "not implemented by the current websocket client" in str(exc)
+    else:
+        raise AssertionError("expected uds_ws benchmark transport to be rejected")
+
+
+def test_parse_args_requires_uds_path_for_uds_ws(tmp_path: Path) -> None:
+    raw_path = tmp_path / "clip.pcm"
+    raw_path.write_bytes(b"a" * 640)
+
+    try:
+        benchmark_module.parse_args(["--transport", "uds_ws", "--input-raw-pcm", str(raw_path)])
+    except Exception as exc:
+        assert "--uds-path is required" in str(exc)
+    else:
+        raise AssertionError("expected missing uds path to be rejected")
 
 
 def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> None:

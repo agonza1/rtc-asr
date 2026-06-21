@@ -24,6 +24,8 @@ Hot-path audio format:
 
 Binary websocket frames carry raw little-endian PCM16 bytes. Clients may batch multiple 20 ms frames into one websocket write, but the payload still has to be binary PCM16 data.
 
+The supported transport today is TCP WebSocket, for example `ws://rtc-asr:8080/v1/stt/stream` in Docker Compose or `ws://localhost:8080/v1/stt/stream` for local benchmarks. A future colocated Unix-domain-socket WebSocket path is tracked separately; until the client and server support it, benchmark artifacts should record `"transport": "tcp_ws"` and keep UDS comparison commands marked as pending.
+
 Rules:
 
 - Binary audio MUST NOT be base64-wrapped.
