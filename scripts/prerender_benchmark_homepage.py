@@ -257,6 +257,18 @@ def format_system_text(value: Any) -> str:
     return "n/a" if value is None else html.escape(str(value))
 
 
+def measurement_technique(entry: dict[str, Any]) -> str:
+    contract = entry.get("contract") or {}
+    path = contract.get("path")
+    transport = contract.get("transport")
+
+    if path == "/v1/stt/stream" or transport == "v1-stt-stream":
+        return "REST and Local STT v1 websocket ASR latency benchmark"
+    if path == "/ws/stream" or transport in {"direct", "ws/stream"}:
+        return "REST and legacy buffered websocket ASR latency benchmark"
+    return "REST and websocket ASR latency benchmark"
+
+
 def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str, Any]:
     if artifact_payload is None:
         return {}
@@ -344,7 +356,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "description": description,
         "url": detail_href,
         "datePublished": entry.get("measured_at"),
-        "measurementTechnique": "REST and buffered websocket ASR latency benchmark",
+        "measurementTechnique": measurement_technique(entry),
         "variableMeasured": [
             "first visible partial latency",
             "partial backlog latency",

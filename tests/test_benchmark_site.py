@@ -27,6 +27,7 @@ PRERENDER_SPEC.loader.exec_module(prerender_module)
 detail_page_path = prerender_module.detail_page_path
 render_detail_page = prerender_module.render_detail_page
 render_homepage = prerender_module.render_homepage
+measurement_technique = prerender_module.measurement_technique
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -44,15 +45,15 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
 
     assert manifest["summary"]["asr_count"] == 8
     assert manifest["summary"]["tracked_count"] == 8
-    assert manifest["summary"]["validated_count"] == 7
-    assert manifest["summary"]["legacy_count"] == 0
+    assert manifest["summary"]["validated_count"] == 4
+    assert manifest["summary"]["legacy_count"] == 3
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
-    assert tracks["parakeet-mlx-service-110m"]["artifact_path"].endswith("parakeet-mlx-110m-service-2026-06-13.json")
+    assert tracks["parakeet-mlx-service-110m"]["artifact_path"].endswith("parakeet-mlx-110m-service-2026-06-21.json")
     assert tracks["qwen-mps"]["artifact_path"].endswith("qwen-mps-2026-06-20.json")
-    assert tracks["qwen-mps"]["status"] == "validated"
-    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-15.json")
+    assert tracks["qwen-mps"]["status"] == "legacy"
+    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-20.json")
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-19.json")
     assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
@@ -79,7 +80,7 @@ def test_manifest_prefers_explicit_track_artifact_for_same_runtime_family() -> N
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
 
-    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-15.json")
+    assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-20.json")
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-19.json")
 
 
@@ -192,7 +193,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
 
     assert derived["overall_score"] is not None
     assert derived["partial_backlog_score"] is not None
-    assert derived["confidence_score"] == 100.0
+    assert derived["confidence_score"] == 85.0
     assert derived["sample_coverage_pct"] == 100.0
 
     summary = manifest["summary"]
@@ -293,13 +294,13 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert track["system"]["platform"] == "macOS-26.5.1-arm64-arm-64bit-Mach-O"
     assert track["system"]["processor"] == "arm"
     assert track["system"]["peak_rss_mb"] is None
-    assert track["system"]["memory_total_mb"] is None
+    assert track["system"]["memory_total_mb"] == 24576.0
 
     coverage = manifest["summary"]["system_coverage"]
-    assert coverage["memory_total_mb_count"] == 10
-    assert coverage["peak_rss_mb_count"] == 7
+    assert coverage["memory_total_mb_count"] == 14
+    assert coverage["peak_rss_mb_count"] == 9
     assert coverage["accelerator_count"] == 0
-    assert coverage["cpu_utilization_percent_count"] == 2
+    assert coverage["cpu_utilization_percent_count"] == 4
     assert coverage["package_power_watts_count"] == 0
     assert coverage["thermal_peak_celsius_count"] == 0
     assert coverage["thermal_observation_count"] == 0
@@ -461,7 +462,7 @@ def test_docs_parakeet_mlx_110m_row_matches_checked_in_artifact_summary() -> Non
 
 def test_docs_parakeet_mlx_service_110m_row_matches_checked_in_artifact_summary() -> None:
     docs_text = DOCS_PATH.read_text(encoding="utf-8")
-    artifact = json.loads((RESULTS_DIR / "parakeet-mlx-110m-service-2026-06-13.json").read_text(encoding="utf-8"))
+    artifact = json.loads((RESULTS_DIR / "parakeet-mlx-110m-service-2026-06-21.json").read_text(encoding="utf-8"))
 
     mean_ms = artifact["rest"]["mean_ms"]
     p95_ms = artifact["rest"]["p95_ms"]
@@ -469,7 +470,7 @@ def test_docs_parakeet_mlx_service_110m_row_matches_checked_in_artifact_summary(
         line
         for line in docs_text.splitlines()
         if line.startswith("| `parakeet-mlx-service-110m` | 10 |")
-        and "docs/benchmark-results/parakeet-mlx-110m-service-2026-06-13.json" in line
+        and "docs/benchmark-results/parakeet-mlx-110m-service-2026-06-21.json" in line
     )
 
     assert f"| `parakeet-mlx-service-110m` | 10 | {mean_ms} ms / {p95_ms} ms |" in row
@@ -521,6 +522,16 @@ def test_detail_page_path_uses_artifact_stem() -> None:
     assert detail_page_path(entry) == "benchmark-results/pages/demo-artifact-2026-06-14.html"
 
 
+def test_detail_page_measurement_technique_matches_streaming_contract() -> None:
+    local_stt_entry = {"contract": {"path": "/v1/stt/stream", "transport": "v1-stt-stream"}}
+    legacy_entry = {"contract": {"path": "/ws/stream", "transport": "direct"}}
+    unknown_entry = {"contract": {"path": "/custom"}}
+
+    assert measurement_technique(local_stt_entry) == "REST and Local STT v1 websocket ASR latency benchmark"
+    assert measurement_technique(legacy_entry) == "REST and legacy buffered websocket ASR latency benchmark"
+    assert measurement_technique(unknown_entry) == "REST and websocket ASR latency benchmark"
+
+
 def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
@@ -535,23 +546,23 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
         assert Path(track["artifact_path"]).name in detail_html
         assert "Download raw JSON artifact" in detail_html
 
-    rss_detail = (Path('docs') / 'benchmark-results/pages/parakeet-mlx-110m-service-2026-06-13.html').read_text(encoding='utf-8')
+    rss_detail = (Path('docs') / 'benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html').read_text(encoding='utf-8')
     assert "System profile" in rss_detail
     assert "Efficiency signals" in rss_detail
     assert "Accuracy context" in rss_detail
     assert "Reproduction command" in rss_detail
     assert "Artifact integrity" in rss_detail
     assert "Artifact provenance" in rss_detail
-    assert "Manifest path benchmark-results/parakeet-mlx-110m-service-2026-06-13.json" in rss_detail
+    assert "Manifest path benchmark-results/parakeet-mlx-110m-service-2026-06-21.json" in rss_detail
     assert "SHA-256" in rss_detail
     assert '"@type": "Dataset"' in rss_detail
     assert '"@type": "DataDownload"' in rss_detail
     assert '"@type": "BreadcrumbList"' in rss_detail
-    assert '"measurementTechnique": "REST and buffered websocket ASR latency benchmark"' in rss_detail
-    assert '"url": "parakeet-mlx-110m-service-2026-06-13.html"' in rss_detail
+    assert '"measurementTechnique": "REST and Local STT v1 websocket ASR latency benchmark"' in rss_detail
+    assert '"url": "parakeet-mlx-110m-service-2026-06-21.html"' in rss_detail
     assert '"sha256":' in rss_detail
-    assert '<meta name="description" content="Validated 10-sample local Apple Silicon MLX service artifact' in rss_detail
-    assert '<link rel="canonical" href="parakeet-mlx-110m-service-2026-06-13.html">' in rss_detail
+    assert '<meta name="description" content="Validated paced /v1/stt/stream local Apple Silicon MLX service artifact' in rss_detail
+    assert '<link rel="canonical" href="parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
     assert 'aria-label="Breadcrumb"' in rss_detail
     assert "Benchmark homepage" in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
