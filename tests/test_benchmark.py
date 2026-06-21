@@ -1356,6 +1356,70 @@ def test_run_v1_stt_stream_benchmark_uses_rounded_protocol_partial_interval(monk
     asyncio.run(scenario())
 
 
+def test_run_v1_stt_stream_benchmark_prefers_transcribed_audio_offset_for_partials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeLocalSttClient:
+        def __init__(self, ws_url: str, connect_fn=None) -> None:
+            self.events = [
+                {
+                    "type": "transcript",
+                    "text": "first",
+                    "is_final": False,
+                    "audio_received_ms": 400,
+                    "audio_transcribed_ms": 200,
+                    "metadata": {"chunks_received": 1},
+                },
+                {
+                    "type": "transcript",
+                    "text": "done",
+                    "is_final": True,
+                    "audio_received_ms": 400,
+                    "audio_transcribed_ms": 400,
+                    "metadata": {"chunks_received": 1},
+                },
+            ]
+
+        async def start(self, **kwargs: object) -> dict[str, object]:
+            return {"type": "ready", "stream_id": 13, **kwargs}
+
+        async def send_audio(self, chunk: bytes, *, on_sent=None) -> None:
+            if on_sent is not None:
+                on_sent()
+
+        async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False):
+            if not self.events:
+                return None
+            return self.events.pop(0)
+
+        async def finalize(self) -> None:
+            return None
+
+        async def close(self, *, graceful: bool = True):
+            return {"type": "closed"}
+
+    perf_values = iter(chain([1.0, 1.0, 1.03, 2.0, 2.1], repeat(2.1)))
+    monkeypatch.setattr(benchmark, "AsyncLocalSttClient", FakeLocalSttClient)
+    monkeypatch.setattr(benchmark.time, "perf_counter", lambda: next(perf_values))
+
+    async def scenario() -> None:
+        result = await benchmark.run_v1_stt_stream_benchmark(
+            "ws://example.test/v1/stt/stream",
+            b"abcdefgh",
+            10,
+            400,
+            source_frame_ms=400,
+            partial_interval_ms=400,
+            partial_event_timeout_seconds=0.5,
+        )
+
+        assert result["partial_audio_offsets_ms"] == [200.0]
+        assert result["partial_latencies_ms"][0] > 100.0
+        assert result["late_partial_events"] == 1
+
+    asyncio.run(scenario())
+
+
 def test_run_v1_stt_stream_benchmark_waits_for_final_beyond_partial_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     observed_timeouts: list[float] = []
 
