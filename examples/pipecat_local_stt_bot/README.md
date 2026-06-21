@@ -47,7 +47,7 @@ Tune `partial_interval_ms` upward when a low-power device shows high CPU use or 
 
 ## Service Choices
 
-Use `LocalStreamingSTTService` when you want the explicit Local STT v1 configuration object. Use `RtcAsrSTTService` for the same sidecar path with repo defaults. Use Pipecat's built-in Whisper STT baseline when you want local/offline segmented transcription inside Pipecat rather than a warmed streaming sidecar.
+Use `LocalStreamingSTTService` when you want the explicit Local STT v1 configuration object. That is the default and can be selected with `LOCAL_STT_SERVICE=local`. Use `RtcAsrSTTService` for the same sidecar path with repo defaults by setting `LOCAL_STT_SERVICE=rtc-asr`. Use Pipecat's built-in Whisper STT baseline when you want local/offline segmented transcription inside Pipecat rather than a warmed streaming sidecar.
 
 Pipecat Whisper is local/offline, but it is a segmented STT baseline. The Local STT plugin is for streaming sidecar STT with benchmarkable first-partial, partial-cadence, and finalization metrics.
 

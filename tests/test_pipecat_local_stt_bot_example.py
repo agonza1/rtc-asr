@@ -1,10 +1,25 @@
 from __future__ import annotations
 
 import py_compile
+import importlib.util
+import sys
 from pathlib import Path
 
 
 EXAMPLE_DIR = Path("examples") / "pipecat_local_stt_bot"
+BOT_PATH = EXAMPLE_DIR / "bot.py"
+
+
+def load_bot_module() -> object:
+    package_src = str(Path("pipecat-local-stt") / "src")
+    if package_src not in sys.path:
+        sys.path.insert(0, package_src)
+    spec = importlib.util.spec_from_file_location("pipecat_local_stt_bot_example", BOT_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("pipecat_local_stt_bot_example", module)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_pipecat_local_stt_bot_example_documents_sidecar_contract() -> None:
@@ -20,6 +35,8 @@ def test_pipecat_local_stt_bot_example_documents_sidecar_contract() -> None:
     assert "frame_ms=20" in readme
     assert "partial_interval_ms=100" in readme
     assert "partial_window_seconds=1.0" in readme
+    assert "LOCAL_STT_SERVICE=local" in readme
+    assert "LOCAL_STT_SERVICE=rtc-asr" in readme
     assert "Pipecat Whisper is local/offline" in readme
     assert "Connection failures" in readme
     assert "Wrong sample rates" in readme
@@ -47,6 +64,47 @@ def test_pipecat_local_stt_bot_example_is_syntax_valid() -> None:
 
     assert "LocalStreamingSTTService" in bot_source
     assert "RtcAsrSTTService" in bot_source
+    assert "LOCAL_STT_SERVICE" in bot_source
+    assert "def build_stt" in bot_source
     assert "transport.input()" in bot_source
     assert "context_aggregator.user()" in bot_source
     assert "transport.output()" in bot_source
+
+
+def test_pipecat_local_stt_bot_example_selects_supported_sidecar_services() -> None:
+    module = load_bot_module()
+
+    assert module.build_stt(module.BotSettings(service="local")).__class__.__name__ == "LocalStreamingSTTService"
+    assert module.build_stt(module.BotSettings(service="rtc-asr")).__class__.__name__ == "RtcAsrSTTService"
+
+
+def test_pipecat_local_stt_bot_example_applies_tuning_to_rtc_asr_service() -> None:
+    module = load_bot_module()
+
+    stt = module.build_stt(
+        module.BotSettings(
+            service="rtc-asr",
+            sample_rate=8000,
+            channels=2,
+            frame_ms=40,
+            partial_interval_ms=250,
+            partial_window_seconds=1.5,
+        )
+    )
+
+    assert stt.config.sample_rate == 8000
+    assert stt.config.channels == 2
+    assert stt.config.frame_ms == 40
+    assert stt.config.partial_interval_ms == 250
+    assert stt.config.partial_window_seconds == 1.5
+
+
+def test_pipecat_local_stt_bot_example_rejects_unknown_service() -> None:
+    module = load_bot_module()
+
+    try:
+        module.build_stt(module.BotSettings(service="whisper"))
+    except ValueError as exc:
+        assert "LOCAL_STT_SERVICE" in str(exc)
+    else:
+        raise AssertionError("Unknown LOCAL_STT_SERVICE should fail fast")

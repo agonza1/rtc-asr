@@ -9,6 +9,7 @@ from pipecat_local_stt import LocalSTTConfig, LocalStreamingSTTService, RtcAsrST
 
 @dataclass(frozen=True)
 class BotSettings:
+    service: str = os.getenv("LOCAL_STT_SERVICE", "local")
     ws_url: str = os.getenv("RTC_ASR_WS_URL", "ws://rtc-asr:8080/v1/stt/stream")
     sample_rate: int = int(os.getenv("LOCAL_STT_SAMPLE_RATE", "16000"))
     channels: int = int(os.getenv("LOCAL_STT_CHANNELS", "1"))
@@ -33,7 +34,23 @@ def build_local_stt(settings: BotSettings) -> LocalStreamingSTTService:
 
 
 def build_rtc_asr_stt(settings: BotSettings) -> RtcAsrSTTService:
-    return RtcAsrSTTService(url=settings.ws_url, language="en")
+    return RtcAsrSTTService(
+        url=settings.ws_url,
+        language="en",
+        sample_rate=settings.sample_rate,
+        channels=settings.channels,
+        frame_ms=settings.frame_ms,
+        partial_interval_ms=settings.partial_interval_ms,
+        partial_window_seconds=settings.partial_window_seconds,
+    )
+
+
+def build_stt(settings: BotSettings) -> LocalStreamingSTTService | RtcAsrSTTService:
+    if settings.service == "local":
+        return build_local_stt(settings)
+    if settings.service == "rtc-asr":
+        return build_rtc_asr_stt(settings)
+    raise ValueError("LOCAL_STT_SERVICE must be 'local' or 'rtc-asr'")
 
 
 def build_pipeline(transport: Any, context_aggregator: Any, llm: Any, tts: Any, stt: Any) -> Any:
@@ -53,10 +70,10 @@ def build_pipeline(transport: Any, context_aggregator: Any, llm: Any, tts: Any, 
 
 def main() -> None:
     settings = BotSettings()
-    stt = build_local_stt(settings)
+    stt = build_stt(settings)
     print(
         "Pipecat Local STT example configured for "
-        f"{settings.ws_url} at sample_rate={settings.sample_rate}, "
+        f"service={settings.service}, {settings.ws_url} at sample_rate={settings.sample_rate}, "
         f"channels={settings.channels}, frame_ms={settings.frame_ms}, "
         f"partial_interval_ms={settings.partial_interval_ms}."
     )
