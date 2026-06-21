@@ -45,8 +45,8 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
 
     assert manifest["summary"]["asr_count"] == 8
     assert manifest["summary"]["tracked_count"] == 8
-    assert manifest["summary"]["validated_count"] == 5
-    assert manifest["summary"]["legacy_count"] == 2
+    assert manifest["summary"]["validated_count"] == 6
+    assert manifest["summary"]["legacy_count"] == 1
     assert manifest["summary"]["blocked_count"] == 1
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
@@ -55,9 +55,9 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["qwen-mps"]["status"] == "legacy"
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-20.json")
     assert tracks["faster-whisper-base"]["accuracy"]["word_error_rate_mean"] is None
-    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-19.json")
+    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-21.json")
     assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
-    assert tracks["qwen-compose"]["target_sample_count"] == 5
+    assert tracks["qwen-compose"]["target_sample_count"] == 10
     assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
@@ -81,7 +81,7 @@ def test_manifest_prefers_explicit_track_artifact_for_same_runtime_family() -> N
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
 
     assert tracks["faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-2026-06-20.json")
-    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-19.json")
+    assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-21.json")
 
 
 def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:

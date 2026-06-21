@@ -63,7 +63,7 @@ Required methodology fields for any future published WER:
 | `parakeet-mlx` | `parakeet-mlx` | `mlx-community/parakeet-tdt-0.6b-v3` | Local Apple Silicon MLX CLI | `apple-silicon / mlx` | preview artifact | `docs/benchmark-results/parakeet-mlx-2026-06-13.json` |
 | `parakeet-mlx-110m` | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` | Local Apple Silicon MLX CLI | `apple-silicon / mlx` | preview artifact | `docs/benchmark-results/parakeet-mlx-110m-2026-06-13.json` |
 | `qwen-mps` | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Local Python Apple Silicon | `mps / auto` | legacy artifact | `docs/benchmark-results/qwen-mps-2026-06-20.json` |
-| `qwen-compose` | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU | `cpu / float16` | legacy artifact | `docs/benchmark-results/qwen-compose-2026-06-19.json` |
+| `qwen-compose` | `qwen-asr` | `Qwen/Qwen3-ASR-0.6B` | Docker Compose CPU | `cpu / float16` | validated artifact | `docs/benchmark-results/qwen-compose-2026-06-21.json` |
 
 Status details from the track registry:
 
@@ -77,7 +77,7 @@ Status details from the track registry:
 - `parakeet-mlx`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt-0.6b-v3`; its `1971.9 ms` mean latency reflects the checked-in cold CLI preview.
 - `parakeet-mlx-110m`: preview 3-sample local Apple Silicon MLX CLI artifact for `mlx-community/parakeet-tdt_ctc-110m`; its `1360.7 ms` mean latency reflects the checked-in cold CLI preview.
 - `qwen-mps`: validated 10-sample local Apple Silicon MPS artifact refreshed on `2026-06-20` with comparable first-partial live metrics.
-- `qwen-compose`: validated 5-sample Compose CPU artifact refreshed on `2026-06-19` using `float16`, `3` REST runs per sample, and an `8`-chunk partial cadence.
+- `qwen-compose`: validated 10-sample Compose CPU artifact refreshed on `2026-06-21` using `float16` with paced binary `/v1/stt/stream`; its `680.1 ms` first-partial mean keeps it directly comparable to the other live leaderboard lanes even though its backlog and finalization remain much slower.
 
 ## Current Artifact-Backed Comparison
 
@@ -93,7 +93,7 @@ These rows match the current manifest entries used on the homepage, plus two doc
 | `parakeet-mlx-110m` | 3 | 1360.7 ms / 1716.2 ms | n/a (CLI artifact) | n/a (CLI artifact) | n/a (CLI artifact) | `2.4 / 5.2` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt_ctc-110m` via the upstream `nvidia/parakeet-tdt_ctc-110m` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt_ctc-110m)) | `docs/benchmark-results/parakeet-mlx-110m-2026-06-13.json` |
 | `parakeet-mlx` | 3 | 1971.9 ms / 2595.8 ms | n/a (CLI artifact) | n/a (CLI artifact) | n/a (CLI artifact) | `1.93 / 3.59` on LibriSpeech `clean / other` for `mlx-community/parakeet-tdt-0.6b-v3` via the upstream `nvidia/parakeet-tdt-0.6b-v3` model card ([HF model card](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)) | `docs/benchmark-results/parakeet-mlx-2026-06-13.json` |
 | `parakeet-compose` | 10 | 1302.6 ms / 2955.6 ms | 0.179 | 953.7 ms / 2464.6 ms | 2214.0 ms / 4809.8 ms | `1.93 / 3.59` on LibriSpeech `clean / other` for `nvidia/parakeet-tdt-0.6b-v3` ([HF model card](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)) | `docs/benchmark-results/parakeet-compose-2026-06-20.json` |
-| `qwen-compose` | 5 | 3553.8 ms / 4215.3 ms | 0.488 | 3581.5 ms / 7396.4 ms | 7049.6 ms / 7728.3 ms | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` ([HF README](https://huggingface.co/Qwen/Qwen3-ASR-0.6B/blob/main/README.md)) | `docs/benchmark-results/qwen-compose-2026-06-19.json` |
+| `qwen-compose` | 10 | 5589.9 ms / 9021.8 ms | 0.768 | 2196.9 ms / 5071.1 ms | 5802.5 ms / 6954.6 ms | `2.11 / 4.55` on LibriSpeech `clean / other` for `Qwen/Qwen3-ASR-0.6B` ([HF README](https://huggingface.co/Qwen/Qwen3-ASR-0.6B/blob/main/README.md)) | `docs/benchmark-results/qwen-compose-2026-06-21.json` |
 
 Notes:
 
