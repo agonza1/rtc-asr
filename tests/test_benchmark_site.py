@@ -320,6 +320,22 @@ def test_manifest_preserves_energy_per_audio_second_metadata() -> None:
     assert system["energy_per_audio_second_j"] == 2.4
 
 
+def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
+    system = extract_system_signals(
+        {
+            "metrics": {
+                "power": {"package_watts": 8.6, "energy_per_audio_second_j": 2.9},
+                "thermal": {"peak_celsius": 64.2, "state": "warm but stable"},
+            }
+        }
+    )
+
+    assert system["package_power_watts"] == 8.6
+    assert system["energy_per_audio_second_j"] == 2.9
+    assert system["thermal_peak_celsius"] == 64.2
+    assert system["thermal_observation"] == "warm but stable"
+
+
 def test_manifest_preserves_accelerator_metadata_aliases() -> None:
     environment_system = extract_system_signals({"environment": {"accelerator": "Apple Neural Engine"}})
     metrics_system = extract_system_signals({"metrics": {"gpu": "Apple M-series GPU"}})
