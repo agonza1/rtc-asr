@@ -11,6 +11,7 @@ from pipecat_local_stt import LocalSTTConfig, LocalStreamingSTTService, RtcAsrST
 class BotSettings:
     service: str = os.getenv("LOCAL_STT_SERVICE", "local")
     ws_url: str = os.getenv("RTC_ASR_WS_URL", "ws://rtc-asr:8080/v1/stt/stream")
+    language: str | None = os.getenv("LOCAL_STT_LANGUAGE", "en") or None
     sample_rate: int = int(os.getenv("LOCAL_STT_SAMPLE_RATE", "16000"))
     channels: int = int(os.getenv("LOCAL_STT_CHANNELS", "1"))
     frame_ms: int = int(os.getenv("LOCAL_STT_FRAME_MS", "20"))
@@ -22,6 +23,7 @@ def build_local_stt(settings: BotSettings) -> LocalStreamingSTTService:
     return LocalStreamingSTTService(
         LocalSTTConfig(
             url=settings.ws_url,
+            language=settings.language,
             sample_rate=settings.sample_rate,
             channels=settings.channels,
             format="pcm_s16le",
@@ -36,7 +38,7 @@ def build_local_stt(settings: BotSettings) -> LocalStreamingSTTService:
 def build_rtc_asr_stt(settings: BotSettings) -> RtcAsrSTTService:
     return RtcAsrSTTService(
         url=settings.ws_url,
-        language="en",
+        language=settings.language,
         sample_rate=settings.sample_rate,
         channels=settings.channels,
         frame_ms=settings.frame_ms,
@@ -74,7 +76,7 @@ def main() -> None:
     print(
         "Pipecat Local STT example configured for "
         f"service={settings.service}, {settings.ws_url} at sample_rate={settings.sample_rate}, "
-        f"channels={settings.channels}, frame_ms={settings.frame_ms}, "
+        f"language={settings.language or 'auto'}, channels={settings.channels}, frame_ms={settings.frame_ms}, "
         f"partial_interval_ms={settings.partial_interval_ms}."
     )
     print(

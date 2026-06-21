@@ -36,6 +36,7 @@ RTC_ASR_WS_URL=ws://127.0.0.1:8080/v1/stt/stream python examples/pipecat_local_s
 
 ## Defaults
 
+- `language=en` (set `LOCAL_STT_LANGUAGE=` to omit a language hint and let the sidecar auto-detect when supported)
 - `sample_rate=16000`
 - `channels=1`
 - `format=pcm_s16le`

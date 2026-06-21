@@ -29,6 +29,8 @@ def test_pipecat_local_stt_bot_example_documents_sidecar_contract() -> None:
     assert "This is not WebRTC-to-ASR" in readme
     assert "This is not Deepgram/OpenAI-compatible" in readme
     assert "ws://rtc-asr:8080/v1/stt/stream" in readme
+    assert "language=en" in readme
+    assert "LOCAL_STT_LANGUAGE=" in readme
     assert "sample_rate=16000" in readme
     assert "channels=1" in readme
     assert "format=pcm_s16le" in readme
@@ -89,9 +91,11 @@ def test_pipecat_local_stt_bot_example_applies_tuning_to_rtc_asr_service() -> No
             frame_ms=40,
             partial_interval_ms=250,
             partial_window_seconds=1.5,
+            language="es",
         )
     )
 
+    assert stt.config.language == "es"
     assert stt.config.sample_rate == 8000
     assert stt.config.channels == 2
     assert stt.config.frame_ms == 40
