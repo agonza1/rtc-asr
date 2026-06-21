@@ -204,6 +204,12 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     )
     if partial_event_timeout_seconds is not None:
         contract["partial_event_timeout_seconds"] = partial_event_timeout_seconds
+    final_event_timeout_seconds = benchmark.get(
+        "final_event_timeout_seconds",
+        streaming.get("final_event_timeout_seconds"),
+    )
+    if final_event_timeout_seconds is not None:
+        contract["final_event_timeout_seconds"] = final_event_timeout_seconds
     return contract
 
 
