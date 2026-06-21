@@ -175,18 +175,6 @@ def secondary_reason(entry: dict[str, Any]) -> str:
     return "Supporting artifact with a different contract or publication scope."
 
 
-def registry_gap_entries(manifest: dict[str, Any]) -> list[dict[str, Any]]:
-    return [
-        track
-        for track in manifest.get("tracks", [])
-        if track.get("status") == "blocked" or not track.get("artifact_path")
-    ]
-
-
-def registry_gap_count(manifest: dict[str, Any]) -> int:
-    return len(registry_gap_entries(manifest))
-
-
 def median(values: list[float | None]) -> float | None:
     defined = sorted(value for value in values if value is not None)
     if not defined:
@@ -690,10 +678,6 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     )
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
-    )
-    gap_count = registry_gap_count(manifest)
-    summary_cards.append(
-        f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Registry coverage</div><div class="headline-value">{summary.get("validated_count", 0)} of {summary.get("tracked_count", 0)} validated</div><p>{gap_count} tracked lanes are blocked or unpublished, so reviewers can separate launch-ready evidence from backlog work.</p></article>'
     )
     system_coverage = summary.get("system_coverage") or {}
     if system_coverage:
