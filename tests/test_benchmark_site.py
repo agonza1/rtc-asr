@@ -626,6 +626,10 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
     assert 'Energy/audio-sec 2.6 J' in detail_html
+
+    integer_energy_payload = {'metrics': {'energy_per_audio_second_j': 3}}
+    integer_energy_html = render_detail_page(entry, integer_energy_payload)
+    assert 'Energy/audio-sec 3.0 J' in integer_energy_html
     assert 'Thermal 63.5 C' in detail_html
     assert 'Sample rate 16000 Hz' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html
