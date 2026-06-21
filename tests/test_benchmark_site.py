@@ -193,7 +193,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
 
     assert derived["overall_score"] is not None
     assert derived["partial_backlog_score"] is not None
-    assert derived["confidence_score"] == 85.0
+    assert derived["confidence_score"] == 100.0
     assert derived["sample_coverage_pct"] == 100.0
 
     summary = manifest["summary"]
@@ -297,11 +297,11 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert track["system"]["memory_total_mb"] == 24576.0
 
     coverage = manifest["summary"]["system_coverage"]
-    assert coverage["memory_total_mb_count"] == 14
-    assert coverage["process_rss_mb_count"] == 9
-    assert coverage["peak_rss_mb_count"] == 9
+    assert coverage["memory_total_mb_count"] == 16
+    assert coverage["process_rss_mb_count"] == 10
+    assert coverage["peak_rss_mb_count"] == 10
     assert coverage["accelerator_count"] == 0
-    assert coverage["cpu_utilization_percent_count"] == 4
+    assert coverage["cpu_utilization_percent_count"] == 5
     assert coverage["package_power_watts_count"] == 0
     assert coverage["energy_per_audio_second_j_count"] == 0
     assert coverage["thermal_peak_celsius_count"] == 0
