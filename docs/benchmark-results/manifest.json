@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-21T06:10:18Z",
+  "generated_at": "2026-06-21T07:10:48Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -31,6 +31,7 @@
       "accelerator_count": 0,
       "cpu_utilization_percent_count": 4,
       "package_power_watts_count": 0,
+      "energy_per_audio_second_j_count": 0,
       "thermal_peak_celsius_count": 0,
       "thermal_observation_count": 0
     },
@@ -169,6 +170,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -261,6 +263,7 @@
         "peak_rss_mb": 827.3,
         "cpu_utilization_percent": 412.0,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -353,6 +356,7 @@
         "peak_rss_mb": 1253.3,
         "cpu_utilization_percent": 408.1,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -445,6 +449,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -537,6 +542,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -624,6 +630,7 @@
         "peak_rss_mb": 841.0,
         "cpu_utilization_percent": 26.1,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -711,6 +718,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -798,6 +806,7 @@
         "peak_rss_mb": 1125.0,
         "cpu_utilization_percent": 421.8,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -880,6 +889,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -951,6 +961,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1022,6 +1033,7 @@
         "peak_rss_mb": 1253.3,
         "cpu_utilization_percent": 408.1,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1093,6 +1105,7 @@
         "peak_rss_mb": 827.3,
         "cpu_utilization_percent": 412.0,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1164,6 +1177,7 @@
         "peak_rss_mb": 841.0,
         "cpu_utilization_percent": 26.1,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1230,6 +1244,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1296,6 +1311,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1362,6 +1378,7 @@
         "peak_rss_mb": 1125.0,
         "cpu_utilization_percent": 421.8,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1429,6 +1446,7 @@
         "peak_rss_mb": 1271.7,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1496,6 +1514,7 @@
         "peak_rss_mb": 789.5,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1563,6 +1582,7 @@
         "peak_rss_mb": 1096.8,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1630,6 +1650,7 @@
         "peak_rss_mb": 1156.6,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1697,6 +1718,7 @@
         "peak_rss_mb": 1152.8,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1763,6 +1785,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1829,6 +1852,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1895,6 +1919,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -1961,6 +1986,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2024,6 +2050,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2087,6 +2114,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2150,6 +2178,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2213,6 +2242,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2286,6 +2316,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2378,6 +2409,7 @@
         "peak_rss_mb": 827.3,
         "cpu_utilization_percent": 412.0,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2470,6 +2502,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2557,6 +2590,7 @@
         "peak_rss_mb": 1253.3,
         "cpu_utilization_percent": 408.1,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2649,6 +2683,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2741,6 +2776,7 @@
         "peak_rss_mb": 841.0,
         "cpu_utilization_percent": 26.1,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2828,6 +2864,7 @@
         "peak_rss_mb": null,
         "cpu_utilization_percent": null,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },
@@ -2915,6 +2952,7 @@
         "peak_rss_mb": 1125.0,
         "cpu_utilization_percent": 421.8,
         "package_power_watts": null,
+        "energy_per_audio_second_j": null,
         "thermal_peak_celsius": null,
         "thermal_observation": null
       },

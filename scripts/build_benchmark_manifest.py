@@ -271,6 +271,11 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
             system.get("package_power_watts"),
             metrics.get("package_power_watts"),
         ),
+        "energy_per_audio_second_j": first_defined(
+            environment.get("energy_per_audio_second_j"),
+            system.get("energy_per_audio_second_j"),
+            metrics.get("energy_per_audio_second_j"),
+        ),
         "thermal_peak_celsius": first_defined(
             environment.get("thermal_peak_celsius"),
             system.get("thermal_peak_celsius"),
@@ -511,6 +516,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
             "peak_rss_mb": None,
             "cpu_utilization_percent": None,
             "package_power_watts": None,
+            "energy_per_audio_second_j": None,
             "thermal_peak_celsius": None,
             "thermal_observation": None,
         },
@@ -611,6 +617,9 @@ def build_system_coverage(entries: list[dict[str, Any]]) -> dict[str, int]:
             1 for entry in entries if entry["system"].get("cpu_utilization_percent") is not None
         ),
         "package_power_watts_count": sum(1 for entry in entries if entry["system"].get("package_power_watts") is not None),
+        "energy_per_audio_second_j_count": sum(
+            1 for entry in entries if entry["system"].get("energy_per_audio_second_j") is not None
+        ),
         "thermal_peak_celsius_count": sum(1 for entry in entries if entry["system"].get("thermal_peak_celsius") is not None),
         "thermal_observation_count": sum(1 for entry in entries if entry["system"].get("thermal_observation") is not None),
     }
