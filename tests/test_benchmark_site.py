@@ -352,9 +352,13 @@ def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
 def test_manifest_preserves_accelerator_metadata_aliases() -> None:
     environment_system = extract_system_signals({"environment": {"accelerator": "Apple Neural Engine"}})
     metrics_system = extract_system_signals({"metrics": {"gpu": "Apple M-series GPU"}})
+    structured_system = extract_system_signals(
+        {"metrics": {"accelerator": {"name": "Apple Neural Engine"}, "gpu": {"model": "M-series GPU"}}}
+    )
 
     assert environment_system["accelerator"] == "Apple Neural Engine"
     assert metrics_system["accelerator"] == "Apple M-series GPU"
+    assert structured_system["accelerator"] == "Apple Neural Engine"
 
 
 def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() -> None:
