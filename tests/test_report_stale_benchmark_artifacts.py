@@ -11,6 +11,7 @@ report_module = importlib.util.module_from_spec(SPEC)
 sys.modules.setdefault("rtc_asr_report_stale_benchmark_artifacts", report_module)
 SPEC.loader.exec_module(report_module)
 
+format_bytes = report_module.format_bytes
 render_text = report_module.render_text
 stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
@@ -50,6 +51,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "label": "Demo",
             "measured_at": "2026-06-10T00:00:00Z",
             "artifact_size_bytes": 75,
+            "artifact_size": "75 B",
         }
     ]
 
@@ -77,7 +79,17 @@ def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
         "benchmark-results/large.json",
         "benchmark-results/small.json",
     ]
-    assert stale_summary(stale)["total_size_bytes"] == 100
+    summary = stale_summary(stale)
+
+    assert summary["total_size_bytes"] == 100
+    assert summary["total_size"] == "100 B"
+
+
+def test_format_bytes_uses_binary_units() -> None:
+    assert format_bytes(0) == "0 B"
+    assert format_bytes(75) == "75 B"
+    assert format_bytes(1536) == "1.5 KiB"
+    assert format_bytes(2 * 1024 * 1024) == "2.0 MiB"
 
 
 def test_render_text_summarizes_stale_artifacts() -> None:
@@ -92,5 +104,5 @@ def test_render_text_summarizes_stale_artifacts() -> None:
         ]
     )
 
-    assert "Found 1 stale benchmark artifacts (75 bytes):" in rendered
-    assert "benchmark-results/older.json [demo] measured 2026-06-10T00:00:00Z" in rendered
+    assert "Found 1 stale benchmark artifacts (75 B, 75 bytes):" in rendered
+    assert "benchmark-results/older.json [demo] measured 2026-06-10T00:00:00Z (75 B)" in rendered
