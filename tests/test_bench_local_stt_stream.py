@@ -213,6 +213,7 @@ def test_describe_environment_records_memory_when_psutil_is_available(monkeypatc
 
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] == 384.0
+    assert payload["process_metrics_pid"] is None
     assert payload["peak_rss_mb"] is None
     assert payload["cpu_utilization_percent"] is None
     assert payload["process_metrics_sample_count"] == 0
@@ -304,6 +305,7 @@ def test_describe_environment_accepts_measured_process_metrics(monkeypatch) -> N
     )
 
     assert payload["process_rss_mb"] == 384.0
+    assert payload["process_metrics_pid"] == 4321
     assert payload["peak_rss_mb"] == 512.5
     assert payload["cpu_utilization_percent"] == 42.0
     assert payload["process_metrics_sample_count"] == 3

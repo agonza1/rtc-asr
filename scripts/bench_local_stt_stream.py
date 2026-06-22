@@ -277,6 +277,7 @@ def describe_environment(
         "cpu_logical_cores": os.cpu_count(),
         "memory_total_mb": memory_total_mb,
         "process_rss_mb": process_rss_mb,
+        "process_metrics_pid": process_pid,
         "peak_rss_mb": peak_rss_mb,
         "cpu_utilization_percent": cpu_utilization_percent,
         "process_metrics_sample_count": process_metrics_sample_count,
