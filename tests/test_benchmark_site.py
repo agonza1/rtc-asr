@@ -29,6 +29,7 @@ render_detail_page = prerender_module.render_detail_page
 render_homepage = prerender_module.render_homepage
 measurement_technique = prerender_module.measurement_technique
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
+render_sitemap = prerender_module.render_sitemap
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -713,6 +714,28 @@ def test_docs_index_surfaces_reference_wer_notes() -> None:
     assert "not official rtc-asr measurements" in docs_index_text
     assert "parakeet-mlx-service-110m" in docs_index_text
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
+
+
+def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
+    manifest = {
+        "tracks": [
+            {"artifact_path": "docs/benchmark-results/demo-2026-06-14.json"},
+            {"artifact_path": "docs/benchmark-results/demo-2026-06-14.json"},
+        ],
+        "artifacts": [
+            {"artifact_path": "docs/benchmark-results/legacy-2026-06-10.json"},
+            {"artifact_path": "docs/benchmark-results/not-json.txt"},
+        ],
+    }
+
+    sitemap = render_sitemap(manifest, "https://example.test/asr-latency")
+
+    assert sitemap.startswith('<?xml version="1.0" encoding="UTF-8"?>')
+    assert "https://example.test/asr-latency/</loc>" in sitemap
+    assert "https://example.test/asr-latency/benchmark-results/manifest.json" in sitemap
+    assert sitemap.count("demo-2026-06-14.html") == 1
+    assert "legacy-2026-06-10.html" in sitemap
+    assert "not-json" not in sitemap
 
 
 def test_detail_page_path_uses_artifact_stem() -> None:

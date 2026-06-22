@@ -15,6 +15,8 @@ from typing import Any
 DEFAULT_MANIFEST_PATH = Path("docs") / "benchmark-results" / "manifest.json"
 DEFAULT_HOMEPAGE_PATH = Path("docs") / "index.html"
 DEFAULT_DETAIL_DIR = Path("docs") / "benchmark-results" / "pages"
+DEFAULT_SITEMAP_PATH = Path("docs") / "sitemap.xml"
+DEFAULT_SITE_BASE_URL = "https://benchmarks.webrtc.ventures/asr-latency/"
 
 
 def parse_args() -> argparse.Namespace:
@@ -22,6 +24,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST_PATH, help="Manifest JSON path")
     parser.add_argument("--homepage", type=Path, default=DEFAULT_HOMEPAGE_PATH, help="Homepage HTML path")
     parser.add_argument("--detail-dir", type=Path, default=DEFAULT_DETAIL_DIR, help="Detail pages output directory")
+    parser.add_argument("--sitemap", type=Path, default=DEFAULT_SITEMAP_PATH, help="Sitemap XML path")
+    parser.add_argument("--site-base-url", default=DEFAULT_SITE_BASE_URL, help="Absolute public base URL for sitemap entries")
     parser.add_argument("--check", action="store_true", help="Exit non-zero when the homepage prerender is stale")
     return parser.parse_args()
 
@@ -738,6 +742,30 @@ def orphaned_detail_pages(detail_dir: Path, detail_pages: dict[Path, str]) -> li
     return sorted(path for path in detail_dir.glob("*.html") if path not in expected_paths)
 
 
+def sitemap_url(base_url: str, path: str) -> str:
+    normalized_base = base_url.rstrip("/") + "/"
+    normalized_path = path.lstrip("/")
+    return normalized_base + normalized_path
+
+
+def render_sitemap(manifest: dict[str, Any], base_url: str) -> str:
+    detail_paths = sorted(
+        {
+            detail_page_path(entry)
+            for entry in [*manifest.get("tracks", []), *manifest.get("artifacts", [])]
+            if entry.get("artifact_path") and detail_page_path(entry) != "#"
+        }
+    )
+    urls = ["", "benchmark-results/manifest.json", *detail_paths]
+    url_entries = "\n".join(
+        "  <url>\n"
+        f"    <loc>{html.escape(sitemap_url(base_url, path))}</loc>\n"
+        "  </url>"
+        for path in urls
+    )
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{url_entries}\n</urlset>\n'
+
+
 def render_row(
     entry: dict[str, Any],
     first_partial_baseline: float | None,
@@ -897,6 +925,7 @@ def main() -> None:
     homepage = args.homepage.read_text(encoding="utf-8")
     rendered = render_homepage(manifest, homepage)
     detail_pages = render_detail_pages(manifest, args.manifest, args.detail_dir)
+    sitemap = render_sitemap(manifest, args.site_base_url)
     if args.check:
         if homepage != rendered:
             raise SystemExit(
@@ -909,8 +938,13 @@ def main() -> None:
             raise SystemExit(
                 f"Benchmark detail pages are stale: {args.detail_dir}. Run scripts/prerender_benchmark_homepage.py to regenerate them."
             )
+        if not args.sitemap.exists() or args.sitemap.read_text(encoding="utf-8") != sitemap:
+            raise SystemExit(
+                f"Benchmark sitemap is stale: {args.sitemap}. Run scripts/prerender_benchmark_homepage.py to regenerate it."
+            )
         return
     args.homepage.write_text(rendered, encoding="utf-8")
+    args.sitemap.write_text(sitemap, encoding="utf-8")
     args.detail_dir.mkdir(parents=True, exist_ok=True)
     for path in orphaned_detail_pages(args.detail_dir, detail_pages):
         path.unlink()
