@@ -339,13 +339,17 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "package_power_watts": first_defined(
             environment.get("package_power_watts"),
+            environment.get("package_power_avg_watts"),
             system.get("package_power_watts"),
+            system.get("package_power_avg_watts"),
             metrics.get("package_power_watts"),
             metrics.get("package_power_avg_watts"),
             nested_value(metrics, "power", "package_watts"),
             nested_value(metrics, "power", "package_power_watts"),
+            nested_value(metrics, "power", "package_power_avg_watts"),
             power.get("package_watts"),
             power.get("package_power_watts"),
+            power.get("package_power_avg_watts"),
         ),
         "energy_per_audio_second_j": first_defined(
             environment.get("energy_per_audio_second_j"),
