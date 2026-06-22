@@ -1,6 +1,6 @@
 # rtc-asr
 
-`rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST plus a Local STT v1 websocket contract, with a legacy buffered websocket path still available for compatibility. It is optimized for warmed, local or on-device inference paths, especially low-power CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
+`rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST or Websockets. It is optimized for warmed, local or on-device inference paths, especially low-power CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
 
 The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, and `parakeet-nemo` backends behind the same API surface.
 
@@ -13,10 +13,10 @@ The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parake
 - `GET /api/models` for backend/model capability metadata that RTC clients can inspect
 - `POST /api/transcribe` for one-shot base64 audio requests
 - `POST /api/transcribe/file` for uploaded file transcription
-- `ws://.../v1/stt/stream` for Local STT v1 JSON-control plus binary-PCM websocket streaming
+- `ws://.../v1/stt/stream` for Local STT v1 JSON-control plus binary-PCM websocket streaming (recommended)
 - `ws://.../ws/stream` for the older buffered websocket transcription path with `ready`, `partial`, `final`, `canceled`, and `error` events
 - Shared client helpers in `src/rtc_client.py` and `src/streaming.py`
-- A browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr` when you run the companion demo service, installable locally as a PWA shell
+- A browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr` when you run the companion demo service
 
 ## Quick Start
 
