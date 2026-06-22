@@ -123,6 +123,59 @@ class OverlapLocalSttClient(FakeLocalSttClient):
         await asyncio.sleep(0.01)
 
 
+class BrokenSendLocalSttClient(FakeLocalSttClient):
+    async def send_audio(self, chunk: bytes) -> None:
+        if self.sent:
+            raise ConnectionError("forced send disconnect")
+        await super().send_audio(chunk)
+
+
+class MalformedReceiveLocalSttClient(FakeLocalSttClient):
+    def __init__(self, url: str) -> None:
+        super().__init__(url)
+        self._raised_malformed = False
+
+    async def recv_event(self, *, timeout=None, allow_error=True):
+        if not self._raised_malformed:
+            self._raised_malformed = True
+            raise ValueError("malformed protocol event")
+        return await super().recv_event(timeout=timeout, allow_error=allow_error)
+
+
+class ErrorEventLocalSttClient(FakeLocalSttClient):
+    async def send_audio(self, chunk: bytes) -> None:
+        await super().send_audio(chunk)
+        await self._events.put(
+            TranscriptEvent(
+                type="error",
+                text="upstream disconnected",
+                stream_id=None,
+                is_final=False,
+                chunks_received=len(self.sent),
+                buffered_bytes=sum(len(sent) for sent in self.sent),
+                remaining_buffer_bytes=0,
+                raw={"type": "error", "code": "upstream_disconnect", "message": "upstream disconnected"},
+            )
+        )
+
+
+class ReconnectMetadataLocalSttClient(FakeLocalSttClient):
+    async def finalize(self) -> None:
+        self.finalized = True
+        await self._events.put(
+            TranscriptEvent(
+                type="final",
+                text="hello after reconnect",
+                stream_id=None,
+                is_final=True,
+                chunks_received=len(self.sent),
+                buffered_bytes=sum(len(chunk) for chunk in self.sent),
+                remaining_buffer_bytes=0,
+                metadata={"local_stt_reconnects_total": 2},
+            )
+        )
+
+
 def test_split_pcm_frames_uses_20_ms_pcm16_boundaries() -> None:
     pcm = b"a" * 640 + b"b" * 640 + b"tail"
 
@@ -249,10 +302,12 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["interim_events_received"] == 2
     assert sample["interim_transcript_changes"] == 1
     assert sample["final_events_received"] == 1
+    assert sample["successful_runs"] == 1
     assert sample["final_transcript"] == "hello"
     assert sample["warnings_received"] == 1
     assert sample["warning_codes"] == ["partial_dropped"]
     assert sample["protocol_errors"] == 0
+    assert sample["protocol_error_codes"] == []
     assert sample["time_to_first_interim_ms"] is not None
     assert sample["time_to_final_after_finalize_ms"] is not None
     assert sample["audio_end_finalization_rtf"] is not None
@@ -290,13 +345,124 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
     assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["diagnostics"] == {
+        "warning_codes": {"partial_dropped": 1},
+        "protocol_error_codes": {},
+    }
     assert payload["summary"]["audio_frames_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["audio_frames_dropped"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["interim_events_received"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["interim_transcript_changes"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["summary"]["final_events_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["summary"]["successful_runs"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["summary"]["reconnects"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["protocol_errors"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+
+
+def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_error() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 640, b"c" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=BrokenSendLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["audio_frames_sent"] == 1
+    assert sample["audio_frames_dropped"] == 2
+    assert sample["protocol_errors"] == 1
+    assert sample["successful_runs"] == 0
+    assert sample["protocol_error_codes"] == ["send_exception"]
+    assert payload["summary"]["audio_frames_dropped"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["summary"]["successful_runs"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+    assert payload["summary"]["protocol_errors"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["diagnostics"]["protocol_error_codes"] == {"send_exception": 1}
+
+
+def test_run_benchmark_records_malformed_receive_event_as_protocol_error() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=MalformedReceiveLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["protocol_errors"] == 1
+    assert sample["protocol_error_codes"] == ["receive_exception"]
+    assert sample["final_events_received"] == 0
+
+
+def test_run_benchmark_records_protocol_error_codes_from_error_events() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=ErrorEventLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["protocol_errors"] == 1
+    assert sample["protocol_error_codes"] == ["upstream_disconnect"]
+    assert payload["diagnostics"]["protocol_error_codes"] == {"upstream_disconnect": 1}
+    assert sample["final_events_received"] == 0
+
+
+def test_run_benchmark_records_reconnect_count_from_event_metadata() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=ReconnectMetadataLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["reconnects"] == 2
+    assert payload["summary"]["reconnects"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
 
 
 def test_send_receive_overlap_proves_receive_loop_runs_during_audio_send() -> None:
@@ -345,6 +511,20 @@ def test_receive_latency_ignores_empty_poll_timeouts() -> None:
     }
 
 
+def test_summarize_diagnostics_counts_codes_across_runs() -> None:
+    diagnostics = benchmark_module.summarize_diagnostics(
+        [
+            {"warning_codes": ["partial_dropped"], "protocol_error_codes": ["send_exception"]},
+            {"warning_codes": ["partial_dropped", "queue_depth_high"], "protocol_error_codes": ["send_exception", "receive_exception"]},
+        ]
+    )
+
+    assert diagnostics == {
+        "warning_codes": {"partial_dropped": 2, "queue_depth_high": 1},
+        "protocol_error_codes": {"receive_exception": 1, "send_exception": 2},
+    }
+
+
 def test_summarize_samples_preserves_small_rtf_precision() -> None:
     summary = benchmark_module.summarize_samples(
         [
@@ -364,6 +544,7 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
                 "warnings_received": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
                 "audio_frames_sent": {"p50": 4.0, "p95": 4.0, "p99": 4.0},
                 "interim_transcript_changes": {"p50": 2.0, "p95": 3.0, "p99": 3.0},
+                "successful_runs": {"p50": 1.0, "p95": 1.0, "p99": 1.0},
                 "reconnects": {"p50": 0.0, "p95": 1.0, "p99": 1.0},
                 "asr_decode_samples": {"p50": 3.0, "p95": 4.0, "p99": 4.0},
                 "audio_end_finalization_rtf": {"p50": 0.5, "p95": 0.75, "p99": None},
@@ -376,10 +557,11 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
     assert lines[0] == "warnings_received: p50=1.0 p95=2.0 p99=3.0"
     assert lines[1] == "audio_frames_sent: p50=4.0 p95=4.0 p99=4.0"
     assert lines[2] == "interim_transcript_changes: p50=2.0 p95=3.0 p99=3.0"
-    assert lines[3] == "reconnects: p50=0.0 p95=1.0 p99=1.0"
-    assert lines[4] == "asr_decode_samples: p50=3.0 p95=4.0 p99=4.0"
-    assert lines[5] == "audio_end_finalization_rtf: p50=0.5 p95=0.75 p99=n/a"
-    assert lines[6] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
+    assert lines[3] == "successful_runs: p50=1.0 p95=1.0 p99=1.0"
+    assert lines[4] == "reconnects: p50=0.0 p95=1.0 p99=1.0"
+    assert lines[5] == "asr_decode_samples: p50=3.0 p95=4.0 p99=4.0"
+    assert lines[6] == "audio_end_finalization_rtf: p50=0.5 p95=0.75 p99=n/a"
+    assert lines[7] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
 
 
 def test_parse_args_rejects_uds_ws_until_client_support_exists(tmp_path: Path) -> None:
