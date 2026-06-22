@@ -914,6 +914,39 @@ def build_system_coverage(entries: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
+def has_power_evidence(system: dict[str, Any]) -> bool:
+    return first_defined(system.get("package_power_watts"), system.get("energy_per_audio_second_j")) is not None
+
+
+def has_sustained_thermal_evidence(system: dict[str, Any]) -> bool:
+    return first_defined(system.get("thermal_observation"), system.get("thermal_duration_minutes")) is not None
+
+
+def build_low_power_evidence_summary(entries: list[dict[str, Any]]) -> dict[str, int]:
+    complete_entries = []
+    power_entries = []
+    thermal_entries = []
+    for entry in entries:
+        system = entry.get("system") or {}
+        has_memory = system.get("peak_rss_mb") is not None or system.get("process_rss_mb") is not None
+        has_cpu = system.get("cpu_utilization_percent") is not None
+        has_power = has_power_evidence(system)
+        has_thermal = has_sustained_thermal_evidence(system)
+        if has_power:
+            power_entries.append(entry)
+        if has_thermal:
+            thermal_entries.append(entry)
+        if has_memory and has_cpu and has_power and has_thermal:
+            complete_entries.append(entry)
+
+    return {
+        "artifact_count": len(entries),
+        "power_evidence_count": len(power_entries),
+        "sustained_thermal_evidence_count": len(thermal_entries),
+        "complete_artifact_count": len(complete_entries),
+    }
+
+
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
     catalog = load_catalog(tracks_path)
     catalog_tracks = catalog.get("tracks", [])
@@ -1008,6 +1041,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "backend_count": len({entry["backend"] for entry in tracks}),
         "lane_count": len({entry["lane"] for entry in tracks}),
         "system_coverage": build_system_coverage(artifact_history),
+        "low_power_evidence": build_low_power_evidence_summary(artifact_history),
         "ranges": ranges,
         "highlights": {
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),
