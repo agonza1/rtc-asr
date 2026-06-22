@@ -946,6 +946,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "validated_count": sum(1 for entry in tracks if entry["status"] == "validated"),
         "legacy_count": sum(1 for entry in tracks if entry["status"] == "legacy"),
         "blocked_count": sum(1 for entry in tracks if entry["status"] == "blocked"),
+        "live_comparable_count": len(live_comparable_entries),
         "latest_measured_at": latest_measured_at,
         "sample_contract": catalog.get("sample_contract", {}),
         "backend_count": len({entry["backend"] for entry in tracks}),

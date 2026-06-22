@@ -791,6 +791,10 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">{len(primary)} fully comparable lanes</div><p>The main ranking only includes lanes with comparable live metrics. Historical and differently scoped artifacts remain available through the appendix and detail pages.</p></article>'
     )
+    live_comparable_count = summary.get("live_comparable_count", len(primary))
+    summary_cards.append(
+        f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Published live contract</div><div class="headline-value">{live_comparable_count} comparable artifacts</div><p>{len(primary)} lanes are eligible for primary ranking after validation and publication filters; the rest stay discoverable as supporting evidence.</p></article>'
+    )
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
     )
