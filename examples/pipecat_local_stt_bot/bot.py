@@ -9,15 +9,31 @@ from pipecat_local_stt import LocalSTTConfig, LocalStreamingSTTService, RtcAsrST
 
 @dataclass(frozen=True)
 class BotSettings:
-    service: str = os.getenv("LOCAL_STT_SERVICE", "local")
-    ws_url: str = os.getenv("RTC_ASR_WS_URL", "ws://rtc-asr:8080/v1/stt/stream")
-    language: str | None = os.getenv("LOCAL_STT_LANGUAGE", "en") or None
-    sample_rate: int = int(os.getenv("LOCAL_STT_SAMPLE_RATE", "16000"))
-    channels: int = int(os.getenv("LOCAL_STT_CHANNELS", "1"))
-    frame_ms: int = int(os.getenv("LOCAL_STT_FRAME_MS", "20"))
-    partial_interval_ms: int = int(os.getenv("LOCAL_STT_PARTIAL_INTERVAL_MS", "100"))
-    partial_window_seconds: float = float(os.getenv("LOCAL_STT_PARTIAL_WINDOW_SECONDS", "1.0"))
-    max_buffer_seconds: float = float(os.getenv("LOCAL_STT_MAX_BUFFER_SECONDS", "10.0"))
+    service: str = "local"
+    ws_url: str = "ws://rtc-asr:8080/v1/stt/stream"
+    language: str | None = "en"
+    sample_rate: int = 16000
+    channels: int = 1
+    frame_ms: int = 20
+    partial_interval_ms: int = 100
+    partial_window_seconds: float = 1.0
+    max_buffer_seconds: float = 10.0
+
+    @classmethod
+    def from_env(cls) -> "BotSettings":
+        return cls(
+            service=os.getenv("LOCAL_STT_SERVICE", cls.service),
+            ws_url=os.getenv("RTC_ASR_WS_URL", cls.ws_url),
+            language=os.getenv("LOCAL_STT_LANGUAGE", cls.language or "") or None,
+            sample_rate=int(os.getenv("LOCAL_STT_SAMPLE_RATE", str(cls.sample_rate))),
+            channels=int(os.getenv("LOCAL_STT_CHANNELS", str(cls.channels))),
+            frame_ms=int(os.getenv("LOCAL_STT_FRAME_MS", str(cls.frame_ms))),
+            partial_interval_ms=int(os.getenv("LOCAL_STT_PARTIAL_INTERVAL_MS", str(cls.partial_interval_ms))),
+            partial_window_seconds=float(
+                os.getenv("LOCAL_STT_PARTIAL_WINDOW_SECONDS", str(cls.partial_window_seconds))
+            ),
+            max_buffer_seconds=float(os.getenv("LOCAL_STT_MAX_BUFFER_SECONDS", str(cls.max_buffer_seconds))),
+        )
 
 
 def build_local_stt(settings: BotSettings) -> LocalStreamingSTTService:
@@ -74,7 +90,7 @@ def build_pipeline(transport: Any, context_aggregator: Any, llm: Any, tts: Any, 
 
 
 def main() -> None:
-    settings = BotSettings()
+    settings = BotSettings.from_env()
     stt = build_stt(settings)
     print(
         "Pipecat Local STT example configured for "
