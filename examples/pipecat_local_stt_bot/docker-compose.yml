@@ -19,7 +19,7 @@ services:
     working_dir: /app
     depends_on:
       rtc-asr:
-        condition: service_started
+        condition: service_healthy
     environment:
       RTC_ASR_WS_URL: ws://rtc-asr:8080/v1/stt/stream
       LOCAL_STT_SAMPLE_RATE: "16000"
