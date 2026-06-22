@@ -66,7 +66,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-pipecat-e2e benchmark-site benchmark-site-check clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-pipecat-e2e benchmark-site benchmark-site-check benchmark-artifact-report clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -104,6 +104,7 @@ help:
 	@echo "  make benchmark-parakeet-mlx-service-110m - Run the warmed 110M MLX service benchmark through the /v1/stt/stream harness"
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
+	@echo "  make benchmark-artifact-report - List legacy benchmark artifacts that are no longer current"
 	@echo "  make docs           - Build documentation snapshot"
 	@echo "  make start          - Start docker compose stack, including the browser Pipecat demo"
 	@echo "  make stop           - Stop docker compose stack"
@@ -494,7 +495,7 @@ benchmark-parakeet-mlx-service-110m-legacy:
 
 lint: venv
 	@echo "Running linter..."
-	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py scripts/prerender_benchmark_homepage.py scripts/benchmark_mlx_asr.py
+	@$(PYTHON) -m py_compile src/*.py tests/test_smoke.py tests/benchmark.py scripts/build_benchmark_manifest.py scripts/prerender_benchmark_homepage.py scripts/report_stale_benchmark_artifacts.py scripts/benchmark_mlx_asr.py
 	@echo "  ✓ Linting complete"
 
 benchmark-site:
@@ -507,6 +508,9 @@ benchmark-site-check:
 	@python3 scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check
 	@python3 scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --check
 	@echo "  ✓ Benchmark site manifest is up to date"
+
+benchmark-artifact-report:
+	@python3 scripts/report_stale_benchmark_artifacts.py --results-dir $(BENCHMARK_RESULTS_DIR) --tracks $(BENCHMARK_RESULTS_DIR)/tracks.json
 
 docs: benchmark-site
 	@echo "Building documentation..."
