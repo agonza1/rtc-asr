@@ -214,6 +214,49 @@ def test_describe_environment_records_memory_when_psutil_is_available(monkeypatc
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] == 384.0
     assert payload["peak_rss_mb"] is None
+    assert payload["cpu_utilization_percent"] is None
+
+
+def test_process_metrics_monitor_tracks_peak_rss_and_cpu_average(monkeypatch) -> None:
+    class FakeProcess:
+        def __init__(self) -> None:
+            self._rss_values = [128 * 1024 * 1024, 256 * 1024 * 1024]
+            self._cpu_values = [0.0, 20.0, 40.0]
+
+        def memory_info(self):
+            rss = self._rss_values.pop(0) if self._rss_values else 192 * 1024 * 1024
+            return SimpleNamespace(rss=rss)
+
+        def cpu_percent(self, interval=None):
+            return self._cpu_values.pop(0) if self._cpu_values else 40.0
+
+    fake_psutil = SimpleNamespace(Process=FakeProcess)
+    monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+
+    monitor = benchmark_module.ProcessMetricsMonitor(interval_seconds=0.01)
+    monitor.sample_once()
+    monitor.sample_once()
+    monitor.stop()
+
+    assert monitor.peak_rss_mb == 256.0
+    assert monitor.cpu_utilization_percent == 10.0
+    assert monitor._samples == [0.0, 20.0]
+
+
+def test_describe_environment_accepts_measured_process_metrics(monkeypatch) -> None:
+    monkeypatch.setitem(
+        sys.modules,
+        "psutil",
+        SimpleNamespace(
+            virtual_memory=lambda: SimpleNamespace(total=16 * 1024 * 1024 * 1024),
+            Process=lambda: SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=384 * 1024 * 1024)),
+        ),
+    )
+
+    payload = benchmark_module.describe_environment(peak_rss_mb=512.5, cpu_utilization_percent=42.0)
+
+    assert payload["peak_rss_mb"] == 512.5
+    assert payload["cpu_utilization_percent"] == 42.0
 
 
 def test_normalize_pcm16_buffer_reports_float32_samples() -> None:
