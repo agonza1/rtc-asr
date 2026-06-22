@@ -760,8 +760,12 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     )
     system_coverage = summary.get("system_coverage") or {}
     if system_coverage:
+        energy_count = max(
+            system_coverage.get("package_power_watts_count", 0),
+            system_coverage.get("energy_per_audio_second_j_count", 0),
+        )
         summary_cards.append(
-            f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">System evidence</div><div class="headline-value">{system_coverage.get("peak_rss_mb_count", 0)} memory traces</div><p>{system_coverage.get("cpu_utilization_percent_count", 0)} artifacts include CPU utilization; {system_coverage.get("thermal_observation_count", 0)} include sustained thermal notes.</p></article>'
+            f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">System evidence</div><div class="headline-value">{system_coverage.get("peak_rss_mb_count", 0)} memory traces</div><p>{system_coverage.get("cpu_utilization_percent_count", 0)} artifacts include CPU utilization; {energy_count} include power or energy readings; {system_coverage.get("thermal_observation_count", 0)} include sustained thermal notes.</p></article>'
         )
     top_cards = "".join(
         f'<article class="story-card panel {tone_class(index)}"><div class="section-kicker">Rank {index + 1}</div><div class="story-rank">{html.escape(entry.get("label") or "unknown")}</div><div class="chip-row"><div class="chip"><strong>{html.escape(entry.get("runtime") or "unknown")}</strong> runtime</div><div class="chip"><strong>{html.escape(entry.get("lane") or "unknown")}</strong> lane</div></div><p>{html.escape(entry.get("status_detail") or "")}</p></article>'

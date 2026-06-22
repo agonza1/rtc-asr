@@ -1083,6 +1083,7 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     assert "Launch readout" in homepage
     assert "The main ranking stays focused on fully comparable live lanes" in homepage
     assert "Recommended default" in homepage
+    assert "include power or energy readings" in homepage
     assert "Benchmark appendix" in homepage
     assert "Artifacts kept out of the primary ranking" not in homepage
     assert "Open detail page" in homepage
