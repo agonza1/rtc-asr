@@ -53,6 +53,7 @@ def test_pipecat_local_stt_bot_example_compose_uses_sidecar_service_discovery() 
 
     assert "rtc-asr:" in compose
     assert "pipecat-local-stt-bot:" in compose
+    assert "condition: service_healthy" in compose
     assert "RTC_ASR_WS_URL: ws://rtc-asr:8080/v1/stt/stream" in compose
     assert 'LOCAL_STT_SAMPLE_RATE: "16000"' in compose
     assert 'LOCAL_STT_CHANNELS: "1"' in compose
