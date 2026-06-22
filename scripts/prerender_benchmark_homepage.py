@@ -405,6 +405,13 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
             memory.get("process_rss_mb"),
             nested_value(metrics, "memory", "process_rss_mb"),
         ),
+        "process_metrics_pid": first_defined(
+            environment.get("process_metrics_pid"),
+            system.get("process_metrics_pid"),
+            metrics.get("process_metrics_pid"),
+            nested_value(metrics, "process", "metrics_pid"),
+            nested_value(metrics, "process", "pid"),
+        ),
         "peak_rss_mb": first_defined(
             environment.get("peak_rss_mb"),
             system.get("peak_rss_mb"),
@@ -474,6 +481,7 @@ def telemetry_coverage_text(system_signals: dict[str, Any]) -> str:
         "accelerator": system_signals.get("accelerator"),
         "system RAM": system_signals.get("memory_total_mb"),
         "process RSS": system_signals.get("process_rss_mb"),
+        "metrics PID": system_signals.get("process_metrics_pid"),
         "peak RSS": system_signals.get("peak_rss_mb"),
         "CPU utilization": system_signals.get("cpu_utilization_percent"),
         "package power": system_signals.get("package_power_watts"),
@@ -483,7 +491,7 @@ def telemetry_coverage_text(system_signals: dict[str, Any]) -> str:
     }
     present = [label for label, value in fields.items() if value not in (None, "")]
     if not present:
-        return "0 of 13 telemetry fields recorded. Missing: all optional system, power, memory, and thermal signals."
+        return "0 of 14 telemetry fields recorded. Missing: all optional system, power, memory, and thermal signals."
     missing = [label for label in fields if label not in present]
     missing_text = ", ".join(missing) if missing else "none"
     return f"{len(present)} of {len(fields)} telemetry fields recorded. Missing: {missing_text}."
@@ -567,6 +575,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
             f"Accelerator {format_system_text(system_signals.get('accelerator'))}",
             f"System RAM {format_mb(system_signals.get('memory_total_mb'))}",
             f"Process RSS {format_mb(system_signals.get('process_rss_mb'))}",
+            f"Metrics PID {format_count(system_signals.get('process_metrics_pid'))}",
             f"CPU {format_percent(system_signals.get('cpu_utilization_percent') / 100) if system_signals.get('cpu_utilization_percent') is not None else 'n/a'}",
             f"Power {format_watts(system_signals.get('package_power_watts'))}",
             f"Energy/audio-sec {format_joules(system_signals.get('energy_per_audio_second_j'))}",

@@ -311,6 +311,13 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
             memory.get("process_rss_mb"),
             nested_value(metrics, "memory", "process_rss_mb"),
         ),
+        "process_metrics_pid": first_defined(
+            environment.get("process_metrics_pid"),
+            system.get("process_metrics_pid"),
+            metrics.get("process_metrics_pid"),
+            nested_value(metrics, "process", "metrics_pid"),
+            nested_value(metrics, "process", "pid"),
+        ),
         "peak_rss_mb": first_defined(
             environment.get("peak_rss_mb"),
             system.get("peak_rss_mb"),
