@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import platform
+import statistics
 import time
 import wave
 from collections import Counter
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 import sys
+import threading
 from typing import Any, Callable, Iterator, Protocol
 
 import numpy as np
@@ -42,6 +44,75 @@ class AudioInput:
     sample_rate: int
     frame_ms: int
     frames: list[bytes]
+
+
+class ProcessMetricsMonitor:
+    def __init__(self, *, pid: int | None = None, interval_seconds: float = 0.1) -> None:
+        self.interval_seconds = interval_seconds
+        self.peak_rss_mb: float | None = None
+        self.cpu_utilization_percent: float | None = None
+        self._samples: list[float] = []
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        if pid is None:
+            self._process = None
+            return
+        try:
+            import psutil
+
+            self._process = psutil.Process(pid)
+        except Exception:
+            self._process = None
+
+    def start(self) -> None:
+        if self._process is None:
+            return
+        try:
+            self._process.cpu_percent(interval=None)
+        except Exception:
+            return
+        self._sample_rss_once()
+        self._thread = threading.Thread(target=self._sample_loop, name="local-stt-metrics", daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        if self._thread is not None:
+            self._stop.set()
+            self._thread.join(timeout=max(1.0, self.interval_seconds * 4))
+        self._sample_rss_once()
+        if self._samples:
+            self.cpu_utilization_percent = round(statistics.mean(self._samples), 1)
+
+    def _sample_loop(self) -> None:
+        while not self._stop.is_set():
+            self._stop.wait(self.interval_seconds)
+            if self._stop.is_set():
+                break
+            self.sample_once()
+
+    def sample_once(self) -> None:
+        if self._process is None:
+            return
+        try:
+            rss_mb = round(self._process.memory_info().rss / (1024 * 1024), 1)
+            cpu_percent = self._process.cpu_percent(interval=None)
+        except Exception:
+            return
+        self._record_peak_rss(rss_mb)
+        self._samples.append(float(cpu_percent))
+
+    def _sample_rss_once(self) -> None:
+        if self._process is None:
+            return
+        try:
+            rss_mb = round(self._process.memory_info().rss / (1024 * 1024), 1)
+        except Exception:
+            return
+        self._record_peak_rss(rss_mb)
+
+    def _record_peak_rss(self, rss_mb: float) -> None:
+        if self.peak_rss_mb is None or rss_mb > self.peak_rss_mb:
+            self.peak_rss_mb = rss_mb
 
 
 def positive_int(value: str) -> int:
@@ -75,6 +146,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Seconds to wait for a final transcript after finalize",
     )
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--metrics-pid",
+        type=positive_int,
+        help="Optional Local STT service process id to sample for peak RSS and CPU utilization.",
+    )
     parser.add_argument("--no-realtime-pace", action="store_true", help="Send frames without sleeping between frames")
     args = parser.parse_args(argv)
     validate_transport_args(args.transport, args.uds_path)
@@ -173,14 +249,21 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
     return summary
 
 
-def describe_environment() -> dict[str, Any]:
+def describe_environment(
+    *,
+    process_pid: int | None = None,
+    peak_rss_mb: float | None = None,
+    cpu_utilization_percent: float | None = None,
+    process_metrics_sample_count: int = 0,
+) -> dict[str, Any]:
     memory_total_mb: float | None = None
     process_rss_mb: float | None = None
     try:
         import psutil
 
         memory_total_mb = round(psutil.virtual_memory().total / (1024 * 1024), 1)
-        process_rss_mb = round(psutil.Process().memory_info().rss / (1024 * 1024), 1)
+        process = psutil.Process(process_pid) if process_pid is not None else psutil.Process()
+        process_rss_mb = round(process.memory_info().rss / (1024 * 1024), 1)
     except Exception:
         memory_total_mb = None
         process_rss_mb = None
@@ -194,7 +277,10 @@ def describe_environment() -> dict[str, Any]:
         "cpu_logical_cores": os.cpu_count(),
         "memory_total_mb": memory_total_mb,
         "process_rss_mb": process_rss_mb,
-        "peak_rss_mb": None,
+        "process_metrics_pid": process_pid,
+        "peak_rss_mb": peak_rss_mb,
+        "cpu_utilization_percent": cpu_utilization_percent,
+        "process_metrics_sample_count": process_metrics_sample_count,
     }
 
 
@@ -209,29 +295,40 @@ async def run_benchmark(
     realtime_pace: bool = True,
     receive_timeout_seconds: int = 5,
     client_factory: ClientFactory | None = None,
+    metrics_pid: int | None = None,
 ) -> dict[str, Any]:
     if transport not in SUPPORTED_TRANSPORTS:
         raise ValueError(f"Unsupported benchmark transport: {transport}")
     factory = client_factory or (lambda ws_url: AsyncLocalSttClient(ws_url))
+    metrics_monitor = ProcessMetricsMonitor(pid=metrics_pid)
+    metrics_monitor.start()
     samples = []
-    for index in range(1, runs + 1):
-        samples.append(
-            await _run_once(
-                index=index,
-                url=url,
-                audio=audio,
-                partial_interval_ms=partial_interval_ms,
-                realtime_pace=realtime_pace,
-                receive_timeout_seconds=receive_timeout_seconds,
-                client_factory=factory,
+    try:
+        for index in range(1, runs + 1):
+            samples.append(
+                await _run_once(
+                    index=index,
+                    url=url,
+                    audio=audio,
+                    partial_interval_ms=partial_interval_ms,
+                    realtime_pace=realtime_pace,
+                    receive_timeout_seconds=receive_timeout_seconds,
+                    client_factory=factory,
+                )
             )
-        )
+    finally:
+        metrics_monitor.stop()
 
     return {
         "kind": "local-stt-v1-latency-benchmark",
         "protocol": "local-stt.v1",
         "target": {"transport": transport, "url": url, "uds_path": uds_path},
-        "environment": describe_environment(),
+        "environment": describe_environment(
+            process_pid=metrics_pid,
+            peak_rss_mb=metrics_monitor.peak_rss_mb,
+            cpu_utilization_percent=metrics_monitor.cpu_utilization_percent,
+            process_metrics_sample_count=len(metrics_monitor._samples),
+        ),
         "audio": {
             "source": audio.source,
             "sample_rate": audio.sample_rate,
@@ -609,6 +706,7 @@ def main(argv: list[str] | None = None) -> int:
             runs=args.runs,
             receive_timeout_seconds=args.receive_timeout_seconds,
             realtime_pace=not args.no_realtime_pace,
+            metrics_pid=args.metrics_pid,
         )
     )
     if args.output is not None:

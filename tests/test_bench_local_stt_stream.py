@@ -213,7 +213,103 @@ def test_describe_environment_records_memory_when_psutil_is_available(monkeypatc
 
     assert payload["memory_total_mb"] == 16384.0
     assert payload["process_rss_mb"] == 384.0
+    assert payload["process_metrics_pid"] is None
     assert payload["peak_rss_mb"] is None
+    assert payload["cpu_utilization_percent"] is None
+    assert payload["process_metrics_sample_count"] == 0
+
+
+def test_process_metrics_monitor_tracks_peak_rss_and_cpu_average(monkeypatch) -> None:
+    class FakeProcess:
+        def __init__(self, pid=None) -> None:
+            self.pid = pid
+            self._rss_values = [128 * 1024 * 1024, 256 * 1024 * 1024]
+            self._cpu_values = [0.0, 20.0, 40.0]
+
+        def memory_info(self):
+            rss = self._rss_values.pop(0) if self._rss_values else 192 * 1024 * 1024
+            return SimpleNamespace(rss=rss)
+
+        def cpu_percent(self, interval=None):
+            return self._cpu_values.pop(0) if self._cpu_values else 40.0
+
+    fake_psutil = SimpleNamespace(Process=FakeProcess)
+    monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+
+    monitor = benchmark_module.ProcessMetricsMonitor(pid=4321, interval_seconds=0.01)
+    monitor.sample_once()
+    monitor.sample_once()
+    monitor.stop()
+
+    assert monitor.peak_rss_mb == 256.0
+    assert monitor.cpu_utilization_percent == 10.0
+    assert monitor._process.pid == 4321
+    assert monitor._samples == [0.0, 20.0]
+
+
+def test_process_metrics_monitor_skips_immediate_post_prime_cpu_sample(monkeypatch) -> None:
+    class FakeProcess:
+        def __init__(self, pid=None) -> None:
+            self._cpu_values = [0.0, 95.0]
+
+        def memory_info(self):
+            return SimpleNamespace(rss=128 * 1024 * 1024)
+
+        def cpu_percent(self, interval=None):
+            return self._cpu_values.pop(0) if self._cpu_values else 95.0
+
+    monkeypatch.setitem(sys.modules, "psutil", SimpleNamespace(Process=FakeProcess))
+
+    monitor = benchmark_module.ProcessMetricsMonitor(pid=4321, interval_seconds=10.0)
+    monitor.start()
+    monitor.stop()
+
+    assert monitor.peak_rss_mb == 128.0
+    assert monitor.cpu_utilization_percent is None
+    assert monitor._samples == []
+
+
+def test_process_metrics_monitor_stays_null_without_explicit_pid(monkeypatch) -> None:
+    monkeypatch.setitem(sys.modules, "psutil", SimpleNamespace(Process=lambda pid=None: SimpleNamespace()))
+
+    monitor = benchmark_module.ProcessMetricsMonitor()
+    monitor.start()
+    monitor.sample_once()
+    monitor.stop()
+
+    assert monitor.peak_rss_mb is None
+    assert monitor.cpu_utilization_percent is None
+
+
+def test_describe_environment_accepts_measured_process_metrics(monkeypatch) -> None:
+    seen = {}
+
+    def fake_process(pid=None):
+        seen["pid"] = pid
+        return SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=384 * 1024 * 1024))
+
+    monkeypatch.setitem(
+        sys.modules,
+        "psutil",
+        SimpleNamespace(
+            virtual_memory=lambda: SimpleNamespace(total=16 * 1024 * 1024 * 1024),
+            Process=fake_process,
+        ),
+    )
+
+    payload = benchmark_module.describe_environment(
+        process_pid=4321,
+        peak_rss_mb=512.5,
+        cpu_utilization_percent=42.0,
+        process_metrics_sample_count=3,
+    )
+
+    assert payload["process_rss_mb"] == 384.0
+    assert payload["process_metrics_pid"] == 4321
+    assert payload["peak_rss_mb"] == 512.5
+    assert payload["cpu_utilization_percent"] == 42.0
+    assert payload["process_metrics_sample_count"] == 3
+    assert seen["pid"] == 4321
 
 
 def test_normalize_pcm16_buffer_reports_float32_samples() -> None:
@@ -290,6 +386,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["kind"] == "local-stt-v1-latency-benchmark"
     assert payload["target"] == {"transport": "tcp_ws", "url": "ws://example.test/v1/stt/stream", "uds_path": None}
     assert payload["environment"]["cpu_logical_cores"] is not None
+    assert payload["environment"]["process_metrics_sample_count"] == 0
     assert payload["audio"]["bytes_per_frame"] == 640
     assert payload["audio"]["duration_ms"] == 40
     assert payload["settings"] == {
@@ -596,6 +693,7 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
 
     async def fake_run_benchmark(**kwargs):
         audio_seen["audio"] = kwargs["audio"]
+        audio_seen["metrics_pid"] = kwargs["metrics_pid"]
         return {
             "kind": "local-stt-v1-latency-benchmark",
             "samples": [],
@@ -618,6 +716,8 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
             str(output_path),
             "--receive-timeout-seconds",
             "7",
+            "--metrics-pid",
+            "4321",
             "--no-realtime-pace",
         ]
     )
@@ -627,3 +727,4 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
     assert written["kind"] == "local-stt-v1-latency-benchmark"
     assert written["settings"]["receive_timeout_seconds"] == 7
     assert audio_seen["audio"].frames == [b"a" * 640]
+    assert audio_seen["metrics_pid"] == 4321
