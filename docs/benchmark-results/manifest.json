@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T11:41:30Z",
+  "generated_at": "2026-06-22T14:01:29Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -9,6 +9,7 @@
     "validated_count": 7,
     "legacy_count": 0,
     "blocked_count": 1,
+    "live_comparable_count": 7,
     "latest_measured_at": "2026-06-21T14:11:13Z",
     "sample_contract": {
       "default_sample_count": 10,
@@ -85,7 +86,7 @@
         "artifact_path": "benchmark-results/parakeet-compose-2026-06-20.json"
       },
       "fastest_first_partial": {
-        "label": "Fastest first visible partial",
+        "label": "Fastest ASR TTFB / first visible partial",
         "slug": "parakeet-mlx-service-110m",
         "backend": "parakeet-mlx",
         "model": "mlx-community/parakeet-tdt_ctc-110m",

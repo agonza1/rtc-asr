@@ -946,6 +946,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "validated_count": sum(1 for entry in tracks if entry["status"] == "validated"),
         "legacy_count": sum(1 for entry in tracks if entry["status"] == "legacy"),
         "blocked_count": sum(1 for entry in tracks if entry["status"] == "blocked"),
+        "live_comparable_count": len(live_comparable_entries),
         "latest_measured_at": latest_measured_at,
         "sample_contract": catalog.get("sample_contract", {}),
         "backend_count": len({entry["backend"] for entry in tracks}),
@@ -958,7 +959,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
                 "Lowest partial backlog latency", ("streaming", "partial_mean_ms"), live_comparable_entries
             ),
             "fastest_first_partial": build_highlight(
-                "Fastest first visible partial", ("streaming", "first_partial_end_to_end_mean_ms"), live_comparable_entries
+                "Fastest ASR TTFB / first visible partial", ("streaming", "first_partial_end_to_end_mean_ms"), live_comparable_entries
             ),
             "tightest_partial_cadence": build_highlight(
                 "Tightest partial cadence", ("streaming", "partial_gap_mean_ms"), live_comparable_entries
