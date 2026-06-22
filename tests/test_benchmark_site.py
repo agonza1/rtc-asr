@@ -402,8 +402,12 @@ def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
             }
         }
     )
+    avg_power_system = extract_system_signals({"environment": {"package_power_avg_watts": 7.4}})
+    nested_avg_power_system = extract_system_signals({"metrics": {"power": {"package_power_avg_watts": 6.8}}})
 
     assert system["package_power_watts"] == 8.6
+    assert avg_power_system["package_power_watts"] == 7.4
+    assert nested_avg_power_system["package_power_watts"] == 6.8
     assert system["energy_per_audio_second_j"] == 2.9
     assert system["thermal_peak_celsius"] == 64.2
     assert system["thermal_observation"] == "warm but stable"
