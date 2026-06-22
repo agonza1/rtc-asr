@@ -465,6 +465,30 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
     }
 
 
+def telemetry_coverage_text(system_signals: dict[str, Any]) -> str:
+    fields = {
+        "platform": system_signals.get("platform"),
+        "processor": system_signals.get("processor"),
+        "python": system_signals.get("python"),
+        "cpu logical cores": system_signals.get("cpu_logical_cores"),
+        "accelerator": system_signals.get("accelerator"),
+        "system RAM": system_signals.get("memory_total_mb"),
+        "process RSS": system_signals.get("process_rss_mb"),
+        "peak RSS": system_signals.get("peak_rss_mb"),
+        "CPU utilization": system_signals.get("cpu_utilization_percent"),
+        "package power": system_signals.get("package_power_watts"),
+        "energy per audio second": system_signals.get("energy_per_audio_second_j"),
+        "thermal peak": system_signals.get("thermal_peak_celsius"),
+        "thermal observation": system_signals.get("thermal_observation"),
+    }
+    present = [label for label, value in fields.items() if value not in (None, "")]
+    if not present:
+        return "0 of 13 telemetry fields recorded. Missing: all optional system, power, memory, and thermal signals."
+    missing = [label for label in fields if label not in present]
+    missing_text = ", ".join(missing) if missing else "none"
+    return f"{len(present)} of {len(fields)} telemetry fields recorded. Missing: {missing_text}."
+
+
 def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] | None) -> str:
     rest = entry.get("rest", {})
     streaming = entry.get("streaming", {})
@@ -550,6 +574,8 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         ]
     )
     thermal_note = format_system_text(system_signals.get("thermal_observation") or "Artifact does not record sustained thermal notes yet.")
+    telemetry_coverage = telemetry_coverage_text(system_signals)
+    telemetry_count, telemetry_missing = telemetry_coverage.split(". ", 1)
     return f"""<!doctype html>
 <html lang="en">
   <head>
@@ -612,6 +638,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>{html.escape(artifact_name or 'n/a')}</code></div><p>Manifest path {html.escape(entry.get('artifact_path') or 'n/a')}</p><p>Generated detail page {html.escape(Path(detail_page_path(entry)).name)}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
+        <article class="card"><span class="label">Telemetry coverage</span><div class="value">{html.escape(telemetry_count)}</div><p>{html.escape(telemetry_missing)}</p></article>
       </div>
       <div class="card" style="margin-top: 24px;">
         <span class="label">Artifact access</span>
