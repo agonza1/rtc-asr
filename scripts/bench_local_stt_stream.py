@@ -47,17 +47,20 @@ class AudioInput:
 
 
 class ProcessMetricsMonitor:
-    def __init__(self, *, interval_seconds: float = 0.1) -> None:
+    def __init__(self, *, pid: int | None = None, interval_seconds: float = 0.1) -> None:
         self.interval_seconds = interval_seconds
         self.peak_rss_mb: float | None = None
         self.cpu_utilization_percent: float | None = None
         self._samples: list[float] = []
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        if pid is None:
+            self._process = None
+            return
         try:
             import psutil
 
-            self._process = psutil.Process()
+            self._process = psutil.Process(pid)
         except Exception:
             self._process = None
 
@@ -68,6 +71,7 @@ class ProcessMetricsMonitor:
             self._process.cpu_percent(interval=None)
         except Exception:
             return
+        self._sample_rss_once()
         self._thread = threading.Thread(target=self._sample_loop, name="local-stt-metrics", daemon=True)
         self._thread.start()
 
@@ -75,14 +79,16 @@ class ProcessMetricsMonitor:
         if self._thread is not None:
             self._stop.set()
             self._thread.join(timeout=max(1.0, self.interval_seconds * 4))
+        self._sample_rss_once()
         if self._samples:
             self.cpu_utilization_percent = round(statistics.mean(self._samples), 1)
 
     def _sample_loop(self) -> None:
         while not self._stop.is_set():
-            self.sample_once()
             self._stop.wait(self.interval_seconds)
-        self.sample_once()
+            if self._stop.is_set():
+                break
+            self.sample_once()
 
     def sample_once(self) -> None:
         if self._process is None:
@@ -92,9 +98,21 @@ class ProcessMetricsMonitor:
             cpu_percent = self._process.cpu_percent(interval=None)
         except Exception:
             return
+        self._record_peak_rss(rss_mb)
+        self._samples.append(float(cpu_percent))
+
+    def _sample_rss_once(self) -> None:
+        if self._process is None:
+            return
+        try:
+            rss_mb = round(self._process.memory_info().rss / (1024 * 1024), 1)
+        except Exception:
+            return
+        self._record_peak_rss(rss_mb)
+
+    def _record_peak_rss(self, rss_mb: float) -> None:
         if self.peak_rss_mb is None or rss_mb > self.peak_rss_mb:
             self.peak_rss_mb = rss_mb
-        self._samples.append(float(cpu_percent))
 
 
 def positive_int(value: str) -> int:
@@ -128,6 +146,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Seconds to wait for a final transcript after finalize",
     )
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--metrics-pid",
+        type=positive_int,
+        help="Optional Local STT service process id to sample for peak RSS and CPU utilization.",
+    )
     parser.add_argument("--no-realtime-pace", action="store_true", help="Send frames without sleeping between frames")
     args = parser.parse_args(argv)
     validate_transport_args(args.transport, args.uds_path)
@@ -267,11 +290,12 @@ async def run_benchmark(
     realtime_pace: bool = True,
     receive_timeout_seconds: int = 5,
     client_factory: ClientFactory | None = None,
+    metrics_pid: int | None = None,
 ) -> dict[str, Any]:
     if transport not in SUPPORTED_TRANSPORTS:
         raise ValueError(f"Unsupported benchmark transport: {transport}")
     factory = client_factory or (lambda ws_url: AsyncLocalSttClient(ws_url))
-    metrics_monitor = ProcessMetricsMonitor()
+    metrics_monitor = ProcessMetricsMonitor(pid=metrics_pid)
     metrics_monitor.start()
     samples = []
     try:
@@ -675,6 +699,7 @@ def main(argv: list[str] | None = None) -> int:
             runs=args.runs,
             receive_timeout_seconds=args.receive_timeout_seconds,
             realtime_pace=not args.no_realtime_pace,
+            metrics_pid=args.metrics_pid,
         )
     )
     if args.output is not None:
