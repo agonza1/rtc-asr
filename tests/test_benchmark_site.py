@@ -28,6 +28,7 @@ detail_page_path = prerender_module.detail_page_path
 render_detail_page = prerender_module.render_detail_page
 render_homepage = prerender_module.render_homepage
 measurement_technique = prerender_module.measurement_technique
+telemetry_coverage_text = prerender_module.telemetry_coverage_text
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -333,6 +334,24 @@ def test_manifest_counts_thermal_state_as_system_evidence() -> None:
     system = extract_system_signals({"environment": {"thermal_state": "stable after 5 minutes"}})
 
     assert system["thermal_observation"] == "stable after 5 minutes"
+
+
+def test_telemetry_coverage_text_summarizes_missing_optional_signals() -> None:
+    assert telemetry_coverage_text({}) == (
+        "0 of 13 telemetry fields recorded. "
+        "Missing: all optional system, power, memory, and thermal signals."
+    )
+
+    coverage = telemetry_coverage_text({
+        "platform": "macOS",
+        "python": "3.14.5",
+        "memory_total_mb": 24576.0,
+        "package_power_watts": 7.4,
+    })
+
+    assert coverage.startswith("4 of 13 telemetry fields recorded.")
+    assert "processor" in coverage
+    assert "package power" not in coverage
 
 
 def test_manifest_preserves_energy_per_audio_second_metadata() -> None:
@@ -755,6 +774,9 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
     assert 'Energy/audio-sec 2.6 J' in detail_html
+    assert 'Telemetry coverage' in detail_html
+    assert '10 of 13 telemetry fields recorded' in detail_html
+    assert 'Missing: cpu logical cores, system RAM, peak RSS.' in detail_html
 
     integer_energy_payload = {'metrics': {'energy_per_audio_second_j': 3}}
     integer_energy_html = render_detail_page(entry, integer_energy_payload)
