@@ -1,6 +1,6 @@
 # rtc-asr
 
-`rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST or Websockets. It is optimized for warmed, local or on-device inference paths, especially low-power CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
+`rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST or WebSocket. It is optimized for warmed, local or on-device inference paths, especially low-power CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
 
 The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, and `parakeet-nemo` backends behind the same API surface.
 
