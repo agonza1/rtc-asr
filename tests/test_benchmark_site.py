@@ -204,6 +204,8 @@ def test_manifest_skips_non_asr_artifacts(tmp_path: Path) -> None:
     manifest = build_manifest(tmp_path, TRACKS_PATH)
 
     assert manifest["summary"]["artifact_file_count"] == 1
+    assert manifest["summary"]["artifact_total_size_bytes"] > 0
+    assert manifest["summary"]["published_artifact_total_size_bytes"] == 0
     assert all("parakeet-mlx" not in entry["artifact_path"] for entry in manifest["artifacts"])
 
 
@@ -221,6 +223,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     summary = manifest["summary"]
     assert summary["backend_count"] >= 3
     assert summary["lane_count"] >= 3
+    assert summary["artifact_total_size_bytes"] >= summary["published_artifact_total_size_bytes"] > 0
     assert summary["ranges"]["overall_score"] is not None
     assert summary["highlights"]["best_overall"] is not None
     assert summary["highlights"]["best_live_caption"] is not None
