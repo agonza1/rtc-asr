@@ -50,6 +50,10 @@ def format_celsius(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.1f} C"
 
 
+def format_minutes(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.1f} min"
+
+
 def format_joules(value: float | int | None) -> str:
     return "n/a" if value is None else f"{value:.1f} J"
 
@@ -492,6 +496,18 @@ def extract_system_signals(artifact_payload: dict[str, Any] | None) -> dict[str,
             thermal.get("observation"),
             thermal.get("state"),
         ),
+        "thermal_duration_minutes": first_defined(
+            environment.get("thermal_duration_minutes"),
+            environment.get("thermal_observation_minutes"),
+            system.get("thermal_duration_minutes"),
+            system.get("thermal_observation_minutes"),
+            metrics.get("thermal_duration_minutes"),
+            metrics.get("thermal_observation_minutes"),
+            nested_value(metrics, "thermal", "duration_minutes"),
+            nested_value(metrics, "thermal", "observation_minutes"),
+            thermal.get("duration_minutes"),
+            thermal.get("observation_minutes"),
+        ),
     }
 
 
@@ -511,10 +527,11 @@ def telemetry_coverage_text(system_signals: dict[str, Any]) -> str:
         "energy per audio second": system_signals.get("energy_per_audio_second_j"),
         "thermal peak": system_signals.get("thermal_peak_celsius"),
         "thermal observation": system_signals.get("thermal_observation"),
+        "thermal duration": system_signals.get("thermal_duration_minutes"),
     }
     present = [label for label, value in fields.items() if value not in (None, "")]
     if not present:
-        return "0 of 14 telemetry fields recorded. Missing: all optional system, power, memory, and thermal signals."
+        return "0 of 15 telemetry fields recorded. Missing: all optional system, power, memory, and thermal signals."
     missing = [label for label in fields if label not in present]
     missing_text = ", ".join(missing) if missing else "none"
     return f"{len(present)} of {len(fields)} telemetry fields recorded. Missing: {missing_text}."
@@ -603,6 +620,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
             f"Power {format_watts(system_signals.get('package_power_watts'))}",
             f"Energy/audio-sec {format_joules(system_signals.get('energy_per_audio_second_j'))}",
             f"Thermal {format_celsius(system_signals.get('thermal_peak_celsius'))}",
+            f"Thermal run {format_minutes(system_signals.get('thermal_duration_minutes'))}",
         ]
     )
     thermal_note = format_system_text(system_signals.get("thermal_observation") or "Artifact does not record sustained thermal notes yet.")

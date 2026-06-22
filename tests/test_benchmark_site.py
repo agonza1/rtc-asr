@@ -332,6 +332,7 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert coverage["energy_per_audio_second_j_count"] == 0
     assert coverage["thermal_peak_celsius_count"] == 0
     assert coverage["thermal_observation_count"] == 0
+    assert coverage["thermal_duration_minutes_count"] == 0
 
 
 def test_manifest_counts_thermal_state_as_system_evidence() -> None:
@@ -340,9 +341,17 @@ def test_manifest_counts_thermal_state_as_system_evidence() -> None:
     assert system["thermal_observation"] == "stable after 5 minutes"
 
 
+def test_manifest_counts_thermal_duration_as_system_evidence() -> None:
+    system = extract_system_signals({"environment": {"thermal_duration_minutes": 5.0}})
+    nested_system = extract_system_signals({"metrics": {"thermal": {"observation_minutes": 10.0}}})
+
+    assert system["thermal_duration_minutes"] == 5.0
+    assert nested_system["thermal_duration_minutes"] == 10.0
+
+
 def test_telemetry_coverage_text_summarizes_missing_optional_signals() -> None:
     assert telemetry_coverage_text({}) == (
-        "0 of 14 telemetry fields recorded. "
+        "0 of 15 telemetry fields recorded. "
         "Missing: all optional system, power, memory, and thermal signals."
     )
 
@@ -353,7 +362,7 @@ def test_telemetry_coverage_text_summarizes_missing_optional_signals() -> None:
         "package_power_watts": 7.4,
     })
 
-    assert coverage.startswith("4 of 14 telemetry fields recorded.")
+    assert coverage.startswith("4 of 15 telemetry fields recorded.")
     assert "processor" in coverage
     assert "package power" not in coverage
 
@@ -417,7 +426,7 @@ def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
         {
             "metrics": {
                 "power": {"package_watts": 8.6, "energy_per_audio_second_j": 2.9},
-                "thermal": {"peak_celsius": 64.2, "state": "warm but stable"},
+                "thermal": {"peak_celsius": 64.2, "state": "warm but stable", "duration_minutes": 5.0},
             }
         }
     )
@@ -439,6 +448,7 @@ def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
     assert system["thermal_peak_celsius"] == 64.2
     assert common_alias_system["thermal_peak_celsius"] == 58.0
     assert system["thermal_observation"] == "warm but stable"
+    assert system["thermal_duration_minutes"] == 5.0
 
 
 def test_manifest_preserves_accelerator_metadata_aliases() -> None:
@@ -824,8 +834,8 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'Power 7.4 W' in detail_html
     assert 'Energy/audio-sec 2.6 J' in detail_html
     assert 'Telemetry coverage' in detail_html
-    assert '11 of 14 telemetry fields recorded' in detail_html
-    assert 'Missing: cpu logical cores, system RAM, peak RSS.' in detail_html
+    assert '11 of 15 telemetry fields recorded' in detail_html
+    assert 'Missing: cpu logical cores, system RAM, peak RSS, thermal duration.' in detail_html
 
     integer_energy_payload = {'metrics': {'energy_per_audio_second_j': 3}}
     integer_energy_html = render_detail_page(entry, integer_energy_payload)

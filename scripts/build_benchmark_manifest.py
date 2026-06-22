@@ -415,6 +415,18 @@ def extract_system_signals(payload: dict[str, Any]) -> dict[str, Any]:
             thermal.get("observation"),
             thermal.get("state"),
         ),
+        "thermal_duration_minutes": first_defined(
+            environment.get("thermal_duration_minutes"),
+            environment.get("thermal_observation_minutes"),
+            system.get("thermal_duration_minutes"),
+            system.get("thermal_observation_minutes"),
+            metrics.get("thermal_duration_minutes"),
+            metrics.get("thermal_observation_minutes"),
+            nested_value(metrics, "thermal", "duration_minutes"),
+            nested_value(metrics, "thermal", "observation_minutes"),
+            thermal.get("duration_minutes"),
+            thermal.get("observation_minutes"),
+        ),
     }
 
 
@@ -792,6 +804,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
             "energy_per_audio_second_j": None,
             "thermal_peak_celsius": None,
             "thermal_observation": None,
+            "thermal_duration_minutes": None,
         },
         "contract": {
             "chunk_ms": None,
@@ -895,6 +908,9 @@ def build_system_coverage(entries: list[dict[str, Any]]) -> dict[str, int]:
         ),
         "thermal_peak_celsius_count": sum(1 for entry in entries if entry["system"].get("thermal_peak_celsius") is not None),
         "thermal_observation_count": sum(1 for entry in entries if entry["system"].get("thermal_observation") is not None),
+        "thermal_duration_minutes_count": sum(
+            1 for entry in entries if entry["system"].get("thermal_duration_minutes") is not None
+        ),
     }
 
 
