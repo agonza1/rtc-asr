@@ -341,7 +341,7 @@ def test_manifest_counts_thermal_state_as_system_evidence() -> None:
 
 def test_telemetry_coverage_text_summarizes_missing_optional_signals() -> None:
     assert telemetry_coverage_text({}) == (
-        "0 of 13 telemetry fields recorded. "
+        "0 of 14 telemetry fields recorded. "
         "Missing: all optional system, power, memory, and thermal signals."
     )
 
@@ -352,7 +352,7 @@ def test_telemetry_coverage_text_summarizes_missing_optional_signals() -> None:
         "package_power_watts": 7.4,
     })
 
-    assert coverage.startswith("4 of 13 telemetry fields recorded.")
+    assert coverage.startswith("4 of 14 telemetry fields recorded.")
     assert "processor" in coverage
     assert "package power" not in coverage
 
@@ -374,6 +374,14 @@ def test_manifest_preserves_nested_memory_metadata_aliases() -> None:
     assert system["memory_total_mb"] == 32768.0
     assert system["process_rss_mb"] == 180.25
     assert system["peak_rss_mb"] == 512.5
+
+
+def test_manifest_preserves_process_metrics_pid() -> None:
+    system = extract_system_signals({"environment": {"process_metrics_pid": 4321}})
+    nested_system = extract_system_signals({"metrics": {"process": {"pid": 8765}}})
+
+    assert system["process_metrics_pid"] == 4321
+    assert nested_system["process_metrics_pid"] == 8765
 
 
 def test_manifest_preserves_nested_cpu_metadata_aliases() -> None:
@@ -757,6 +765,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
             'python': '3.14.5',
             'accelerator': 'Apple M-series GPU',
             'process_rss_mb': 23.6,
+            'process_metrics_pid': 4321,
         },
         'metrics': {
             'cpu_utilization_percent': 38.2,
@@ -773,12 +782,13 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'macOS' in detail_html
     assert 'Peak RSS n/a' in detail_html
     assert 'Process RSS 23.6 MB' in detail_html
+    assert 'Metrics PID 4321' in detail_html
     assert 'Accelerator Apple M-series GPU' in detail_html
     assert 'CPU 38.2%' in detail_html
     assert 'Power 7.4 W' in detail_html
     assert 'Energy/audio-sec 2.6 J' in detail_html
     assert 'Telemetry coverage' in detail_html
-    assert '10 of 13 telemetry fields recorded' in detail_html
+    assert '11 of 14 telemetry fields recorded' in detail_html
     assert 'Missing: cpu logical cores, system RAM, peak RSS.' in detail_html
 
     integer_energy_payload = {'metrics': {'energy_per_audio_second_j': 3}}
