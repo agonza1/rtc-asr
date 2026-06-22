@@ -1137,6 +1137,10 @@ def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
     track = manifest["tracks"][0]
     detail = render_detail_page(track, json.loads(artifact_path.read_text(encoding="utf-8")))
 
-    assert track["warnings"] == {"received_total": 3, "codes": ["partial_dropped", "stream_canceled", "stream_jitter"]}
+    assert track["warnings"] == {
+        "received_total": 3,
+        "rate_per_sample": 1.5,
+        "codes": ["partial_dropped", "stream_canceled", "stream_jitter"],
+    }
     assert "<span class=\"label\">Warnings</span><div class=\"value\">3</div>" in detail
-    assert "Codes: partial_dropped, stream_canceled, stream_jitter" in detail
+    assert "Rate 1.500 per sample · Codes: partial_dropped, stream_canceled, stream_jitter" in detail
