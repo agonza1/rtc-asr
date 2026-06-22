@@ -7,6 +7,7 @@ import os
 import platform
 import time
 import wave
+from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -245,8 +246,26 @@ async def run_benchmark(
         },
         "runs": runs,
         "samples": samples,
+        "diagnostics": summarize_diagnostics(samples),
         "summary": summarize_samples(samples),
     }
+
+
+def summarize_diagnostics(samples: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+    return {
+        "warning_codes": _count_codes(samples, "warning_codes"),
+        "protocol_error_codes": _count_codes(samples, "protocol_error_codes"),
+    }
+
+
+def _count_codes(samples: list[dict[str, Any]], key: str) -> dict[str, int]:
+    counts: Counter[str] = Counter()
+    for sample in samples:
+        codes = sample.get(key, [])
+        if not isinstance(codes, list):
+            continue
+        counts.update(code for code in codes if isinstance(code, str))
+    return dict(sorted(counts.items()))
 
 
 async def _run_once(

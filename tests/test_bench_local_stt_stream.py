@@ -344,6 +344,10 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
     assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["diagnostics"] == {
+        "warning_codes": {"partial_dropped": 1},
+        "protocol_error_codes": {},
+    }
     assert payload["summary"]["audio_frames_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["audio_frames_dropped"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["interim_events_received"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
@@ -379,6 +383,7 @@ def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_er
     assert sample["protocol_error_codes"] == ["send_exception"]
     assert payload["summary"]["audio_frames_dropped"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["protocol_errors"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["diagnostics"]["protocol_error_codes"] == {"send_exception": 1}
 
 
 def test_run_benchmark_records_malformed_receive_event_as_protocol_error() -> None:
@@ -428,6 +433,7 @@ def test_run_benchmark_records_protocol_error_codes_from_error_events() -> None:
     sample = payload["samples"][0]
     assert sample["protocol_errors"] == 1
     assert sample["protocol_error_codes"] == ["upstream_disconnect"]
+    assert payload["diagnostics"]["protocol_error_codes"] == {"upstream_disconnect": 1}
     assert sample["final_events_received"] == 0
 
 
@@ -498,6 +504,20 @@ def test_receive_latency_ignores_empty_poll_timeouts() -> None:
         "p50": None,
         "p95": None,
         "p99": None,
+    }
+
+
+def test_summarize_diagnostics_counts_codes_across_runs() -> None:
+    diagnostics = benchmark_module.summarize_diagnostics(
+        [
+            {"warning_codes": ["partial_dropped"], "protocol_error_codes": ["send_exception"]},
+            {"warning_codes": ["partial_dropped", "queue_depth_high"], "protocol_error_codes": ["send_exception", "receive_exception"]},
+        ]
+    )
+
+    assert diagnostics == {
+        "warning_codes": {"partial_dropped": 2, "queue_depth_high": 1},
+        "protocol_error_codes": {"receive_exception": 1, "send_exception": 2},
     }
 
 
