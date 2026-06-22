@@ -90,6 +90,14 @@ def first_visible_partial(entry: dict[str, Any]) -> float | None:
     return entry.get("streaming", {}).get("first_partial_end_to_end_mean_ms")
 
 
+def ttfb_first_partial_label() -> str:
+    return "TTFB / first partial"
+
+
+def ttfb_first_partial_description() -> str:
+    return "End-to-end ASR time-to-first-byte equivalent: stream start until the first visible partial transcript appears."
+
+
 def published_tracks(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     return [track for track in manifest.get("tracks", []) if track.get("artifact_path") and track.get("status") != "blocked"]
 
@@ -197,7 +205,7 @@ def secondary_reason(entry: dict[str, Any]) -> str:
 
     missing = []
     if streaming.get("first_partial_end_to_end_mean_ms") is None:
-        missing.append("first partial")
+        missing.append("TTFB / first partial")
     if streaming.get("partial_gap_mean_ms") is None:
         missing.append("partial cadence")
     if streaming.get("final_mean_ms") is None:
@@ -525,7 +533,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "datePublished": entry.get("measured_at"),
         "measurementTechnique": measurement_technique(entry),
         "variableMeasured": [
-            "first visible partial latency",
+            "ASR TTFB / first visible partial latency",
             "partial backlog latency",
             "audio-end finalization latency",
             "REST throughput latency",
@@ -635,7 +643,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       </div>
       <div class="grid">
         <article class="card"><span class="label">Overall score</span><div class="value">{score}</div><p>Confidence {confidence}</p></article>
-        <article class="card"><span class="label">First visible partial</span><div class="value">{format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</div><p>P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</p></article>
+        <article class="card"><span class="label">TTFB / first partial</span><div class="value">{format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</div><p>P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</p></article>
         <article class="card"><span class="label">Partial backlog latency</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Diagnostic chunk-response delay. Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
@@ -727,7 +735,7 @@ def render_row(
             f'<td data-label="Lane" class="leader-name"><strong>{html.escape(entry.get("label") or "unknown")}</strong><span>{html.escape(entry.get("backend") or "unknown")} . {html.escape(entry.get("model") or "unknown")}</span><div class="table-note">{html.escape(entry.get("lane") or "unknown")} . {html.escape(entry.get("runtime") or "unknown")}</div></td>',
             f'<td data-label="State"><span class="status status-{status}">{status}</span></td>',
             f'<td data-label="Score"><strong>{score}</strong><div class="tiny">Confidence {confidence_text}</div></td>',
-            f'<td data-label="First partial"><strong>{format_ms(first_partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</div><div class="tiny">{delta_text(first_partial_delta)} {html.escape(baseline_label)}</div></td>',
+            f'<td data-label="TTFB / first partial"><strong>{format_ms(first_partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</div><div class="tiny">{delta_text(first_partial_delta)} {html.escape(baseline_label)}</div></td>',
             f'<td data-label="Partial backlog latency"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs lowest diagnostic</div></td>',
             f'<td data-label="Audio-end finalization"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
             f'<td data-label="REST throughput context"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
@@ -747,7 +755,7 @@ def render_secondary_row(entry: dict[str, Any]) -> str:
             "<tr>",
             f'<td data-label="Lane" class="leader-name"><strong>{html.escape(entry.get("label") or "unknown")}</strong><span>{html.escape(entry.get("backend") or "unknown")} . {html.escape(entry.get("model") or "unknown")}</span><div class="table-note">{html.escape(entry.get("lane") or "unknown")} . {html.escape(entry.get("runtime") or "unknown")}</div></td>',
             f'<td data-label="Why it is secondary">{html.escape(secondary_reason(entry))}</td>',
-            f'<td data-label="Visible live metrics"><strong>First partial {format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</strong><div class="tiny">Finalization {format_ms(streaming.get("final_mean_ms"))}</div></td>',
+            f'<td data-label="Visible live metrics"><strong>TTFB / first partial {format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</strong><div class="tiny">Finalization {format_ms(streaming.get("final_mean_ms"))}</div></td>',
             f'<td data-label="Details"><a href="{html.escape(detail_page_path(entry))}">Open detail page</a><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div><div class="tiny">{html.escape(artifact_hash_label)}</div></td>',
             "</tr>",
         ]
@@ -777,7 +785,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
         f"Start with {best_primary.get('label')} for live turn-taking." if best_primary else "No backend-only lane currently meets the live comparability contract."
     )
     recommendation_copy = (
-        f"{best_primary.get('label')} is the strongest publishable default right now: {format_ms(first_visible_partial(best_primary))} first visible partial, {format_ms(best_primary.get('streaming', {}).get('final_mean_ms'))} audio-end finalization, and backlog diagnostics that stay separated from perceived latency." if best_primary else "Legacy /ws/stream artifacts stay published as supporting evidence, but the live leaderboard now waits for paced /v1/stt/stream replacements."
+        f"{best_primary.get('label')} is the strongest publishable default right now: {format_ms(first_visible_partial(best_primary))} ASR TTFB / first visible partial, {format_ms(best_primary.get('streaming', {}).get('final_mean_ms'))} audio-end finalization, and backlog diagnostics that stay separated from perceived latency." if best_primary else "Legacy /ws/stream artifacts stay published as supporting evidence, but the live leaderboard now waits for paced /v1/stt/stream replacements."
     )
     summary_cards: list[str] = []
     if best_primary:
@@ -796,7 +804,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
         f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Published live contract</div><div class="headline-value">{live_comparable_count} comparable artifacts</div><p>{len(primary)} lanes are eligible for primary ranking after validation and publication filters; the rest stay discoverable as supporting evidence.</p></article>'
     )
     summary_cards.append(
-        f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
+        f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest ASR TTFB / first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
     )
     system_coverage = summary.get("system_coverage") or {}
     if system_coverage:
@@ -833,7 +841,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
   <div class="comparison-scroll">
     <table>
       <thead>
-        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint('First partial', 'End-to-end time from stream start until the first visible partial transcript appears.')}</th><th>{hint('Partial backlog latency', 'Diagnostic latency for chunk-triggered partial updates after streaming is already underway; this is not perceived first-response latency, so read it alongside partial gap and late partial ratio.')}</th><th>{hint('Audio-end finalization', 'Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.')}</th><th>{hint('REST throughput context', 'Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Details</th></tr>
+        <tr><th>Lane</th><th>State</th><th>Score</th><th>{hint(ttfb_first_partial_label(), ttfb_first_partial_description())}</th><th>{hint('Partial backlog latency', 'Diagnostic latency for chunk-triggered partial updates after streaming is already underway; this is not perceived first-response latency, so read it alongside partial gap and late partial ratio.')}</th><th>{hint('Audio-end finalization', 'Time from audio end until the final transcript returns; this is closeout delay, not total clip duration.')}</th><th>{hint('REST throughput context', 'Batch request latency for the same backend outside the streaming websocket path. Keep this as throughput context rather than the main live turn-taking signal.')}</th><th>{hint('Samples', 'How many benchmark samples were recorded for this published artifact.')}</th><th>Details</th></tr>
       </thead>
       <tbody>
 {rows}

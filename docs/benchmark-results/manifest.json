@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T13:41:25Z",
+  "generated_at": "2026-06-22T14:01:29Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -86,7 +86,7 @@
         "artifact_path": "benchmark-results/parakeet-compose-2026-06-20.json"
       },
       "fastest_first_partial": {
-        "label": "Fastest first visible partial",
+        "label": "Fastest ASR TTFB / first visible partial",
         "slug": "parakeet-mlx-service-110m",
         "backend": "parakeet-mlx",
         "model": "mlx-community/parakeet-tdt_ctc-110m",

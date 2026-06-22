@@ -81,7 +81,7 @@ Status details from the track registry:
 
 ## Current Artifact-Backed Comparison
 
-These rows match the current manifest entries used on the homepage, plus two doc-only Parakeet MLX CLI preview artifacts. Every distinct runtime setup keeps its own row here, even when multiple lanes share the same underlying model or reference WER. Read the streaming fields first: first visible partial, partial cadence, and audio-end finalization are the operator-facing responsiveness signals. `REST Mean` and `REST RTF` stay here as throughput context for the same backend, but they are not the main live turn-taking score because total file time scales with clip duration. The `Reference WER` column is different: it is external source data for the underlying model, not an official rtc-asr measurement, and it may vary slightly across hardware, runtime, quantization, decoding, and setup. The new `parakeet-mlx-service-110m` row is the warmed service-style counterpart to the earlier cold CLI preview.
+These rows match the current manifest entries used on the homepage, plus two doc-only Parakeet MLX CLI preview artifacts. Every distinct runtime setup keeps its own row here, even when multiple lanes share the same underlying model or reference WER. Read the streaming fields first: ASR TTFB / first visible partial, partial cadence, and audio-end finalization are the operator-facing responsiveness signals. `REST Mean` and `REST RTF` stay here as throughput context for the same backend, but they are not the main live turn-taking score because total file time scales with clip duration. The `Reference WER` column is different: it is external source data for the underlying model, not an official rtc-asr measurement, and it may vary slightly across hardware, runtime, quantization, decoding, and setup. The new `parakeet-mlx-service-110m` row is the warmed service-style counterpart to the earlier cold CLI preview.
 
 | Track | Samples | REST Mean / P95 | REST RTF | Partial Mean / P95 | Audio-end Final / P95 | Reference WER | Artifact |
 | --- | ---: | --- | ---: | --- | --- | --- | --- |
@@ -106,11 +106,11 @@ Notes:
 
 ## Recommended Low-Power Profiling Fields
 
-The current checked-in artifacts already cover warmed service latency, first visible partial timing, finalization delay, and `RTF`. For low-power claims, add these fields to each benchmark lane as the next step:
+The current checked-in artifacts already cover warmed service latency, ASR TTFB / first visible partial timing, finalization delay, and `RTF`. For low-power claims, add these fields to each benchmark lane as the next step:
 
 - device, CPU, and RAM
 - accelerator type: none, MPS, MLX, CUDA, or NPU
-- wall latency: REST mean and P95, first partial, and final
+- wall latency: REST mean and P95, ASR TTFB / first partial, and final
 - peak RSS memory
 - CPU utilization
 - package power when available
@@ -173,7 +173,7 @@ BENCHMARK_SAMPLE_COUNT=5 BENCHMARK_REST_RUNS=3 BENCHMARK_PARTIAL_INTERVAL_CHUNKS
 
 Benchmark artifacts now include extra streaming responsiveness metrics for low-latency analysis:
 
-- `first_partial_end_to_end_*`: when a caller could first see a useful partial in real time
+- `first_partial_end_to_end_*`: ASR TTFB-style timing for when a caller could first see a useful partial in real time
 - `partial_gap_*`: cadence between visible partial updates
 - `time_to_final_from_audio_end_ms`: per-sample finalization delay after audio stops
 - `time_to_final_from_audio_end_*`: aggregated finalization delay summary used by the benchmark site (`final_*` remains a compatibility alias)

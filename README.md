@@ -189,7 +189,7 @@ For low-power claims, latency alone is not enough. Recommended benchmark fields:
 
 - device, CPU, and RAM
 - accelerator type: none, MPS, MLX, CUDA, or NPU
-- wall latency: REST mean and P95, first partial, and final
+- wall latency: REST mean and P95, ASR TTFB / first partial, and final
 - realtime factor (`RTF`)
 - peak RSS memory
 - CPU utilization
@@ -197,7 +197,7 @@ For low-power claims, latency alone is not enough. Recommended benchmark fields:
 - sustained thermal behavior over `5` to `10` minutes
 - transcript churn across partial updates
 
-The checked-in artifacts already cover warmed service latency, first partial responsiveness, `RTF`, Local STT interim transcript churn, process RSS, and CPU utilization. Use `--package-power-watts` and `--thermal-state` to attach external power and thermal observations when those measurements are available.
+The checked-in artifacts already cover warmed service latency, ASR TTFB / first partial responsiveness, `RTF`, Local STT interim transcript churn, process RSS, and CPU utilization. Use `--package-power-watts` and `--thermal-state` to attach external power and thermal observations when those measurements are available.
 
 ## Known Limitations
 

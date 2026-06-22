@@ -892,7 +892,7 @@ def test_homepage_head_includes_launch_seo_metadata() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
     assert "<title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>" in homepage
-    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications across first partial, partial cadence, audio-end finalization delay, throughput context, sample coverage, and benchmark methodology."' in homepage
+    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications across ASR TTFB / first partial, partial cadence, audio-end finalization delay, throughput context, sample coverage, and benchmark methodology."' in homepage
     assert 'meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
     assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
     assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
