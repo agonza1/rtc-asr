@@ -254,6 +254,7 @@ def describe_environment(
     process_pid: int | None = None,
     peak_rss_mb: float | None = None,
     cpu_utilization_percent: float | None = None,
+    process_metrics_sample_count: int = 0,
 ) -> dict[str, Any]:
     memory_total_mb: float | None = None
     process_rss_mb: float | None = None
@@ -278,6 +279,7 @@ def describe_environment(
         "process_rss_mb": process_rss_mb,
         "peak_rss_mb": peak_rss_mb,
         "cpu_utilization_percent": cpu_utilization_percent,
+        "process_metrics_sample_count": process_metrics_sample_count,
     }
 
 
@@ -324,6 +326,7 @@ async def run_benchmark(
             process_pid=metrics_pid,
             peak_rss_mb=metrics_monitor.peak_rss_mb,
             cpu_utilization_percent=metrics_monitor.cpu_utilization_percent,
+            process_metrics_sample_count=len(metrics_monitor._samples),
         ),
         "audio": {
             "source": audio.source,

@@ -215,6 +215,7 @@ def test_describe_environment_records_memory_when_psutil_is_available(monkeypatc
     assert payload["process_rss_mb"] == 384.0
     assert payload["peak_rss_mb"] is None
     assert payload["cpu_utilization_percent"] is None
+    assert payload["process_metrics_sample_count"] == 0
 
 
 def test_process_metrics_monitor_tracks_peak_rss_and_cpu_average(monkeypatch) -> None:
@@ -299,11 +300,13 @@ def test_describe_environment_accepts_measured_process_metrics(monkeypatch) -> N
         process_pid=4321,
         peak_rss_mb=512.5,
         cpu_utilization_percent=42.0,
+        process_metrics_sample_count=3,
     )
 
     assert payload["process_rss_mb"] == 384.0
     assert payload["peak_rss_mb"] == 512.5
     assert payload["cpu_utilization_percent"] == 42.0
+    assert payload["process_metrics_sample_count"] == 3
     assert seen["pid"] == 4321
 
 
@@ -381,6 +384,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["kind"] == "local-stt-v1-latency-benchmark"
     assert payload["target"] == {"transport": "tcp_ws", "url": "ws://example.test/v1/stt/stream", "uds_path": None}
     assert payload["environment"]["cpu_logical_cores"] is not None
+    assert payload["environment"]["process_metrics_sample_count"] == 0
     assert payload["audio"]["bytes_per_frame"] == 640
     assert payload["audio"]["duration_ms"] == 40
     assert payload["settings"] == {
