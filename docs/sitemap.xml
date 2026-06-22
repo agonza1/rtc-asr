@@ -2,74 +2,98 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/</loc>
+    <lastmod>2026-06-22</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json</loc>
+    <lastmod>2026-06-22</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-2026-06-10.html</loc>
+    <lastmod>2026-06-10</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-2026-06-15.html</loc>
+    <lastmod>2026-06-16</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-2026-06-20.html</loc>
+    <lastmod>2026-06-20</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-13.html</loc>
+    <lastmod>2026-06-13</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-15.html</loc>
+    <lastmod>2026-06-16</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-16.html</loc>
+    <lastmod>2026-06-16</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17-cate-blanch.html</loc>
+    <lastmod>2026-06-17</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17.html</loc>
+    <lastmod>2026-06-17</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.html</loc>
+    <lastmod>2026-06-20</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-small.en-int8-2026-06-10.html</loc>
+    <lastmod>2026-06-10</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-small.en-int8-2026-06-20.html</loc>
+    <lastmod>2026-06-20</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-compose-2026-06-10.html</loc>
+    <lastmod>2026-06-10</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-compose-2026-06-20.html</loc>
+    <lastmod>2026-06-20</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html</loc>
+    <lastmod>2026-06-21</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-09.html</loc>
+    <lastmod>2026-06-10</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-21.html</loc>
+    <lastmod>2026-06-21</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-compose-2026-06-15.html</loc>
+    <lastmod>2026-06-15</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-compose-2026-06-19.html</loc>
+    <lastmod>2026-06-20</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-compose-2026-06-21.html</loc>
+    <lastmod>2026-06-21</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-10.html</loc>
+    <lastmod>2026-06-10</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-20.html</loc>
+    <lastmod>2026-06-20</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-21.html</loc>
+    <lastmod>2026-06-21</lastmod>
   </url>
 </urlset>

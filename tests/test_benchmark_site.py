@@ -718,12 +718,13 @@ def test_docs_index_surfaces_reference_wer_notes() -> None:
 
 def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
     manifest = {
+        "generated_at": "2026-06-22T21:30:00Z",
         "tracks": [
-            {"artifact_path": "docs/benchmark-results/demo-2026-06-14.json"},
-            {"artifact_path": "docs/benchmark-results/demo-2026-06-14.json"},
+            {"artifact_path": "docs/benchmark-results/demo-2026-06-14.json", "measured_at": "2026-06-14T09:00:00Z"},
+            {"artifact_path": "docs/benchmark-results/demo-2026-06-14.json", "measured_at": "2026-06-15T09:00:00Z"},
         ],
         "artifacts": [
-            {"artifact_path": "docs/benchmark-results/legacy-2026-06-10.json"},
+            {"artifact_path": "docs/benchmark-results/legacy-2026-06-10.json", "measured_at": "2026-06-10T09:00:00Z"},
             {"artifact_path": "docs/benchmark-results/not-json.txt"},
         ],
     }
@@ -736,6 +737,9 @@ def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
     assert sitemap.count("demo-2026-06-14.html") == 1
     assert "legacy-2026-06-10.html" in sitemap
     assert "not-json" not in sitemap
+    assert "<lastmod>2026-06-22</lastmod>" in sitemap
+    assert "<lastmod>2026-06-15</lastmod>" in sitemap
+    assert "<lastmod>2026-06-10</lastmod>" in sitemap
 
 
 def test_detail_page_path_uses_artifact_stem() -> None:

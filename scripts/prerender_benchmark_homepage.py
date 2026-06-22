@@ -748,20 +748,38 @@ def sitemap_url(base_url: str, path: str) -> str:
     return normalized_base + normalized_path
 
 
+def sitemap_lastmod(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.astimezone(UTC).date().isoformat()
+
+
 def render_sitemap(manifest: dict[str, Any], base_url: str) -> str:
-    detail_paths = sorted(
-        {
-            detail_page_path(entry)
-            for entry in [*manifest.get("tracks", []), *manifest.get("artifacts", [])]
-            if entry.get("artifact_path") and detail_page_path(entry) != "#"
-        }
-    )
-    urls = ["", "benchmark-results/manifest.json", *detail_paths]
+    generated_lastmod = sitemap_lastmod(manifest.get("generated_at"))
+    detail_lastmods: dict[str, str | None] = {}
+    for entry in [*manifest.get("tracks", []), *manifest.get("artifacts", [])]:
+        if not entry.get("artifact_path"):
+            continue
+        detail_path = detail_page_path(entry)
+        if detail_path == "#":
+            continue
+        lastmod = sitemap_lastmod(entry.get("measured_at"))
+        current_lastmod = detail_lastmods.get(detail_path)
+        if current_lastmod is None or (lastmod is not None and lastmod > current_lastmod):
+            detail_lastmods[detail_path] = lastmod
+
+    urls = [("", generated_lastmod), ("benchmark-results/manifest.json", generated_lastmod)]
+    urls.extend((path, detail_lastmods[path]) for path in sorted(detail_lastmods))
     url_entries = "\n".join(
         "  <url>\n"
         f"    <loc>{html.escape(sitemap_url(base_url, path))}</loc>\n"
-        "  </url>"
-        for path in urls
+        + (f"    <lastmod>{html.escape(lastmod)}</lastmod>\n" if lastmod else "")
+        + "  </url>"
+        for path, lastmod in urls
     )
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{url_entries}\n</urlset>\n'
 
