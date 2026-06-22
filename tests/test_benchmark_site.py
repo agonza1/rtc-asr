@@ -720,6 +720,7 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert '"sha256":' in rss_detail
     assert '<meta name="description" content="Validated paced /v1/stt/stream local Apple Silicon MLX service artifact' in rss_detail
     assert '<link rel="canonical" href="parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
+    assert '<link rel="alternate" type="application/json" href="../parakeet-mlx-110m-service-2026-06-21.json" title="Raw benchmark JSON artifact">' in rss_detail
     assert 'aria-label="Breadcrumb"' in rss_detail
     assert "Benchmark homepage" in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
@@ -819,6 +820,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert '"variableMeasured": [' in detail_html
     assert '"audio-end finalization latency"' in detail_html
     assert '"contentUrl": "../demo-artifact-2026-06-14.json"' in detail_html
+    assert '<link rel="alternate" type="application/json" href="../demo-artifact-2026-06-14.json" title="Raw benchmark JSON artifact">' in detail_html
     assert 'download="demo-artifact-2026-06-14.json"' in detail_html
     assert 'Download raw JSON artifact' in detail_html
     assert '"@type": "BreadcrumbList"' in detail_html

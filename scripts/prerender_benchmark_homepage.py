@@ -600,6 +600,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{html.escape(description)}">
     <link rel="canonical" href="{html.escape(detail_href)}">
+    <link rel="alternate" type="application/json" href="{artifact_href}" title="Raw benchmark JSON artifact">
     <title>{title} | rtc-asr benchmark artifact</title>
     <script type="application/ld+json">
 {structured_data_json}
