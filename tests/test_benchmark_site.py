@@ -377,6 +377,23 @@ def test_manifest_preserves_nested_memory_metadata_aliases() -> None:
     assert system["peak_rss_mb"] == 512.5
 
 
+def test_manifest_preserves_common_rss_memory_aliases() -> None:
+    system = extract_system_signals(
+        {
+            "memory": {"rss_mb": 181.5, "max_rss_mb": 530.25},
+            "metrics": {"memory": {"resident_set_size_mb": 190.0, "rss_max_mb": 544.0}},
+        }
+    )
+    nested_only = extract_system_signals(
+        {"metrics": {"memory": {"resident_set_size_mb": 190.0, "rss_max_mb": 544.0}}}
+    )
+
+    assert system["process_rss_mb"] == 181.5
+    assert system["peak_rss_mb"] == 530.25
+    assert nested_only["process_rss_mb"] == 190.0
+    assert nested_only["peak_rss_mb"] == 544.0
+
+
 def test_manifest_preserves_process_metrics_pid() -> None:
     system = extract_system_signals({"environment": {"process_metrics_pid": 4321}})
     nested_system = extract_system_signals({"metrics": {"process": {"pid": 8765}}})
@@ -892,6 +909,13 @@ def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
     assert 'System RAM 32768.0 MB' in memory_alias_html
     assert 'Peak RSS 512.5 MB' in memory_alias_html
     assert 'Process RSS 180.2 MB' in memory_alias_html
+
+    rss_alias_html = render_detail_page(
+        entry,
+        {'memory': {'rss_mb': 181.5}, 'metrics': {'memory': {'rss_max_mb': 544.0}}},
+    )
+    assert 'Process RSS 181.5 MB' in rss_alias_html
+    assert 'Peak RSS 544.0 MB' in rss_alias_html
 
 
 def test_homepage_head_includes_launch_seo_metadata() -> None:
