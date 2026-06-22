@@ -302,6 +302,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["interim_events_received"] == 2
     assert sample["interim_transcript_changes"] == 1
     assert sample["final_events_received"] == 1
+    assert sample["successful_runs"] == 1
     assert sample["final_transcript"] == "hello"
     assert sample["warnings_received"] == 1
     assert sample["warning_codes"] == ["partial_dropped"]
@@ -353,6 +354,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["interim_events_received"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["interim_transcript_changes"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["summary"]["final_events_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["summary"]["successful_runs"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["summary"]["reconnects"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["protocol_errors"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
 
@@ -380,8 +382,10 @@ def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_er
     assert sample["audio_frames_sent"] == 1
     assert sample["audio_frames_dropped"] == 2
     assert sample["protocol_errors"] == 1
+    assert sample["successful_runs"] == 0
     assert sample["protocol_error_codes"] == ["send_exception"]
     assert payload["summary"]["audio_frames_dropped"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["summary"]["successful_runs"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["protocol_errors"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["diagnostics"]["protocol_error_codes"] == {"send_exception": 1}
 
@@ -540,6 +544,7 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
                 "warnings_received": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
                 "audio_frames_sent": {"p50": 4.0, "p95": 4.0, "p99": 4.0},
                 "interim_transcript_changes": {"p50": 2.0, "p95": 3.0, "p99": 3.0},
+                "successful_runs": {"p50": 1.0, "p95": 1.0, "p99": 1.0},
                 "reconnects": {"p50": 0.0, "p95": 1.0, "p99": 1.0},
                 "asr_decode_samples": {"p50": 3.0, "p95": 4.0, "p99": 4.0},
                 "audio_end_finalization_rtf": {"p50": 0.5, "p95": 0.75, "p99": None},
@@ -552,10 +557,11 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
     assert lines[0] == "warnings_received: p50=1.0 p95=2.0 p99=3.0"
     assert lines[1] == "audio_frames_sent: p50=4.0 p95=4.0 p99=4.0"
     assert lines[2] == "interim_transcript_changes: p50=2.0 p95=3.0 p99=3.0"
-    assert lines[3] == "reconnects: p50=0.0 p95=1.0 p99=1.0"
-    assert lines[4] == "asr_decode_samples: p50=3.0 p95=4.0 p99=4.0"
-    assert lines[5] == "audio_end_finalization_rtf: p50=0.5 p95=0.75 p99=n/a"
-    assert lines[6] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
+    assert lines[3] == "successful_runs: p50=1.0 p95=1.0 p99=1.0"
+    assert lines[4] == "reconnects: p50=0.0 p95=1.0 p99=1.0"
+    assert lines[5] == "asr_decode_samples: p50=3.0 p95=4.0 p99=4.0"
+    assert lines[6] == "audio_end_finalization_rtf: p50=0.5 p95=0.75 p99=n/a"
+    assert lines[7] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
 
 
 def test_parse_args_rejects_uds_ws_until_client_support_exists(tmp_path: Path) -> None:

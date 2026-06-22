@@ -158,6 +158,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "interim_events_received",
         "interim_transcript_changes",
         "final_events_received",
+        "successful_runs",
         "reconnects",
         "protocol_errors",
     ]
@@ -463,6 +464,7 @@ async def _run_once(
         "interim_events_received": interim_events,
         "interim_transcript_changes": interim_transcript_changes,
         "final_events_received": final_events,
+        "successful_runs": 1 if final_events > 0 and protocol_errors == 0 else 0,
         "final_transcript": final_transcript,
         "warnings_received": warnings_received,
         "warning_codes": warning_codes,
@@ -581,6 +583,7 @@ def _format_summary_value(metric: str, value: float | None) -> str:
         or metric.endswith("_dropped")
         or metric.endswith("_changes")
         or metric.endswith("_samples")
+        or metric == "successful_runs"
         or metric == "reconnects"
     ):
         return "n/a" if value is None else str(value)
