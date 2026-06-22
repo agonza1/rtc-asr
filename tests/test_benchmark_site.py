@@ -405,9 +405,11 @@ def test_manifest_preserves_process_metrics_pid() -> None:
 def test_manifest_preserves_nested_cpu_metadata_aliases() -> None:
     nested_system = extract_system_signals({"metrics": {"cpu": {"percent": 42.5}}})
     top_level_system = extract_system_signals({"cpu": {"utilization_percent": 37.25}})
+    average_system = extract_system_signals({"metrics": {"cpu": {"average_percent": 31.5}}})
 
     assert nested_system["cpu_utilization_percent"] == 42.5
     assert top_level_system["cpu_utilization_percent"] == 37.25
+    assert average_system["cpu_utilization_percent"] == 31.5
 
 
 def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
@@ -421,12 +423,21 @@ def test_manifest_preserves_nested_power_and_thermal_metadata() -> None:
     )
     avg_power_system = extract_system_signals({"environment": {"package_power_avg_watts": 7.4}})
     nested_avg_power_system = extract_system_signals({"metrics": {"power": {"package_power_avg_watts": 6.8}}})
+    common_alias_system = extract_system_signals(
+        {
+            "power": {"average_package_watts": 6.2, "joules_per_audio_second": 1.8},
+            "thermal": {"max_celsius": 58.0},
+        }
+    )
 
     assert system["package_power_watts"] == 8.6
     assert avg_power_system["package_power_watts"] == 7.4
     assert nested_avg_power_system["package_power_watts"] == 6.8
+    assert common_alias_system["package_power_watts"] == 6.2
     assert system["energy_per_audio_second_j"] == 2.9
+    assert common_alias_system["energy_per_audio_second_j"] == 1.8
     assert system["thermal_peak_celsius"] == 64.2
+    assert common_alias_system["thermal_peak_celsius"] == 58.0
     assert system["thermal_observation"] == "warm but stable"
 
 
