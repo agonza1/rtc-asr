@@ -131,12 +131,25 @@ def test_parse_args_rejects_zero_or_negative_runtime_values(monkeypatch: pytest.
 
 
 def test_parse_args_accepts_external_low_power_observations(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--package-power-watts", "4.8", "--thermal-state", "nominal"])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "benchmark.py",
+            "--package-power-watts",
+            "4.8",
+            "--thermal-state",
+            "nominal",
+            "--thermal-duration-minutes",
+            "5",
+        ],
+    )
 
     args = benchmark.parse_args()
 
     assert args.package_power_watts == 4.8
     assert args.thermal_state == "nominal"
+    assert args.thermal_duration_minutes == 5.0
 
 
 def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -166,6 +179,7 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
         cpu_utilization_percent=47.5,
         package_power_watts=4.8,
         thermal_state="nominal",
+        thermal_duration_minutes=5.0,
     )
 
     assert payload["machine"] == "arm64"
@@ -176,6 +190,7 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
     assert payload["cpu_utilization_percent"] == 47.5
     assert payload["package_power_watts"] == 4.8
     assert payload["thermal_state"] == "nominal"
+    assert payload["thermal_duration_minutes"] == 5.0
     assert requested_pids == [4321]
 
 
