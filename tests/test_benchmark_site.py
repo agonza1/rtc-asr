@@ -14,6 +14,7 @@ sys.modules.setdefault("rtc_asr_build_benchmark_manifest", manifest_module)
 SPEC.loader.exec_module(manifest_module)
 DEFAULT_RESULTS_DIR = manifest_module.DEFAULT_RESULTS_DIR
 build_manifest = manifest_module.build_manifest
+build_low_power_evidence_summary = manifest_module.build_low_power_evidence_summary
 comparable_manifest = manifest_module.comparable_manifest
 extract_system_signals = manifest_module.extract_system_signals
 render_manifest = manifest_module.render_manifest
@@ -334,6 +335,43 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert coverage["thermal_peak_celsius_count"] == 0
     assert coverage["thermal_observation_count"] == 0
     assert coverage["thermal_duration_minutes_count"] == 0
+
+
+def test_manifest_summarizes_low_power_evidence_readiness() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    evidence = manifest["summary"]["low_power_evidence"]
+
+    assert evidence["artifact_count"] == len(manifest["artifacts"])
+    assert evidence["power_evidence_count"] == 0
+    assert evidence["sustained_thermal_evidence_count"] == 0
+    assert evidence["complete_artifact_count"] == 0
+
+
+def test_low_power_evidence_summary_requires_memory_cpu_power_and_thermal() -> None:
+    entries = [
+        {
+            "system": {
+                "process_rss_mb": 180.0,
+                "cpu_utilization_percent": 42.0,
+                "package_power_watts": 7.4,
+                "thermal_observation": "stable after 5 minutes",
+            }
+        },
+        {
+            "system": {
+                "process_rss_mb": 170.0,
+                "cpu_utilization_percent": 38.0,
+                "package_power_watts": 6.8,
+            }
+        },
+    ]
+
+    assert build_low_power_evidence_summary(entries) == {
+        "artifact_count": 2,
+        "power_evidence_count": 2,
+        "sustained_thermal_evidence_count": 1,
+        "complete_artifact_count": 1,
+    }
 
 
 def test_manifest_counts_thermal_state_as_system_evidence() -> None:

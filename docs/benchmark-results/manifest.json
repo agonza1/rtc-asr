@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-22T21:12:43Z",
+  "generated_at": "2026-06-22T22:41:22Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -38,6 +38,12 @@
       "thermal_peak_celsius_count": 0,
       "thermal_observation_count": 0,
       "thermal_duration_minutes_count": 0
+    },
+    "low_power_evidence": {
+      "artifact_count": 22,
+      "power_evidence_count": 0,
+      "sustained_thermal_evidence_count": 0,
+      "complete_artifact_count": 0
     },
     "ranges": {
       "rest_mean_ms": {
