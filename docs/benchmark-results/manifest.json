@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-21T21:10:20Z",
+  "generated_at": "2026-06-22T02:12:16Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -214,6 +214,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -308,6 +309,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -403,6 +405,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -498,6 +501,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -592,6 +596,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -686,6 +691,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -781,6 +787,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -871,6 +878,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -960,6 +968,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1055,6 +1064,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1150,6 +1160,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1244,6 +1255,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1338,6 +1350,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1432,6 +1445,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1526,6 +1540,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1615,6 +1630,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1704,6 +1720,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1794,6 +1811,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1884,6 +1902,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -1974,6 +1993,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2064,6 +2084,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2154,6 +2175,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2243,6 +2265,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2332,6 +2355,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2421,6 +2445,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2507,6 +2532,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2593,6 +2619,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2679,6 +2706,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2765,6 +2793,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2851,6 +2880,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -2955,6 +2985,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -3049,6 +3080,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -3144,6 +3176,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -3239,6 +3272,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -3333,6 +3367,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -3427,6 +3462,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -3517,6 +3553,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
@@ -3612,6 +3649,7 @@
       },
       "warnings": {
         "received_total": null,
+        "rate_per_sample": null,
         "codes": []
       },
       "accuracy": {
