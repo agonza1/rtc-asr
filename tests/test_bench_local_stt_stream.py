@@ -280,19 +280,31 @@ def test_process_metrics_monitor_stays_null_without_explicit_pid(monkeypatch) ->
 
 
 def test_describe_environment_accepts_measured_process_metrics(monkeypatch) -> None:
+    seen = {}
+
+    def fake_process(pid=None):
+        seen["pid"] = pid
+        return SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=384 * 1024 * 1024))
+
     monkeypatch.setitem(
         sys.modules,
         "psutil",
         SimpleNamespace(
             virtual_memory=lambda: SimpleNamespace(total=16 * 1024 * 1024 * 1024),
-            Process=lambda: SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=384 * 1024 * 1024)),
+            Process=fake_process,
         ),
     )
 
-    payload = benchmark_module.describe_environment(peak_rss_mb=512.5, cpu_utilization_percent=42.0)
+    payload = benchmark_module.describe_environment(
+        process_pid=4321,
+        peak_rss_mb=512.5,
+        cpu_utilization_percent=42.0,
+    )
 
+    assert payload["process_rss_mb"] == 384.0
     assert payload["peak_rss_mb"] == 512.5
     assert payload["cpu_utilization_percent"] == 42.0
+    assert seen["pid"] == 4321
 
 
 def test_normalize_pcm16_buffer_reports_float32_samples() -> None:

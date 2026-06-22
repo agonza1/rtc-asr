@@ -251,6 +251,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
 
 def describe_environment(
     *,
+    process_pid: int | None = None,
     peak_rss_mb: float | None = None,
     cpu_utilization_percent: float | None = None,
 ) -> dict[str, Any]:
@@ -260,7 +261,8 @@ def describe_environment(
         import psutil
 
         memory_total_mb = round(psutil.virtual_memory().total / (1024 * 1024), 1)
-        process_rss_mb = round(psutil.Process().memory_info().rss / (1024 * 1024), 1)
+        process = psutil.Process(process_pid) if process_pid is not None else psutil.Process()
+        process_rss_mb = round(process.memory_info().rss / (1024 * 1024), 1)
     except Exception:
         memory_total_mb = None
         process_rss_mb = None
@@ -319,6 +321,7 @@ async def run_benchmark(
         "protocol": "local-stt.v1",
         "target": {"transport": transport, "url": url, "uds_path": uds_path},
         "environment": describe_environment(
+            process_pid=metrics_pid,
             peak_rss_mb=metrics_monitor.peak_rss_mb,
             cpu_utilization_percent=metrics_monitor.cpu_utilization_percent,
         ),
