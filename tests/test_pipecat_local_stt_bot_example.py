@@ -77,6 +77,32 @@ def test_pipecat_local_stt_bot_example_is_syntax_valid() -> None:
     assert "transport.output()" in bot_source
 
 
+def test_pipecat_local_stt_bot_example_reads_environment_at_runtime(monkeypatch) -> None:
+    module = load_bot_module()
+
+    monkeypatch.setenv("LOCAL_STT_SERVICE", "rtc-asr")
+    monkeypatch.setenv("RTC_ASR_WS_URL", "ws://127.0.0.1:8080/v1/stt/stream")
+    monkeypatch.setenv("LOCAL_STT_LANGUAGE", "")
+    monkeypatch.setenv("LOCAL_STT_SAMPLE_RATE", "8000")
+    monkeypatch.setenv("LOCAL_STT_CHANNELS", "2")
+    monkeypatch.setenv("LOCAL_STT_FRAME_MS", "40")
+    monkeypatch.setenv("LOCAL_STT_PARTIAL_INTERVAL_MS", "250")
+    monkeypatch.setenv("LOCAL_STT_PARTIAL_WINDOW_SECONDS", "1.5")
+    monkeypatch.setenv("LOCAL_STT_MAX_BUFFER_SECONDS", "6.0")
+
+    settings = module.BotSettings.from_env()
+
+    assert settings.service == "rtc-asr"
+    assert settings.ws_url == "ws://127.0.0.1:8080/v1/stt/stream"
+    assert settings.language is None
+    assert settings.sample_rate == 8000
+    assert settings.channels == 2
+    assert settings.frame_ms == 40
+    assert settings.partial_interval_ms == 250
+    assert settings.partial_window_seconds == 1.5
+    assert settings.max_buffer_seconds == 6.0
+
+
 def test_pipecat_local_stt_bot_example_selects_supported_sidecar_services() -> None:
     module = load_bot_module()
 
