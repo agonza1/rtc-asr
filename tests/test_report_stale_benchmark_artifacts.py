@@ -13,6 +13,7 @@ SPEC.loader.exec_module(report_module)
 
 render_text = report_module.render_text
 stale_artifacts = report_module.stale_artifacts
+stale_summary = report_module.stale_summary
 
 
 def test_stale_artifacts_excludes_current_track_artifact() -> None:
@@ -51,6 +52,32 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "artifact_size_bytes": 75,
         }
     ]
+
+
+def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/small.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/large.json",
+                "status": "legacy",
+                "artifact_size_bytes": 90,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest)
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
+    assert stale_summary(stale)["total_size_bytes"] == 100
 
 
 def test_render_text_summarizes_stale_artifacts() -> None:

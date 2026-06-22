@@ -51,13 +51,27 @@ def stale_artifacts(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                 "artifact_size_bytes": artifact.get("artifact_size_bytes"),
             }
         )
-    return stale
+    return sorted(
+        stale,
+        key=lambda entry: (
+            -(entry.get("artifact_size_bytes") or 0),
+            entry.get("artifact_path") or "",
+        ),
+    )
+
+
+def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "count": len(stale),
+        "total_size_bytes": sum(entry.get("artifact_size_bytes") or 0 for entry in stale),
+        "artifacts": stale,
+    }
 
 
 def render_text(stale: list[dict[str, Any]]) -> str:
     if not stale:
         return "No stale benchmark artifacts found."
-    total_bytes = sum(entry.get("artifact_size_bytes") or 0 for entry in stale)
+    total_bytes = stale_summary(stale)["total_size_bytes"]
     lines = [f"Found {len(stale)} stale benchmark artifacts ({total_bytes} bytes):"]
     lines.extend(
         "- {artifact_path} [{slug}] measured {measured_at}".format(
@@ -75,7 +89,7 @@ def main() -> None:
     manifest = build_manifest(args.results_dir, args.tracks)
     stale = stale_artifacts(manifest)
     if args.json:
-        print(json.dumps({"count": len(stale), "artifacts": stale}, indent=2))
+        print(json.dumps(stale_summary(stale), indent=2))
     else:
         print(render_text(stale))
 
