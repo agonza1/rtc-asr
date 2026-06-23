@@ -739,16 +739,38 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
     assert lines[7] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
 
 
-def test_parse_args_rejects_uds_ws_until_client_support_exists(tmp_path: Path) -> None:
+def test_parse_args_accepts_uds_ws_with_socket_path(tmp_path: Path) -> None:
     raw_path = tmp_path / "clip.pcm"
     raw_path.write_bytes(b"a" * 640)
 
-    try:
-        benchmark_module.parse_args(["--transport", "uds_ws", "--uds-path", "/tmp/stt.sock", "--input-raw-pcm", str(raw_path)])
-    except Exception as exc:
-        assert "not implemented by the current websocket client" in str(exc)
-    else:
-        raise AssertionError("expected uds_ws benchmark transport to be rejected")
+    args = benchmark_module.parse_args(["--transport", "uds_ws", "--uds-path", "/tmp/stt.sock", "--input-raw-pcm", str(raw_path)])
+
+    assert args.transport == "uds_ws"
+    assert args.uds_path == Path("/tmp/stt.sock")
+
+
+def test_run_benchmark_records_uds_ws_target_with_injected_client() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://localhost/v1/stt/stream",
+            transport="uds_ws",
+            uds_path="/tmp/stt.sock",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=FakeLocalSttClient,
+        )
+    )
+
+    assert payload["target"] == {"transport": "uds_ws", "url": "ws://localhost/v1/stt/stream", "uds_path": "/tmp/stt.sock"}
 
 
 def test_parse_args_requires_uds_path_for_uds_ws(tmp_path: Path) -> None:

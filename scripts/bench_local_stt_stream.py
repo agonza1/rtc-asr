@@ -35,7 +35,7 @@ class LocalSttClient(Protocol):
 
 
 ClientFactory = Callable[[str], LocalSttClient]
-SUPPORTED_TRANSPORTS = {"tcp_ws"}
+SUPPORTED_TRANSPORTS = {"tcp_ws", "uds_ws"}
 
 
 @dataclass(slots=True)
@@ -195,9 +195,25 @@ def validate_transport_args(transport: str, uds_path: Path | None) -> None:
         return
     if transport == "uds_ws" and uds_path is None:
         raise argparse.ArgumentTypeError("--uds-path is required when --transport uds_ws")
-    raise argparse.ArgumentTypeError(
-        f"{transport} benchmark transport is documented for comparison but is not implemented by the current websocket client"
-    )
+    if transport == "uds_ws":
+        return
+    raise argparse.ArgumentTypeError(f"unsupported benchmark transport: {transport}")
+
+
+def make_client_factory(*, transport: str, uds_path: str | None) -> ClientFactory:
+    if transport == "tcp_ws":
+        return lambda ws_url: AsyncLocalSttClient(ws_url)
+    if transport == "uds_ws":
+        if uds_path is None:
+            raise ValueError("uds_path is required for uds_ws transport")
+
+        async def connect_unix(ws_url: str):
+            import websockets
+
+            return await websockets.unix_connect(uds_path, uri=ws_url, max_size=2**23)
+
+        return lambda ws_url: AsyncLocalSttClient(ws_url, connect_fn=connect_unix)
+    raise ValueError(f"Unsupported benchmark transport: {transport}")
 
 
 def load_audio_input(*, input_wav: Path | None, input_raw_pcm: Path | None, sample_rate: int, frame_ms: int) -> AudioInput:
@@ -347,7 +363,7 @@ async def run_benchmark(
 ) -> dict[str, Any]:
     if transport not in SUPPORTED_TRANSPORTS:
         raise ValueError(f"Unsupported benchmark transport: {transport}")
-    factory = client_factory or (lambda ws_url: AsyncLocalSttClient(ws_url))
+    factory = client_factory or make_client_factory(transport=transport, uds_path=uds_path)
     metrics_monitor = ProcessMetricsMonitor(pid=metrics_pid)
     metrics_monitor.start()
     samples = []
