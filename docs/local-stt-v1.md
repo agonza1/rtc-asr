@@ -26,6 +26,30 @@ Binary websocket frames carry raw little-endian PCM16 bytes. Clients may batch m
 
 The default server transport is TCP WebSocket, for example `ws://rtc-asr:8080/v1/stt/stream` in Docker Compose or `ws://localhost:8080/v1/stt/stream` for local benchmarks. Colocated deployments can opt into Unix-domain-socket WebSocket serving with `LOCAL_STT_SOCKET_MODE=uds` and `LOCAL_STT_UDS_PATH=/run/rtc-asr/stt.sock`; startup removes stale socket files and fails clearly if the path exists but is not a socket. The benchmark client also accepts `--transport uds_ws --uds-path /tmp/rtc-asr.sock` so same-host adapter work can measure the client path against a matching server socket. Checked-in production benchmark artifacts should continue to record `"transport": "tcp_ws"`; UDS comparison artifacts should record `"transport": "uds_ws"` and the socket path only when both endpoints are intentionally using the colocated socket. Treat UDS as optional: if p95 latency does not improve by at least 5 ms, TCP WebSocket is simpler and sufficient for most users.
 
+Minimal Compose shape for a colocated UDS comparison:
+
+```yaml
+services:
+  rtc-asr:
+    environment:
+      LOCAL_STT_SOCKET_MODE: uds
+      LOCAL_STT_UDS_PATH: /run/rtc-asr/stt.sock
+    volumes:
+      - rtc_asr_socket:/run/rtc-asr
+
+  pipecat:
+    environment:
+      LOCAL_STT_TRANSPORT: uds_ws
+      LOCAL_STT_UDS_PATH: /run/rtc-asr/stt.sock
+    volumes:
+      - rtc_asr_socket:/run/rtc-asr
+
+volumes:
+  rtc_asr_socket:
+```
+
+Run the comparison only after both services share that socket volume, then keep the TCP WebSocket run as the baseline. UDS should stay an optimization knob, not the default deployment path.
+
 Rules:
 
 - Binary audio MUST NOT be base64-wrapped.
