@@ -192,7 +192,7 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
         "sample_rate": audio.get("sample_rate", ready.get("sample_rate")),
         "live_metrics_comparable": bool(streaming.get("live_metrics_comparable", False)),
     }
-    transport = first_defined(streaming.get("transport"), benchmark.get("mode"), integration.get("transport"), target.get("transport"))
+    transport = first_defined(target.get("transport"), streaming.get("transport"), integration.get("transport"), benchmark.get("mode"))
     if transport is not None:
         contract["transport"] = transport
     protocol = first_defined(bridge.get("protocol"), integration.get("protocol"))

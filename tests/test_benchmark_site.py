@@ -800,7 +800,7 @@ def test_detail_page_path_uses_artifact_stem() -> None:
 
 def test_manifest_contract_uses_local_stt_target_transport_and_url_path() -> None:
     payload = {
-        "benchmark": {"chunk_ms": 100},
+        "benchmark": {"chunk_ms": 100, "mode": "v1-stt-stream"},
         "streaming": {"live_metrics_comparable": True},
         "target": {"transport": "uds_ws", "url": "ws://localhost/v1/stt/stream", "uds_path": "/tmp/stt.sock"},
         "audio": {"sample_rate": 16000},
