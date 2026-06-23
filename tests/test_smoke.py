@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import socket
 import threading
 import time
 from pathlib import Path
@@ -12,7 +13,14 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
-from src.main import StreamSession, _receive_stream_event, _seconds_to_buffer_bytes, create_app
+from src.main import (
+    StreamSession,
+    _prepare_uds_socket,
+    _receive_stream_event,
+    _seconds_to_buffer_bytes,
+    create_app,
+    main,
+)
 from src.model_loader import ASRUnavailableError
 from src.protocols.local_stt_v1 import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_CHANNELS, HOT_PATH_FRAME_MS, HOT_PATH_PCM_FORMAT, HOT_PATH_SAMPLE_RATE, PROTOCOL_VERSION, parse_server_message
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
@@ -1599,6 +1607,92 @@ def test_stream_max_buffer_bytes_must_be_positive(
 
 
 
+
+def test_local_stt_socket_mode_env_defaults_to_tcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
+    monkeypatch.delenv("LOCAL_STT_UDS_PATH", raising=False)
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_socket_mode == "tcp"
+    assert config.local_stt_uds_path == "/run/rtc-asr/stt.sock"
+
+
+def test_local_stt_socket_mode_env_supports_uds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    socket_path = tmp_path / "stt.sock"
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "uds")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", str(socket_path))
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_socket_mode == "uds"
+    assert config.local_stt_uds_path == str(socket_path)
+
+
+def test_local_stt_socket_mode_rejects_invalid_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "named-pipe")
+
+    with pytest.raises(ValueError, match="LOCAL_STT_SOCKET_MODE must be 'tcp' or 'uds'"):
+        AppConfig.from_env()
+
+
+def test_prepare_uds_socket_removes_stale_socket(tmp_path: Path) -> None:
+    socket_path = tmp_path / "run" / "stt.sock"
+    socket_path.parent.mkdir()
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        server.bind(str(socket_path))
+    finally:
+        server.close()
+
+    assert socket_path.exists()
+
+    prepared = _prepare_uds_socket(str(socket_path))
+
+    assert prepared == str(socket_path)
+    assert not socket_path.exists()
+
+
+def test_prepare_uds_socket_rejects_non_socket_file(tmp_path: Path) -> None:
+    socket_path = tmp_path / "stt.sock"
+    socket_path.write_text("not a socket", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="exists and is not a socket"):
+        _prepare_uds_socket(str(socket_path))
+
+
+def test_main_runs_uvicorn_with_uds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+    socket_path = tmp_path / "stt.sock"
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "uds")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", str(socket_path))
+    monkeypatch.setattr(
+        "src.main.uvicorn.run",
+        lambda *args, **kwargs: calls.append({"args": args, "kwargs": kwargs}),
+    )
+
+    main()
+
+    assert calls == [{"args": ("src.main:app",), "kwargs": {"uds": str(socket_path), "log_level": "info"}}]
+
+
+def test_main_keeps_tcp_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict[str, object]] = []
+    monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
+    monkeypatch.delenv("LOCAL_STT_UDS_PATH", raising=False)
+    monkeypatch.setattr(
+        "src.main.uvicorn.run",
+        lambda *args, **kwargs: calls.append({"args": args, "kwargs": kwargs}),
+    )
+
+    main()
+
+    assert calls == [
+        {
+            "args": ("src.main:app",),
+            "kwargs": {"host": "0.0.0.0", "port": 8080, "log_level": "info"},
+        }
+    ]
 
 def test_app_config_defaults_to_base_en() -> None:
     assert AppConfig().asr_model_size == "base.en"
