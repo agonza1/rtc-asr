@@ -15,6 +15,7 @@ from pipecat_local_stt.pipecat_compat import (
     InterimTranscriptionFrame,
     StartFrame,
     TranscriptionFrame,
+    VADUserStartedSpeakingFrame,
     VADUserStoppedSpeakingFrame,
 )
 from pipecat_local_stt.service import _default_connect
@@ -104,10 +105,11 @@ def test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping
 
 async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping() -> None:
     websocket = FakeLocalSTTWebSocket()
-    service = LocalStreamingSTTService(LocalSTTConfig(url="ws://fake/v1/stt/stream"), connect_fn=lambda _url: asyncio.sleep(0, websocket))
+    service = LocalStreamingSTTService(LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20), connect_fn=lambda _url: asyncio.sleep(0, websocket))
     pushed_frames = capture_pushed_frames(service)
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"x" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await wait_for(lambda: InterimTranscriptionFrame in pushed_frame_types(pushed_frames))
     await service.process_frame(VADUserStoppedSpeakingFrame(), FrameDirection.DOWNSTREAM)

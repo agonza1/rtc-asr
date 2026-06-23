@@ -18,10 +18,13 @@ class LocalSTTConfig:
     channels: int = 1
     format: str = "pcm_s16le"
     frame_ms: int = 20
+    aggregation_ms: int = 100
+    pre_roll_ms: int = 200
     interim_results: bool = True
     partial_interval_ms: int = 100
     partial_window_seconds: float = 1.0
     max_buffer_seconds: float = 10.0
+    final_timeout_s: float = 1.0
 
     connect_timeout_s: float = 3.0
     reconnect_on_error: bool = True
@@ -42,20 +45,26 @@ class LocalSTTConfig:
             raise ValueError("uds_path is required when transport is uds_ws")
         if self.transport == "tcp_ws" and self.uds_path is not None:
             raise ValueError("uds_path is only valid when transport is uds_ws")
-        if self.sample_rate <= 0:
-            raise ValueError("sample_rate must be positive")
-        if self.channels <= 0:
-            raise ValueError("channels must be positive")
+        if self.sample_rate != 16000:
+            raise ValueError("sample_rate must be 16000 for Local STT v1 PCM16")
+        if self.channels != 1:
+            raise ValueError("channels must be 1 for Local STT v1 mono PCM16")
         if self.format != "pcm_s16le":
             raise ValueError("format must be pcm_s16le")
         if self.frame_ms <= 0:
             raise ValueError("frame_ms must be positive")
+        if self.aggregation_ms <= 0:
+            raise ValueError("aggregation_ms must be positive")
+        if self.pre_roll_ms < 0:
+            raise ValueError("pre_roll_ms must be non-negative")
         if self.partial_interval_ms <= 0:
             raise ValueError("partial_interval_ms must be positive")
         if self.partial_window_seconds <= 0:
             raise ValueError("partial_window_seconds must be positive")
         if self.max_buffer_seconds <= 0:
             raise ValueError("max_buffer_seconds must be positive")
+        if self.final_timeout_s < 0:
+            raise ValueError("final_timeout_s must be non-negative")
         if self.connect_timeout_s <= 0:
             raise ValueError("connect_timeout_s must be positive")
         if self.max_send_queue_ms <= 0:
@@ -70,6 +79,14 @@ class LocalSTTConfig:
     @property
     def bytes_per_frame(self) -> int:
         return int(self.bytes_per_second * (self.frame_ms / 1000.0))
+
+    @property
+    def aggregation_bytes(self) -> int:
+        return max(1, self.sample_rate * self.channels * 2 * self.aggregation_ms // 1000)
+
+    @property
+    def pre_roll_bytes(self) -> int:
+        return max(0, self.sample_rate * self.channels * 2 * self.pre_roll_ms // 1000)
 
     @property
     def max_queue_bytes(self) -> int:

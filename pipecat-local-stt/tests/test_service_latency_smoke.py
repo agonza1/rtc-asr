@@ -9,6 +9,7 @@ from pipecat_local_stt.pipecat_compat import (
     FrameDirection,
     StartFrame,
     TranscriptionFrame,
+    VADUserStartedSpeakingFrame,
     VADUserStoppedSpeakingFrame,
 )
 
@@ -28,12 +29,13 @@ async def _test_fake_server_latency_smoke_records_plugin_metrics_without_rtc_asr
         )
     )
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", max_send_queue_ms=80),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, max_send_queue_ms=80),
         connect_fn=websocket.connect_fn(),
     )
     pushed_frames = capture_pushed_frames(service)
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     for _index in range(4):
         await service.process_frame(AudioRawFrame(audio=b"x" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await wait_for(lambda: service.metrics.local_stt_interim_events_total >= 1)

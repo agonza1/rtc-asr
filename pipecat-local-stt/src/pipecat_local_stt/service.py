@@ -24,6 +24,7 @@ from .pipecat_compat import (
     StartFrame,
     TranscriptionFrame,
     UserStoppedSpeakingFrame,
+    VADUserStartedSpeakingFrame,
     VADUserStoppedSpeakingFrame,
 )
 from .protocol import (
@@ -69,6 +70,9 @@ class LocalStreamingSTTService(STTService):
         self._websocket: WebSocketConnection | None = None
         self._send_queue: asyncio.Queue[_AudioChunk] = asyncio.Queue()
         self._queued_audio_ms = 0.0
+        self._pre_roll_buffer = bytearray()
+        self._aggregate_buffer = bytearray()
+        self._aggregate_duration_ms = 0.0
         self._connect_lock = asyncio.Lock()
         self._start_lock = asyncio.Lock()
         self._ready_event: asyncio.Event | None = None
@@ -78,6 +82,7 @@ class LocalStreamingSTTService(STTService):
         self._utterance_active = False
         self._generation = 0
         self._suppress_transcripts = False
+        self._final_events: dict[int, asyncio.Event] = {}
         self._session_id = uuid4().hex
         settings = kwargs.pop("settings", None) or STTSettings(model=None, language=self.config.language)
         super().__init__(
@@ -90,7 +95,6 @@ class LocalStreamingSTTService(STTService):
     async def start(self, frame: StartFrame) -> None:
         await super().start(frame)
         await self._ensure_connection()
-        await self._ensure_utterance_started()
 
     async def stop(self, frame: EndFrame) -> None:
         if self._websocket is not None:
@@ -113,29 +117,46 @@ class LocalStreamingSTTService(STTService):
             await cleanup()
 
     async def process_frame(self, frame: Frame, direction: FrameDirection) -> None:
+        if isinstance(frame, AudioRawFrame):
+            self._validate_audio_frame(frame)
+        elif isinstance(frame, VADUserStartedSpeakingFrame):
+            await self._start_current_utterance()
+
         await super().process_frame(frame, direction)
+
         if isinstance(frame, (VADUserStoppedSpeakingFrame, UserStoppedSpeakingFrame)):
             await self.finalize_current_utterance()
         elif isinstance(frame, InterruptionFrame):
-            await self.cancel_current_utterance()
+            logger.debug("Ignoring Pipecat InterruptionFrame for Local STT; ASR cancel is reserved for CancelFrame or explicit discard.")
 
     async def run_stt(self, audio: bytes) -> AsyncGenerator[Frame | None, None]:
-        await self._enqueue_audio(audio)
+        await self._handle_audio(audio)
         yield None
 
     async def finalize_current_utterance(self) -> None:
         if not self._utterance_active:
             return
+        generation = self._generation
+        await self._flush_aggregate_buffer()
         await self._send_queue.join()
         if not self._utterance_active or self._websocket is None:
             return
+        final_event = self._final_events.setdefault(generation, asyncio.Event())
         await self._send_control({"type": "finalize"}, ensure_started=False)
         self._utterance_active = False
+        if self.config.final_timeout_s > 0:
+            try:
+                await asyncio.wait_for(final_event.wait(), timeout=self.config.final_timeout_s)
+            except asyncio.TimeoutError:
+                logger.debug("Timed out waiting for Local STT final transcript for generation %s", generation)
 
     async def cancel_current_utterance(self) -> None:
         self._generation += 1
         self._suppress_transcripts = True
         self._utterance_active = False
+        self._pre_roll_buffer.clear()
+        self._aggregate_buffer.clear()
+        self._aggregate_duration_ms = 0.0
         self._clear_send_queue()
         if self._websocket is not None:
             await self._send_control({"type": "cancel"}, ensure_started=False)
@@ -143,18 +164,45 @@ class LocalStreamingSTTService(STTService):
     def metrics_snapshot(self) -> dict[str, int | float]:
         return self.metrics.as_dict()
 
-    async def _enqueue_audio(self, audio: bytes) -> None:
+    async def _start_current_utterance(self) -> None:
+        if self._utterance_active:
+            return
+        self._generation += 1
+        await self._ensure_utterance_started()
+        if self._pre_roll_buffer:
+            pre_roll = bytes(self._pre_roll_buffer)
+            self._pre_roll_buffer.clear()
+            await self._queue_audio_for_send(pre_roll)
+
+    async def _handle_audio(self, audio: bytes) -> None:
         if not audio:
             return
         self.metrics.local_stt_audio_frames_received_total += 1
         await self._ensure_connection()
-        await self._ensure_utterance_started()
+        if not self._utterance_active:
+            self._append_pre_roll(audio)
+            return
+        await self._queue_audio_for_send(audio)
 
+    async def _queue_audio_for_send(self, audio: bytes) -> None:
+        self._aggregate_buffer.extend(audio)
+        self._aggregate_duration_ms += self._audio_duration_ms(audio)
+        if len(self._aggregate_buffer) >= self.config.aggregation_bytes:
+            await self._flush_aggregate_buffer()
+
+    async def _flush_aggregate_buffer(self) -> None:
+        if not self._aggregate_buffer:
+            return
         chunk = _AudioChunk(
-            data=bytes(audio),
-            duration_ms=self._audio_duration_ms(audio),
+            data=bytes(self._aggregate_buffer),
+            duration_ms=self._aggregate_duration_ms,
             generation=self._generation,
         )
+        self._aggregate_buffer.clear()
+        self._aggregate_duration_ms = 0.0
+        await self._enqueue_chunk(chunk)
+
+    async def _enqueue_chunk(self, chunk: _AudioChunk) -> None:
         if self.config.drop_policy == "block":
             while self._queued_audio_ms + chunk.duration_ms > self.config.max_send_queue_ms:
                 if self._send_queue.empty() and chunk.duration_ms > self.config.max_send_queue_ms:
@@ -278,17 +326,25 @@ class LocalStreamingSTTService(STTService):
             await self._push_transcript(event)
             if event.is_final:
                 self._utterance_active = False
+                generation = self._event_generation(event)
+                if isinstance(generation, int):
+                    final_event = self._final_events.setdefault(generation, asyncio.Event())
+                    final_event.set()
             return
         if event_type == "error":
             self.metrics.local_stt_protocol_errors_total += 1
             logger.warning("Local STT protocol error: %s", payload.get("message", payload))
 
-    def _should_drop_transcript(self, event: LocalSTTTranscriptEvent) -> bool:
+    def _event_generation(self, event: LocalSTTTranscriptEvent) -> int | None:
         generation = event.metadata.get("local_stt_generation")
         if not isinstance(generation, int):
             client_metadata = event.metadata.get("client_metadata")
             if isinstance(client_metadata, dict):
                 generation = client_metadata.get("local_stt_generation")
+        return generation if isinstance(generation, int) else None
+
+    def _should_drop_transcript(self, event: LocalSTTTranscriptEvent) -> bool:
+        generation = self._event_generation(event)
         if isinstance(generation, int) and generation != self._generation:
             return True
         return self._suppress_transcripts
@@ -370,6 +426,9 @@ class LocalStreamingSTTService(STTService):
     async def _disconnect(self) -> None:
         await self._close_socket_and_tasks(cancel_current=True)
         self._clear_send_queue()
+        self._pre_roll_buffer.clear()
+        self._aggregate_buffer.clear()
+        self._aggregate_duration_ms = 0.0
         self._websocket = None
         self._utterance_active = False
 
@@ -401,6 +460,26 @@ class LocalStreamingSTTService(STTService):
             self._queued_audio_ms = max(0.0, self._queued_audio_ms - chunk.duration_ms)
             self.metrics.local_stt_audio_frames_dropped_total += 1
         self._update_queue_depth_metric()
+
+
+    def _append_pre_roll(self, audio: bytes) -> None:
+        if self.config.pre_roll_bytes <= 0:
+            return
+        self._pre_roll_buffer.extend(audio)
+        overflow = len(self._pre_roll_buffer) - self.config.pre_roll_bytes
+        if overflow > 0:
+            del self._pre_roll_buffer[:overflow]
+
+    def _validate_audio_frame(self, frame: AudioRawFrame) -> None:
+        sample_rate = getattr(frame, "sample_rate", self.config.sample_rate)
+        channels = getattr(frame, "num_channels", self.config.channels)
+        audio = getattr(frame, "audio", b"")
+        if sample_rate != self.config.sample_rate:
+            raise ValueError(f"Local STT requires {self.config.sample_rate} Hz audio; got {sample_rate}")
+        if channels != self.config.channels:
+            raise ValueError(f"Local STT requires mono audio; got {channels} channels")
+        if len(audio) % (self.config.channels * 2) != 0:
+            raise ValueError("Local STT requires complete little-endian PCM16 samples")
 
     def _update_queue_depth_metric(self) -> None:
         self.metrics.local_stt_send_queue_depth_ms = round(self._queued_audio_ms, 3)
