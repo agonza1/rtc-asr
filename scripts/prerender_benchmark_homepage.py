@@ -541,7 +541,13 @@ def telemetry_coverage_text(system_signals: dict[str, Any]) -> str:
     return f"{len(present)} of {len(fields)} telemetry fields recorded. Missing: {missing_text}."
 
 
-def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] | None) -> str:
+def absolute_site_url(site_base_url: str | None, path: str) -> str:
+    if not site_base_url:
+        return path
+    return f"{site_base_url.rstrip('/')}/{path.lstrip('/')}"
+
+
+def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] | None, site_base_url: str | None = None) -> str:
     rest = entry.get("rest", {})
     streaming = entry.get("streaming", {})
     contract = entry.get("contract", {})
@@ -560,13 +566,16 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     artifact_name = Path(entry.get("artifact_path") or "").name
     description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
     detail_href = Path(detail_page_path(entry)).name
+    detail_url = absolute_site_url(site_base_url, f"benchmark-results/pages/{detail_href}")
+    artifact_url = absolute_site_url(site_base_url, f"benchmark-results/{artifact_name}") if site_base_url and artifact_name else artifact_href
+    homepage_url = absolute_site_url(site_base_url, "index.html")
     preview_title = f"{entry.get('label') or artifact_name or 'Benchmark artifact'} | rtc-asr benchmark artifact"
     structured_data = {
         "@context": "https://schema.org",
         "@type": "Dataset",
         "name": f"rtc-asr benchmark artifact: {entry.get('label') or artifact_name or 'unknown'}",
         "description": description,
-        "url": detail_href,
+        "url": detail_url,
         "datePublished": entry.get("measured_at"),
         "measurementTechnique": measurement_technique(entry),
         "variableMeasured": [
@@ -578,12 +587,12 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "isPartOf": {
             "@type": "Dataset",
             "name": "rtc-asr benchmark results",
-            "url": "../../index.html",
+            "url": homepage_url,
         },
         "distribution": {
             "@type": "DataDownload",
             "encodingFormat": "application/json",
-            "contentUrl": artifact_href,
+            "contentUrl": artifact_url,
             "sha256": artifact_sha256,
             "contentSize": artifact_size_bytes,
         },
@@ -594,13 +603,13 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
                     "@type": "ListItem",
                     "position": 1,
                     "name": "rtc-asr benchmark homepage",
-                    "item": "../../index.html",
+                    "item": homepage_url,
                 },
                 {
                     "@type": "ListItem",
                     "position": 2,
                     "name": entry.get("label") or artifact_name or "Benchmark artifact",
-                    "item": detail_href,
+                    "item": detail_url,
                 },
             ],
         },
@@ -640,9 +649,9 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta property="og:type" content="article">
     <meta property="og:title" content="{html.escape(preview_title)}">
     <meta property="og:description" content="{html.escape(description)}">
-    <meta property="og:url" content="{html.escape(detail_href)}">
+    <meta property="og:url" content="{html.escape(detail_url)}">
     <meta name="twitter:card" content="summary">
-    <link rel="canonical" href="{html.escape(detail_href)}">
+    <link rel="canonical" href="{html.escape(detail_url)}">
     <link rel="alternate" type="application/json" href="{artifact_href}" title="Raw benchmark JSON artifact">
     <title>{title} | rtc-asr benchmark artifact</title>
     <script type="application/ld+json">
@@ -714,7 +723,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
 """
 
 
-def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_dir: Path) -> dict[Path, str]:
+def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_dir: Path, site_base_url: str | None = None) -> dict[Path, str]:
     results_dir = manifest_path.parent
     pages: dict[Path, str] = {}
     detail_entries: dict[str, dict[str, Any]] = {}
@@ -739,7 +748,7 @@ def render_detail_pages(manifest: dict[str, Any], manifest_path: Path, detail_di
             detail_entry["artifact_sha256"] = hashlib.sha256(artifact_bytes).hexdigest()
             detail_entry["artifact_size_bytes"] = len(artifact_bytes)
             artifact_payload = json.loads(artifact_bytes.decode("utf-8"))
-        pages[detail_output_path(detail_dir, entry)] = render_detail_page(detail_entry, artifact_payload)
+        pages[detail_output_path(detail_dir, entry)] = render_detail_page(detail_entry, artifact_payload, site_base_url)
     return pages
 
 
@@ -948,7 +957,7 @@ def main() -> None:
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     homepage = args.homepage.read_text(encoding="utf-8")
     rendered = render_homepage(manifest, homepage)
-    detail_pages = render_detail_pages(manifest, args.manifest, args.detail_dir)
+    detail_pages = render_detail_pages(manifest, args.manifest, args.detail_dir, args.site_base_url)
     sitemap = render_sitemap(manifest, args.site_base_url)
     if args.check:
         if homepage != rendered:
