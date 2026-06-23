@@ -760,6 +760,10 @@ def test_local_stt_v1_docs_describe_uds_benchmark_transport_guardrail() -> None:
     assert "--transport uds_ws --uds-path /tmp/rtc-asr.sock" in local_stt_text
     assert 'Checked-in production benchmark artifacts should continue to record `"transport": "tcp_ws"`' in local_stt_text
     assert 'UDS comparison artifacts should record `"transport": "uds_ws"`' in local_stt_text
+    assert "LOCAL_STT_SOCKET_MODE: uds" in local_stt_text
+    assert "LOCAL_STT_TRANSPORT: uds_ws" in local_stt_text
+    assert "rtc_asr_socket:/run/rtc-asr" in local_stt_text
+    assert "keep the TCP WebSocket run as the baseline" in local_stt_text
 
 
 def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
