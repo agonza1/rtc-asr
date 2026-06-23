@@ -175,6 +175,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--thermal-observation",
+        "--thermal-state",
+        dest="thermal_observation",
         help="Optional sustained thermal note, for example 'stable after 5 minutes'.",
     )
     parser.add_argument(

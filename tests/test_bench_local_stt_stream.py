@@ -211,6 +211,20 @@ def test_parse_args_accepts_optional_power_and_thermal_signals(tmp_path) -> None
     assert args.thermal_duration_minutes == 5.0
 
 
+def test_parse_args_accepts_documented_thermal_state_alias(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    args = benchmark_module.parse_args([
+        "--input-raw-pcm",
+        str(pcm_path),
+        "--thermal-state",
+        "nominal",
+    ])
+
+    assert args.thermal_observation == "nominal"
+
+
 def test_parse_args_rejects_negative_power_and_thermal_values(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
