@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
+from types import SimpleNamespace
 from typing import Any
 
+import pytest
 
 from pipecat_local_stt import LocalSTTConfig, LocalStreamingSTTService
 from pipecat_local_stt.pipecat_compat import (
@@ -14,6 +17,7 @@ from pipecat_local_stt.pipecat_compat import (
     TranscriptionFrame,
     VADUserStoppedSpeakingFrame,
 )
+from pipecat_local_stt.service import _default_connect
 
 
 class FakeLocalSTTWebSocket:
@@ -133,10 +137,64 @@ def test_config_validates_optional_uds_transport() -> None:
 
 
 def test_config_requires_uds_path_only_for_uds_transport() -> None:
-    import pytest
-
     with pytest.raises(ValueError, match="uds_path is required"):
         LocalSTTConfig(transport="uds_ws")
     with pytest.raises(ValueError, match="only valid"):
         LocalSTTConfig(uds_path="/tmp/rtc-asr.sock")
+
+
+def test_default_connect_uses_tcp_websocket_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, tuple[Any, ...], dict[str, Any]]] = []
+
+    async def fake_connect(*args: Any, **kwargs: Any) -> FakeLocalSTTWebSocket:
+        calls.append(("connect", args, kwargs))
+        return FakeLocalSTTWebSocket()
+
+    async def fake_unix_connect(*args: Any, **kwargs: Any) -> FakeLocalSTTWebSocket:
+        calls.append(("unix_connect", args, kwargs))
+        return FakeLocalSTTWebSocket()
+
+    monkeypatch.setitem(
+        sys.modules, "websockets", SimpleNamespace(connect=fake_connect, unix_connect=fake_unix_connect)
+    )
+
+    websocket = asyncio.run(_default_connect(LocalSTTConfig(url="ws://localhost:8080/v1/stt/stream")))
+
+    assert isinstance(websocket, FakeLocalSTTWebSocket)
+    assert calls == [("connect", ("ws://localhost:8080/v1/stt/stream",), {"max_size": 2**23})]
+
+
+def test_default_connect_uses_unix_socket_for_uds_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, tuple[Any, ...], dict[str, Any]]] = []
+
+    async def fake_connect(*args: Any, **kwargs: Any) -> FakeLocalSTTWebSocket:
+        calls.append(("connect", args, kwargs))
+        return FakeLocalSTTWebSocket()
+
+    async def fake_unix_connect(*args: Any, **kwargs: Any) -> FakeLocalSTTWebSocket:
+        calls.append(("unix_connect", args, kwargs))
+        return FakeLocalSTTWebSocket()
+
+    monkeypatch.setitem(
+        sys.modules, "websockets", SimpleNamespace(connect=fake_connect, unix_connect=fake_unix_connect)
+    )
+
+    websocket = asyncio.run(
+        _default_connect(
+            LocalSTTConfig(
+                transport="uds_ws",
+                url="ws://localhost/v1/stt/stream",
+                uds_path="/run/rtc-asr/stt.sock",
+            )
+        )
+    )
+
+    assert isinstance(websocket, FakeLocalSTTWebSocket)
+    assert calls == [
+        (
+            "unix_connect",
+            ("/run/rtc-asr/stt.sock",),
+            {"uri": "ws://localhost/v1/stt/stream", "max_size": 2**23},
+        )
+    ]
 
