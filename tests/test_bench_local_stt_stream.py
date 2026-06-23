@@ -749,6 +749,18 @@ def test_parse_args_accepts_uds_ws_with_socket_path(tmp_path: Path) -> None:
     assert args.uds_path == Path("/tmp/stt.sock")
 
 
+def test_parse_args_rejects_uds_path_for_default_tcp_transport(tmp_path: Path) -> None:
+    raw_path = tmp_path / "clip.pcm"
+    raw_path.write_bytes(b"a" * 640)
+
+    try:
+        benchmark_module.parse_args(["--uds-path", "/tmp/stt.sock", "--input-raw-pcm", str(raw_path)])
+    except Exception as exc:
+        assert "--uds-path is only valid" in str(exc)
+    else:
+        raise AssertionError("expected TCP transport to reject a UDS path")
+
+
 def test_run_benchmark_records_uds_ws_target_with_injected_client() -> None:
     audio = benchmark_module.AudioInput(
         source="fixture.raw",
