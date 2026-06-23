@@ -189,8 +189,11 @@ class LocalStreamingSTTService(STTService):
             if self._websocket is not None:
                 return
             self._closed = False
-            connect_fn = self._connect_fn or _default_connect
-            self._websocket = await asyncio.wait_for(connect_fn(self.config.url), timeout=self.config.connect_timeout_s)
+            if self._connect_fn is not None:
+                connect_coro = self._connect_fn(self.config.url)
+            else:
+                connect_coro = _default_connect(self.config)
+            self._websocket = await asyncio.wait_for(connect_coro, timeout=self.config.connect_timeout_s)
             self._ready_event = asyncio.Event()
             self._send_task = asyncio.create_task(self._send_loop())
             self._receive_task = asyncio.create_task(self._receive_loop())
@@ -406,7 +409,11 @@ class LocalStreamingSTTService(STTService):
         return (len(audio) / self.config.bytes_per_second) * 1000.0
 
 
-async def _default_connect(url: str) -> WebSocketConnection:
+async def _default_connect(config: LocalSTTConfig) -> WebSocketConnection:
     import websockets
 
-    return await websockets.connect(url, max_size=2**23)
+    if config.transport == "uds_ws":
+        if config.uds_path is None:
+            raise ValueError("uds_path is required when transport is uds_ws")
+        return await websockets.unix_connect(config.uds_path, uri=config.url, max_size=2**23)
+    return await websockets.connect(config.url, max_size=2**23)
