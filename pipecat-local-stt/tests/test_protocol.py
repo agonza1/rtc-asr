@@ -64,3 +64,15 @@ def test_rtc_asr_wrapper_accepts_stream_tuning_overrides() -> None:
     assert service.config.frame_ms == 40
     assert service.config.partial_interval_ms == 250
     assert service.config.partial_window_seconds == 1.5
+
+
+def test_rtc_asr_wrapper_accepts_optional_uds_transport() -> None:
+    service = RtcAsrSTTService(
+        transport="uds_ws",
+        url="ws://localhost/v1/stt/stream",
+        uds_path="/run/rtc-asr/stt.sock",
+    )
+
+    assert service.config.transport == "uds_ws"
+    assert service.config.url == "ws://localhost/v1/stt/stream"
+    assert service.config.uds_path == "/run/rtc-asr/stt.sock"
