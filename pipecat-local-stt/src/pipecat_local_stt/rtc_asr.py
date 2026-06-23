@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .config import LocalSTTConfig
+from .config import LocalSTTConfig, Transport
 from .service import ConnectFn, LocalStreamingSTTService
 
 
@@ -10,7 +10,9 @@ class RtcAsrSTTService(LocalStreamingSTTService):
     def __init__(
         self,
         *,
+        transport: Transport = "tcp_ws",
         url: str = "ws://rtc-asr:8080/v1/stt/stream",
+        uds_path: str | None = None,
         language: str | None = "en",
         sample_rate: int = 16000,
         channels: int = 1,
@@ -22,7 +24,9 @@ class RtcAsrSTTService(LocalStreamingSTTService):
         **kwargs: Any,
     ) -> None:
         config = LocalSTTConfig(
+            transport=transport,
             url=url,
+            uds_path=uds_path,
             language=language,
             sample_rate=sample_rate,
             channels=channels,

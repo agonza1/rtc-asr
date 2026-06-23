@@ -28,6 +28,17 @@ stt = RtcAsrSTTService(
 )
 ```
 
+Optional colocated Unix-domain-socket WebSocket transport uses the same Local STT v1 messages and remains an optimization knob to benchmark against TCP:
+
+```python
+stt = RtcAsrSTTService(
+    transport="uds_ws",
+    url="ws://localhost/v1/stt/stream",
+    uds_path="/run/rtc-asr/stt.sock",
+    language="en",
+)
+```
+
 Place the service after `transport.input()` and before `context_aggregator.user()` in a Pipecat pipeline. The plugin does not implement RTC, VAD, LLM context aggregation, or TTS.
 
 ## Running Against `rtc-asr`
