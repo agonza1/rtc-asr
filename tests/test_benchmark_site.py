@@ -826,6 +826,9 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert '"url": "parakeet-mlx-110m-service-2026-06-21.html"' in rss_detail
     assert '"sha256":' in rss_detail
     assert '<meta name="description" content="Validated paced /v1/stt/stream local Apple Silicon MLX service artifact' in rss_detail
+    assert '<meta property="og:title" content="Parakeet 110M NeMo MLX | rtc-asr benchmark artifact">' in rss_detail
+    assert '<meta property="og:url" content="parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
+    assert '<meta name="twitter:card" content="summary">' in rss_detail
     assert '<link rel="canonical" href="parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
     assert '<link rel="alternate" type="application/json" href="../parakeet-mlx-110m-service-2026-06-21.json" title="Raw benchmark JSON artifact">' in rss_detail
     assert 'aria-label="Breadcrumb"' in rss_detail
