@@ -122,6 +122,13 @@ def positive_int(value: str) -> int:
     return parsed
 
 
+def nonnegative_float(value: str) -> float:
+    parsed = float(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("value must be greater than or equal to 0")
+    return parsed
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark Local STT v1 websocket latency")
     parser.add_argument(
@@ -150,6 +157,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--metrics-pid",
         type=positive_int,
         help="Optional Local STT service process id to sample for peak RSS and CPU utilization.",
+    )
+    parser.add_argument(
+        "--package-power-watts",
+        type=nonnegative_float,
+        help="Optional externally measured average package power draw to record in the artifact.",
+    )
+    parser.add_argument(
+        "--energy-per-audio-second-j",
+        type=nonnegative_float,
+        help="Optional externally measured energy per audio second to record in the artifact.",
+    )
+    parser.add_argument(
+        "--thermal-peak-celsius",
+        type=nonnegative_float,
+        help="Optional externally measured peak thermal reading to record in the artifact.",
+    )
+    parser.add_argument(
+        "--thermal-observation",
+        help="Optional sustained thermal note, for example 'stable after 5 minutes'.",
+    )
+    parser.add_argument(
+        "--thermal-duration-minutes",
+        type=nonnegative_float,
+        help="Optional duration covered by the thermal observation.",
     )
     parser.add_argument("--no-realtime-pace", action="store_true", help="Send frames without sleeping between frames")
     args = parser.parse_args(argv)
@@ -255,6 +286,11 @@ def describe_environment(
     peak_rss_mb: float | None = None,
     cpu_utilization_percent: float | None = None,
     process_metrics_sample_count: int = 0,
+    package_power_watts: float | None = None,
+    energy_per_audio_second_j: float | None = None,
+    thermal_peak_celsius: float | None = None,
+    thermal_observation: str | None = None,
+    thermal_duration_minutes: float | None = None,
 ) -> dict[str, Any]:
     memory_total_mb: float | None = None
     process_rss_mb: float | None = None
@@ -281,6 +317,11 @@ def describe_environment(
         "peak_rss_mb": peak_rss_mb,
         "cpu_utilization_percent": cpu_utilization_percent,
         "process_metrics_sample_count": process_metrics_sample_count,
+        "package_power_watts": package_power_watts,
+        "energy_per_audio_second_j": energy_per_audio_second_j,
+        "thermal_peak_celsius": thermal_peak_celsius,
+        "thermal_observation": thermal_observation,
+        "thermal_duration_minutes": thermal_duration_minutes,
     }
 
 
@@ -296,6 +337,11 @@ async def run_benchmark(
     receive_timeout_seconds: int = 5,
     client_factory: ClientFactory | None = None,
     metrics_pid: int | None = None,
+    package_power_watts: float | None = None,
+    energy_per_audio_second_j: float | None = None,
+    thermal_peak_celsius: float | None = None,
+    thermal_observation: str | None = None,
+    thermal_duration_minutes: float | None = None,
 ) -> dict[str, Any]:
     if transport not in SUPPORTED_TRANSPORTS:
         raise ValueError(f"Unsupported benchmark transport: {transport}")
@@ -328,6 +374,11 @@ async def run_benchmark(
             peak_rss_mb=metrics_monitor.peak_rss_mb,
             cpu_utilization_percent=metrics_monitor.cpu_utilization_percent,
             process_metrics_sample_count=len(metrics_monitor._samples),
+            package_power_watts=package_power_watts,
+            energy_per_audio_second_j=energy_per_audio_second_j,
+            thermal_peak_celsius=thermal_peak_celsius,
+            thermal_observation=thermal_observation,
+            thermal_duration_minutes=thermal_duration_minutes,
         ),
         "audio": {
             "source": audio.source,
@@ -707,6 +758,11 @@ def main(argv: list[str] | None = None) -> int:
             receive_timeout_seconds=args.receive_timeout_seconds,
             realtime_pace=not args.no_realtime_pace,
             metrics_pid=args.metrics_pid,
+            package_power_watts=args.package_power_watts,
+            energy_per_audio_second_j=args.energy_per_audio_second_j,
+            thermal_peak_celsius=args.thermal_peak_celsius,
+            thermal_observation=args.thermal_observation,
+            thermal_duration_minutes=args.thermal_duration_minutes,
         )
     )
     if args.output is not None:
