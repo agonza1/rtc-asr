@@ -798,12 +798,32 @@ def test_detail_page_path_uses_artifact_stem() -> None:
     assert detail_page_path(entry) == "benchmark-results/pages/demo-artifact-2026-06-14.html"
 
 
+def test_manifest_contract_uses_local_stt_target_transport_and_url_path() -> None:
+    payload = {
+        "benchmark": {"chunk_ms": 100, "mode": "v1-stt-stream"},
+        "streaming": {"live_metrics_comparable": True},
+        "target": {"transport": "uds_ws", "url": "ws://localhost/v1/stt/stream", "uds_path": "/tmp/stt.sock"},
+        "audio": {"sample_rate": 16000},
+    }
+
+    contract = manifest_module.extract_benchmark_contract(payload)
+
+    assert contract["transport"] == "uds_ws"
+    assert contract["path"] == "/v1/stt/stream"
+    assert contract["chunk_ms"] == 100
+    assert contract["sample_rate"] == 16000
+
+
 def test_detail_page_measurement_technique_matches_streaming_contract() -> None:
     local_stt_entry = {"contract": {"path": "/v1/stt/stream", "transport": "v1-stt-stream"}}
+    tcp_local_stt_entry = {"contract": {"path": "/v1/stt/stream", "transport": "tcp_ws"}}
+    uds_local_stt_entry = {"contract": {"path": "/v1/stt/stream", "transport": "uds_ws"}}
     legacy_entry = {"contract": {"path": "/ws/stream", "transport": "direct"}}
     unknown_entry = {"contract": {"path": "/custom"}}
 
     assert measurement_technique(local_stt_entry) == "REST and Local STT v1 websocket ASR latency benchmark"
+    assert measurement_technique(tcp_local_stt_entry) == "REST and Local STT v1 websocket ASR latency benchmark"
+    assert measurement_technique(uds_local_stt_entry) == "REST and Local STT v1 websocket ASR latency benchmark"
     assert measurement_technique(legacy_entry) == "REST and legacy buffered websocket ASR latency benchmark"
     assert measurement_technique(unknown_entry) == "REST and websocket ASR latency benchmark"
 

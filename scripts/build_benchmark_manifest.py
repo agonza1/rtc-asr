@@ -10,6 +10,7 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 DEFAULT_RESULTS_DIR = Path("docs") / "benchmark-results"
 DEFAULT_TRACKS_PATH = DEFAULT_RESULTS_DIR / "tracks.json"
@@ -181,6 +182,7 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     ready = streaming.get("ready") or {}
     audio = payload.get("audio") or {}
     integration = payload.get("integration") or {}
+    target = payload.get("target") or {}
     bridge = streaming.get("bridge") or {}
     contract = {
         "chunk_ms": benchmark.get("chunk_ms", streaming.get("chunk_ms")),
@@ -190,7 +192,7 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
         "sample_rate": audio.get("sample_rate", ready.get("sample_rate")),
         "live_metrics_comparable": bool(streaming.get("live_metrics_comparable", False)),
     }
-    transport = first_defined(streaming.get("transport"), benchmark.get("mode"), integration.get("transport"))
+    transport = first_defined(target.get("transport"), streaming.get("transport"), integration.get("transport"), benchmark.get("mode"))
     if transport is not None:
         contract["transport"] = transport
     protocol = first_defined(bridge.get("protocol"), integration.get("protocol"))
@@ -199,6 +201,7 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     path = first_defined(
         bridge.get("path"),
         integration.get("path"),
+        target_path(target.get("url")),
         "/v1/stt/stream" if transport == "v1-stt-stream" else "/ws/stream" if transport in {"direct", "ws/stream"} else None,
     )
     if path is not None:
@@ -231,6 +234,13 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     if final_event_timeout_seconds is not None:
         contract["final_event_timeout_seconds"] = final_event_timeout_seconds
     return contract
+
+
+def target_path(url: Any) -> str | None:
+    if not isinstance(url, str) or not url:
+        return None
+    path = urlparse(url).path
+    return path or None
 
 
 def first_defined(*values: Any) -> Any:
