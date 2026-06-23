@@ -35,12 +35,14 @@ COPY src ./src
 COPY examples ./examples
 COPY config.example ./
 
-RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
+RUN useradd --create-home --shell /bin/bash app && \
+    mkdir -p /run/rtc-asr && \
+    chown -R app:app /app /run/rtc-asr
 USER app
 
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=600s --retries=3 \
-  CMD curl -fsS http://localhost:8080/ready || exit 1
+  CMD if [ "$LOCAL_STT_SOCKET_MODE" = uds ]; then curl -fsS --unix-socket "${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}" http://localhost/ready; else curl -fsS http://localhost:8080/ready; fi
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "-m", "src.main"]
