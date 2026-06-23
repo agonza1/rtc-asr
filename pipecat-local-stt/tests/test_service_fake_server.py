@@ -124,3 +124,19 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     assert service.metrics.local_stt_audio_frames_sent_total == 1
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
+
+def test_config_validates_optional_uds_transport() -> None:
+    config = LocalSTTConfig(transport="uds_ws", uds_path="/tmp/rtc-asr.sock")
+
+    assert config.transport == "uds_ws"
+    assert config.uds_path == "/tmp/rtc-asr.sock"
+
+
+def test_config_requires_uds_path_only_for_uds_transport() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="uds_path is required"):
+        LocalSTTConfig(transport="uds_ws")
+    with pytest.raises(ValueError, match="only valid"):
+        LocalSTTConfig(uds_path="/tmp/rtc-asr.sock")
+

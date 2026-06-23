@@ -5,11 +5,14 @@ from typing import Literal
 
 
 DropPolicy = Literal["drop_oldest", "block", "raise"]
+Transport = Literal["tcp_ws", "uds_ws"]
 
 
 @dataclass(slots=True)
 class LocalSTTConfig:
+    transport: Transport = "tcp_ws"
     url: str = "ws://rtc-asr:8080/v1/stt/stream"
+    uds_path: str | None = None
     language: str | None = "en"
     sample_rate: int = 16000
     channels: int = 1
@@ -31,8 +34,14 @@ class LocalSTTConfig:
     enable_timing_metadata: bool = True
 
     def __post_init__(self) -> None:
+        if self.transport not in {"tcp_ws", "uds_ws"}:
+            raise ValueError("transport must be tcp_ws or uds_ws")
         if not self.url:
             raise ValueError("url must not be empty")
+        if self.transport == "uds_ws" and not self.uds_path:
+            raise ValueError("uds_path is required when transport is uds_ws")
+        if self.transport == "tcp_ws" and self.uds_path is not None:
+            raise ValueError("uds_path is only valid when transport is uds_ws")
         if self.sample_rate <= 0:
             raise ValueError("sample_rate must be positive")
         if self.channels <= 0:
