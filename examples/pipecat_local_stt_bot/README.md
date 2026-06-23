@@ -50,9 +50,9 @@ Tune `LOCAL_STT_MAX_BUFFER_SECONDS` downward when you need a hard utterance-size
 
 ## Service Choices
 
-Use `LocalStreamingSTTService` when you want the explicit Local STT v1 configuration object. That is the default and can be selected with `LOCAL_STT_SERVICE=local`. Use `RtcAsrSTTService` for the same sidecar path with repo defaults by setting `LOCAL_STT_SERVICE=rtc-asr`. Use Pipecat's built-in Whisper STT baseline when you want local/offline segmented transcription inside Pipecat rather than a warmed streaming sidecar.
+Use `LocalStreamingSTTService` when you want the explicit Local STT v1 configuration object. That is the default and can be selected with `LOCAL_STT_SERVICE=local`. Use `RtcAsrSTTService` for the same sidecar path with repo defaults by setting `LOCAL_STT_SERVICE=rtc-asr`. Use Pipecat's built-in Whisper STT baseline with `LOCAL_STT_SERVICE=pipecat-whisper` and `PIPECAT_WHISPER_MODEL=base.en` when you want local/offline segmented transcription inside Pipecat rather than a warmed streaming sidecar.
 
-Pipecat Whisper is local/offline, but it is a segmented STT baseline. The Local STT plugin is for streaming sidecar STT with benchmarkable first-partial, partial-cadence, and finalization metrics.
+Pipecat Whisper is local/offline, but it is a segmented STT baseline. The Local STT plugin is for streaming sidecar STT with benchmarkable first-partial, partial-cadence, and finalization metrics. Keep the same audio fixture and model size when comparing it with the `rtc-asr` sidecar path.
 
 ## Latency Metrics
 
