@@ -184,6 +184,59 @@ def test_split_pcm_frames_uses_20_ms_pcm16_boundaries() -> None:
     assert frames == [b"a" * 640, b"b" * 640, b"tail"]
 
 
+
+def test_parse_args_accepts_optional_power_and_thermal_signals(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    args = benchmark_module.parse_args([
+        "--input-raw-pcm",
+        str(pcm_path),
+        "--package-power-watts",
+        "7.4",
+        "--energy-per-audio-second-j",
+        "2.6",
+        "--thermal-peak-celsius",
+        "63.5",
+        "--thermal-observation",
+        "stable after 5 minutes",
+        "--thermal-duration-minutes",
+        "5",
+    ])
+
+    assert args.package_power_watts == 7.4
+    assert args.energy_per_audio_second_j == 2.6
+    assert args.thermal_peak_celsius == 63.5
+    assert args.thermal_observation == "stable after 5 minutes"
+    assert args.thermal_duration_minutes == 5.0
+
+
+def test_parse_args_accepts_documented_thermal_state_alias(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    args = benchmark_module.parse_args([
+        "--input-raw-pcm",
+        str(pcm_path),
+        "--thermal-state",
+        "nominal",
+    ])
+
+    assert args.thermal_observation == "nominal"
+
+
+def test_parse_args_rejects_negative_power_and_thermal_values(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    for flag in ("--package-power-watts", "--energy-per-audio-second-j", "--thermal-peak-celsius", "--thermal-duration-minutes"):
+        try:
+            benchmark_module.parse_args(["--input-raw-pcm", str(pcm_path), flag, "-1"])
+        except SystemExit as exc:
+            assert exc.code == 2
+        else:
+            raise AssertionError(f"expected {flag} to reject negative values")
+
 def test_describe_environment_records_host_capacity(monkeypatch) -> None:
     monkeypatch.setattr(benchmark_module.platform, "platform", lambda: "TestOS")
     monkeypatch.setattr(benchmark_module.platform, "processor", lambda: "TestCPU")
@@ -310,6 +363,31 @@ def test_describe_environment_accepts_measured_process_metrics(monkeypatch) -> N
     assert payload["cpu_utilization_percent"] == 42.0
     assert payload["process_metrics_sample_count"] == 3
     assert seen["pid"] == 4321
+
+
+def test_describe_environment_records_optional_power_and_thermal_signals(monkeypatch) -> None:
+    monkeypatch.setitem(
+        sys.modules,
+        "psutil",
+        SimpleNamespace(
+            virtual_memory=lambda: SimpleNamespace(total=16 * 1024 * 1024 * 1024),
+            Process=lambda pid=None: SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=384 * 1024 * 1024)),
+        ),
+    )
+
+    payload = benchmark_module.describe_environment(
+        package_power_watts=7.4,
+        energy_per_audio_second_j=2.6,
+        thermal_peak_celsius=63.5,
+        thermal_observation="stable after 5 minutes",
+        thermal_duration_minutes=5.0,
+    )
+
+    assert payload["package_power_watts"] == 7.4
+    assert payload["energy_per_audio_second_j"] == 2.6
+    assert payload["thermal_peak_celsius"] == 63.5
+    assert payload["thermal_observation"] == "stable after 5 minutes"
+    assert payload["thermal_duration_minutes"] == 5.0
 
 
 def test_normalize_pcm16_buffer_reports_float32_samples() -> None:
