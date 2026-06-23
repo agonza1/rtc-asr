@@ -8,8 +8,10 @@ import binascii
 import json
 import logging
 import math
+import stat
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
@@ -1233,8 +1235,33 @@ async def _close_websocket_error(websocket: WebSocket, message: str, *, code: in
 app = create_app()
 
 
+def _prepare_uds_socket(path: str) -> str:
+    socket_path = Path(path)
+    socket_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        mode = socket_path.stat().st_mode
+    except FileNotFoundError:
+        return str(socket_path)
+
+    if not stat.S_ISSOCK(mode):
+        raise RuntimeError(
+            f"LOCAL_STT_UDS_PATH exists and is not a socket: {socket_path}. "
+            "Remove it or choose a different path."
+        )
+    socket_path.unlink()
+    return str(socket_path)
+
+
 def main() -> None:
     config = AppConfig.from_env()
+    if config.local_stt_socket_mode == "uds":
+        uvicorn.run(
+            "src.main:app",
+            uds=_prepare_uds_socket(config.local_stt_uds_path),
+            log_level="info",
+        )
+        return
+
     uvicorn.run(
         "src.main:app",
         host=config.host,

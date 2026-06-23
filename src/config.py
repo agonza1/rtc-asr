@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
 
 
 def _cors_origins(value: str | None, default: tuple[str, ...]) -> tuple[str, ...]:
@@ -62,6 +64,8 @@ class AppConfig:
     local_stt_enable_pcm16_fast_path: bool = True
     local_stt_require_target_sample_rate: bool = True
     local_stt_target_sample_rate: int = 16000
+    local_stt_socket_mode: Literal["tcp", "uds"] = "tcp"
+    local_stt_uds_path: str = "/run/rtc-asr/stt.sock"
     asr_backend: str = "faster-whisper"
     asr_model_size: str = "base.en"
     asr_device: str = "cpu"
@@ -85,6 +89,12 @@ class AppConfig:
         )
         if stream_max_buffer_bytes <= 0:
             raise ValueError("STREAM_MAX_BUFFER_BYTES must be a positive integer")
+        local_stt_socket_mode = os.getenv("LOCAL_STT_SOCKET_MODE", defaults.local_stt_socket_mode).strip().lower()
+        if local_stt_socket_mode not in {"tcp", "uds"}:
+            raise ValueError("LOCAL_STT_SOCKET_MODE must be 'tcp' or 'uds'")
+        local_stt_uds_path = os.getenv("LOCAL_STT_UDS_PATH", defaults.local_stt_uds_path)
+        if local_stt_socket_mode == "uds" and not local_stt_uds_path.strip():
+            raise ValueError("LOCAL_STT_UDS_PATH is required when LOCAL_STT_SOCKET_MODE=uds")
 
         return cls(
             app_name=os.getenv("APP_NAME", defaults.app_name),
@@ -106,6 +116,8 @@ class AppConfig:
                 "LOCAL_STT_TARGET_SAMPLE_RATE",
                 defaults.local_stt_target_sample_rate,
             ),
+            local_stt_socket_mode=local_stt_socket_mode,
+            local_stt_uds_path=str(Path(local_stt_uds_path)),
             asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
             asr_device=_default_asr_device(defaults.asr_device),
