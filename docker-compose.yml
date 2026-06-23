@@ -21,6 +21,8 @@ services:
       ASR_DEVICE: ${ASR_DEVICE:-cpu}
       ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE:-int8}
       ASR_VAD_FILTER: ${ASR_VAD_FILTER:-true}
+      LOCAL_STT_SOCKET_MODE: ${LOCAL_STT_SOCKET_MODE:-tcp}
+      LOCAL_STT_UDS_PATH: ${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}
       ASR_PRELOAD_MODEL: ${ASR_PRELOAD_MODEL:-false}
       ASR_QWEN_MODEL: ${ASR_QWEN_MODEL:-Qwen/Qwen3-ASR-0.6B}
       ASR_QWEN_DTYPE: ${ASR_QWEN_DTYPE:-auto}
@@ -35,13 +37,14 @@ services:
       HUGGINGFACE_HUB_TOKEN: ${HUGGINGFACE_HUB_TOKEN:-}
       CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-}
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/ready"]
+      test: ["CMD-SHELL", "if [ \"$$LOCAL_STT_SOCKET_MODE\" = uds ]; then curl -fsS --unix-socket \"$${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}\" http://localhost/ready; else curl -fsS http://localhost:8080/ready; fi"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10m
     volumes:
       - ./.cache/huggingface:/app/.cache/huggingface
+      - rtc_asr_socket:/run/rtc-asr
     restart: unless-stopped
 
 
@@ -59,9 +62,13 @@ services:
       RTC_ASR_WS_URL: ws://asr-service:8080/v1/stt/stream
       RTC_ASR_CHUNK_MS: ${RTC_ASR_CHUNK_MS:-100}
       RTC_ASR_MAX_BUFFER_SECONDS: ${RTC_ASR_MAX_BUFFER_SECONDS:-5}
+      LOCAL_STT_TRANSPORT: ${LOCAL_STT_TRANSPORT:-tcp_ws}
+      LOCAL_STT_UDS_PATH: ${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}
     command: ["uvicorn", "examples.browser_pipecat_demo.service.app:app", "--host", "0.0.0.0", "--port", "8090"]
     ports:
       - "${PIPECAT_DEMO_PORT:-8090}:8090"
+    volumes:
+      - rtc_asr_socket:/run/rtc-asr
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8090/rtc-asr/config"]
       interval: 30s
@@ -69,3 +76,6 @@ services:
       retries: 3
       start_period: 30s
     restart: unless-stopped
+
+volumes:
+  rtc_asr_socket:

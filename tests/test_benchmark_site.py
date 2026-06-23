@@ -766,6 +766,22 @@ def test_local_stt_v1_docs_describe_uds_benchmark_transport_guardrail() -> None:
     assert "keep the TCP WebSocket run as the baseline" in local_stt_text
 
 
+def test_container_files_keep_uds_runtime_path_writable_and_healthchecked() -> None:
+    dockerfile_text = Path("Dockerfile").read_text(encoding="utf-8")
+    compose_text = Path("docker-compose.yml").read_text(encoding="utf-8")
+
+    assert "mkdir -p /run/rtc-asr" in dockerfile_text
+    assert "chown -R app:app /app /run/rtc-asr" in dockerfile_text
+    assert 'CMD ["python", "-m", "src.main"]' in dockerfile_text
+    assert '--unix-socket "${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}"' in dockerfile_text
+    assert "LOCAL_STT_SOCKET_MODE: ${LOCAL_STT_SOCKET_MODE:-tcp}" in compose_text
+    assert "LOCAL_STT_UDS_PATH: ${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}" in compose_text
+    assert "LOCAL_STT_TRANSPORT: ${LOCAL_STT_TRANSPORT:-tcp_ws}" in compose_text
+    assert compose_text.count("rtc_asr_socket:/run/rtc-asr") == 2
+    assert "--unix-socket" in compose_text
+    assert "rtc_asr_socket:" in compose_text
+
+
 def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
     manifest = {
         "generated_at": "2026-06-22T21:30:00Z",
