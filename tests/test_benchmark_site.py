@@ -835,13 +835,13 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert '"@type": "DataDownload"' in rss_detail
     assert '"@type": "BreadcrumbList"' in rss_detail
     assert '"measurementTechnique": "REST and Local STT v1 websocket ASR latency benchmark"' in rss_detail
-    assert '"url": "parakeet-mlx-110m-service-2026-06-21.html"' in rss_detail
+    assert '"url": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html"' in rss_detail
     assert '"sha256":' in rss_detail
     assert '<meta name="description" content="Validated paced /v1/stt/stream local Apple Silicon MLX service artifact' in rss_detail
     assert '<meta property="og:title" content="Parakeet 110M NeMo MLX | rtc-asr benchmark artifact">' in rss_detail
-    assert '<meta property="og:url" content="parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
+    assert '<meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
     assert '<meta name="twitter:card" content="summary">' in rss_detail
-    assert '<link rel="canonical" href="parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
+    assert '<link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
     assert '<link rel="alternate" type="application/json" href="../parakeet-mlx-110m-service-2026-06-21.json" title="Raw benchmark JSON artifact">' in rss_detail
     assert 'aria-label="Breadcrumb"' in rss_detail
     assert "Benchmark homepage" in rss_detail
@@ -861,6 +861,26 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Pipecat E2E Local Python CPU" in legacy_pipecat_detail
     assert "make benchmark-pipecat-e2e" in legacy_pipecat_detail
 
+
+def test_render_detail_page_uses_absolute_public_urls_when_site_base_is_provided() -> None:
+    entry = {
+        "label": "demo-artifact",
+        "artifact_path": "benchmark-results/demo-artifact-2026-06-14.json",
+        "status_detail": "Demo artifact.",
+        "contract": {"path": "/v1/stt/stream", "transport": "v1-stt-stream"},
+        "rest": {},
+        "streaming": {},
+        "derived": {},
+    }
+
+    detail_html = render_detail_page(entry, None, "https://example.test/asr-latency/")
+
+    assert '<link rel="canonical" href="https://example.test/asr-latency/benchmark-results/pages/demo-artifact-2026-06-14.html">' in detail_html
+    assert '<meta property="og:url" content="https://example.test/asr-latency/benchmark-results/pages/demo-artifact-2026-06-14.html">' in detail_html
+    assert '"url": "https://example.test/asr-latency/benchmark-results/pages/demo-artifact-2026-06-14.html"' in detail_html
+    assert '"url": "https://example.test/asr-latency/index.html"' in detail_html
+    assert '"contentUrl": "https://example.test/asr-latency/benchmark-results/demo-artifact-2026-06-14.json"' in detail_html
+    assert '<link rel="alternate" type="application/json" href="../demo-artifact-2026-06-14.json" title="Raw benchmark JSON artifact">' in detail_html
 
 def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     entry = {
