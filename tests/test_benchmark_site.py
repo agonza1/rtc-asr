@@ -754,6 +754,14 @@ def test_docs_index_surfaces_reference_wer_notes() -> None:
     assert "Qwen/Qwen3-ASR-0.6B" in docs_index_text
 
 
+def test_local_stt_v1_docs_describe_uds_benchmark_transport_guardrail() -> None:
+    local_stt_text = (Path("docs") / "local-stt-v1.md").read_text(encoding="utf-8")
+
+    assert "--transport uds_ws --uds-path /tmp/rtc-asr.sock" in local_stt_text
+    assert 'Checked-in production benchmark artifacts should continue to record `"transport": "tcp_ws"`' in local_stt_text
+    assert 'UDS comparison artifacts should record `"transport": "uds_ws"`' in local_stt_text
+
+
 def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
     manifest = {
         "generated_at": "2026-06-22T21:30:00Z",
