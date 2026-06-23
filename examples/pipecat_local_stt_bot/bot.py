@@ -18,6 +18,7 @@ class BotSettings:
     partial_interval_ms: int = 100
     partial_window_seconds: float = 1.0
     max_buffer_seconds: float = 10.0
+    whisper_model: str = "base.en"
 
     @classmethod
     def from_env(cls) -> "BotSettings":
@@ -33,6 +34,7 @@ class BotSettings:
                 os.getenv("LOCAL_STT_PARTIAL_WINDOW_SECONDS", str(cls.partial_window_seconds))
             ),
             max_buffer_seconds=float(os.getenv("LOCAL_STT_MAX_BUFFER_SECONDS", str(cls.max_buffer_seconds))),
+            whisper_model=os.getenv("PIPECAT_WHISPER_MODEL", cls.whisper_model),
         )
 
 
@@ -66,12 +68,26 @@ def build_rtc_asr_stt(settings: BotSettings) -> RtcAsrSTTService:
     )
 
 
-def build_stt(settings: BotSettings) -> LocalStreamingSTTService | RtcAsrSTTService:
+def build_pipecat_whisper_stt(settings: BotSettings) -> Any:
+    try:
+        from pipecat.services.whisper.stt import WhisperSTTService
+    except ImportError as exc:
+        raise RuntimeError(
+            "LOCAL_STT_SERVICE=pipecat-whisper requires Pipecat's built-in Whisper STT dependencies. "
+            "Install the example requirements and any platform-specific Whisper extras before using this baseline."
+        ) from exc
+
+    return WhisperSTTService(model=settings.whisper_model)
+
+
+def build_stt(settings: BotSettings) -> LocalStreamingSTTService | RtcAsrSTTService | Any:
     if settings.service == "local":
         return build_local_stt(settings)
     if settings.service == "rtc-asr":
         return build_rtc_asr_stt(settings)
-    raise ValueError("LOCAL_STT_SERVICE must be 'local' or 'rtc-asr'")
+    if settings.service == "pipecat-whisper":
+        return build_pipecat_whisper_stt(settings)
+    raise ValueError("LOCAL_STT_SERVICE must be 'local', 'rtc-asr', or 'pipecat-whisper'")
 
 
 def build_pipeline(transport: Any, context_aggregator: Any, llm: Any, tts: Any, stt: Any) -> Any:

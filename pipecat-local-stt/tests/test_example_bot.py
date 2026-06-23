@@ -48,3 +48,22 @@ def test_example_bot_builds_both_sidecar_service_choices(monkeypatch) -> None:
 
     assert wrapper_service.config.url == "ws://127.0.0.1:8080/v1/stt/stream"
     assert wrapper_service.config.frame_ms == 20
+
+
+def test_example_bot_documents_builtin_whisper_baseline(monkeypatch) -> None:
+    module = load_example_module()
+
+    monkeypatch.setenv("LOCAL_STT_SERVICE", "pipecat-whisper")
+    monkeypatch.setenv("PIPECAT_WHISPER_MODEL", "tiny.en")
+    settings = module.BotSettings.from_env()
+
+    assert settings.service == "pipecat-whisper"
+    assert settings.whisper_model == "tiny.en"
+
+    try:
+        service = module.build_stt(settings)
+    except RuntimeError as exc:
+        assert "LOCAL_STT_SERVICE=pipecat-whisper" in str(exc)
+    else:
+        assert service.__class__.__name__ == "WhisperSTTService"
+
