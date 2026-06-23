@@ -191,6 +191,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def validate_transport_args(transport: str, uds_path: Path | None) -> None:
+    if transport == "tcp_ws" and uds_path is not None:
+        raise argparse.ArgumentTypeError("--uds-path is only valid when --transport uds_ws")
     if transport == "tcp_ws":
         return
     if transport == "uds_ws" and uds_path is None:
