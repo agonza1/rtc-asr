@@ -15,6 +15,7 @@ try:  # pragma: no cover - exercised by downstream Pipecat installs.
         StartFrame,
         TranscriptionFrame,
         UserStoppedSpeakingFrame,
+        VADUserStartedSpeakingFrame,
         VADUserStoppedSpeakingFrame,
     )
     from pipecat.processors.frame_processor import FrameDirection  # type: ignore
@@ -46,6 +47,9 @@ except Exception:  # pragma: no cover - fallback is covered by local tests.
         pass
 
     class UserStoppedSpeakingFrame(Frame):
+        pass
+
+    class VADUserStartedSpeakingFrame(Frame):
         pass
 
     class VADUserStoppedSpeakingFrame(Frame):

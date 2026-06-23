@@ -52,15 +52,15 @@ def test_rtc_asr_wrapper_exports_default_service_config() -> None:
 def test_rtc_asr_wrapper_accepts_stream_tuning_overrides() -> None:
     service = RtcAsrSTTService(
         url="ws://localhost:8080/v1/stt/stream",
-        sample_rate=8000,
-        channels=2,
+        sample_rate=16000,
+        channels=1,
         frame_ms=40,
         partial_interval_ms=250,
         partial_window_seconds=1.5,
     )
 
-    assert service.config.sample_rate == 8000
-    assert service.config.channels == 2
+    assert service.config.sample_rate == 16000
+    assert service.config.channels == 1
     assert service.config.frame_ms == 40
     assert service.config.partial_interval_ms == 250
     assert service.config.partial_window_seconds == 1.5

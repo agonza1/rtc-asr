@@ -6,7 +6,7 @@ from typing import Any
 
 from pipecat_local_stt import LocalSTTConfig, LocalStreamingSTTService
 
-from pipecat_local_stt.pipecat_compat import AudioRawFrame, FrameDirection, StartFrame, TranscriptionFrame
+from pipecat_local_stt.pipecat_compat import AudioRawFrame, FrameDirection, StartFrame, TranscriptionFrame, VADUserStartedSpeakingFrame
 
 
 class SlowSendWebSocket:
@@ -268,11 +268,12 @@ def test_drop_oldest_queue_overflow_is_explicit_and_counted() -> None:
 async def _test_drop_oldest_queue_overflow_is_explicit_and_counted() -> None:
     websocket = SlowSendWebSocket()
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", max_send_queue_ms=20, drop_policy="drop_oldest"),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, max_send_queue_ms=20, drop_policy="drop_oldest"),
         connect_fn=lambda _url: asyncio.sleep(0, websocket),
     )
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await eventually(lambda: any(isinstance(item, bytes) for item in websocket.sent))
     await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
@@ -292,7 +293,7 @@ def test_cancel_suppresses_stale_results() -> None:
 async def _test_cancel_suppresses_stale_results() -> None:
     websocket = CancelWebSocket()
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream"),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20),
         connect_fn=lambda _url: asyncio.sleep(0, websocket),
     )
 
@@ -321,11 +322,12 @@ async def _test_receive_loop_reconnect_exits_old_reader() -> None:
         return websockets.pop(0)
 
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=True),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, reconnect_on_error=True),
         connect_fn=connect,
     )
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     first_receive_task = service._receive_task
 
     await eventually(lambda: len(websockets) == 0)
@@ -343,11 +345,12 @@ def test_finalize_waits_for_queued_audio_before_control_message() -> None:
 async def _test_finalize_waits_for_queued_audio_before_control_message() -> None:
     websocket = FinalizeWaitWebSocket()
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream"),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20),
         connect_fn=lambda _url: asyncio.sleep(0, websocket),
     )
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
 
     finalize_task = asyncio.create_task(service.finalize_current_utterance())
@@ -374,11 +377,12 @@ async def _test_finalize_skips_control_after_queued_send_failure_disconnects() -
         return websockets.pop(0)
 
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=False),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, reconnect_on_error=False),
         connect_fn=connect,
     )
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
 
     finalize_task = asyncio.create_task(service.finalize_current_utterance())
@@ -388,6 +392,7 @@ async def _test_finalize_skips_control_after_queued_send_failure_disconnects() -
     first.release_binary_send.set()
     await asyncio.wait_for(finalize_task, timeout=0.5)
 
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
     await service.cleanup()
@@ -412,11 +417,12 @@ async def _test_send_loop_exits_after_reconnect_replaces_task() -> None:
         return websockets.pop(0)
 
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=True),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, reconnect_on_error=True),
         connect_fn=connect,
     )
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     original_send_task = service._send_task
     await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await eventually(lambda: service._send_task is not None and service._send_task is not original_send_task)
@@ -435,11 +441,12 @@ def test_block_policy_does_not_deadlock_on_oversized_chunk() -> None:
 async def _test_block_policy_does_not_deadlock_on_oversized_chunk() -> None:
     websocket = SlowSendWebSocket()
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", max_send_queue_ms=20, drop_policy="block"),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, max_send_queue_ms=20, drop_policy="block"),
         connect_fn=lambda _url: asyncio.sleep(0, websocket),
     )
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     oversized_audio = b"o" * 3200
     await asyncio.wait_for(
         service.process_frame(AudioRawFrame(audio=oversized_audio, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM),
@@ -464,14 +471,16 @@ async def _test_unrecoverable_send_failure_disconnects_and_allows_reconnect() ->
         return websockets.pop(0)
 
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=False),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, reconnect_on_error=False),
         connect_fn=connect,
     )
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await eventually(lambda: service._websocket is None)
 
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
 
@@ -492,12 +501,13 @@ async def _test_cancel_send_failure_does_not_replay_cancel_on_reconnect() -> Non
         return websockets.pop(0)
 
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=True),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, reconnect_on_error=True),
         connect_fn=connect,
     )
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
     await service.cancel_current_utterance()
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
     await service.cleanup()
@@ -505,7 +515,7 @@ async def _test_cancel_send_failure_does_not_replay_cancel_on_reconnect() -> Non
     first_control_types = [json.loads(item)["type"] for item in first.sent if isinstance(item, str)]
     second_control_types = [json.loads(item)["type"] for item in second.sent if isinstance(item, str)]
 
-    assert first_control_types == ["start", "cancel"]
+    assert first_control_types == ["cancel"]
     assert second_control_types == ["start"]
     assert service.metrics.local_stt_reconnects_total == 1
 
@@ -523,11 +533,12 @@ async def _test_start_send_failure_reconnect_does_not_reenter_start_lock() -> No
         return websockets.pop(0)
 
     service = LocalStreamingSTTService(
-        LocalSTTConfig(url="ws://fake/v1/stt/stream", reconnect_on_error=True),
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, reconnect_on_error=True),
         connect_fn=connect,
     )
 
     await asyncio.wait_for(service.start(StartFrame(audio_in_sample_rate=16000)), timeout=0.5)
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
     await service.cleanup()
