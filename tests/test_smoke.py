@@ -1661,6 +1661,35 @@ def test_prepare_uds_socket_rejects_non_socket_file(tmp_path: Path) -> None:
         _prepare_uds_socket(str(socket_path))
 
 
+def test_prepare_uds_socket_reports_unwritable_parent(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    socket_path = tmp_path / "run" / "stt.sock"
+
+    def deny_mkdir(self: Path, *args: object, **kwargs: object) -> None:
+        raise PermissionError("read-only parent")
+
+    monkeypatch.setattr(Path, "mkdir", deny_mkdir)
+
+    with pytest.raises(RuntimeError, match="Cannot create LOCAL_STT_UDS_PATH parent directory"):
+        _prepare_uds_socket(str(socket_path))
+
+
+def test_prepare_uds_socket_reports_unremovable_stale_socket(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    socket_path = tmp_path / "stt.sock"
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        server.bind(str(socket_path))
+    finally:
+        server.close()
+
+    def deny_unlink(self: Path) -> None:
+        raise PermissionError("sticky directory")
+
+    monkeypatch.setattr(Path, "unlink", deny_unlink)
+
+    with pytest.raises(RuntimeError, match="Cannot remove stale LOCAL_STT_UDS_PATH socket"):
+        _prepare_uds_socket(str(socket_path))
+
+
 def test_main_runs_uvicorn_with_uds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     calls: list[dict[str, object]] = []
     socket_path = tmp_path / "stt.sock"

@@ -1237,18 +1237,36 @@ app = create_app()
 
 def _prepare_uds_socket(path: str) -> str:
     socket_path = Path(path)
-    socket_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        socket_path.parent.mkdir(parents=True, exist_ok=True)
+    except PermissionError as exc:
+        raise RuntimeError(
+            f"Cannot create LOCAL_STT_UDS_PATH parent directory for {socket_path}. "
+            "Choose a writable socket path or fix directory permissions."
+        ) from exc
+
     try:
         mode = socket_path.stat().st_mode
     except FileNotFoundError:
         return str(socket_path)
+    except PermissionError as exc:
+        raise RuntimeError(
+            f"Cannot inspect LOCAL_STT_UDS_PATH {socket_path}. "
+            "Choose a readable socket path or fix file permissions."
+        ) from exc
 
     if not stat.S_ISSOCK(mode):
         raise RuntimeError(
             f"LOCAL_STT_UDS_PATH exists and is not a socket: {socket_path}. "
             "Remove it or choose a different path."
         )
-    socket_path.unlink()
+    try:
+        socket_path.unlink()
+    except PermissionError as exc:
+        raise RuntimeError(
+            f"Cannot remove stale LOCAL_STT_UDS_PATH socket {socket_path}. "
+            "Fix socket directory permissions or remove the stale socket manually."
+        ) from exc
     return str(socket_path)
 
 
