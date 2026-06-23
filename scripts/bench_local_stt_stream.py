@@ -363,8 +363,7 @@ async def run_benchmark(
     thermal_observation: str | None = None,
     thermal_duration_minutes: float | None = None,
 ) -> dict[str, Any]:
-    if transport not in SUPPORTED_TRANSPORTS:
-        raise ValueError(f"Unsupported benchmark transport: {transport}")
+    validate_transport_args(transport, Path(uds_path) if uds_path is not None else None)
     factory = client_factory or make_client_factory(transport=transport, uds_path=uds_path)
     metrics_monitor = ProcessMetricsMonitor(pid=metrics_pid)
     metrics_monitor.start()
