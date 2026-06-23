@@ -354,7 +354,7 @@ def measurement_technique(entry: dict[str, Any]) -> str:
     path = contract.get("path")
     transport = contract.get("transport")
 
-    if path == "/v1/stt/stream" or transport == "v1-stt-stream":
+    if path == "/v1/stt/stream" or transport in {"v1-stt-stream", "tcp_ws", "uds_ws"}:
         return "REST and Local STT v1 websocket ASR latency benchmark"
     if path == "/ws/stream" or transport in {"direct", "ws/stream"}:
         return "REST and legacy buffered websocket ASR latency benchmark"
