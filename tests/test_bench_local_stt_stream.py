@@ -785,6 +785,33 @@ def test_run_benchmark_records_uds_ws_target_with_injected_client() -> None:
     assert payload["target"] == {"transport": "uds_ws", "url": "ws://localhost/v1/stt/stream", "uds_path": "/tmp/stt.sock"}
 
 
+def test_run_benchmark_requires_uds_path_for_uds_ws_even_with_injected_client() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    try:
+        asyncio.run(
+            benchmark_module.run_benchmark(
+                url="ws://localhost/v1/stt/stream",
+                transport="uds_ws",
+                uds_path=None,
+                audio=audio,
+                partial_interval_ms=100,
+                runs=1,
+                realtime_pace=False,
+                client_factory=FakeLocalSttClient,
+            )
+        )
+    except Exception as exc:
+        assert "--uds-path is required" in str(exc)
+    else:
+        raise AssertionError("expected uds_ws benchmark artifacts to require a socket path")
+
+
 def test_parse_args_requires_uds_path_for_uds_ws(tmp_path: Path) -> None:
     raw_path = tmp_path / "clip.pcm"
     raw_path.write_bytes(b"a" * 640)
