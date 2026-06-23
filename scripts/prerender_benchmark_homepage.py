@@ -560,6 +560,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     artifact_name = Path(entry.get("artifact_path") or "").name
     description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
     detail_href = Path(detail_page_path(entry)).name
+    preview_title = f"{entry.get('label') or artifact_name or 'Benchmark artifact'} | rtc-asr benchmark artifact"
     structured_data = {
         "@context": "https://schema.org",
         "@type": "Dataset",
@@ -636,6 +637,11 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{html.escape(description)}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{html.escape(preview_title)}">
+    <meta property="og:description" content="{html.escape(description)}">
+    <meta property="og:url" content="{html.escape(detail_href)}">
+    <meta name="twitter:card" content="summary">
     <link rel="canonical" href="{html.escape(detail_href)}">
     <link rel="alternate" type="application/json" href="{artifact_href}" title="Raw benchmark JSON artifact">
     <title>{title} | rtc-asr benchmark artifact</title>
