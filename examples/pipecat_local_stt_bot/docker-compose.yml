@@ -21,6 +21,7 @@ services:
       rtc-asr:
         condition: service_healthy
     environment:
+      LOCAL_STT_SERVICE: ${LOCAL_STT_SERVICE:-local}
       RTC_ASR_WS_URL: ws://rtc-asr:8080/v1/stt/stream
       LOCAL_STT_SAMPLE_RATE: "16000"
       LOCAL_STT_CHANNELS: "1"

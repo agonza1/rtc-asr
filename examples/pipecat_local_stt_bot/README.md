@@ -21,6 +21,8 @@ From the repo root, start the sidecar and the example bot together:
 PYTHON_BASE_IMAGE=python:3.11-slim docker compose -f examples/pipecat_local_stt_bot/docker-compose.yml up --build
 ```
 
+Switch the Compose bot between the sidecar adapters with `LOCAL_STT_SERVICE=local` or `LOCAL_STT_SERVICE=rtc-asr`. Use `LOCAL_STT_SERVICE=pipecat-whisper` only for the built-in Whisper baseline path and install any extra Whisper runtime dependencies required by your platform.
+
 The bot connects to:
 
 ```text
