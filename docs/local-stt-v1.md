@@ -24,7 +24,7 @@ Hot-path audio format:
 
 Binary websocket frames carry raw little-endian PCM16 bytes. Clients may batch multiple 20 ms frames into one websocket write, but the payload still has to be binary PCM16 data.
 
-The supported transport today is TCP WebSocket, for example `ws://rtc-asr:8080/v1/stt/stream` in Docker Compose or `ws://localhost:8080/v1/stt/stream` for local benchmarks. A future colocated Unix-domain-socket WebSocket path is tracked separately; until the client and server support it, benchmark artifacts should record `"transport": "tcp_ws"` and keep UDS comparison commands marked as pending.
+The default supported server transport today is TCP WebSocket, for example `ws://rtc-asr:8080/v1/stt/stream` in Docker Compose or `ws://localhost:8080/v1/stt/stream` for local benchmarks. The benchmark client also accepts an experimental colocated Unix-domain-socket WebSocket mode with `--transport uds_ws --uds-path /tmp/rtc-asr.sock` so same-host adapter work can measure the client path once a matching server socket is available. Checked-in production benchmark artifacts should continue to record `"transport": "tcp_ws"`; UDS comparison artifacts should record `"transport": "uds_ws"` and the socket path only when both endpoints are intentionally using the colocated socket.
 
 Rules:
 
