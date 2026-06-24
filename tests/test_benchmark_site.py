@@ -872,6 +872,7 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert '"@type": "DataDownload"' in rss_detail
     assert '"@type": "BreadcrumbList"' in rss_detail
     assert '"measurementTechnique": "REST and Local STT v1 websocket ASR latency benchmark"' in rss_detail
+    assert '"dateModified": "2026-06-21T00:13:11Z"' in rss_detail
     assert '"url": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html"' in rss_detail
     assert '"sha256":' in rss_detail
     assert '<meta name="description" content="Validated paced /v1/stt/stream local Apple Silicon MLX service artifact' in rss_detail
@@ -999,6 +1000,10 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'make benchmark-demo' in detail_html
     assert '1234567890abcdef' in detail_html
     assert '"contentSize": 1536' in detail_html
+    assert '"datePublished": "2026-06-14T00:00:00Z"' in detail_html
+    assert '"dateModified": "2026-06-14T00:00:00Z"' in detail_html
+    assert '<meta property="article:published_time" content="2026-06-14T00:00:00Z">' in detail_html
+    assert '<meta property="article:modified_time" content="2026-06-14T00:00:00Z">' in detail_html
     assert '"variableMeasured": [' in detail_html
     assert '"audio-end finalization latency"' in detail_html
     assert '"contentUrl": "../demo-artifact-2026-06-14.json"' in detail_html

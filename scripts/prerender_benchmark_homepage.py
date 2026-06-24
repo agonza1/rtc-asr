@@ -570,13 +570,15 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     artifact_url = absolute_site_url(site_base_url, f"benchmark-results/{artifact_name}") if site_base_url and artifact_name else artifact_href
     homepage_url = absolute_site_url(site_base_url, "index.html")
     preview_title = f"{entry.get('label') or artifact_name or 'Benchmark artifact'} | rtc-asr benchmark artifact"
+    measured_at = entry.get("measured_at")
     structured_data = {
         "@context": "https://schema.org",
         "@type": "Dataset",
         "name": f"rtc-asr benchmark artifact: {entry.get('label') or artifact_name or 'unknown'}",
         "description": description,
         "url": detail_url,
-        "datePublished": entry.get("measured_at"),
+        "datePublished": measured_at,
+        "dateModified": measured_at,
         "measurementTechnique": measurement_technique(entry),
         "variableMeasured": [
             "ASR TTFB / first visible partial latency",
@@ -650,6 +652,8 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta property="og:title" content="{html.escape(preview_title)}">
     <meta property="og:description" content="{html.escape(description)}">
     <meta property="og:url" content="{html.escape(detail_url)}">
+    <meta property="article:published_time" content="{html.escape(measured_at or '')}">
+    <meta property="article:modified_time" content="{html.escape(measured_at or '')}">
     <meta name="twitter:card" content="summary">
     <link rel="canonical" href="{html.escape(detail_url)}">
     <link rel="alternate" type="application/json" href="{artifact_href}" title="Raw benchmark JSON artifact">
