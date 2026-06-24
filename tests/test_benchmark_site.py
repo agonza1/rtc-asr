@@ -856,6 +856,7 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
         assert "Artifact detail page" in detail_html
         assert "Back to benchmark homepage" in detail_html
         assert Path(track["artifact_path"]).name in detail_html
+        assert "Open benchmark manifest" in detail_html
         assert "Download raw JSON artifact" in detail_html
 
     rss_detail = (Path('docs') / 'benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html').read_text(encoding='utf-8')
@@ -880,6 +881,7 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert '<link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
     assert '<link rel="alternate" type="application/json" href="../parakeet-mlx-110m-service-2026-06-21.json" title="Raw benchmark JSON artifact">' in rss_detail
     assert '<link rel="alternate" type="application/json" href="../manifest.json" title="Benchmark results manifest">' in rss_detail
+    assert '<a href="../manifest.json">Open benchmark manifest</a>' in rss_detail
     assert 'aria-label="Breadcrumb"' in rss_detail
     assert "Benchmark homepage" in rss_detail
     assert "make benchmark-parakeet-mlx-service-110m" in rss_detail
