@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import struct
 from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, model_validator
@@ -14,6 +17,23 @@ HOT_PATH_CHANNELS = 1
 HOT_PATH_PCM_FORMAT = "pcm_s16le"
 HOT_PATH_FRAME_MS = 20
 HOT_PATH_BYTES_PER_FRAME = 640
+RAW_UDS_HEADER_BYTES = 5
+RAW_UDS_MAX_PAYLOAD_BYTES = 8 * 1024 * 1024
+
+
+class RawUdsFrameType(IntEnum):
+    JSON_CONTROL = 0x01
+    AUDIO_PCM16 = 0x02
+    JSON_EVENT = 0x03
+    ERROR = 0x04
+    PING = 0x05
+    PONG = 0x06
+
+
+@dataclass(frozen=True, slots=True)
+class RawUdsFrame:
+    frame_type: RawUdsFrameType
+    payload: bytes
 
 
 class LocalSttModel(BaseModel):
@@ -267,6 +287,88 @@ def validate_audio_chunk(chunk: Any) -> bytes:
             code="invalid_audio_chunk",
         )
     return audio_bytes
+
+
+def encode_raw_uds_frame(frame_type: RawUdsFrameType | int, payload: bytes | bytearray | memoryview) -> bytes:
+    resolved_type = _parse_raw_uds_frame_type(frame_type)
+    payload_bytes = bytes(payload)
+    if len(payload_bytes) > RAW_UDS_MAX_PAYLOAD_BYTES:
+        raise LocalSttProtocolError(
+            f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+            code="raw_uds_payload_too_large",
+        )
+    return struct.pack("<BI", int(resolved_type), len(payload_bytes)) + payload_bytes
+
+
+def decode_raw_uds_frame(data: bytes | bytearray | memoryview) -> RawUdsFrame:
+    frame_bytes = bytes(data)
+    if len(frame_bytes) < RAW_UDS_HEADER_BYTES:
+        raise LocalSttProtocolError(
+            "Raw UDS frames must include a 5 byte header",
+            code="raw_uds_incomplete_frame",
+        )
+    frame_type_value, payload_length = struct.unpack("<BI", frame_bytes[:RAW_UDS_HEADER_BYTES])
+    frame_type = _parse_raw_uds_frame_type(frame_type_value)
+    if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
+        raise LocalSttProtocolError(
+            f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+            code="raw_uds_payload_too_large",
+        )
+    expected_length = RAW_UDS_HEADER_BYTES + payload_length
+    if len(frame_bytes) != expected_length:
+        raise LocalSttProtocolError(
+            f"Raw UDS frame length mismatch: header declares {payload_length} payload bytes but received {len(frame_bytes) - RAW_UDS_HEADER_BYTES}",
+            code="raw_uds_frame_length_mismatch",
+        )
+    return RawUdsFrame(frame_type=frame_type, payload=frame_bytes[RAW_UDS_HEADER_BYTES:])
+
+
+def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, Any]) -> bytes:
+    json_frame_types = {
+        RawUdsFrameType.JSON_CONTROL,
+        RawUdsFrameType.JSON_EVENT,
+        RawUdsFrameType.ERROR,
+        RawUdsFrameType.PING,
+        RawUdsFrameType.PONG,
+    }
+    if frame_type not in json_frame_types:
+        raise LocalSttProtocolError(
+            f"Raw UDS frame type {frame_type.name} cannot carry JSON control data",
+            code="raw_uds_invalid_json_frame_type",
+        )
+    json_payload = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    return encode_raw_uds_frame(frame_type, json_payload)
+
+
+def decode_raw_uds_json_payload(frame: RawUdsFrame) -> dict[str, Any]:
+    if frame.frame_type == RawUdsFrameType.AUDIO_PCM16:
+        raise LocalSttProtocolError(
+            "Raw UDS audio frames do not carry JSON payloads",
+            code="raw_uds_invalid_json_frame_type",
+        )
+    try:
+        payload = json.loads(frame.payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise LocalSttProtocolError(
+            "Raw UDS JSON frame payload must be valid UTF-8 JSON",
+            code="raw_uds_invalid_json",
+        ) from exc
+    if not isinstance(payload, dict):
+        raise LocalSttProtocolError(
+            "Raw UDS JSON frame payload must be a JSON object",
+            code="raw_uds_invalid_json",
+        )
+    return payload
+
+
+def _parse_raw_uds_frame_type(frame_type: RawUdsFrameType | int) -> RawUdsFrameType:
+    try:
+        return frame_type if isinstance(frame_type, RawUdsFrameType) else RawUdsFrameType(int(frame_type))
+    except (TypeError, ValueError) as exc:
+        raise LocalSttProtocolError(
+            f"Unsupported Raw UDS frame type: {frame_type}",
+            code="raw_uds_unsupported_frame_type",
+        ) from exc
 
 
 def _validate_message(payload: Any, *, adapter: TypeAdapter[Any]) -> Any:

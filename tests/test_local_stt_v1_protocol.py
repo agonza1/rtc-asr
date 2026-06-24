@@ -9,6 +9,8 @@ from src.protocols.local_stt_v1 import (
     HOT_PATH_PCM_FORMAT,
     HOT_PATH_SAMPLE_RATE,
     PROTOCOL_VERSION,
+    RAW_UDS_HEADER_BYTES,
+    RawUdsFrameType,
     ErrorMessage,
     LocalSttProtocolError,
     TranscriptMessage,
@@ -17,6 +19,10 @@ from src.protocols.local_stt_v1 import (
     build_hot_path_audio_format,
     build_ready_message,
     build_start_message,
+    decode_raw_uds_frame,
+    decode_raw_uds_json_payload,
+    encode_raw_uds_frame,
+    encode_raw_uds_json_frame,
     validate_audio_chunk,
 )
 
@@ -287,3 +293,49 @@ def test_validate_audio_chunk_accepts_even_sized_bytes_like_payloads() -> None:
     payload = memoryview(b"\x00\x01\x02\x03")
 
     assert validate_audio_chunk(payload) == b"\x00\x01\x02\x03"
+
+
+def test_raw_uds_frame_codec_round_trips_binary_audio_payload() -> None:
+    encoded = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x01\x02\x03")
+
+    assert encoded[:RAW_UDS_HEADER_BYTES] == b"\x02\x04\x00\x00\x00"
+    decoded = decode_raw_uds_frame(encoded)
+
+    assert decoded.frame_type == RawUdsFrameType.AUDIO_PCM16
+    assert decoded.payload == b"\x00\x01\x02\x03"
+
+
+def test_raw_uds_json_frame_codec_uses_compact_object_payload() -> None:
+    encoded = encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "p1"})
+    decoded = decode_raw_uds_frame(encoded)
+
+    assert decoded.frame_type == RawUdsFrameType.JSON_CONTROL
+    assert decoded.payload == b'{"type":"ping","ping_id":"p1"}'
+    assert decode_raw_uds_json_payload(decoded) == {"type": "ping", "ping_id": "p1"}
+
+
+def test_raw_uds_frame_decoder_rejects_length_mismatch() -> None:
+    encoded = b"\x01\x04\x00\x00\x00{}"
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        decode_raw_uds_frame(encoded)
+
+    assert excinfo.value.as_event().code == "raw_uds_frame_length_mismatch"
+
+
+def test_raw_uds_frame_decoder_rejects_unknown_frame_type() -> None:
+    encoded = b"\xff\x00\x00\x00\x00"
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        decode_raw_uds_frame(encoded)
+
+    assert excinfo.value.as_event().code == "raw_uds_unsupported_frame_type"
+
+
+def test_raw_uds_json_decoder_rejects_audio_frames() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x00"))
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        decode_raw_uds_json_payload(frame)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_json_frame_type"
