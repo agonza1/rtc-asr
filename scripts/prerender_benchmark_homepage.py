@@ -653,6 +653,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta name="twitter:card" content="summary">
     <link rel="canonical" href="{html.escape(detail_url)}">
     <link rel="alternate" type="application/json" href="{artifact_href}" title="Raw benchmark JSON artifact">
+    <link rel="alternate" type="application/json" href="../manifest.json" title="Benchmark results manifest">
     <title>{title} | rtc-asr benchmark artifact</title>
     <script type="application/ld+json">
 {structured_data_json}
