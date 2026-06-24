@@ -693,7 +693,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <div class="actions">
         <div class="card"><span class="label">Lane</span><div class="value">{html.escape(entry.get("lane") or "unknown")}</div><p>{html.escape(entry.get("backend") or "unknown")} · {html.escape(entry.get("model") or "unknown")}</p></div>
         <div class="card"><span class="label">Runtime</span><div class="value">{html.escape(entry.get("runtime") or "unknown")}</div><p>Status: {html.escape(entry.get("status") or "unknown")} · Samples: {entry.get("sample_count") or 'n/a'}</p></div>
-        <div class="card"><span class="label">Links</span><div><a href="{homepage_href}">Back to benchmark homepage</a></div><div><a href="{artifact_href}">Open raw JSON artifact</a></div><div><a href="{artifact_href}" download="{html.escape(artifact_name)}">Download raw JSON artifact</a></div><p>Measured {html.escape(format_date(entry.get("measured_at")))}</p></div>
+        <div class="card"><span class="label">Links</span><div><a href="{homepage_href}">Back to benchmark homepage</a></div><div><a href="../manifest.json">Open benchmark manifest</a></div><div><a href="{artifact_href}">Open raw JSON artifact</a></div><div><a href="{artifact_href}" download="{html.escape(artifact_name)}">Download raw JSON artifact</a></div><p>Measured {html.escape(format_date(entry.get("measured_at")))}</p></div>
       </div>
       <div class="grid">
         <article class="card"><span class="label">Overall score</span><div class="value">{score}</div><p>Confidence {confidence}</p></article>
@@ -715,6 +715,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <span class="label">Artifact access</span>
         <p>The homepage now leads with decision-ready summaries instead of raw benchmark dumps. Use the JSON artifact only when you need the underlying machine-readable record.</p>
         <p>Integrity check: SHA-256 <code>{html.escape(artifact_sha256 or 'not available')}</code> · Size {format_bytes(artifact_size_bytes)}</p>
+        <div><a href="../manifest.json">Open benchmark manifest</a></div>
         <div><a href="{artifact_href}">Open raw JSON artifact</a></div>
         <div><a href="{artifact_href}" download="{html.escape(artifact_name)}">Download raw JSON artifact</a></div>
       </div>
