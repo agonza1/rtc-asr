@@ -27,6 +27,8 @@ from .protocols import (
     HOT_PATH_BYTES_PER_FRAME,
     HOT_PATH_FRAME_MS,
     HOT_PATH_PCM_FORMAT,
+    RAW_UDS_HEADER_BYTES,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
     PROTOCOL_VERSION,
     AudioFormat,
     ErrorMessage,
@@ -129,6 +131,23 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
             "status": "preview",
             "message_format": "json-control-plus-binary-pcm16",
             "server_transport": local_stt_transport,
+            "experimental_transports": [
+                {
+                    "transport": "raw_uds",
+                    "status": "codec_only",
+                    "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+                    "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                    "frame_types": {
+                        "json_control": 1,
+                        "audio_pcm16": 2,
+                        "json_event": 3,
+                        "error": 4,
+                        "ping": 5,
+                        "pong": 6,
+                    },
+                    "notes": "Raw UDS framing is available as a tested codec for latency experiments; it is not a served transport yet.",
+                }
+            ],
             "audio": {
                 "sample_rate": 16000,
                 "channels": 1,

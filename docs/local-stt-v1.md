@@ -50,6 +50,8 @@ volumes:
 
 Run the comparison only after both services share that socket volume, then keep the TCP WebSocket run as the baseline. UDS should stay an optimization knob, not the default deployment path.
 
+Raw UDS framing is tracked separately as an experimental codec for issue 88. The tested frame shape is a 5 byte little-endian header (`uint8 frame_type`, `uint32 payload_len_le`) followed by JSON control, PCM16 audio, JSON event, error, ping, or pong payload bytes. The `/health` and `/api/models` protocol catalog exposes this as `raw_uds` with `status: codec_only`; that means the codec is available for latency experiments, but the ASR server does not yet listen on a raw UDS socket.
+
 Rules:
 
 - Binary audio MUST NOT be base64-wrapped.

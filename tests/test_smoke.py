@@ -22,7 +22,7 @@ from src.main import (
     main,
 )
 from src.model_loader import ASRUnavailableError
-from src.protocols.local_stt_v1 import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_CHANNELS, HOT_PATH_FRAME_MS, HOT_PATH_PCM_FORMAT, HOT_PATH_SAMPLE_RATE, PROTOCOL_VERSION, parse_server_message
+from src.protocols.local_stt_v1 import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_CHANNELS, HOT_PATH_FRAME_MS, HOT_PATH_PCM_FORMAT, HOT_PATH_SAMPLE_RATE, RAW_UDS_HEADER_BYTES, RAW_UDS_MAX_PAYLOAD_BYTES, PROTOCOL_VERSION, parse_server_message
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
@@ -51,6 +51,23 @@ DEFAULT_PROTOCOLS = [
             "transport": "tcp_ws",
             "path": "/v1/stt/stream",
         },
+        "experimental_transports": [
+            {
+                "transport": "raw_uds",
+                "status": "codec_only",
+                "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+                "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                "frame_types": {
+                    "json_control": 1,
+                    "audio_pcm16": 2,
+                    "json_event": 3,
+                    "error": 4,
+                    "ping": 5,
+                    "pong": 6,
+                },
+                "notes": "Raw UDS framing is available as a tested codec for latency experiments; it is not a served transport yet.",
+            }
+        ],
         "audio": {
             "sample_rate": HOT_PATH_SAMPLE_RATE,
             "channels": HOT_PATH_CHANNELS,
