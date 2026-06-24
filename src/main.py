@@ -93,11 +93,24 @@ def _health_payload(services: AppServices) -> dict[str, object]:
         "model_loaded": services.transcriber.is_loaded(),
         "preload_enabled": services.config.asr_preload_model,
         "preload_error": services.preload_error,
-        "protocols": _protocol_catalog(),
+        "protocols": _protocol_catalog(services.config),
     }
 
 
-def _protocol_catalog() -> list[dict[str, object]]:
+def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]]:
+    local_stt_transport: dict[str, object] = {
+        "mode": "tcp",
+        "transport": "tcp_ws",
+        "path": "/v1/stt/stream",
+    }
+    if config is not None and config.local_stt_socket_mode == "uds":
+        local_stt_transport = {
+            "mode": "uds",
+            "transport": "uds_ws",
+            "path": "/v1/stt/stream",
+            "uds_path": config.local_stt_uds_path,
+        }
+
     return [
         {
             "id": "rtc-asr-stream.v1",
@@ -115,6 +128,7 @@ def _protocol_catalog() -> list[dict[str, object]]:
             "docs": "/docs/local-stt-v1.md",
             "status": "preview",
             "message_format": "json-control-plus-binary-pcm16",
+            "server_transport": local_stt_transport,
             "audio": {
                 "sample_rate": 16000,
                 "channels": 1,
@@ -327,7 +341,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             "ready": _accepting_traffic(current),
             "preload_enabled": current.config.asr_preload_model,
             "preload_error": current.preload_error,
-            "protocols": _protocol_catalog(),
+            "protocols": _protocol_catalog(current.config),
             "streaming": streaming,
             "audio": audio,
             "models": [

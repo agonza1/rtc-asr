@@ -46,6 +46,11 @@ DEFAULT_PROTOCOLS = [
         "docs": "/docs/local-stt-v1.md",
         "status": "preview",
         "message_format": "json-control-plus-binary-pcm16",
+        "server_transport": {
+            "mode": "tcp",
+            "transport": "tcp_ws",
+            "path": "/v1/stt/stream",
+        },
         "audio": {
             "sample_rate": HOT_PATH_SAMPLE_RATE,
             "channels": HOT_PATH_CHANNELS,
@@ -328,6 +333,22 @@ def test_ready_and_model_capabilities_smoke() -> None:
         },
     }
     assert transcriber.preload_calls == 1
+
+
+def test_health_reports_active_uds_local_stt_transport(tmp_path: Path) -> None:
+    socket_path = tmp_path / "stt.sock"
+    config = AppConfig(local_stt_socket_mode="uds", local_stt_uds_path=str(socket_path))
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as client:
+        protocols = client.get("/health").json()["protocols"]
+
+    local_stt = next(protocol for protocol in protocols if protocol["id"] == PROTOCOL_VERSION)
+    assert local_stt["server_transport"] == {
+        "mode": "uds",
+        "transport": "uds_ws",
+        "path": "/v1/stt/stream",
+        "uds_path": str(socket_path),
+    }
 
 
 def test_ready_returns_503_when_preload_is_degraded() -> None:
