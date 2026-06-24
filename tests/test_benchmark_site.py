@@ -724,13 +724,13 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
 
     assert "docs/benchmark-results/tracks.json" in docs_text
     assert "docs/benchmark-results/manifest.json" in docs_text
-    assert "## Accuracy Publishing Policy" in docs_text
-    assert "FLEURS `en_us` and a pinned Common Voice English test split" in docs_text
+    assert "## Accuracy Note" in docs_text
+    assert "FLEURS English plus a pinned Common Voice English test split" in docs_text
     assert "qwen-compose-2026-06-07.json" not in docs_text
     assert "## Recommended Quality Methodology" in docs_text
     assert "Reference WER" in docs_text
-    assert "should not show reference WER in the primary ranking table" in docs_text
-    assert "not an official rtc-asr measurement" in docs_text
+    assert "homepage ranking is latency-first" in docs_text
+    assert "not as an official rtc-asr accuracy claim" in docs_text
     assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
     assert "BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen" in docs_text
     assert "BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen" not in docs_text
