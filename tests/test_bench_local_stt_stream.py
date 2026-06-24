@@ -761,6 +761,22 @@ def test_parse_args_rejects_uds_path_for_default_tcp_transport(tmp_path: Path) -
         raise AssertionError("expected TCP transport to reject a UDS path")
 
 
+def test_make_client_factory_reports_missing_unix_connect(monkeypatch) -> None:
+    async def exercise() -> None:
+        factory = benchmark_module.make_client_factory(transport="uds_ws", uds_path="/tmp/stt.sock")
+        client = factory("ws://localhost/v1/stt/stream")
+        await client._connect_fn("ws://localhost/v1/stt/stream")
+
+    monkeypatch.setitem(sys.modules, "websockets", SimpleNamespace(connect=object()))
+
+    try:
+        asyncio.run(exercise())
+    except RuntimeError as exc:
+        assert "uds_ws transport requires websockets.unix_connect" in str(exc)
+    else:
+        raise AssertionError("expected uds_ws without unix_connect to fail clearly")
+
+
 def test_run_benchmark_records_uds_ws_target_with_injected_client() -> None:
     audio = benchmark_module.AudioInput(
         source="fixture.raw",

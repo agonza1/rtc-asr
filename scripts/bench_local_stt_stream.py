@@ -212,6 +212,11 @@ def make_client_factory(*, transport: str, uds_path: str | None) -> ClientFactor
         async def connect_unix(ws_url: str):
             import websockets
 
+            if not hasattr(websockets, "unix_connect"):
+                raise RuntimeError(
+                    "uds_ws transport requires websockets.unix_connect; "
+                    "upgrade websockets or run the TCP benchmark with --transport tcp_ws"
+                )
             return await websockets.unix_connect(uds_path, uri=ws_url, max_size=2**23)
 
         return lambda ws_url: AsyncLocalSttClient(ws_url, connect_fn=connect_unix)
