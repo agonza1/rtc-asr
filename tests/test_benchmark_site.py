@@ -193,6 +193,30 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
     assert runtimes == {"cpu / int8", "cpu / float16"}
 
 
+def test_artifact_modified_timestamp_ignores_non_object_artifact_metadata() -> None:
+    assert manifest_module.artifact_modified_timestamp({
+        "artifact": "legacy-artifact-name",
+        "artifact_modified_at": "2026-06-09T12:00:00Z",
+    }) == "2026-06-09T12:00:00Z"
+    assert manifest_module.artifact_modified_timestamp({"artifact": ["legacy-artifact-name"]}) is None
+
+
+def test_render_detail_page_does_not_label_measured_at_as_artifact_modified() -> None:
+    detail_html = render_detail_page({
+        "label": "Demo artifact",
+        "artifact_path": "benchmark-results/demo-artifact-2026-06-14.json",
+        "measured_at": "2026-06-14T00:00:00Z",
+        "rest": {},
+        "streaming": {},
+        "contract": {},
+        "derived": {},
+    }, None)
+
+    assert '<meta property="article:modified_time" content="2026-06-14T00:00:00Z">' in detail_html
+    assert "Artifact modified Not recorded" in detail_html
+    assert "Artifact modified Jun 14, 2026" not in detail_html
+
+
 def test_manifest_skips_non_asr_artifacts(tmp_path: Path) -> None:
     payload = json.loads((RESULTS_DIR / "faster-whisper-base.en-int8-2026-06-15.json").read_text(encoding="utf-8"))
     (tmp_path / "faster-whisper-base.en-int8-2026-06-15.json").write_text(json.dumps(payload), encoding="utf-8")

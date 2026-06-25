@@ -121,8 +121,10 @@ def artifact_timestamp(path: Path, payload: dict[str, Any]) -> str:
 
 
 def artifact_modified_timestamp(payload: dict[str, Any]) -> str | None:
-    artifact = payload.get("artifact") or {}
-    return first_defined(artifact.get("modified_at"), artifact.get("updated_at"), payload.get("artifact_modified_at"))
+    artifact = payload.get("artifact")
+    if isinstance(artifact, dict):
+        return first_defined(artifact.get("modified_at"), artifact.get("updated_at"), payload.get("artifact_modified_at"))
+    return first_defined(payload.get("artifact_modified_at"))
 
 
 def runtime_label(payload: dict[str, Any]) -> str:

@@ -571,7 +571,8 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     homepage_url = absolute_site_url(site_base_url, "index.html")
     preview_title = f"{entry.get('label') or artifact_name or 'Benchmark artifact'} | rtc-asr benchmark artifact"
     measured_at = entry.get("measured_at")
-    artifact_modified_at = entry.get("artifact_modified_at") or measured_at
+    artifact_modified_at = entry.get("artifact_modified_at")
+    article_modified_at = artifact_modified_at or measured_at
     structured_data = {
         "@context": "https://schema.org",
         "@type": "Dataset",
@@ -579,7 +580,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "description": description,
         "url": detail_url,
         "datePublished": measured_at,
-        "dateModified": artifact_modified_at,
+        "dateModified": article_modified_at,
         "measurementTechnique": measurement_technique(entry),
         "variableMeasured": [
             "ASR TTFB / first visible partial latency",
@@ -654,7 +655,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta property="og:description" content="{html.escape(description)}">
     <meta property="og:url" content="{html.escape(detail_url)}">
     <meta property="article:published_time" content="{html.escape(measured_at or '')}">
-    <meta property="article:modified_time" content="{html.escape(artifact_modified_at or '')}">
+    <meta property="article:modified_time" content="{html.escape(article_modified_at or '')}">
     <meta name="twitter:card" content="summary">
     <link rel="canonical" href="{html.escape(detail_url)}">
     <link rel="alternate" type="application/json" href="{artifact_href}" title="Raw benchmark JSON artifact">
@@ -711,7 +712,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Warnings</span><div class="value">{format_count(warnings.get("received_total"))}</div><p>Rate {format_ratio(warnings.get("rate_per_sample"))} per sample · Codes: {html.escape(format_list(warnings.get("codes") or []))}</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
         <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p><p>Size {format_bytes(artifact_size_bytes)}</p></article>
-        <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>{html.escape(artifact_name or 'n/a')}</code></div><p>Manifest path {html.escape(entry.get('artifact_path') or 'n/a')}</p><p>Artifact modified {html.escape(format_date(artifact_modified_at))}</p><p>Generated detail page {html.escape(Path(detail_page_path(entry)).name)}</p></article>
+        <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>{html.escape(artifact_name or 'n/a')}</code></div><p>Manifest path {html.escape(entry.get('artifact_path') or 'n/a')}</p><p>Artifact modified {html.escape(format_date(artifact_modified_at)) if artifact_modified_at else 'Not recorded'}</p><p>Generated detail page {html.escape(Path(detail_page_path(entry)).name)}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
         <article class="card"><span class="label">Telemetry coverage</span><div class="value">{html.escape(telemetry_count)}</div><p>{html.escape(telemetry_missing)}</p></article>
