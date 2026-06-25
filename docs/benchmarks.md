@@ -5,25 +5,15 @@ The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/man
 - benchmark artifacts under `docs/benchmark-results/*.json`
 - the tracked benchmark registry in `docs/benchmark-results/tracks.json`
 
-Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. The homepage stays latency-first, and this notes page carries the issue #46 methodology decision about how reference WER should be labeled until the repo has its own reproducible quality track.
+Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. The homepage stays latency-first, and this notes page labels external reference WER separately until the repo has its own reproducible quality track.
 
 Current publication policy: checked-in `/ws/stream` artifacts remain visible only as legacy supporting evidence. Paced `/v1/stt/stream` artifacts with `streaming.live_metrics_comparable == true` now populate the primary live leaderboard as they are regenerated.
 
-## Accuracy Publishing Policy
+## Accuracy Note
 
-Issue #46 resolves to a simple public-facing rule:
+The homepage ranking is latency-first. Reference WER is shown only as external model-card or upstream benchmark context, not as an official rtc-asr accuracy claim.
 
-- The homepage comparison stays latency-first and should not show reference WER in the primary ranking table.
-- WER/CER should appear only when backed by an annotated, reproducible benchmark dataset and a repo-owned evaluation recipe. Local smoke clips and exploratory sweeps are useful for latency debugging, but they are not a publishable source of truth for accuracy.
-- When official accuracy coverage lands, keep it on a separate methodology/details surface first instead of turning the latency ranking into an official repo accuracy claim.
-- Upstream model-card WER is useful as background research, but it is not an official rtc-asr measurement and should be labeled as external reference data that may vary slightly across hardware, runtime, quantization, decoding, and setup.
-
-Recommended source-of-truth path for this repo:
-
-- Start with reproducible clean/reference corpora such as FLEURS `en_us` and a pinned Common Voice English test split so runs can be repeated and labeled ground truth is explicit.
-- Treat telephony/noisy evaluation as a second methodology track. Candidate follow-ups that better reflect real-world degradation are Earnings-22 for accented long-form speech and CHiME-style noisy/far-field sets for robustness, but they should remain separate from the core latency matrix.
-- If codec/noise degradation is added, publish the augmentation recipe as its own benchmark lane instead of blending it into the clean/reference leaderboard.
-- Keep every published accuracy result tied to a named dataset, a checked-in run artifact, and documented preprocessing so readers can tell official benchmark runs apart from local preview experiments.
+Official WER/CER results should appear only after they are tied to a named dataset, a repo-owned evaluation recipe, and a checked-in run artifact.
 
 ## Recommended Quality Methodology
 

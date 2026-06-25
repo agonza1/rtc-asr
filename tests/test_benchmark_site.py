@@ -124,6 +124,7 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
                 "rest": {"mean_ms": 100, "p95_ms": 120, "rtf_mean": 0.5},
                 "streaming": {"partial_mean_ms": 50, "partial_p95_ms": 75, "final_mean_ms": 90, "final_p95_ms": 110},
                 "environment": {"date_utc": "2026-06-09T00:00:00Z"},
+                "artifact": {"modified_at": "2026-06-09T12:00:00Z"},
             }
         ),
         encoding="utf-8",
@@ -186,8 +187,34 @@ def test_manifest_keeps_distinct_runtime_variants(tmp_path: Path) -> None:
     assert manifest["summary"]["asr_count"] == 2
     assert all(len(entry["artifact_sha256"]) == 64 for entry in manifest["asr_benchmarks"])
     assert all(entry["artifact_size_bytes"] > 0 for entry in manifest["asr_benchmarks"])
+    int8_entry = next(entry for entry in manifest["asr_benchmarks"] if entry["runtime"] == "cpu / int8")
+    assert int8_entry["artifact_modified_at"] == "2026-06-09T12:00:00Z"
     runtimes = {entry["runtime"] for entry in manifest["asr_benchmarks"]}
     assert runtimes == {"cpu / int8", "cpu / float16"}
+
+
+def test_artifact_modified_timestamp_ignores_non_object_artifact_metadata() -> None:
+    assert manifest_module.artifact_modified_timestamp({
+        "artifact": "legacy-artifact-name",
+        "artifact_modified_at": "2026-06-09T12:00:00Z",
+    }) == "2026-06-09T12:00:00Z"
+    assert manifest_module.artifact_modified_timestamp({"artifact": ["legacy-artifact-name"]}) is None
+
+
+def test_render_detail_page_does_not_label_measured_at_as_artifact_modified() -> None:
+    detail_html = render_detail_page({
+        "label": "Demo artifact",
+        "artifact_path": "benchmark-results/demo-artifact-2026-06-14.json",
+        "measured_at": "2026-06-14T00:00:00Z",
+        "rest": {},
+        "streaming": {},
+        "contract": {},
+        "derived": {},
+    }, None)
+
+    assert '<meta property="article:modified_time" content="2026-06-14T00:00:00Z">' in detail_html
+    assert "Artifact modified Not recorded" in detail_html
+    assert "Artifact modified Jun 14, 2026" not in detail_html
 
 
 def test_manifest_skips_non_asr_artifacts(tmp_path: Path) -> None:
@@ -721,13 +748,13 @@ def test_docs_and_tracks_registry_stay_aligned() -> None:
 
     assert "docs/benchmark-results/tracks.json" in docs_text
     assert "docs/benchmark-results/manifest.json" in docs_text
-    assert "## Accuracy Publishing Policy" in docs_text
-    assert "FLEURS `en_us` and a pinned Common Voice English test split" in docs_text
+    assert "## Accuracy Note" in docs_text
+    assert "FLEURS English plus a pinned Common Voice English test split" in docs_text
     assert "qwen-compose-2026-06-07.json" not in docs_text
     assert "## Recommended Quality Methodology" in docs_text
     assert "Reference WER" in docs_text
-    assert "should not show reference WER in the primary ranking table" in docs_text
-    assert "not an official rtc-asr measurement" in docs_text
+    assert "homepage ranking is latency-first" in docs_text
+    assert "not as an official rtc-asr accuracy claim" in docs_text
     assert "local diagnostic WER from our small internal sample set remains intentionally unpublished" in docs_text
     assert "BENCHMARK_RESULT_DATE=2026-06-19 make benchmark-compose-qwen" in docs_text
     assert "BENCHMARK_RESULT_DATE=2026-06-15 make benchmark-compose-qwen" not in docs_text
@@ -935,6 +962,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'status': 'validated',
         'sample_count': 3,
         'measured_at': '2026-06-14T00:00:00Z',
+        'artifact_modified_at': '2026-06-15T12:30:00Z',
         'status_detail': 'Demo artifact.',
         'rest': {'mean_ms': 42.0, 'p95_ms': 55.0, 'rtf_mean': 0.2},
         'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
@@ -1001,9 +1029,9 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert '1234567890abcdef' in detail_html
     assert '"contentSize": 1536' in detail_html
     assert '"datePublished": "2026-06-14T00:00:00Z"' in detail_html
-    assert '"dateModified": "2026-06-14T00:00:00Z"' in detail_html
+    assert '"dateModified": "2026-06-15T12:30:00Z"' in detail_html
     assert '<meta property="article:published_time" content="2026-06-14T00:00:00Z">' in detail_html
-    assert '<meta property="article:modified_time" content="2026-06-14T00:00:00Z">' in detail_html
+    assert '<meta property="article:modified_time" content="2026-06-15T12:30:00Z">' in detail_html
     assert '"variableMeasured": [' in detail_html
     assert '"audio-end finalization latency"' in detail_html
     assert '"contentUrl": "../demo-artifact-2026-06-14.json"' in detail_html
@@ -1017,6 +1045,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'Size 1.5 KB' in detail_html
     assert 'Integrity check: SHA-256 <code>1234567890abcdef</code>' in detail_html
     assert 'Artifact provenance' in detail_html
+    assert 'Artifact modified Jun 15, 2026, 12:30 PM UTC' in detail_html
     assert 'Generated detail page demo-artifact-2026-06-14.html' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
     assert 'Stable over 5 minutes.' in detail_html

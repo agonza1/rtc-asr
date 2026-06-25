@@ -120,6 +120,13 @@ def artifact_timestamp(path: Path, payload: dict[str, Any]) -> str:
     return "1970-01-01T00:00:00Z"
 
 
+def artifact_modified_timestamp(payload: dict[str, Any]) -> str | None:
+    artifact = payload.get("artifact")
+    if isinstance(artifact, dict):
+        return first_defined(artifact.get("modified_at"), artifact.get("updated_at"), payload.get("artifact_modified_at"))
+    return first_defined(payload.get("artifact_modified_at"))
+
+
 def runtime_label(payload: dict[str, Any]) -> str:
     backend = payload.get("backend") or {}
     device = backend.get("device") or "unknown"
@@ -497,7 +504,7 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     streaming = payload["streaming"]
     contract = extract_benchmark_contract(payload)
     artifact_bytes = path.read_bytes()
-    return {
+    entry = {
         "kind": "asr",
         "backend": backend["name"],
         "model": backend["model"],
@@ -537,6 +544,10 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
         "warnings": summarize_warnings(payload),
         "accuracy": summarize_accuracy(rest, streaming),
     }
+    artifact_modified_at = artifact_modified_timestamp(payload)
+    if artifact_modified_at is not None:
+        entry["artifact_modified_at"] = artifact_modified_at
+    return entry
 
 
 def load_catalog(path: Path) -> dict[str, Any]:
@@ -858,6 +869,8 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
                 "warnings": measured["warnings"],
             }
         )
+        if measured.get("artifact_modified_at") is not None:
+            entry["artifact_modified_at"] = measured["artifact_modified_at"]
 
     if not accuracy_is_publishable(entry):
         entry["accuracy"] = {"word_error_rate_mean": None, "character_error_rate_mean": None}
