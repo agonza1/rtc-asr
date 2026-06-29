@@ -78,6 +78,21 @@ The protocol uses one websocket connection with at most one active utterance at 
 
 `ping` / `pong` are optional keepalive messages and do not affect utterance state.
 
+## Realtime-Style Shim Mapping
+
+The Local STT v1 lifecycle is intentionally small enough for Realtime-compatible voice shims to map onto it without provider-specific fields:
+
+| Realtime-style action | Local STT v1 action | Notes |
+| --- | --- | --- |
+| Open input audio buffer for a turn | `start` | Include `client_stream_id` and optional `metadata` to correlate the downstream response or turn id. |
+| `input_audio_buffer.append` with PCM16 audio | Binary websocket frame | Send raw mono 16 kHz PCM16 bytes directly; do not base64-wrap audio. |
+| Interim ASR result | `transcript` with `is_final=false` | `revision` increases for each update, with `audio_received_ms` and `audio_transcribed_ms` describing coverage. |
+| `input_audio_buffer.commit` | `finalize` | The server flushes the utterance and emits the final `transcript` with `is_final=true` and `speech_final=true`. |
+| `input_audio_buffer.clear` or canceled response | `cancel` | The server discards buffered audio and should not emit a final transcript for that utterance. |
+| Invalid control or audio payload | `error` | Fatal protocol errors end the active utterance unless the server marks them retryable. |
+
+The checked-in protocol contract test exercises this mapping with only local test dependencies. It proves that a shim can use start, binary PCM16 audio, partial/final transcripts, finalize, cancel, and protocol error behavior without OpenClaw-specific code or hosted ASR assumptions.
+
 ## Client Messages
 
 ### `start`
