@@ -295,6 +295,54 @@ def test_validate_audio_chunk_accepts_even_sized_bytes_like_payloads() -> None:
     assert validate_audio_chunk(payload) == b"\x00\x01\x02\x03"
 
 
+def test_realtime_style_turn_lifecycle_maps_to_local_stt_v1_contract() -> None:
+    start = parse_client_message(
+        build_start_message(
+            partial_interval_ms=100,
+            partial_window_seconds=1.0,
+            client_stream_id="response-1",
+            metadata={"realtime_event": "input_audio_buffer.append"},
+        ).model_dump()
+    )
+    audio = validate_audio_chunk(b"\x00\x00" * (HOT_PATH_SAMPLE_RATE // 10))
+    partial = parse_server_message(
+        {
+            "type": "transcript",
+            "text": "hello",
+            "is_final": False,
+            "speech_final": False,
+            "revision": 1,
+            "audio_received_ms": 100,
+            "audio_transcribed_ms": 80,
+            "metadata": {"client_stream_id": "response-1"},
+        }
+    )
+    finalize = parse_client_message({"type": "finalize"})
+    final = parse_server_message(
+        {
+            "type": "transcript",
+            "text": "hello world",
+            "is_final": True,
+            "speech_final": True,
+            "revision": 2,
+            "audio_received_ms": 100,
+            "audio_transcribed_ms": 100,
+            "metadata": {"client_stream_id": "response-1"},
+        }
+    )
+    cancel = parse_client_message({"type": "cancel"})
+
+    assert start.type == "start"
+    assert start.client_stream_id == "response-1"
+    assert len(audio) == HOT_PATH_BYTES_PER_FRAME * 5
+    assert partial.type == "transcript"
+    assert not partial.is_final
+    assert finalize.type == "finalize"
+    assert final.is_final
+    assert final.speech_final
+    assert cancel.type == "cancel"
+
+
 def test_raw_uds_frame_codec_round_trips_binary_audio_payload() -> None:
     encoded = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x01\x02\x03")
 
