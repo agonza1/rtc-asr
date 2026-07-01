@@ -39,6 +39,13 @@ ASR_QWEN_MAX_INFERENCE_BATCH_SIZE=1
 ASR_PARAKEET_MODEL=nvidia/parakeet-tdt-0.6b-v3
 ASR_PARAKEET_DTYPE=auto
 
+# Optional experimental Voxtral backend settings
+# Set ASR_BACKEND=voxtral to enable these. Use ASR_PRELOAD_MODEL=true to fail fast
+# when the local Transformers runtime is not Voxtral-compatible.
+ASR_VOXTRAL_MODEL=mistralai/Voxtral-Mini-4B-Realtime-2602
+ASR_VOXTRAL_DTYPE=auto
+ASR_VOXTRAL_TRUST_REMOTE_CODE=true
+
 
 # GPU Settings (optional)
 CUDA_VISIBLE_DEVICES=0
