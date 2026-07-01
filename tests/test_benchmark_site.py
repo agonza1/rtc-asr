@@ -28,6 +28,8 @@ PRERENDER_SPEC.loader.exec_module(prerender_module)
 detail_page_path = prerender_module.detail_page_path
 render_detail_page = prerender_module.render_detail_page
 render_homepage = prerender_module.render_homepage
+render_row = prerender_module.render_row
+render_secondary_row = prerender_module.render_secondary_row
 measurement_technique = prerender_module.measurement_technique
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
 render_sitemap = prerender_module.render_sitemap
@@ -590,6 +592,8 @@ def test_render_homepage_omits_unpublished_registry_gap_copy() -> None:
                     "partial_gap_mean_ms": 5,
                     "final_mean_ms": 40,
                 },
+                "sample_count": 8,
+                "target_sample_count": 10,
             },
             {
                 "slug": "unpublished",
@@ -674,6 +678,44 @@ def test_render_homepage_keeps_historical_supporting_artifacts_discoverable() ->
     assert "Artifacts kept out of the primary ranking" not in html
     assert "qwen-mps-2026-06-20.html" not in html
 
+
+
+def test_render_row_shows_sample_target_context() -> None:
+    row = render_row({
+        "label": "Demo Lane",
+        "backend": "demo",
+        "model": "demo-v1",
+        "lane": "lab",
+        "runtime": "cpu / int8",
+        "status": "validated",
+        "sample_count": 8,
+        "target_sample_count": 10,
+        "artifact_path": "benchmark-results/demo.json",
+        "rest": {"mean_ms": 10},
+        "streaming": {"first_partial_end_to_end_mean_ms": 20, "partial_mean_ms": 30, "final_mean_ms": 40},
+    }, 20, 30, 40, "vs fastest", 10)
+
+    assert "Target 10" in row
+
+
+def test_render_secondary_row_shows_sample_target_context() -> None:
+    row = render_secondary_row({
+        "label": "Demo Lane",
+        "backend": "demo",
+        "model": "demo-v1",
+        "lane": "lab",
+        "runtime": "cpu / int8",
+        "sample_count": 4,
+        "target_sample_count": 10,
+        "artifact_path": "benchmark-results/demo.json",
+        "streaming": {
+            "live_metrics_comparable": False,
+            "first_partial_end_to_end_mean_ms": 22,
+            "final_mean_ms": 44,
+        },
+    })
+
+    assert "Samples 4 / target 10" in row
 
 def test_docs_index_live_labels_match_streaming_framing() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")

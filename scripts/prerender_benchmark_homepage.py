@@ -835,6 +835,7 @@ def render_row(
     artifact_hash = entry.get("artifact_sha256")
     artifact_hash_label = f"SHA-256 {artifact_hash[:12]}" if artifact_hash else "SHA-256 n/a"
     artifact_size_label = format_bytes(entry.get("artifact_size_bytes"))
+    sample_target_label = entry.get("target_sample_count") or "n/a"
     status = html.escape(entry.get("status") or "unknown")
     return "".join(
         [
@@ -846,7 +847,7 @@ def render_row(
             f'<td data-label="Partial backlog latency"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs lowest diagnostic</div></td>',
             f'<td data-label="Audio-end finalization"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
             f'<td data-label="REST throughput context"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
-            f'<td data-label="Samples"><strong>{entry.get("sample_count") or "n/a"}</strong><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
+            f'<td data-label="Samples"><strong>{entry.get("sample_count") or "n/a"}</strong><div class="tiny">Target {sample_target_label}</div><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
             f'<td data-label="Details"><a href="{html.escape(detail_page_path(entry))}">Open detail page</a><div class="tiny">Artifact size {html.escape(artifact_size_label)}</div><div class="tiny">{html.escape(artifact_hash_label)}</div></td>',
             "</tr>",
         ]
@@ -858,12 +859,14 @@ def render_secondary_row(entry: dict[str, Any]) -> str:
     artifact_hash = entry.get("artifact_sha256")
     artifact_hash_label = f"SHA-256 {artifact_hash[:12]}" if artifact_hash else "SHA-256 n/a"
     artifact_size_label = format_bytes(entry.get("artifact_size_bytes"))
+    sample_count_label = entry.get("sample_count") or "n/a"
+    sample_target_label = entry.get("target_sample_count") or "n/a"
     return "".join(
         [
             "<tr>",
             f'<td data-label="Lane" class="leader-name"><strong>{html.escape(entry.get("label") or "unknown")}</strong><span>{html.escape(entry.get("backend") or "unknown")} . {html.escape(entry.get("model") or "unknown")}</span><div class="table-note">{html.escape(entry.get("lane") or "unknown")} . {html.escape(entry.get("runtime") or "unknown")}</div></td>',
             f'<td data-label="Why it is secondary">{html.escape(secondary_reason(entry))}</td>',
-            f'<td data-label="Visible live metrics"><strong>TTFB / first partial {format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</strong><div class="tiny">Finalization {format_ms(streaming.get("final_mean_ms"))}</div></td>',
+            f'<td data-label="Visible live metrics"><strong>TTFB / first partial {format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</strong><div class="tiny">Finalization {format_ms(streaming.get("final_mean_ms"))}</div><div class="tiny">Samples {sample_count_label} / target {sample_target_label}</div></td>',
             f'<td data-label="Details"><a href="{html.escape(detail_page_path(entry))}">Open detail page</a><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div><div class="tiny">Artifact size {html.escape(artifact_size_label)}</div><div class="tiny">{html.escape(artifact_hash_label)}</div></td>',
             "</tr>",
         ]
