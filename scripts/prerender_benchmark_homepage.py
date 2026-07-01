@@ -564,6 +564,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     artifact_sha256 = entry.get("artifact_sha256")
     artifact_size_bytes = entry.get("artifact_size_bytes")
     artifact_name = Path(entry.get("artifact_path") or "").name
+    manifest_artifact_path = entry.get("artifact_path") or "n/a"
     description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
     detail_href = Path(detail_page_path(entry)).name
     detail_url = absolute_site_url(site_base_url, f"benchmark-results/pages/{detail_href}")
@@ -578,6 +579,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "@type": "Dataset",
         "name": f"rtc-asr benchmark artifact: {entry.get('label') or artifact_name or 'unknown'}",
         "description": description,
+        "identifier": artifact_sha256 or manifest_artifact_path,
         "url": detail_url,
         "datePublished": measured_at,
         "dateModified": article_modified_at,
@@ -712,7 +714,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Warnings</span><div class="value">{format_count(warnings.get("received_total"))}</div><p>Rate {format_ratio(warnings.get("rate_per_sample"))} per sample · Codes: {html.escape(format_list(warnings.get("codes") or []))}</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
         <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p><p>Size {format_bytes(artifact_size_bytes)}</p></article>
-        <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>{html.escape(artifact_name or 'n/a')}</code></div><p>Manifest path {html.escape(entry.get('artifact_path') or 'n/a')}</p><p>Artifact modified {html.escape(format_date(artifact_modified_at)) if artifact_modified_at else 'Not recorded'}</p><p>Generated detail page {html.escape(Path(detail_page_path(entry)).name)}</p></article>
+        <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>{html.escape(artifact_name or 'n/a')}</code></div><p>Manifest path <code>{html.escape(manifest_artifact_path)}</code></p><p>Artifact modified {html.escape(format_date(artifact_modified_at)) if artifact_modified_at else 'Not recorded'}</p><p>Generated detail page {html.escape(Path(detail_page_path(entry)).name)}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
         <article class="card"><span class="label">Telemetry coverage</span><div class="value">{html.escape(telemetry_count)}</div><p>{html.escape(telemetry_missing)}</p></article>
@@ -720,6 +722,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <div class="card" style="margin-top: 24px;">
         <span class="label">Artifact access</span>
         <p>The homepage now leads with decision-ready summaries instead of raw benchmark dumps. Use the JSON artifact only when you need the underlying machine-readable record.</p>
+        <p>Manifest artifact path: <code>{html.escape(manifest_artifact_path)}</code></p>
         <p>Integrity check: SHA-256 <code>{html.escape(artifact_sha256 or 'not available')}</code> · Size {format_bytes(artifact_size_bytes)}</p>
         <div><a href="../manifest.json">Open benchmark manifest</a></div>
         <div><a href="{artifact_href}">Open raw JSON artifact</a></div>

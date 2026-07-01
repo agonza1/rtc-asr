@@ -893,7 +893,8 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Reproduction command" in rss_detail
     assert "Artifact integrity" in rss_detail
     assert "Artifact provenance" in rss_detail
-    assert "Manifest path benchmark-results/parakeet-mlx-110m-service-2026-06-21.json" in rss_detail
+    assert "Manifest path <code>benchmark-results/parakeet-mlx-110m-service-2026-06-21.json</code>" in rss_detail
+    assert "Manifest artifact path: <code>benchmark-results/parakeet-mlx-110m-service-2026-06-21.json</code>" in rss_detail
     assert "SHA-256" in rss_detail
     assert '"@type": "Dataset"' in rss_detail
     assert '"@type": "DataDownload"' in rss_detail
@@ -947,6 +948,7 @@ def test_render_detail_page_uses_absolute_public_urls_when_site_base_is_provided
     assert '"url": "https://example.test/asr-latency/benchmark-results/pages/demo-artifact-2026-06-14.html"' in detail_html
     assert '"url": "https://example.test/asr-latency/index.html"' in detail_html
     assert '"contentUrl": "https://example.test/asr-latency/benchmark-results/demo-artifact-2026-06-14.json"' in detail_html
+    assert '"identifier": "benchmark-results/demo-artifact-2026-06-14.json"' in detail_html
     assert '<link rel="alternate" type="application/json" href="../demo-artifact-2026-06-14.json" title="Raw benchmark JSON artifact">' in detail_html
     assert '<link rel="alternate" type="application/json" href="../manifest.json" title="Benchmark results manifest">' in detail_html
 
@@ -993,6 +995,9 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
 
     detail_html = render_detail_page(entry, payload)
 
+    assert '"identifier": "1234567890abcdef"' in detail_html
+    assert 'Manifest artifact path: <code>benchmark-results/demo-artifact-2026-06-14.json</code>' in detail_html
+    assert 'Manifest path <code>benchmark-results/demo-artifact-2026-06-14.json</code>' in detail_html
     assert 'System profile' in detail_html
     assert 'macOS' in detail_html
     assert 'Peak RSS n/a' in detail_html
