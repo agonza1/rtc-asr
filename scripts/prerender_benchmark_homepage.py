@@ -787,18 +787,26 @@ def sitemap_lastmod(value: str | None) -> str | None:
 def render_sitemap(manifest: dict[str, Any], base_url: str) -> str:
     generated_lastmod = sitemap_lastmod(manifest.get("generated_at"))
     detail_lastmods: dict[str, str | None] = {}
+    artifact_lastmods: dict[str, str | None] = {}
     for entry in [*manifest.get("tracks", []), *manifest.get("artifacts", [])]:
-        if not entry.get("artifact_path"):
+        artifact_path = entry.get("artifact_path")
+        if not artifact_path:
             continue
+        lastmod = sitemap_lastmod(entry.get("measured_at"))
+        if str(artifact_path).endswith(".json"):
+            current_artifact_lastmod = artifact_lastmods.get(artifact_path)
+            if current_artifact_lastmod is None or (lastmod is not None and lastmod > current_artifact_lastmod):
+                artifact_lastmods[artifact_path] = lastmod
+
         detail_path = detail_page_path(entry)
         if detail_path == "#":
             continue
-        lastmod = sitemap_lastmod(entry.get("measured_at"))
         current_lastmod = detail_lastmods.get(detail_path)
         if current_lastmod is None or (lastmod is not None and lastmod > current_lastmod):
             detail_lastmods[detail_path] = lastmod
 
     urls = [("", generated_lastmod), ("benchmark-results/manifest.json", generated_lastmod)]
+    urls.extend((path, artifact_lastmods[path]) for path in sorted(artifact_lastmods))
     urls.extend((path, detail_lastmods[path]) for path in sorted(detail_lastmods))
     url_entries = "\n".join(
         "  <url>\n"

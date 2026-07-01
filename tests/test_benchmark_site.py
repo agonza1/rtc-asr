@@ -570,6 +570,16 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     assert 'comparable artifacts' in html
 
 
+def test_sitemap_includes_raw_benchmark_artifacts() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+
+    sitemap = render_sitemap(manifest, "https://benchmarks.webrtc.ventures/asr-latency/")
+
+    assert "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json" in sitemap
+    assert "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/qwen-mps-2026-06-21.json" in sitemap
+    assert "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-21.html" in sitemap
+
+
 def test_render_homepage_omits_unpublished_registry_gap_copy() -> None:
     homepage = """<!-- BEGIN GENERATED:static-summary -->\nold\n<!-- END GENERATED:static-summary -->\n<!-- BEGIN GENERATED:generated-at -->\nold\n<!-- END GENERATED:generated-at -->"""
     manifest = {
