@@ -1196,6 +1196,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert 'id="generated-at"' in homepage
     assert 'id="static-summary"' in homepage
     assert 'BEGIN GENERATED:generated-at' in homepage
+    assert 'raw artifacts with detail pages' in homepage
     assert 'BEGIN GENERATED:static-summary' in homepage
     assert 'id="hero-side"' in homepage
     assert 'id="snapshot-grid"' in homepage

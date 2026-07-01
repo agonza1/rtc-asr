@@ -605,7 +605,7 @@
               <a class="action-link" href="#faq">Launch FAQ</a>
             </div>
             <p class="meta-line" id="generated-at"><!-- BEGIN GENERATED:generated-at -->
-Published Jun 22, 2026, 10:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry.
+Published Jun 22, 2026, 10:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in the registry . 22 raw artifacts with detail pages.
 <!-- END GENERATED:generated-at --></p>
           </div>
           <div class="hero-side" id="hero-side"></div>
@@ -1390,7 +1390,7 @@ Published Jun 22, 2026, 10:41 PM UTC . 7 visible ASR lanes . 8 tracked lanes in 
           const visibleEntries = visibleTracks.concat(
             historicalSecondary.filter((entry) => !visiblePaths.has(entry.artifact_path))
           );
-          meta.textContent = `Published ${formatDate(manifest.generated_at)} · ${visibleEntries.length} visible ASR lanes · ${manifest.summary.tracked_count} tracked lanes in the registry.`;
+          meta.textContent = `Published ${formatDate(manifest.generated_at)} · ${visibleEntries.length} visible ASR lanes · ${manifest.summary.tracked_count} tracked lanes in the registry · ${manifest.summary.artifact_file_count || 0} raw artifacts with detail pages.`;
           renderHero(manifest.summary, visibleEntries);
           renderCoverage(manifest.summary, visibleEntries);
           renderSignals(manifest.summary, visibleEntries);
