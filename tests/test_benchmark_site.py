@@ -1160,6 +1160,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Reference WER" in homepage
     assert "external context rather than official rtc-asr measurements" in homepage
     assert "Open detail page" in homepage
+    assert "Artifact size" in homepage
     assert "SHA-256" in homepage
     assert 'function formatHostSummary(entry)' in homepage
     assert 'Host profile' in homepage
@@ -1351,6 +1352,7 @@ def test_homepage_initial_html_contains_prerendered_summary() -> None:
     assert "Benchmark appendix" in homepage
     assert "Artifacts kept out of the primary ranking" not in homepage
     assert "Open detail page" in homepage
+    assert "Artifact size" in homepage
     assert "SHA-256" in homepage
     assert "open JSON" not in homepage
     assert "Loading benchmark manifest..." not in homepage
