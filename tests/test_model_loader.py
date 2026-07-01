@@ -9,7 +9,7 @@ import pytest
 
 from src.audio_processor import AudioProcessor
 from src.config import AppConfig
-from src.model_loader import ASRUnavailableError, ParakeetAdapter, ParakeetMLXAdapter, ParakeetNemoAdapter, QwenASRAdapter, build_transcriber
+from src.model_loader import ASRUnavailableError, ParakeetAdapter, ParakeetMLXAdapter, ParakeetNemoAdapter, QwenASRAdapter, VoxtralAdapter, build_transcriber
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 
@@ -56,6 +56,17 @@ def test_build_transcriber_accepts_parakeet_mlx_aliases(backend: str) -> None:
 
     assert isinstance(transcriber, ParakeetMLXAdapter)
     assert transcriber.model_name == "mlx-community/parakeet-tdt_ctc-110m"
+
+
+@pytest.mark.parametrize("backend", ["voxtral", "voxtral-realtime"])
+def test_build_transcriber_accepts_voxtral_aliases(backend: str) -> None:
+    transcriber = build_transcriber(
+        AppConfig(asr_backend=backend),
+        AudioProcessor(),
+    )
+
+    assert isinstance(transcriber, VoxtralAdapter)
+    assert transcriber.model_name == "mistralai/Voxtral-Mini-4B-Realtime-2602"
 
 
 def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -229,6 +240,60 @@ def test_parakeet_nemo_adapter_transcribe_uses_nemo_model(monkeypatch: pytest.Mo
     assert str(calls["paths"][0]).endswith(".wav")
 
 
+def test_voxtral_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_pipeline(task: str, **kwargs: object):
+        calls["task"] = task
+        calls["kwargs"] = kwargs
+
+        def run(audio: dict[str, object], *, generate_kwargs: dict[str, str] | None = None) -> dict[str, str]:
+            calls["audio"] = audio
+            calls["generate_kwargs"] = generate_kwargs
+            return {"text": " Please hold. "}
+
+        return run
+
+    fake_transformers = ModuleType("transformers")
+    fake_transformers.pipeline = fake_pipeline
+    fake_torch = ModuleType("torch")
+    fake_torch.float32 = object()
+    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+    adapter = VoxtralAdapter(
+        config=AppConfig(
+            asr_backend="voxtral",
+            asr_device="cpu",
+            asr_voxtral_model="mistralai/Voxtral-Mini-4B-Realtime-2602",
+            asr_voxtral_dtype="auto",
+            asr_voxtral_trust_remote_code=True,
+        ),
+        audio_processor=AudioProcessor(),
+    )
+
+    result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
+
+    assert result == {
+        "text": "Please hold.",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "voxtral",
+        "model": "mistralai/Voxtral-Mini-4B-Realtime-2602",
+    }
+    assert calls["task"] == "automatic-speech-recognition"
+    assert calls["kwargs"] == {
+        "model": "mistralai/Voxtral-Mini-4B-Realtime-2602",
+        "device": "cpu",
+        "dtype": fake_torch.float32,
+        "trust_remote_code": True,
+    }
+    assert calls["generate_kwargs"] == {"language": "en"}
+    audio = calls["audio"]
+    assert audio["sampling_rate"] == 16000
+    assert getattr(audio["array"], "shape", (0,))[0] > 0
+
+
 def test_parakeet_mlx_adapter_transcribe_uses_mlx_model(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
@@ -360,6 +425,25 @@ def test_parakeet_adapter_raises_actionable_error_for_qwen_pinned_runtime(monkey
         adapter.preload()
 
 
+def test_voxtral_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    real_import = builtins.__import__
+
+    def fake_import(name: str, globals: object = None, locals: object = None, fromlist: tuple[str, ...] = (), level: int = 0):
+        if name in {"transformers", "torch"}:
+            raise ImportError(name)
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    adapter = VoxtralAdapter(
+        config=AppConfig(asr_backend="voxtral"),
+        audio_processor=AudioProcessor(),
+    )
+
+    with pytest.raises(ASRUnavailableError, match="voxtral backend requires transformers and torch"):
+        adapter.preload()
+
+
 def test_parakeet_mlx_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     real_import = builtins.__import__
 
@@ -414,6 +498,20 @@ def test_app_config_reads_qwen_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.asr_qwen_device_map == "cpu"
     assert config.asr_qwen_max_new_tokens == 1024
     assert config.asr_qwen_max_inference_batch_size == 3
+
+
+def test_app_config_reads_voxtral_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASR_BACKEND", "voxtral")
+    monkeypatch.setenv("ASR_VOXTRAL_MODEL", "mistralai/Voxtral-Mini-4B-Realtime-2602")
+    monkeypatch.setenv("ASR_VOXTRAL_DTYPE", "float32")
+    monkeypatch.setenv("ASR_VOXTRAL_TRUST_REMOTE_CODE", "false")
+
+    config = AppConfig.from_env()
+
+    assert config.asr_backend == "voxtral"
+    assert config.asr_voxtral_model == "mistralai/Voxtral-Mini-4B-Realtime-2602"
+    assert config.asr_voxtral_dtype == "float32"
+    assert config.asr_voxtral_trust_remote_code is False
 
 
 def test_app_config_reads_parakeet_env(monkeypatch: pytest.MonkeyPatch) -> None:

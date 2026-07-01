@@ -421,6 +421,77 @@ class ParakeetMLXAdapter:
         return self._model
 
 
+@dataclass(slots=True)
+class VoxtralAdapter:
+    """Experimental Transformers pipeline wrapper for Mistral Voxtral realtime ASR."""
+
+    config: AppConfig
+    audio_processor: AudioProcessor
+    backend_name: str = field(init=False, default="voxtral")
+    model_name: str = field(init=False)
+    _pipeline: Any | None = field(init=False, default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        self.model_name = self.config.asr_voxtral_model
+
+    def is_loaded(self) -> bool:
+        return self._pipeline is not None
+
+    def preload(self) -> None:
+        self._load_pipeline()
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
+        decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
+        pipeline = self._load_pipeline()
+        kwargs = {"generate_kwargs": {"language": language}} if language else {}
+        result = pipeline(
+            {"array": decoded_audio.samples, "sampling_rate": decoded_audio.sample_rate},
+            **kwargs,
+        )
+
+        return {
+            "text": _extract_pipeline_text(result),
+            "language": language,
+            "duration_ms": decoded_audio.duration_ms,
+            "backend": self.backend_name,
+            "model": self.model_name,
+        }
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "device": self.config.asr_device,
+            "dtype": self.config.asr_voxtral_dtype,
+            "implementation": "transformers.pipeline",
+            "task": "automatic-speech-recognition",
+            "experimental": True,
+            "loaded": self.is_loaded(),
+            **_shared_capabilities(self.audio_processor),
+        }
+
+    def _load_pipeline(self) -> Any:
+        if self._pipeline is not None:
+            return self._pipeline
+
+        try:
+            import torch
+            from transformers import pipeline
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The voxtral backend requires transformers and torch. Install a Voxtral-compatible Hugging Face runtime to enable ASR_BACKEND=voxtral."
+            ) from exc
+
+        self._pipeline = pipeline(
+            "automatic-speech-recognition",
+            model=self.model_name,
+            device=self.config.asr_device,
+            dtype=_resolve_torch_dtype(torch, self.config.asr_voxtral_dtype, self.config.asr_device),
+            trust_remote_code=self.config.asr_voxtral_trust_remote_code,
+        )
+        return self._pipeline
+
+
 BACKEND_ALIASES = {
     "faster-whisper": "faster-whisper",
     "whisper": "faster-whisper",
@@ -432,6 +503,8 @@ BACKEND_ALIASES = {
     "parakeet-nemo": "parakeet-nemo",
     "parakeet-ctc": "parakeet-nemo",
     "parakeet-mlx": "parakeet-mlx",
+    "voxtral": "voxtral",
+    "voxtral-realtime": "voxtral",
 }
 
 
@@ -567,4 +640,6 @@ def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Tra
         return ParakeetNemoAdapter(config=config, audio_processor=audio_processor)
     if backend == "parakeet-mlx":
         return ParakeetMLXAdapter(config=config, audio_processor=audio_processor)
+    if backend == "voxtral":
+        return VoxtralAdapter(config=config, audio_processor=audio_processor)
     raise ASRUnavailableError(f"Unsupported ASR backend: {config.asr_backend}")

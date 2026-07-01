@@ -2,7 +2,7 @@
 
 `rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST or WebSocket. It is optimized for warmed, local or on-device inference paths, especially low-power CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
 
-The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, and `parakeet-nemo` backends behind the same API surface.
+The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, `parakeet-nemo`, and experimental `voxtral` backends behind the same API surface.
 
 <img width="1497" height="728" alt="high-level-flow-diagram" src="https://github.com/user-attachments/assets/d8182afc-af8b-42a0-8753-a83d03f76038" style="max-width: 100%; height: auto;" />
 
@@ -78,7 +78,7 @@ ASR_PRELOAD_MODEL=false
 ASR_FAIL_FAST=false
 ```
 
-Backend-specific variables are available for Qwen, Parakeet, and NeMo Parakeet. Set `ASR_PRELOAD_MODEL=true` when you want startup-time backend validation instead of lazy first-use loading. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
+Backend-specific variables are available for Qwen, Parakeet, NeMo Parakeet, and experimental Voxtral. Set `ASR_PRELOAD_MODEL=true` when you want startup-time backend validation instead of lazy first-use loading. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
 
 If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service defaults to `cuda`. Legacy aliases `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted for compatibility.
 
@@ -89,7 +89,7 @@ If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service d
 | Tiny CPU | Raspberry Pi / mini PC | `faster-whisper` | `tiny.en` `int8` | Best smoke test, lowest accuracy |
 | Practical CPU | Mac Mini / N100 / laptop | `faster-whisper` or `parakeet-nemo` | `base.en` `int8` or `nvidia/parakeet-tdt_ctc-110m` | Good default benchmark lane; 110M Parakeet is the higher-quality CPU comparison |
 | Apple Silicon | M-series Mac | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` or `mlx-community/parakeet-tdt-0.6b-v3` | Strong warmed latency and power tradeoff; 0.6B MLX is useful when quality matters more than footprint |
-| Not low-power | Large CPU or accelerator comparison lane | `qwen-asr`, Canary Flash, or larger Parakeet variants | `Qwen/Qwen3-ASR-0.6B`, `nvidia/canary-1b-flash`, or `nvidia/parakeet-tdt-0.6b-v3` | Useful comparison, not the default edge path |
+| Not low-power | Large CPU or accelerator comparison lane | `qwen-asr`, experimental `voxtral`, Canary Flash, or larger Parakeet variants | `Qwen/Qwen3-ASR-0.6B`, `mistralai/Voxtral-Mini-4B-Realtime-2602`, `nvidia/canary-1b-flash`, or `nvidia/parakeet-tdt-0.6b-v3` | Useful comparison, not the default edge path |
 
 Current checked-in benchmarks make the Apple Silicon story especially strong for the warmed `parakeet-mlx-service-110m` lane. See [Benchmarks](./docs/benchmarks.md) for the latest artifact-backed numbers.
 
