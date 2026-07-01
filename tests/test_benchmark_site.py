@@ -963,6 +963,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'runtime': 'local',
         'status': 'validated',
         'sample_count': 3,
+        'target_sample_count': 5,
         'measured_at': '2026-06-14T00:00:00Z',
         'artifact_modified_at': '2026-06-15T12:30:00Z',
         'status_detail': 'Demo artifact.',
@@ -1028,6 +1029,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'warm but stable' in nested_efficiency_html
 
     assert 'Thermal 63.5 C' in detail_html
+    assert 'Samples: 3 / target 5' in detail_html
     assert 'Sample rate 16000 Hz' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html
     assert 'make benchmark-demo' in detail_html
