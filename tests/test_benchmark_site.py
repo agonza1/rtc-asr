@@ -570,6 +570,8 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     assert 'function secondaryEntries(entries)' in html
     assert 'Published live contract' in html
     assert 'comparable artifacts' in html
+    assert 'Archive hygiene' in html
+    assert 'historical artifacts' in html
 
 
 def test_sitemap_includes_raw_benchmark_artifacts() -> None:
