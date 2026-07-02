@@ -1,10 +1,12 @@
 {
-  "generated_at": "2026-06-22T22:41:22Z",
+  "generated_at": "2026-07-02T00:41:39Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
     "artifact_file_count": 22,
     "artifact_total_size_bytes": 801422,
+    "stale_artifact_count": 14,
+    "stale_artifact_total_size_bytes": 374759,
     "published_artifact_total_size_bytes": 426663,
     "validated_count": 7,
     "legacy_count": 0,

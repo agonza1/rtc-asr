@@ -970,7 +970,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
 </div>
 """.strip()
     generated_at = html.escape(
-        f"Published {format_date(manifest.get('generated_at'))} . {len(entries)} visible ASR lanes . {summary.get('tracked_count', 0)} tracked lanes in the registry . {summary.get('artifact_file_count', 0)} raw artifacts with detail pages."
+        f"Published {format_date(manifest.get('generated_at'))} . {len(entries)} visible ASR lanes . {summary.get('tracked_count', 0)} tracked lanes in the registry . {summary.get('artifact_file_count', 0)} raw artifacts with detail pages, including {summary.get('stale_artifact_count', 0)} historical artifacts."
     )
     rendered = replace_generated_block(homepage, "generated-at", generated_at)
     return replace_generated_block(rendered, "static-summary", static_summary)
