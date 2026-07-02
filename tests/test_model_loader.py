@@ -69,6 +69,32 @@ def test_build_transcriber_accepts_voxtral_aliases(backend: str) -> None:
     assert transcriber.model_name == "mistralai/Voxtral-Mini-4B-Realtime-2602"
 
 
+def test_api_reference_lists_supported_runtime_aliases() -> None:
+    api_reference = (Path(__file__).resolve().parents[1] / "docs" / "api-reference.md").read_text(encoding="utf-8")
+
+    for backend in [
+        "`faster-whisper`",
+        "`qwen-asr`",
+        "`parakeet`",
+        "`parakeet-mlx`",
+        "`parakeet-nemo`",
+        "`voxtral`",
+    ]:
+        assert backend in api_reference
+
+    for alias in [
+        "`whisper`",
+        "`qwen`",
+        "`qwen3-asr`",
+        "`parakeet-asr`",
+        "`parakeet-ctc`",
+        "`voxtral-realtime`",
+        "`voxtral-mini`",
+        "`voxtral-mini-4b`",
+    ]:
+        assert alias in api_reference
+
+
 def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
