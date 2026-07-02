@@ -68,6 +68,16 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "asr_queue_delay_p95_ms": 5.0,
         "protocol_errors": 0.0,
     }
+    assert comparison["transports"]["raw_uds"]["metrics"]["time_to_first_interim_ms"] == {
+        "p50": 11.5,
+        "p95": 12.5,
+        "p99": 13.5,
+    }
+    assert comparison["transports"]["raw_uds"]["metrics"]["time_to_final_after_finalize_ms"] == {
+        "p50": 20.0,
+        "p95": 25.0,
+        "p99": 30.0,
+    }
 
 
 def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path: Path) -> None:

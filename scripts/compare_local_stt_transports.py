@@ -15,6 +15,8 @@ KEY_METRICS = (
     "protocol_errors",
 )
 
+PERCENTILES = ("p50", "p95", "p99")
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare Local STT v1 transport benchmark artifacts")
@@ -33,14 +35,18 @@ def load_artifact(path: Path) -> dict[str, Any]:
     return payload
 
 
-def _p95(summary: dict[str, Any], metric: str) -> float | None:
+def _percentile(summary: dict[str, Any], metric: str, percentile: str) -> float | None:
     bucket = summary.get(metric)
     if not isinstance(bucket, dict):
         return None
-    value = bucket.get("p95")
+    value = bucket.get(percentile)
     if value is None:
         return None
     return float(value)
+
+
+def metric_percentiles(summary: dict[str, Any], metric: str) -> dict[str, float | None]:
+    return {percentile: _percentile(summary, metric, percentile) for percentile in PERCENTILES}
 
 
 def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: str) -> str | None:
@@ -80,7 +86,8 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
             "url": artifact["target"].get("url"),
             "uds_path": artifact["target"].get("uds_path"),
             "runs": artifact.get("runs"),
-            "metrics_p95": {metric: _p95(summary, metric) for metric in KEY_METRICS},
+            "metrics": {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS},
+            "metrics_p95": {metric: _percentile(summary, metric, "p95") for metric in KEY_METRICS},
             "cpu_utilization_percent": environment.get("cpu_utilization_percent"),
         }
 
