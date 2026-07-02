@@ -504,6 +504,8 @@ BACKEND_ALIASES = {
     "parakeet-ctc": "parakeet-nemo",
     "parakeet-mlx": "parakeet-mlx",
     "voxtral": "voxtral",
+    "voxtral-mini": "voxtral",
+    "voxtral-mini-4b": "voxtral",
     "voxtral-realtime": "voxtral",
 }
 

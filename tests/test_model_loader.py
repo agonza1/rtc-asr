@@ -58,7 +58,7 @@ def test_build_transcriber_accepts_parakeet_mlx_aliases(backend: str) -> None:
     assert transcriber.model_name == "mlx-community/parakeet-tdt_ctc-110m"
 
 
-@pytest.mark.parametrize("backend", ["voxtral", "voxtral-realtime"])
+@pytest.mark.parametrize("backend", ["voxtral", "voxtral-mini", "voxtral-mini-4b", "voxtral-realtime"])
 def test_build_transcriber_accepts_voxtral_aliases(backend: str) -> None:
     transcriber = build_transcriber(
         AppConfig(asr_backend=backend),
