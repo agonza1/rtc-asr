@@ -10,6 +10,8 @@ from src.protocols.local_stt_v1 import (
     HOT_PATH_SAMPLE_RATE,
     PROTOCOL_VERSION,
     RAW_UDS_HEADER_BYTES,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
+    RawUdsFrameDecoder,
     RawUdsFrameType,
     ErrorMessage,
     LocalSttProtocolError,
@@ -360,6 +362,33 @@ def test_raw_uds_json_frame_codec_uses_compact_object_payload() -> None:
     assert decoded.frame_type == RawUdsFrameType.JSON_CONTROL
     assert decoded.payload == b'{"type":"ping","ping_id":"p1"}'
     assert decode_raw_uds_json_payload(decoded) == {"type": "ping", "ping_id": "p1"}
+
+
+def test_raw_uds_frame_decoder_buffers_socket_chunk_boundaries() -> None:
+    decoder = RawUdsFrameDecoder()
+    first = encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "p1"})
+    second = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x01\x02\x03")
+
+    assert decoder.feed(first[:2]) == []
+    assert decoder.buffered_bytes == 2
+    assert decoder.feed(first[2:RAW_UDS_HEADER_BYTES]) == []
+    frames = decoder.feed(first[RAW_UDS_HEADER_BYTES:] + second)
+
+    assert [(frame.frame_type, frame.payload) for frame in frames] == [
+        (RawUdsFrameType.JSON_CONTROL, b'{"type":"ping","ping_id":"p1"}'),
+        (RawUdsFrameType.AUDIO_PCM16, b"\x00\x01\x02\x03"),
+    ]
+    assert decoder.buffered_bytes == 0
+
+
+def test_raw_uds_frame_decoder_rejects_oversized_payload_before_body_arrives() -> None:
+    decoder = RawUdsFrameDecoder()
+    header = bytes([RawUdsFrameType.AUDIO_PCM16]) + (RAW_UDS_MAX_PAYLOAD_BYTES + 1).to_bytes(4, "little")
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        decoder.feed(header)
+
+    assert excinfo.value.as_event().code == "raw_uds_payload_too_large"
 
 
 def test_raw_uds_frame_decoder_rejects_length_mismatch() -> None:

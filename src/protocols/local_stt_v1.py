@@ -36,6 +36,40 @@ class RawUdsFrame:
     payload: bytes
 
 
+@dataclass(slots=True)
+class RawUdsFrameDecoder:
+    """Incrementally decode length-prefixed Raw UDS frames from socket chunks."""
+
+    _buffer: bytearray = field(default_factory=bytearray)
+
+    def feed(self, data: bytes | bytearray | memoryview) -> list[RawUdsFrame]:
+        chunk = bytes(data)
+        if not chunk:
+            return []
+        self._buffer.extend(chunk)
+
+        frames: list[RawUdsFrame] = []
+        while len(self._buffer) >= RAW_UDS_HEADER_BYTES:
+            frame_type_value, payload_length = struct.unpack("<BI", self._buffer[:RAW_UDS_HEADER_BYTES])
+            frame_type = _parse_raw_uds_frame_type(frame_type_value)
+            if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
+                raise LocalSttProtocolError(
+                    f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+                    code="raw_uds_payload_too_large",
+                )
+            frame_length = RAW_UDS_HEADER_BYTES + payload_length
+            if len(self._buffer) < frame_length:
+                break
+            payload = bytes(self._buffer[RAW_UDS_HEADER_BYTES:frame_length])
+            del self._buffer[:frame_length]
+            frames.append(RawUdsFrame(frame_type=frame_type, payload=payload))
+        return frames
+
+    @property
+    def buffered_bytes(self) -> int:
+        return len(self._buffer)
+
+
 class LocalSttModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
