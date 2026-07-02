@@ -23,7 +23,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.protocols import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_FRAME_MS, HOT_PATH_SAMPLE_RATE
-from src.rtc_client import AsyncLocalSttClient, TranscriptEvent
+from src.rtc_client import AsyncLocalSttClient, AsyncRawUdsLocalSttClient, TranscriptEvent
 
 
 class LocalSttClient(Protocol):
@@ -35,7 +35,7 @@ class LocalSttClient(Protocol):
 
 
 ClientFactory = Callable[[str], LocalSttClient]
-SUPPORTED_TRANSPORTS = {"tcp_ws", "uds_ws"}
+SUPPORTED_TRANSPORTS = {"tcp_ws", "uds_ws", "raw_uds"}
 
 
 @dataclass(slots=True)
@@ -133,9 +133,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark Local STT v1 websocket latency")
     parser.add_argument(
         "--transport",
-        choices=("tcp_ws", "uds_ws"),
+        choices=("tcp_ws", "uds_ws", "raw_uds"),
         default="tcp_ws",
-        help="Local STT transport to benchmark. uds_ws is reserved for the optional colocated socket path.",
+        help="Local STT transport to benchmark. raw_uds uses the experimental length-prefixed Unix socket framing.",
     )
     parser.add_argument("--url", default="ws://localhost:8080/v1/stt/stream")
     parser.add_argument("--uds-path", type=Path, help="Unix socket path for --transport uds_ws")
@@ -192,12 +192,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def validate_transport_args(transport: str, uds_path: Path | None) -> None:
     if transport == "tcp_ws" and uds_path is not None:
-        raise argparse.ArgumentTypeError("--uds-path is only valid when --transport uds_ws")
+        raise argparse.ArgumentTypeError("--uds-path is only valid when --transport uds_ws or raw_uds")
     if transport == "tcp_ws":
         return
-    if transport == "uds_ws" and uds_path is None:
-        raise argparse.ArgumentTypeError("--uds-path is required when --transport uds_ws")
-    if transport == "uds_ws":
+    if transport in {"uds_ws", "raw_uds"} and uds_path is None:
+        raise argparse.ArgumentTypeError(f"--uds-path is required when --transport {transport}")
+    if transport in {"uds_ws", "raw_uds"}:
         return
     raise argparse.ArgumentTypeError(f"unsupported benchmark transport: {transport}")
 
@@ -220,6 +220,10 @@ def make_client_factory(*, transport: str, uds_path: str | None) -> ClientFactor
             return await websockets.unix_connect(uds_path, uri=ws_url, max_size=2**23)
 
         return lambda ws_url: AsyncLocalSttClient(ws_url, connect_fn=connect_unix)
+    if transport == "raw_uds":
+        if uds_path is None:
+            raise ValueError("uds_path is required for raw_uds transport")
+        return lambda _ws_url: AsyncRawUdsLocalSttClient(uds_path)
     raise ValueError(f"Unsupported benchmark transport: {transport}")
 
 

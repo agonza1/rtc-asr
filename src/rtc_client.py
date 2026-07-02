@@ -14,6 +14,12 @@ from .protocols import (
     HOT_PATH_PCM_FORMAT,
     HOT_PATH_SAMPLE_RATE,
     PROTOCOL_VERSION,
+    RAW_UDS_HEADER_BYTES,
+    RawUdsFrameType,
+    decode_raw_uds_frame,
+    decode_raw_uds_json_payload,
+    encode_raw_uds_frame,
+    encode_raw_uds_json_frame,
 )
 
 
@@ -26,6 +32,7 @@ class WebSocketConnection(Protocol):
 
 
 ConnectFn = Callable[[str], Awaitable[WebSocketConnection]]
+RawUdsConnectFn = Callable[[str], Awaitable[tuple[asyncio.StreamReader, asyncio.StreamWriter]]]
 
 
 @dataclass(slots=True)
@@ -344,10 +351,162 @@ class AsyncLocalSttClient:
         return self._websocket
 
 
+class AsyncRawUdsLocalSttClient:
+    def __init__(
+        self,
+        uds_path: str,
+        *,
+        connect_fn: RawUdsConnectFn | None = None,
+    ) -> None:
+        self.uds_path = uds_path
+        self._connect_fn = connect_fn
+        self._reader: asyncio.StreamReader | None = None
+        self._writer: asyncio.StreamWriter | None = None
+
+    async def connect(self) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+        if self._reader is not None and self._writer is not None:
+            return self._reader, self._writer
+        connect_fn = self._connect_fn or _default_raw_uds_connect
+        self._reader, self._writer = await connect_fn(self.uds_path)
+        return self._reader, self._writer
+
+    async def start(
+        self,
+        *,
+        language: str | None = "en",
+        sample_rate: int = HOT_PATH_SAMPLE_RATE,
+        interim_results: bool = True,
+        partial_interval_ms: int = HOT_PATH_FRAME_MS,
+        partial_window_seconds: float | None = None,
+        max_buffer_seconds: float | None = None,
+        client_stream_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if sample_rate != HOT_PATH_SAMPLE_RATE:
+            raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
+        if partial_interval_ms < 1:
+            raise ValueError("partial_interval_ms must be a positive integer")
+        _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
+        _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
+        payload: dict[str, Any] = {
+            "type": "start",
+            "version": PROTOCOL_VERSION,
+            "audio": {
+                "sample_rate": HOT_PATH_SAMPLE_RATE,
+                "channels": HOT_PATH_CHANNELS,
+                "format": HOT_PATH_PCM_FORMAT,
+                "frame_ms": HOT_PATH_FRAME_MS,
+                "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+            },
+            "language": language,
+            "interim_results": interim_results,
+            "partial_interval_ms": partial_interval_ms,
+        }
+        if partial_window_seconds is not None:
+            payload["partial_window_seconds"] = partial_window_seconds
+        if max_buffer_seconds is not None:
+            payload["max_buffer_seconds"] = max_buffer_seconds
+        if client_stream_id is not None:
+            payload["client_stream_id"] = client_stream_id
+        if metadata:
+            payload["metadata"] = dict(metadata)
+        await self._send_json(RawUdsFrameType.JSON_CONTROL, payload)
+        ready_event = await self._recv_json()
+        if ready_event.get("type") != "ready":
+            raise RuntimeError(f"Expected ready event, got: {ready_event}")
+        return ready_event
+
+    async def send_audio(self, chunk: bytes, *, on_sent: Callable[[], None] | None = None) -> None:
+        await self._send_frame(RawUdsFrameType.AUDIO_PCM16, chunk)
+        if on_sent is not None:
+            on_sent()
+
+    async def finalize(self) -> None:
+        await self._send_json(RawUdsFrameType.JSON_CONTROL, {"type": "finalize"})
+
+    async def cancel(self) -> None:
+        await self._send_json(RawUdsFrameType.JSON_CONTROL, {"type": "cancel"})
+
+    async def ping(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> dict[str, Any]:
+        payload: dict[str, Any] = {"type": "ping"}
+        if ping_id is not None:
+            payload["ping_id"] = ping_id
+        if timestamp_ms is not None:
+            payload["timestamp_ms"] = timestamp_ms
+        await self._send_json(RawUdsFrameType.PING, payload)
+        pong_event = await self._recv_json()
+        if pong_event.get("type") != "pong":
+            raise RuntimeError(f"Expected pong event, got: {pong_event}")
+        return pong_event
+
+    async def recv_event(
+        self,
+        *,
+        timeout: float | None = None,
+        allow_error: bool = True,
+    ) -> TranscriptEvent | None:
+        if timeout is None:
+            payload = await self._recv_json(allow_error=allow_error)
+        else:
+            payload = await self._recv_json_with_timeout(timeout, allow_error=allow_error)
+            if payload is None:
+                return None
+        return TranscriptEvent.from_payload(payload)
+
+    async def close(self, *, graceful: bool = True) -> dict[str, Any] | None:
+        if self._writer is None:
+            return None
+
+        closed_event: dict[str, Any] | None = None
+        if graceful:
+            await self._send_json(RawUdsFrameType.JSON_CONTROL, {"type": "close"})
+            closed_event = await self._recv_json(allow_error=True)
+            if closed_event.get("type") != "closed":
+                raise RuntimeError(f"Expected closed event, got: {closed_event}")
+
+        writer = self._writer
+        writer.close()
+        await writer.wait_closed()
+        self._reader = None
+        self._writer = None
+        return closed_event
+
+    async def _send_json(self, frame_type: RawUdsFrameType, payload: dict[str, Any]) -> None:
+        await self._send_bytes(encode_raw_uds_json_frame(frame_type, payload))
+
+    async def _send_frame(self, frame_type: RawUdsFrameType, payload: bytes) -> None:
+        await self._send_bytes(encode_raw_uds_frame(frame_type, payload))
+
+    async def _send_bytes(self, data: bytes) -> None:
+        _, writer = await self.connect()
+        writer.write(data)
+        await writer.drain()
+
+    async def _recv_json(self, *, allow_error: bool = False) -> dict[str, Any]:
+        reader, _ = await self.connect()
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+        payload = decode_raw_uds_json_payload(frame)
+        if payload.get("type") == "error" and not allow_error:
+            raise RuntimeError(str(payload.get("message", "Unknown Local STT raw UDS error")))
+        return payload
+
+    async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False) -> dict[str, Any] | None:
+        try:
+            return await asyncio.wait_for(self._recv_json(allow_error=allow_error), timeout)
+        except TimeoutError:
+            return None
+
+
 async def _default_connect(ws_url: str) -> WebSocketConnection:
     import websockets
 
     return await websockets.connect(ws_url, max_size=2**23)
+
+
+async def _default_raw_uds_connect(uds_path: str) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+    return await asyncio.open_unix_connection(uds_path)
 
 
 def _maybe_int(value: Any) -> int | None:
