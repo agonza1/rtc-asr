@@ -1,5 +1,6 @@
 import importlib.util
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -83,6 +84,39 @@ def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
 
     assert summary["total_size_bytes"] == 100
     assert summary["total_size"] == "100 B"
+
+
+def test_stale_artifacts_can_filter_by_age() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/old.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/recent.json",
+                "status": "legacy",
+                "measured_at": "2026-06-25T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        older_than_days=14,
+        now=datetime(2026, 7, 1, tzinfo=UTC),
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/old.json"]
 
 
 def test_format_bytes_uses_binary_units() -> None:
