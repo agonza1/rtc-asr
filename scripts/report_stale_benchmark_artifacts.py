@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -41,11 +42,43 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_TRACKS_PATH,
         help="JSON file listing tracked benchmark lanes",
     )
+    parser.add_argument(
+        "--older-than-days",
+        type=int,
+        default=None,
+        help="Only include stale artifacts measured before this many days ago",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     return parser.parse_args()
 
 
-def stale_artifacts(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+def parse_timestamp(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def stale_artifacts(
+    manifest: dict[str, Any],
+    *,
+    older_than_days: int | None = None,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    cutoff = None
+    if older_than_days is not None:
+        if older_than_days < 0:
+            raise ValueError("older_than_days must be non-negative")
+        reference = now or datetime.now(UTC)
+        if reference.tzinfo is None:
+            reference = reference.replace(tzinfo=UTC)
+        cutoff = reference.astimezone(UTC) - timedelta(days=older_than_days)
+
     current_paths = {
         track["artifact_path"]
         for track in manifest.get("tracks", [])
@@ -58,12 +91,16 @@ def stale_artifacts(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         if artifact.get("status") != "legacy":
             continue
+        measured_at = artifact.get("measured_at")
+        measured_timestamp = parse_timestamp(measured_at)
+        if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
+            continue
         stale.append(
             {
                 "artifact_path": artifact_path,
                 "slug": artifact.get("slug"),
                 "label": artifact.get("label"),
-                "measured_at": artifact.get("measured_at"),
+                "measured_at": measured_at,
                 "artifact_size_bytes": artifact.get("artifact_size_bytes"),
                 "artifact_size": format_bytes(artifact.get("artifact_size_bytes")),
             }
@@ -113,7 +150,7 @@ def render_text(stale: list[dict[str, Any]]) -> str:
 def main() -> None:
     args = parse_args()
     manifest = build_manifest(args.results_dir, args.tracks)
-    stale = stale_artifacts(manifest)
+    stale = stale_artifacts(manifest, older_than_days=args.older_than_days)
     if args.json:
         print(json.dumps(stale_summary(stale), indent=2))
     else:
