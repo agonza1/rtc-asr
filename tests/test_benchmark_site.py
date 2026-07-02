@@ -947,6 +947,8 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Reproduction command" in rss_detail
     assert "Artifact integrity" in rss_detail
     assert "Artifact provenance" in rss_detail
+    assert "Measurement technique" in rss_detail
+    assert "REST and Local STT v1 websocket ASR latency benchmark" in rss_detail
     assert "Manifest path <code>benchmark-results/parakeet-mlx-110m-service-2026-06-21.json</code>" in rss_detail
     assert "Manifest artifact path: <code>benchmark-results/parakeet-mlx-110m-service-2026-06-21.json</code>" in rss_detail
     assert "SHA-256" in rss_detail
@@ -1023,7 +1025,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'status_detail': 'Demo artifact.',
         'rest': {'mean_ms': 42.0, 'p95_ms': 55.0, 'rtf_mean': 0.2},
         'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
-        'contract': {'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'sample_rate': 16000, 'binary_frames': False},
+        'contract': {'path': '/v1/stt/stream', 'transport': 'v1-stt-stream', 'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'sample_rate': 16000, 'binary_frames': False},
         'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
         'official_wer_reference': '3.1 / 7.2 Demo clean / other',
         'run_command': 'make benchmark-demo',
@@ -1109,6 +1111,8 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'Artifact modified Jun 15, 2026, 12:30 PM UTC' in detail_html
     assert 'Generated detail page demo-artifact-2026-06-14.html' in detail_html
     assert 'Shown as external context rather than an official rtc-asr measurement.' in detail_html
+    assert 'Measurement technique' in detail_html
+    assert 'REST and Local STT v1 websocket ASR latency benchmark' in detail_html
     assert 'Stable over 5 minutes.' in detail_html
 
 
