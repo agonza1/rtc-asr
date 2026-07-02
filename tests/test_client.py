@@ -8,7 +8,14 @@ import sys
 
 import pytest
 
-from src.rtc_client import AsyncASRClient, AsyncLocalSttClient
+from src.protocols.local_stt_v1 import (
+    RAW_UDS_HEADER_BYTES,
+    RawUdsFrameType,
+    decode_raw_uds_json_payload,
+    decode_raw_uds_frame,
+    encode_raw_uds_json_frame,
+)
+from src.rtc_client import AsyncASRClient, AsyncLocalSttClient, AsyncRawUdsLocalSttClient
 
 
 class FakeWebSocket:
@@ -309,6 +316,102 @@ def test_async_local_stt_client_stream_flow() -> None:
         assert websocket.closed_with == 1000
 
     asyncio.run(scenario())
+
+
+def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
+    socket_path = tmp_path / "stt.raw.sock"
+    received_frames: list[tuple[RawUdsFrameType, object]] = []
+
+    async def read_raw_frame(reader: asyncio.StreamReader):
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        return decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+
+    async def send_json(writer: asyncio.StreamWriter, frame_type: RawUdsFrameType, payload: dict[str, object]) -> None:
+        writer.write(encode_raw_uds_json_frame(frame_type, payload))
+        await writer.drain()
+
+    async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        start_frame = await read_raw_frame(reader)
+        received_frames.append((start_frame.frame_type, decode_raw_uds_json_payload(start_frame)))
+        await send_json(writer, RawUdsFrameType.JSON_EVENT, {"type": "ready", "version": "local-stt.v1", "metadata": {"stream_id": 7}})
+
+        ping_frame = await read_raw_frame(reader)
+        received_frames.append((ping_frame.frame_type, decode_raw_uds_json_payload(ping_frame)))
+        await send_json(writer, RawUdsFrameType.PONG, {"type": "pong", "ping_id": "raw-1", "metadata": {}})
+
+        audio_frame = await read_raw_frame(reader)
+        received_frames.append((audio_frame.frame_type, audio_frame.payload))
+
+        finalize_frame = await read_raw_frame(reader)
+        received_frames.append((finalize_frame.frame_type, decode_raw_uds_json_payload(finalize_frame)))
+        await send_json(
+            writer,
+            RawUdsFrameType.JSON_EVENT,
+            {
+                "type": "transcript",
+                "text": "hello",
+                "is_final": True,
+                "speech_final": True,
+                "revision": 1,
+                "audio_received_ms": 20,
+                "audio_transcribed_ms": 20,
+                "metadata": {"stream_id": 7, "chunks_received": 1},
+            },
+        )
+
+        close_frame = await read_raw_frame(reader)
+        received_frames.append((close_frame.frame_type, decode_raw_uds_json_payload(close_frame)))
+        await send_json(writer, RawUdsFrameType.JSON_EVENT, {"type": "closed", "reason": "client_close", "metadata": {}})
+        writer.close()
+        await writer.wait_closed()
+
+    async def scenario() -> None:
+        server = await asyncio.start_unix_server(handle_client, path=str(socket_path))
+        async with server:
+            client = AsyncRawUdsLocalSttClient(str(socket_path))
+            ready_event = await client.start(client_stream_id="turn-raw", partial_interval_ms=100)
+            pong_event = await client.ping(ping_id="raw-1")
+            await client.send_audio(b"\x00\x01")
+            await client.finalize()
+            final_event = await client.recv_event()
+            closed_event = await client.close()
+            server.close()
+            await server.wait_closed()
+
+        assert ready_event["metadata"]["stream_id"] == 7
+        assert pong_event == {"type": "pong", "ping_id": "raw-1", "metadata": {}}
+        assert final_event is not None
+        assert final_event.type == "final"
+        assert final_event.text == "hello"
+        assert closed_event == {"type": "closed", "reason": "client_close", "metadata": {}}
+
+    asyncio.run(scenario())
+
+    assert received_frames == [
+        (
+            RawUdsFrameType.JSON_CONTROL,
+            {
+                "type": "start",
+                "version": "local-stt.v1",
+                "audio": {
+                    "sample_rate": 16000,
+                    "channels": 1,
+                    "format": "pcm_s16le",
+                    "frame_ms": 20,
+                    "bytes_per_frame": 640,
+                },
+                "language": "en",
+                "interim_results": True,
+                "partial_interval_ms": 100,
+                "client_stream_id": "turn-raw",
+            },
+        ),
+        (RawUdsFrameType.PING, {"type": "ping", "ping_id": "raw-1"}),
+        (RawUdsFrameType.AUDIO_PCM16, b"\x00\x01"),
+        (RawUdsFrameType.JSON_CONTROL, {"type": "finalize"}),
+        (RawUdsFrameType.JSON_CONTROL, {"type": "close"}),
+    ]
 
 
 def test_async_asr_client_invokes_on_sent_callback_before_waiting_for_response() -> None:

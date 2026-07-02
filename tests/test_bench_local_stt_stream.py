@@ -749,6 +749,24 @@ def test_parse_args_accepts_uds_ws_with_socket_path(tmp_path: Path) -> None:
     assert args.uds_path == Path("/tmp/stt.sock")
 
 
+def test_parse_args_accepts_raw_uds_with_socket_path(tmp_path: Path) -> None:
+    raw_path = tmp_path / "clip.pcm"
+    raw_path.write_bytes(b"a" * 640)
+
+    args = benchmark_module.parse_args(["--transport", "raw_uds", "--uds-path", "/tmp/stt.raw.sock", "--input-raw-pcm", str(raw_path)])
+
+    assert args.transport == "raw_uds"
+    assert args.uds_path == Path("/tmp/stt.raw.sock")
+
+
+def test_make_client_factory_uses_raw_uds_client() -> None:
+    factory = benchmark_module.make_client_factory(transport="raw_uds", uds_path="/tmp/stt.raw.sock")
+    client = factory("ws://ignored/v1/stt/stream")
+
+    assert isinstance(client, benchmark_module.AsyncRawUdsLocalSttClient)
+    assert client.uds_path == "/tmp/stt.raw.sock"
+
+
 def test_parse_args_rejects_uds_path_for_default_tcp_transport(tmp_path: Path) -> None:
     raw_path = tmp_path / "clip.pcm"
     raw_path.write_bytes(b"a" * 640)
