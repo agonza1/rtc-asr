@@ -26,6 +26,7 @@ PARAKEET_MLX_ARTIFACT_SLUG ?= parakeet-mlx
 PARAKEET_MLX_SAMPLE_COUNT ?= 3
 PARAKEET_MLX_SERVICE_ARTIFACT_SLUG ?= parakeet-mlx-service
 BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
+LOCAL_STT_TRANSPORT_ARTIFACTS ?=
 BENCHMARK_RESULT_DATE ?= $(shell date -u +%Y-%m-%d)
 BENCHMARK_SAMPLE_COUNT ?= 10
 BENCHMARK_REST_RUNS ?= 5
@@ -66,7 +67,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-pipecat-e2e benchmark-site benchmark-site-check benchmark-artifact-report clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-site benchmark-site-check benchmark-artifact-report clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -89,6 +90,7 @@ help:
 	@echo "  make benchmark-qwen-mps-legacy - Run qwen-asr over legacy /ws/stream on Apple Silicon MPS"
 	@echo "  make benchmark-qwen-mps-low-latency-sweep - Run qwen-asr low-latency sweep on Apple Silicon MPS"
 	@echo "  make benchmark-pipecat-e2e - Run a Pipecat-style end-to-end streaming benchmark against a local backend"
+	@echo "  make benchmark-local-stt-transport-compare - Compare tcp_ws, uds_ws, and raw_uds Local STT artifacts"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr over /v1/stt/stream"
 	@echo "  make benchmark-compose-qwen-legacy - Start compose, wait for readiness, and benchmark qwen-asr over legacy /ws/stream"
@@ -468,6 +470,10 @@ benchmark-pipecat-e2e: venv
 		fi; \
 		PYTHONPATH=. $(PYTHON) tests/benchmark.py --spawn-server --mode pipecat-e2e --backend $(BENCHMARK_PIPECAT_BACKEND) --model $(BENCHMARK_PIPECAT_MODEL) --compute-type $(BENCHMARK_PIPECAT_COMPUTE_TYPE) $$audio_flag --sample-count 1 --rest-runs 1 --chunk-ms 100 --pipecat-source-frame-ms $(BENCHMARK_PIPECAT_SOURCE_FRAME_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_PIPECAT_REALTIME_FLAG) $(BENCHMARK_BINARY_FRAMES) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json; \
 	}
+
+benchmark-local-stt-transport-compare:
+	@test -n "$(LOCAL_STT_TRANSPORT_ARTIFACTS)" || (echo "Set LOCAL_STT_TRANSPORT_ARTIFACTS to tcp_ws, uds_ws, and raw_uds benchmark JSON artifacts." >&2; exit 2)
+	@python3 scripts/compare_local_stt_transports.py $(LOCAL_STT_TRANSPORT_ARTIFACTS)
 
 benchmark-parakeet-mlx: mlx-venv
 	@echo "Benchmarking $(PARAKEET_MLX_MODEL) with parakeet-mlx on Apple Silicon..."

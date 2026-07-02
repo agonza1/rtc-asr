@@ -487,6 +487,20 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
     assert '@echo "  ✓ Benchmark site manifest is up to date"' in block
 
 
+def test_makefile_exposes_local_stt_transport_compare_target() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "LOCAL_STT_TRANSPORT_ARTIFACTS ?=" in makefile
+    assert "benchmark-local-stt-transport-compare:" in makefile
+    phony_line = next(line for line in makefile.splitlines() if line.startswith(".PHONY:"))
+    phony_targets = set(phony_line.removeprefix(".PHONY:").split())
+    assert "benchmark-local-stt-transport-compare" in phony_targets
+    assert "make benchmark-local-stt-transport-compare - Compare tcp_ws, uds_ws, and raw_uds Local STT artifacts" in makefile
+    block = makefile.split("benchmark-local-stt-transport-compare:\n", 1)[1].split("\n\n", 1)[0]
+    assert "Set LOCAL_STT_TRANSPORT_ARTIFACTS to tcp_ws, uds_ws, and raw_uds benchmark JSON artifacts." in block
+    assert "python3 scripts/compare_local_stt_transports.py $(LOCAL_STT_TRANSPORT_ARTIFACTS)" in block
+
+
 def test_makefile_qwen_mps_target_forces_runtime_env() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
