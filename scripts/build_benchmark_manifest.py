@@ -1058,6 +1058,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
     summary = {
         "asr_count": len(asr_entries),
         "tracked_count": len(tracks),
+        "published_artifact_count": len(artifact_backed),
         "artifact_file_count": len(artifact_history),
         "artifact_total_size_bytes": sum(entry.get("artifact_size_bytes") or 0 for entry in artifact_history),
         "stale_artifact_count": len(stale_artifact_history),

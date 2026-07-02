@@ -255,6 +255,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     summary = manifest["summary"]
     assert summary["backend_count"] >= 3
     assert summary["lane_count"] >= 3
+    assert summary["published_artifact_count"] == summary["asr_count"]
     assert summary["artifact_total_size_bytes"] >= summary["published_artifact_total_size_bytes"] > 0
     assert summary["stale_artifact_count"] == 14
     assert summary["stale_artifact_total_size_bytes"] > 0
@@ -1204,6 +1205,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert 'id="generated-at"' in homepage
     assert 'id="static-summary"' in homepage
     assert 'BEGIN GENERATED:generated-at' in homepage
+    assert 'current artifact-backed lanes' in homepage
     assert 'raw artifacts with detail pages' in homepage
     assert 'historical artifacts' in homepage
     assert 'BEGIN GENERATED:static-summary' in homepage
