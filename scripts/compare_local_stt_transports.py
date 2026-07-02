@@ -43,6 +43,27 @@ def _p95(summary: dict[str, Any], metric: str) -> float | None:
     return float(value)
 
 
+def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: str) -> str | None:
+    candidates: list[tuple[float, str]] = []
+    for transport, payload in transports.items():
+        value = payload.get("metrics_p95", {}).get(metric)
+        if value is not None:
+            candidates.append((float(value), transport))
+    if not candidates:
+        return None
+    return min(candidates)[1]
+
+
+def recommendation_text(*, missing: list[str], raw_vs_uds_delta_ms: float | None, raw_uds_experimental: bool) -> str:
+    if missing:
+        return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
+    if raw_vs_uds_delta_ms is None:
+        return "Raw UDS and UDS websocket first-interim P95 metrics were unavailable; keep raw UDS experimental."
+    if raw_uds_experimental:
+        return "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 5 ms."
+    return "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
+
+
 def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     artifacts = [load_artifact(path) for path in paths]
     by_transport: dict[str, dict[str, Any]] = {}
@@ -71,14 +92,21 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     if raw_p95 is not None and uds_p95 is not None:
         raw_vs_uds_delta_ms = round(float(uds_p95) - float(raw_p95), 1)
         raw_uds_experimental = raw_vs_uds_delta_ms < 5.0
+    fastest_first_interim_transport = fastest_transport_by_metric(by_transport, "time_to_first_interim_ms")
 
     return {
         "kind": "local-stt-v1-transport-comparison",
         "required_transports": list(REQUIRED_TRANSPORTS),
         "missing_transports": missing,
         "transports": by_transport,
+        "fastest_time_to_first_interim_p95_transport": fastest_first_interim_transport,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
+        "recommendation": recommendation_text(
+            missing=missing,
+            raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
+            raw_uds_experimental=raw_uds_experimental,
+        ),
     }
 
 
