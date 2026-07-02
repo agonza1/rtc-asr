@@ -140,7 +140,7 @@ Example response:
 }
 ```
 
-Capability metadata changes by backend. The top-level `streaming` and `audio` keys provide the active transport contract clients can read without digging into nested capability blobs, while backend-specific details remain under `capabilities`. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields.
+Capability metadata changes by backend. The top-level `streaming` and `audio` keys provide the active transport contract clients can read without digging into nested capability blobs, while backend-specific details remain under `capabilities`. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields. Voxtral also exposes `model_card`, `runtime_aliases`, and `realtime_profile` so clients can discover the Mini 4B realtime alias without hard-coding issue notes.
 
 ## Synchronous Transcription
 
