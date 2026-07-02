@@ -1019,6 +1019,12 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
     )
 
     artifact_backed = [track for track in tracks if track["artifact_path"]]
+    current_artifact_paths = {track["artifact_path"] for track in artifact_backed}
+    stale_artifact_history = [
+        entry
+        for entry in artifact_history
+        if entry.get("artifact_path") not in current_artifact_paths and entry.get("status") == "legacy"
+    ]
     validated_entries = [track for track in artifact_backed if track["status"] == "validated"]
     highlight_entries = validated_entries or artifact_backed
     live_comparable_entries = [
@@ -1054,6 +1060,8 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "tracked_count": len(tracks),
         "artifact_file_count": len(artifact_history),
         "artifact_total_size_bytes": sum(entry.get("artifact_size_bytes") or 0 for entry in artifact_history),
+        "stale_artifact_count": len(stale_artifact_history),
+        "stale_artifact_total_size_bytes": sum(entry.get("artifact_size_bytes") or 0 for entry in stale_artifact_history),
         "published_artifact_total_size_bytes": sum(entry.get("artifact_size_bytes") or 0 for entry in artifact_backed),
         "validated_count": sum(1 for entry in tracks if entry["status"] == "validated"),
         "legacy_count": sum(1 for entry in tracks if entry["status"] == "legacy"),

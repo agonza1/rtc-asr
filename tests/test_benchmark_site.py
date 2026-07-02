@@ -256,6 +256,8 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     assert summary["backend_count"] >= 3
     assert summary["lane_count"] >= 3
     assert summary["artifact_total_size_bytes"] >= summary["published_artifact_total_size_bytes"] > 0
+    assert summary["stale_artifact_count"] == 14
+    assert summary["stale_artifact_total_size_bytes"] > 0
     assert summary["ranges"]["overall_score"] is not None
     assert summary["highlights"]["best_overall"] is not None
     assert summary["highlights"]["best_live_caption"] is not None
@@ -1197,6 +1199,7 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert 'id="static-summary"' in homepage
     assert 'BEGIN GENERATED:generated-at' in homepage
     assert 'raw artifacts with detail pages' in homepage
+    assert 'historical artifacts' in homepage
     assert 'BEGIN GENERATED:static-summary' in homepage
     assert 'id="hero-side"' in homepage
     assert 'id="snapshot-grid"' in homepage
