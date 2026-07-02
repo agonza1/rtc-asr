@@ -566,6 +566,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     artifact_name = Path(entry.get("artifact_path") or "").name
     manifest_artifact_path = entry.get("artifact_path") or "n/a"
     description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
+    technique = measurement_technique(entry)
     detail_href = Path(detail_page_path(entry)).name
     detail_url = absolute_site_url(site_base_url, f"benchmark-results/pages/{detail_href}")
     artifact_url = absolute_site_url(site_base_url, f"benchmark-results/{artifact_name}") if site_base_url and artifact_name else artifact_href
@@ -583,7 +584,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "url": detail_url,
         "datePublished": measured_at,
         "dateModified": article_modified_at,
-        "measurementTechnique": measurement_technique(entry),
+        "measurementTechnique": technique,
         "variableMeasured": [
             "ASR TTFB / first visible partial latency",
             "partial backlog latency",
@@ -710,6 +711,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
         <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Sample rate {contract.get("sample_rate") or 'n/a'} Hz · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
+        <article class="card"><span class="label">Measurement technique</span><div class="value">{html.escape(technique)}</div><p>Separates Local STT v1 websocket artifacts from legacy buffered websocket evidence.</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">{html.escape(official_wer_reference or 'No external WER reference')}</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Warnings</span><div class="value">{format_count(warnings.get("received_total"))}</div><p>Rate {format_ratio(warnings.get("rate_per_sample"))} per sample · Codes: {html.escape(format_list(warnings.get("codes") or []))}</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
