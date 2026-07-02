@@ -466,6 +466,21 @@ class VoxtralAdapter:
             "implementation": "transformers.pipeline",
             "task": "automatic-speech-recognition",
             "experimental": True,
+            "model_card": "https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602",
+            "runtime_aliases": [
+                "voxtral",
+                "voxtral-realtime",
+                "voxtral-mini",
+                "voxtral-mini-4b",
+            ],
+            "realtime_profile": {
+                "provider": "mistralai",
+                "family": "Voxtral Mini",
+                "size": "4B",
+                "recommended_backend": "voxtral-mini-4b",
+                "serving_mode": "experimental_transformers_pipeline",
+                "streaming_contract": "local-stt-v1-compatible-buffered-decode",
+            },
             "loaded": self.is_loaded(),
             **_shared_capabilities(self.audio_processor),
         }
