@@ -202,6 +202,9 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     transport = first_defined(target.get("transport"), streaming.get("transport"), integration.get("transport"), benchmark.get("mode"))
     if transport is not None:
         contract["transport"] = transport
+    uds_path = target.get("uds_path")
+    if uds_path is not None:
+        contract["uds_path"] = uds_path
     protocol = first_defined(bridge.get("protocol"), integration.get("protocol"))
     if protocol is not None:
         contract["protocol"] = protocol
@@ -210,6 +213,7 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
         integration.get("path"),
         target_path(target.get("url")),
         "/v1/stt/stream" if transport == "v1-stt-stream" else "/ws/stream" if transport in {"direct", "ws/stream"} else None,
+        "raw_uds" if transport == "raw_uds" else None,
     )
     if path is not None:
         contract["path"] = path

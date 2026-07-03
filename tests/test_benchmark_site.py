@@ -912,7 +912,25 @@ def test_manifest_contract_uses_local_stt_target_transport_and_url_path() -> Non
 
     assert contract["transport"] == "uds_ws"
     assert contract["path"] == "/v1/stt/stream"
+    assert contract["uds_path"] == "/tmp/stt.sock"
     assert contract["chunk_ms"] == 100
+    assert contract["sample_rate"] == 16000
+
+
+def test_manifest_contract_marks_raw_uds_without_websocket_url() -> None:
+    payload = {
+        "benchmark": {"chunk_ms": 20, "mode": "raw_uds"},
+        "streaming": {"live_metrics_comparable": True},
+        "target": {"transport": "raw_uds", "uds_path": "/tmp/stt.raw.sock"},
+        "audio": {"sample_rate": 16000},
+    }
+
+    contract = manifest_module.extract_benchmark_contract(payload)
+
+    assert contract["transport"] == "raw_uds"
+    assert contract["path"] == "raw_uds"
+    assert contract["uds_path"] == "/tmp/stt.raw.sock"
+    assert contract["chunk_ms"] == 20
     assert contract["sample_rate"] == 16000
 
 
@@ -920,12 +938,14 @@ def test_detail_page_measurement_technique_matches_streaming_contract() -> None:
     local_stt_entry = {"contract": {"path": "/v1/stt/stream", "transport": "v1-stt-stream"}}
     tcp_local_stt_entry = {"contract": {"path": "/v1/stt/stream", "transport": "tcp_ws"}}
     uds_local_stt_entry = {"contract": {"path": "/v1/stt/stream", "transport": "uds_ws"}}
+    raw_uds_entry = {"contract": {"path": "raw_uds", "transport": "raw_uds"}}
     legacy_entry = {"contract": {"path": "/ws/stream", "transport": "direct"}}
     unknown_entry = {"contract": {"path": "/custom"}}
 
     assert measurement_technique(local_stt_entry) == "REST and Local STT v1 websocket ASR latency benchmark"
     assert measurement_technique(tcp_local_stt_entry) == "REST and Local STT v1 websocket ASR latency benchmark"
     assert measurement_technique(uds_local_stt_entry) == "REST and Local STT v1 websocket ASR latency benchmark"
+    assert measurement_technique(raw_uds_entry) == "REST and raw Unix-domain-socket Local STT v1 ASR latency benchmark"
     assert measurement_technique(legacy_entry) == "REST and legacy buffered websocket ASR latency benchmark"
     assert measurement_technique(unknown_entry) == "REST and websocket ASR latency benchmark"
 
