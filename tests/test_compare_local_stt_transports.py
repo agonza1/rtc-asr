@@ -100,14 +100,19 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
 
 def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
     raw_payload = json.loads(raw.read_text(encoding="utf8"))
     raw_payload["summary"]["protocol_errors"]["p95"] = 1.0
     raw.write_text(json.dumps(raw_payload), encoding="utf8")
 
-    comparison = compare_module.compare_artifacts([tcp, raw])
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["all_present_transports_protocol_error_free"] is False
     assert comparison["transports"]["tcp_ws"]["protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is False
+    assert comparison["raw_uds_should_remain_experimental"] is False
+    assert comparison["recommendation"] == (
+        "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
+    )
 
