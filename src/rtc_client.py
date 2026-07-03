@@ -15,6 +15,7 @@ from .protocols import (
     HOT_PATH_SAMPLE_RATE,
     PROTOCOL_VERSION,
     RAW_UDS_HEADER_BYTES,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
     RawUdsFrameType,
     decode_raw_uds_frame,
     decode_raw_uds_json_payload,
@@ -486,6 +487,10 @@ class AsyncRawUdsLocalSttClient:
         reader, _ = await self.connect()
         header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
         payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
+            raise RuntimeError(
+                f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes"
+            )
         frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
         payload = decode_raw_uds_json_payload(frame)
         if payload.get("type") == "error" and not allow_error:
