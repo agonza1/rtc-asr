@@ -936,6 +936,13 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
         summary_cards.append(
             f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">System evidence</div><div class="headline-value">{system_coverage.get("peak_rss_mb_count", 0)} memory traces</div><p>{system_coverage.get("cpu_utilization_percent_count", 0)} artifacts include CPU utilization; {energy_count} include power or energy readings; {system_coverage.get("thermal_observation_count", 0)} include sustained thermal notes.</p></article>'
         )
+    low_power_evidence = summary.get("low_power_evidence") or {}
+    if low_power_evidence:
+        complete_count = low_power_evidence.get("complete_artifact_count", 0)
+        artifact_count = low_power_evidence.get("artifact_count", summary.get("artifact_file_count", 0))
+        summary_cards.append(
+            f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Low-power readiness</div><div class="headline-value">{complete_count} complete artifacts</div><p>{low_power_evidence.get("power_evidence_count", 0)} of {artifact_count} artifacts include power evidence; {low_power_evidence.get("sustained_thermal_evidence_count", 0)} include sustained thermal evidence for battery-sensitive deployment decisions.</p></article>'
+        )
     stale_artifact_count = summary.get("stale_artifact_count", 0)
     if stale_artifact_count:
         summary_cards.append(

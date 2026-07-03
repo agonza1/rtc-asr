@@ -573,6 +573,8 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     assert 'comparable artifacts' in html
     assert 'Archive hygiene' in html
     assert 'historical artifacts' in html
+    assert 'Low-power readiness' in html
+    assert 'complete artifacts' in html
 
 
 def test_sitemap_includes_raw_benchmark_artifacts() -> None:
