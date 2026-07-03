@@ -16,6 +16,13 @@ KEY_METRICS = (
 )
 
 PERCENTILES = ("p50", "p95", "p99")
+REQUIRED_PERCENTILES_BY_METRIC = {
+    "time_to_first_interim_ms": PERCENTILES,
+    "time_to_final_after_finalize_ms": PERCENTILES,
+    "audio_send_queue_depth_p95_ms": ("p95",),
+    "asr_queue_delay_p95_ms": ("p95",),
+    "protocol_errors": ("p95",),
+}
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -65,8 +72,18 @@ def protocol_error_free(metrics_p95: dict[str, float | None]) -> bool:
     return protocol_errors is not None and protocol_errors == 0.0
 
 
-def missing_p95_metrics(metrics_p95: dict[str, float | None]) -> list[str]:
-    return [metric for metric in KEY_METRICS if metrics_p95.get(metric) is None]
+def missing_required_metrics(metrics: dict[str, dict[str, float | None]]) -> list[str]:
+    missing: list[str] = []
+    for metric in KEY_METRICS:
+        required_percentiles = REQUIRED_PERCENTILES_BY_METRIC[metric]
+        missing_percentiles = [
+            percentile
+            for percentile in required_percentiles
+            if metrics[metric].get(percentile) is None
+        ]
+        if missing_percentiles:
+            missing.append(f"{metric}:{','.join(missing_percentiles)}")
+    return missing
 
 
 def recommendation_text(
@@ -80,7 +97,7 @@ def recommendation_text(
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
     if missing_metrics:
-        return "Re-run transport benchmarks with the full required P95 metric set before recommending raw UDS."
+        return "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
     if not all_present_transports_protocol_error_free:
         return "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
     if raw_vs_uds_delta_ms is None:
@@ -101,14 +118,15 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         if not isinstance(summary, dict):
             raise ValueError(f"{path} is missing summary")
         environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
-        metrics_p95 = {metric: _percentile(summary, metric, "p95") for metric in KEY_METRICS}
-        missing_metrics = missing_p95_metrics(metrics_p95)
+        metrics = {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS}
+        metrics_p95 = {metric: metrics[metric]["p95"] for metric in KEY_METRICS}
+        missing_metrics = missing_required_metrics(metrics)
         by_transport[transport] = {
             "artifact": str(path),
             "url": artifact["target"].get("url"),
             "uds_path": artifact["target"].get("uds_path"),
             "runs": artifact.get("runs"),
-            "metrics": {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS},
+            "metrics": metrics,
             "metrics_p95": metrics_p95,
             "missing_p95_metrics": missing_metrics,
             "protocol_error_free": protocol_error_free(metrics_p95),
