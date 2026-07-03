@@ -154,6 +154,14 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     }
 
 
+def comparison_has_blocking_gaps(comparison: dict[str, Any]) -> bool:
+    return bool(
+        comparison["missing_transports"]
+        or comparison["missing_p95_metrics_by_transport"]
+        or not comparison["all_present_transports_protocol_error_free"]
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     comparison = compare_artifacts(args.artifacts)
@@ -162,7 +170,7 @@ def main(argv: list[str] | None = None) -> int:
         args.output.write_text(encoded, encoding="utf8")
     else:
         print(encoded, end="")
-    return 1 if comparison["missing_transports"] else 0
+    return 1 if comparison_has_blocking_gaps(comparison) else 0
 
 
 if __name__ == "__main__":
