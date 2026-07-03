@@ -65,9 +65,17 @@ def protocol_error_free(metrics_p95: dict[str, float | None]) -> bool:
     return protocol_errors is not None and protocol_errors == 0.0
 
 
-def recommendation_text(*, missing: list[str], raw_vs_uds_delta_ms: float | None, raw_uds_experimental: bool) -> str:
+def recommendation_text(
+    *,
+    missing: list[str],
+    raw_vs_uds_delta_ms: float | None,
+    raw_uds_experimental: bool,
+    all_present_transports_protocol_error_free: bool,
+) -> str:
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
+    if not all_present_transports_protocol_error_free:
+        return "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
     if raw_vs_uds_delta_ms is None:
         return "Raw UDS and UDS websocket first-interim P95 metrics were unavailable; keep raw UDS experimental."
     if raw_uds_experimental:
@@ -108,6 +116,10 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         raw_uds_experimental = raw_vs_uds_delta_ms < 5.0
     fastest_first_interim_transport = fastest_transport_by_metric(by_transport, "time_to_first_interim_ms")
 
+    all_present_transports_protocol_error_free = all(
+        transport["protocol_error_free"] for transport in by_transport.values()
+    )
+
     return {
         "kind": "local-stt-v1-transport-comparison",
         "required_transports": list(REQUIRED_TRANSPORTS),
@@ -116,13 +128,12 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "fastest_time_to_first_interim_p95_transport": fastest_first_interim_transport,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
-        "all_present_transports_protocol_error_free": all(
-            transport["protocol_error_free"] for transport in by_transport.values()
-        ),
+        "all_present_transports_protocol_error_free": all_present_transports_protocol_error_free,
         "recommendation": recommendation_text(
             missing=missing,
             raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
             raw_uds_experimental=raw_uds_experimental,
+            all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
         ),
     }
 
