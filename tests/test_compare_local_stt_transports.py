@@ -133,3 +133,22 @@ def test_compare_artifacts_reports_missing_required_p95_metrics(tmp_path: Path) 
         "Re-run transport benchmarks with the full required P95 metric set before recommending raw UDS."
     )
 
+
+
+def test_main_returns_failure_when_required_p95_metrics_are_missing(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    del raw_payload["summary"]["asr_queue_delay_p95_ms"]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    assert compare_module.main([str(tcp), str(uds), str(raw)]) == 1
+
+
+def test_main_succeeds_when_all_transport_comparison_gates_pass(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    assert compare_module.main([str(tcp), str(uds), str(raw)]) == 0
