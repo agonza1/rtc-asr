@@ -111,7 +111,7 @@ def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: 
     assert comparison["all_present_transports_protocol_error_free"] is False
     assert comparison["transports"]["tcp_ws"]["protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is False
-    assert comparison["raw_uds_should_remain_experimental"] is False
+    assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["recommendation"] == (
         "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
     )
@@ -129,6 +129,7 @@ def test_compare_artifacts_reports_missing_required_p95_metrics(tmp_path: Path) 
 
     assert comparison["missing_p95_metrics_by_transport"] == {"raw_uds": ["asr_queue_delay_p95_ms:p95"]}
     assert comparison["transports"]["raw_uds"]["missing_p95_metrics"] == ["asr_queue_delay_p95_ms:p95"]
+    assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["recommendation"] == (
         "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
     )
@@ -145,6 +146,7 @@ def test_compare_artifacts_reports_missing_required_first_interim_percentiles(tm
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["missing_p95_metrics_by_transport"] == {"raw_uds": ["time_to_first_interim_ms:p99"]}
+    assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["recommendation"] == (
         "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
     )

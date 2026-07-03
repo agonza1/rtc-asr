@@ -142,14 +142,20 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     raw_p95 = by_transport.get("raw_uds", {}).get("metrics_p95", {}).get("time_to_first_interim_ms")
     uds_p95 = by_transport.get("uds_ws", {}).get("metrics_p95", {}).get("time_to_first_interim_ms")
     raw_vs_uds_delta_ms = None
-    raw_uds_experimental = True
+    raw_uds_latency_experimental = True
     if raw_p95 is not None and uds_p95 is not None:
         raw_vs_uds_delta_ms = round(float(uds_p95) - float(raw_p95), 1)
-        raw_uds_experimental = raw_vs_uds_delta_ms < 5.0
+        raw_uds_latency_experimental = raw_vs_uds_delta_ms < 5.0
     fastest_first_interim_transport = fastest_transport_by_metric(by_transport, "time_to_first_interim_ms")
 
     all_present_transports_protocol_error_free = all(
         transport["protocol_error_free"] for transport in by_transport.values()
+    )
+    raw_uds_experimental = bool(
+        missing
+        or missing_metrics_by_transport
+        or not all_present_transports_protocol_error_free
+        or raw_uds_latency_experimental
     )
 
     return {
