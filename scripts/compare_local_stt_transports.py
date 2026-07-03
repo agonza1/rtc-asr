@@ -60,6 +60,11 @@ def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: s
     return min(candidates)[1]
 
 
+def protocol_error_free(metrics_p95: dict[str, float | None]) -> bool:
+    protocol_errors = metrics_p95.get("protocol_errors")
+    return protocol_errors is not None and protocol_errors == 0.0
+
+
 def recommendation_text(*, missing: list[str], raw_vs_uds_delta_ms: float | None, raw_uds_experimental: bool) -> str:
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
@@ -81,13 +86,15 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         if not isinstance(summary, dict):
             raise ValueError(f"{path} is missing summary")
         environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
+        metrics_p95 = {metric: _percentile(summary, metric, "p95") for metric in KEY_METRICS}
         by_transport[transport] = {
             "artifact": str(path),
             "url": artifact["target"].get("url"),
             "uds_path": artifact["target"].get("uds_path"),
             "runs": artifact.get("runs"),
             "metrics": {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS},
-            "metrics_p95": {metric: _percentile(summary, metric, "p95") for metric in KEY_METRICS},
+            "metrics_p95": metrics_p95,
+            "protocol_error_free": protocol_error_free(metrics_p95),
             "cpu_utilization_percent": environment.get("cpu_utilization_percent"),
         }
 
@@ -109,6 +116,9 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "fastest_time_to_first_interim_p95_transport": fastest_first_interim_transport,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
+        "all_present_transports_protocol_error_free": all(
+            transport["protocol_error_free"] for transport in by_transport.values()
+        ),
         "recommendation": recommendation_text(
             missing=missing,
             raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,

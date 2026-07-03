@@ -46,6 +46,8 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] is None
     assert comparison["raw_uds_should_remain_experimental"] is True
+    assert comparison["all_present_transports_protocol_error_free"] is True
+    assert comparison["transports"]["raw_uds"]["protocol_error_free"] is True
     assert comparison["recommendation"] == "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
 
 
@@ -60,6 +62,8 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 3.5
     assert comparison["raw_uds_should_remain_experimental"] is True
+    assert comparison["all_present_transports_protocol_error_free"] is True
+    assert comparison["transports"]["raw_uds"]["protocol_error_free"] is True
     assert comparison["recommendation"] == "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 5 ms."
     assert comparison["transports"]["raw_uds"]["metrics_p95"] == {
         "time_to_first_interim_ms": 12.5,
@@ -90,4 +94,20 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 5.0
     assert comparison["raw_uds_should_remain_experimental"] is False
+    assert comparison["all_present_transports_protocol_error_free"] is True
     assert comparison["recommendation"] == "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
+
+
+def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["summary"]["protocol_errors"]["p95"] = 1.0
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, raw])
+
+    assert comparison["all_present_transports_protocol_error_free"] is False
+    assert comparison["transports"]["tcp_ws"]["protocol_error_free"] is True
+    assert comparison["transports"]["raw_uds"]["protocol_error_free"] is False
+
