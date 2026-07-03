@@ -10,6 +10,7 @@ import pytest
 
 from src.protocols.local_stt_v1 import (
     RAW_UDS_HEADER_BYTES,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
     RawUdsFrameType,
     decode_raw_uds_json_payload,
     decode_raw_uds_frame,
@@ -412,6 +413,39 @@ def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
         (RawUdsFrameType.JSON_CONTROL, {"type": "finalize"}),
         (RawUdsFrameType.JSON_CONTROL, {"type": "close"}),
     ]
+
+
+def test_async_raw_uds_client_rejects_oversized_payload_before_body_read() -> None:
+    class OversizedPayloadReader:
+        def __init__(self) -> None:
+            self.reads: list[int] = []
+
+        async def readexactly(self, size: int) -> bytes:
+            self.reads.append(size)
+            if size == RAW_UDS_HEADER_BYTES:
+                return bytes([RawUdsFrameType.JSON_EVENT]) + (RAW_UDS_MAX_PAYLOAD_BYTES + 1).to_bytes(4, "little")
+            raise AssertionError("client attempted to read an oversized Raw UDS payload body")
+
+    class NoopWriter:
+        def close(self) -> None:
+            pass
+
+        async def wait_closed(self) -> None:
+            pass
+
+    reader = OversizedPayloadReader()
+
+    async def connect_fn(_path: str):
+        return reader, NoopWriter()
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.sock", connect_fn=connect_fn)
+        with pytest.raises(RuntimeError, match="Raw UDS frame payload exceeds"):
+            await client.recv_event()
+
+    asyncio.run(scenario())
+
+    assert reader.reads == [RAW_UDS_HEADER_BYTES]
 
 
 def test_async_asr_client_invokes_on_sent_callback_before_waiting_for_response() -> None:
