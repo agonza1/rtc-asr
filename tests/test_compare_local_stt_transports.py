@@ -127,12 +127,27 @@ def test_compare_artifacts_reports_missing_required_p95_metrics(tmp_path: Path) 
 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
-    assert comparison["missing_p95_metrics_by_transport"] == {"raw_uds": ["asr_queue_delay_p95_ms"]}
-    assert comparison["transports"]["raw_uds"]["missing_p95_metrics"] == ["asr_queue_delay_p95_ms"]
+    assert comparison["missing_p95_metrics_by_transport"] == {"raw_uds": ["asr_queue_delay_p95_ms:p95"]}
+    assert comparison["transports"]["raw_uds"]["missing_p95_metrics"] == ["asr_queue_delay_p95_ms:p95"]
     assert comparison["recommendation"] == (
-        "Re-run transport benchmarks with the full required P95 metric set before recommending raw UDS."
+        "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
     )
 
+
+def test_compare_artifacts_reports_missing_required_first_interim_percentiles(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    del raw_payload["summary"]["time_to_first_interim_ms"]["p99"]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_p95_metrics_by_transport"] == {"raw_uds": ["time_to_first_interim_ms:p99"]}
+    assert comparison["recommendation"] == (
+        "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
+    )
 
 
 def test_main_returns_failure_when_required_p95_metrics_are_missing(tmp_path: Path) -> None:
