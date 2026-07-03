@@ -65,15 +65,22 @@ def protocol_error_free(metrics_p95: dict[str, float | None]) -> bool:
     return protocol_errors is not None and protocol_errors == 0.0
 
 
+def missing_p95_metrics(metrics_p95: dict[str, float | None]) -> list[str]:
+    return [metric for metric in KEY_METRICS if metrics_p95.get(metric) is None]
+
+
 def recommendation_text(
     *,
     missing: list[str],
     raw_vs_uds_delta_ms: float | None,
     raw_uds_experimental: bool,
     all_present_transports_protocol_error_free: bool,
+    missing_metrics: dict[str, list[str]],
 ) -> str:
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
+    if missing_metrics:
+        return "Re-run transport benchmarks with the full required P95 metric set before recommending raw UDS."
     if not all_present_transports_protocol_error_free:
         return "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
     if raw_vs_uds_delta_ms is None:
@@ -95,6 +102,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
             raise ValueError(f"{path} is missing summary")
         environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
         metrics_p95 = {metric: _percentile(summary, metric, "p95") for metric in KEY_METRICS}
+        missing_metrics = missing_p95_metrics(metrics_p95)
         by_transport[transport] = {
             "artifact": str(path),
             "url": artifact["target"].get("url"),
@@ -102,11 +110,17 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
             "runs": artifact.get("runs"),
             "metrics": {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS},
             "metrics_p95": metrics_p95,
+            "missing_p95_metrics": missing_metrics,
             "protocol_error_free": protocol_error_free(metrics_p95),
             "cpu_utilization_percent": environment.get("cpu_utilization_percent"),
         }
 
     missing = [transport for transport in REQUIRED_TRANSPORTS if transport not in by_transport]
+    missing_metrics_by_transport = {
+        transport: payload["missing_p95_metrics"]
+        for transport, payload in by_transport.items()
+        if payload["missing_p95_metrics"]
+    }
     raw_p95 = by_transport.get("raw_uds", {}).get("metrics_p95", {}).get("time_to_first_interim_ms")
     uds_p95 = by_transport.get("uds_ws", {}).get("metrics_p95", {}).get("time_to_first_interim_ms")
     raw_vs_uds_delta_ms = None
@@ -129,11 +143,13 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
         "all_present_transports_protocol_error_free": all_present_transports_protocol_error_free,
+        "missing_p95_metrics_by_transport": missing_metrics_by_transport,
         "recommendation": recommendation_text(
             missing=missing,
             raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
             raw_uds_experimental=raw_uds_experimental,
             all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
+            missing_metrics=missing_metrics_by_transport,
         ),
     }
 
