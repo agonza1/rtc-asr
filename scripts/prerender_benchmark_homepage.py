@@ -70,6 +70,17 @@ def format_count(value: float | int | None) -> str:
     return str(value)
 
 
+def format_sample_coverage(sample_count: float | int | None, target_sample_count: float | int | None) -> str:
+    if sample_count is None and target_sample_count is None:
+        return "n/a"
+    if target_sample_count in (None, 0):
+        return f"{format_count(sample_count)} samples"
+    if sample_count is None:
+        return f"n/a / {format_count(target_sample_count)} target"
+    coverage = float(sample_count) / float(target_sample_count)
+    return f"{format_count(sample_count)} / {format_count(target_sample_count)} target ({format_percent(coverage)})"
+
+
 def format_list(values: list[str]) -> str:
     return ", ".join(values) if values else "none recorded"
 
@@ -566,6 +577,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     artifact_sha256 = entry.get("artifact_sha256")
     artifact_size_bytes = entry.get("artifact_size_bytes")
     artifact_name = Path(entry.get("artifact_path") or "").name
+    sample_coverage = format_sample_coverage(entry.get("sample_count"), entry.get("target_sample_count"))
     manifest_artifact_path = entry.get("artifact_path") or "n/a"
     description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
     technique = measurement_technique(entry)
@@ -703,7 +715,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <p>{html.escape(entry.get("status_detail") or "Checked-in benchmark artifact.")}</p>
       <div class="actions">
         <div class="card"><span class="label">Lane</span><div class="value">{html.escape(entry.get("lane") or "unknown")}</div><p>{html.escape(entry.get("backend") or "unknown")} · {html.escape(entry.get("model") or "unknown")}</p></div>
-        <div class="card"><span class="label">Runtime</span><div class="value">{html.escape(entry.get("runtime") or "unknown")}</div><p>Status: {html.escape(entry.get("status") or "unknown")} · Samples: {entry.get("sample_count") or 'n/a'} / target {entry.get("target_sample_count") or 'n/a'}</p></div>
+        <div class="card"><span class="label">Runtime</span><div class="value">{html.escape(entry.get("runtime") or "unknown")}</div><p>Status: {html.escape(entry.get("status") or "unknown")} · Sample coverage: {html.escape(sample_coverage)}</p></div>
         <div class="card"><span class="label">Links</span><div><a href="{homepage_href}">Back to benchmark homepage</a></div><div><a href="../manifest.json">Open benchmark manifest</a></div><div><a href="{artifact_href}">Open raw JSON artifact</a></div><div><a href="{artifact_href}" download="{html.escape(artifact_name)}">Download raw JSON artifact</a></div><p>Measured {html.escape(format_date(entry.get("measured_at")))}</p></div>
       </div>
       <div class="grid">

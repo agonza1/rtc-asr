@@ -26,6 +26,7 @@ prerender_module = importlib.util.module_from_spec(PRERENDER_SPEC)
 sys.modules.setdefault("rtc_asr_prerender_benchmark_homepage", prerender_module)
 PRERENDER_SPEC.loader.exec_module(prerender_module)
 detail_page_path = prerender_module.detail_page_path
+format_sample_coverage = prerender_module.format_sample_coverage
 render_detail_page = prerender_module.render_detail_page
 render_homepage = prerender_module.render_homepage
 render_row = prerender_module.render_row
@@ -950,6 +951,12 @@ def test_detail_page_measurement_technique_matches_streaming_contract() -> None:
     assert measurement_technique(unknown_entry) == "REST and websocket ASR latency benchmark"
 
 
+def test_format_sample_coverage_shows_target_completion() -> None:
+    assert format_sample_coverage(8, 10) == "8 / 10 target (80.0%)"
+    assert format_sample_coverage(8, None) == "8 samples"
+    assert format_sample_coverage(None, 10) == "n/a / 10 target"
+
+
 def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
@@ -964,6 +971,7 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
         assert Path(track["artifact_path"]).name in detail_html
         assert "Open benchmark manifest" in detail_html
         assert "Download raw JSON artifact" in detail_html
+        assert "Sample coverage:" in detail_html
 
     rss_detail = (Path('docs') / 'benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html').read_text(encoding='utf-8')
     assert "System profile" in rss_detail
@@ -1110,7 +1118,7 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'warm but stable' in nested_efficiency_html
 
     assert 'Thermal 63.5 C' in detail_html
-    assert 'Samples: 3 / target 5' in detail_html
+    assert 'Sample coverage: 3 / 5 target (60.0%)' in detail_html
     assert 'Sample rate 16000 Hz' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html
     assert 'make benchmark-demo' in detail_html
