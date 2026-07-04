@@ -443,7 +443,10 @@ class VoxtralAdapter:
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
         decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
         pipeline = self._load_pipeline()
-        kwargs = {"generate_kwargs": {"language": language}} if language else {}
+        generate_kwargs: dict[str, object] = {"max_new_tokens": self.config.asr_voxtral_max_new_tokens}
+        if language:
+            generate_kwargs["language"] = language
+        kwargs = {"generate_kwargs": generate_kwargs}
         result = pipeline(
             {"array": decoded_audio.samples, "sampling_rate": decoded_audio.sample_rate},
             **kwargs,
@@ -463,6 +466,7 @@ class VoxtralAdapter:
             "model": self.model_name,
             "device": self.config.asr_device,
             "dtype": self.config.asr_voxtral_dtype,
+            "max_new_tokens": self.config.asr_voxtral_max_new_tokens,
             "implementation": "transformers.pipeline",
             "task": "automatic-speech-recognition",
             "experimental": True,
@@ -479,6 +483,7 @@ class VoxtralAdapter:
                 "size": "4B",
                 "recommended_backend": "voxtral-mini-4b",
                 "serving_mode": "experimental_transformers_pipeline",
+                "max_new_tokens": self.config.asr_voxtral_max_new_tokens,
                 "streaming_contract": "local-stt-v1-compatible-buffered-decode",
             },
             "loaded": self.is_loaded(),

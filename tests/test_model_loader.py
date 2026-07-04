@@ -77,6 +77,7 @@ def test_voxtral_describe_exposes_realtime_profile() -> None:
 
     description = transcriber.describe()
 
+    assert description["max_new_tokens"] == 128
     assert description["model_card"] == "https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602"
     assert description["runtime_aliases"] == [
         "voxtral",
@@ -90,6 +91,7 @@ def test_voxtral_describe_exposes_realtime_profile() -> None:
         "size": "4B",
         "recommended_backend": "voxtral-mini-4b",
         "serving_mode": "experimental_transformers_pipeline",
+        "max_new_tokens": 128,
         "streaming_contract": "local-stt-v1-compatible-buffered-decode",
     }
 
@@ -298,7 +300,7 @@ def test_voxtral_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyte
         calls["task"] = task
         calls["kwargs"] = kwargs
 
-        def run(audio: dict[str, object], *, generate_kwargs: dict[str, str] | None = None) -> dict[str, str]:
+        def run(audio: dict[str, object], *, generate_kwargs: dict[str, object] | None = None) -> dict[str, str]:
             calls["audio"] = audio
             calls["generate_kwargs"] = generate_kwargs
             return {"text": " Please hold. "}
@@ -318,6 +320,7 @@ def test_voxtral_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyte
             asr_device="cpu",
             asr_voxtral_model="mistralai/Voxtral-Mini-4B-Realtime-2602",
             asr_voxtral_dtype="auto",
+            asr_voxtral_max_new_tokens=64,
             asr_voxtral_trust_remote_code=True,
         ),
         audio_processor=AudioProcessor(),
@@ -339,7 +342,7 @@ def test_voxtral_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyte
         "dtype": fake_torch.float32,
         "trust_remote_code": True,
     }
-    assert calls["generate_kwargs"] == {"language": "en"}
+    assert calls["generate_kwargs"] == {"max_new_tokens": 64, "language": "en"}
     audio = calls["audio"]
     assert audio["sampling_rate"] == 16000
     assert getattr(audio["array"], "shape", (0,))[0] > 0
@@ -555,6 +558,7 @@ def test_app_config_reads_voxtral_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ASR_BACKEND", "voxtral")
     monkeypatch.setenv("ASR_VOXTRAL_MODEL", "mistralai/Voxtral-Mini-4B-Realtime-2602")
     monkeypatch.setenv("ASR_VOXTRAL_DTYPE", "float32")
+    monkeypatch.setenv("ASR_VOXTRAL_MAX_NEW_TOKENS", "96")
     monkeypatch.setenv("ASR_VOXTRAL_TRUST_REMOTE_CODE", "false")
 
     config = AppConfig.from_env()
@@ -562,6 +566,7 @@ def test_app_config_reads_voxtral_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.asr_backend == "voxtral"
     assert config.asr_voxtral_model == "mistralai/Voxtral-Mini-4B-Realtime-2602"
     assert config.asr_voxtral_dtype == "float32"
+    assert config.asr_voxtral_max_new_tokens == 96
     assert config.asr_voxtral_trust_remote_code is False
 
 
