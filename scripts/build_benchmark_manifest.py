@@ -217,6 +217,22 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     )
     if path is not None:
         contract["path"] = path
+    frame_format = first_defined(
+        target.get("frame_format"),
+        benchmark.get("frame_format"),
+        streaming.get("frame_format"),
+        "uint8_type_uint32_len_le" if transport == "raw_uds" else None,
+    )
+    if frame_format is not None:
+        contract["frame_format"] = frame_format
+    frame_header_bytes = first_defined(
+        target.get("frame_header_bytes"),
+        benchmark.get("frame_header_bytes"),
+        streaming.get("frame_header_bytes"),
+        5 if transport == "raw_uds" else None,
+    )
+    if frame_header_bytes is not None:
+        contract["frame_header_bytes"] = frame_header_bytes
     max_buffer_seconds = benchmark.get("max_buffer_seconds", streaming.get("max_buffer_seconds"))
     if max_buffer_seconds is not None:
         contract["max_buffer_seconds"] = max_buffer_seconds

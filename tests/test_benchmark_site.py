@@ -968,6 +968,8 @@ def test_manifest_contract_marks_raw_uds_without_websocket_url() -> None:
     assert contract["transport"] == "raw_uds"
     assert contract["path"] == "raw_uds"
     assert contract["uds_path"] == "/tmp/stt.raw.sock"
+    assert contract["frame_format"] == "uint8_type_uint32_len_le"
+    assert contract["frame_header_bytes"] == 5
     assert contract["chunk_ms"] == 20
     assert contract["sample_rate"] == 16000
 
@@ -1180,6 +1182,10 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'Thermal 63.5 C' in detail_html
     assert 'Sample coverage: 3 / 5 target (60.0%)' in detail_html
     assert 'Sample rate 16000 Hz' in detail_html
+    assert 'Transport contract' in detail_html
+    assert 'v1-stt-stream' in detail_html
+    assert 'UDS path n/a' in detail_html
+    assert 'Frame format n/a' in detail_html
     assert '3.1 / 7.2 Demo clean / other' in detail_html
     assert 'make benchmark-demo' in detail_html
     assert '1234567890abcdef' in detail_html
