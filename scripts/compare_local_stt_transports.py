@@ -29,6 +29,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare Local STT v1 transport benchmark artifacts")
     parser.add_argument("artifacts", nargs="+", type=Path, help="Benchmark JSON artifacts from bench_local_stt_stream.py")
     parser.add_argument("--output", type=Path, help="Optional JSON comparison output path")
+    parser.add_argument(
+        "--require-raw-uds-recommendation",
+        action="store_true",
+        help="Exit non-zero unless raw UDS clears the recommendation gate",
+    )
     return parser.parse_args(argv)
 
 
@@ -217,11 +222,14 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     }
 
 
-def comparison_has_blocking_gaps(comparison: dict[str, Any]) -> bool:
+def comparison_has_blocking_gaps(
+    comparison: dict[str, Any], *, require_raw_uds_recommendation: bool = False
+) -> bool:
     return bool(
         comparison["missing_transports"]
         or comparison["missing_p95_metrics_by_transport"]
         or not comparison["all_present_transports_protocol_error_free"]
+        or (require_raw_uds_recommendation and comparison["raw_uds_should_remain_experimental"])
     )
 
 
@@ -233,7 +241,10 @@ def main(argv: list[str] | None = None) -> int:
         args.output.write_text(encoded, encoding="utf8")
     else:
         print(encoded, end="")
-    return 1 if comparison_has_blocking_gaps(comparison) else 0
+    return 1 if comparison_has_blocking_gaps(
+        comparison,
+        require_raw_uds_recommendation=args.require_raw_uds_recommendation,
+    ) else 0
 
 
 if __name__ == "__main__":
