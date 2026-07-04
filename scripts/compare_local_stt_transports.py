@@ -118,6 +118,23 @@ def recommendation_text(
     return "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
 
 
+def blocking_gap_reasons(
+    *,
+    missing: list[str],
+    missing_metrics: dict[str, list[str]],
+    transports: dict[str, dict[str, Any]],
+) -> list[str]:
+    reasons: list[str] = []
+    reasons.extend(f"missing transport benchmark: {transport}" for transport in missing)
+    for transport, metric_gaps in sorted(missing_metrics.items()):
+        reasons.extend(f"{transport} missing metric percentile: {metric_gap}" for metric_gap in metric_gaps)
+    for transport, payload in sorted(transports.items()):
+        if not payload["protocol_error_free"]:
+            protocol_errors = payload.get("metrics_p95", {}).get("protocol_errors")
+            reasons.append(f"{transport} protocol_errors p95 is {protocol_errors}")
+    return reasons
+
+
 def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     artifacts = [load_artifact(path) for path in paths]
     by_transport: dict[str, dict[str, Any]] = {}
@@ -185,6 +202,11 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "raw_uds_should_remain_experimental": raw_uds_experimental,
         "all_present_transports_protocol_error_free": all_present_transports_protocol_error_free,
         "missing_p95_metrics_by_transport": missing_metrics_by_transport,
+        "blocking_gaps": blocking_gap_reasons(
+            missing=missing,
+            missing_metrics=missing_metrics_by_transport,
+            transports=by_transport,
+        ),
         "recommendation": recommendation_text(
             missing=missing,
             raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
