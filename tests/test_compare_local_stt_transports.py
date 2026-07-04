@@ -220,3 +220,20 @@ def test_main_succeeds_when_all_transport_comparison_gates_pass(tmp_path: Path) 
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
 
     assert compare_module.main([str(tcp), str(uds), str(raw)]) == 0
+
+
+def test_main_can_require_raw_uds_recommendation_gate(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.5)
+
+    assert compare_module.main([str(tcp), str(uds), str(raw)]) == 0
+    assert compare_module.main(["--require-raw-uds-recommendation", str(tcp), str(uds), str(raw)]) == 1
+
+
+def test_main_raw_uds_recommendation_gate_passes_at_five_ms_win(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    assert compare_module.main(["--require-raw-uds-recommendation", str(tcp), str(uds), str(raw)]) == 0
