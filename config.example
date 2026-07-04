@@ -44,6 +44,7 @@ ASR_PARAKEET_DTYPE=auto
 # when the local Transformers runtime is not Voxtral-compatible.
 ASR_VOXTRAL_MODEL=mistralai/Voxtral-Mini-4B-Realtime-2602
 ASR_VOXTRAL_DTYPE=auto
+ASR_VOXTRAL_MAX_NEW_TOKENS=128
 ASR_VOXTRAL_TRUST_REMOTE_CODE=true
 
 
