@@ -78,6 +78,7 @@ def test_voxtral_describe_exposes_realtime_profile() -> None:
     description = transcriber.describe()
 
     assert description["max_new_tokens"] == 128
+    assert description["attn_implementation"] is None
     assert description["model_card"] == "https://huggingface.co/mistralai/Voxtral-Mini-4B-Realtime-2602"
     assert description["runtime_aliases"] == [
         "voxtral",
@@ -320,6 +321,7 @@ def test_voxtral_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyte
             asr_device="cpu",
             asr_voxtral_model="mistralai/Voxtral-Mini-4B-Realtime-2602",
             asr_voxtral_dtype="auto",
+            asr_voxtral_attn_implementation="sdpa",
             asr_voxtral_max_new_tokens=64,
             asr_voxtral_trust_remote_code=True,
         ),
@@ -341,6 +343,7 @@ def test_voxtral_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyte
         "device": "cpu",
         "dtype": fake_torch.float32,
         "trust_remote_code": True,
+        "model_kwargs": {"attn_implementation": "sdpa"},
     }
     assert calls["generate_kwargs"] == {"max_new_tokens": 64, "language": "en"}
     audio = calls["audio"]
@@ -558,6 +561,7 @@ def test_app_config_reads_voxtral_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ASR_BACKEND", "voxtral")
     monkeypatch.setenv("ASR_VOXTRAL_MODEL", "mistralai/Voxtral-Mini-4B-Realtime-2602")
     monkeypatch.setenv("ASR_VOXTRAL_DTYPE", "float32")
+    monkeypatch.setenv("ASR_VOXTRAL_ATTN_IMPLEMENTATION", "sdpa")
     monkeypatch.setenv("ASR_VOXTRAL_MAX_NEW_TOKENS", "96")
     monkeypatch.setenv("ASR_VOXTRAL_TRUST_REMOTE_CODE", "false")
 
@@ -566,6 +570,7 @@ def test_app_config_reads_voxtral_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.asr_backend == "voxtral"
     assert config.asr_voxtral_model == "mistralai/Voxtral-Mini-4B-Realtime-2602"
     assert config.asr_voxtral_dtype == "float32"
+    assert config.asr_voxtral_attn_implementation == "sdpa"
     assert config.asr_voxtral_max_new_tokens == 96
     assert config.asr_voxtral_trust_remote_code is False
 
