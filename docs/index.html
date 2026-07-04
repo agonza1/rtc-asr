@@ -1222,6 +1222,7 @@ Published Jul 02, 2026, 11:10 PM UTC . 7 visible ASR lanes . 8 current artifact-
               </td>
               <td data-label="Samples">
                 <strong>${entry.sample_count ?? "n/a"}</strong>
+                <div class="tiny">Target ${entry.target_sample_count ?? "n/a"}</div>
                 <div class="tiny">Measured ${formatDate(entry.measured_at)}</div>
               </td>
               <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">${artifactHashLabel(entry)}</div></td>

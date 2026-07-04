@@ -556,6 +556,7 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "Math.min(...ranked.map((entry) => numeric(firstVisiblePartial(entry), 0)))" not in html
     assert "keeps REST throughput in a supporting role" in html
     assert "sample coverage" in html
+    assert 'Target ${entry.target_sample_count ?? "n/a"}' in html
     assert "The homepage stays latency-only." in html
     assert "benchmark notes and artifact detail pages" in html
     assert "reference WER sourced from upstream evaluations" not in html
