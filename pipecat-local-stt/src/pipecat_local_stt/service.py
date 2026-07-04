@@ -28,9 +28,16 @@ from .pipecat_compat import (
     VADUserStoppedSpeakingFrame,
 )
 from .protocol import (
+    RAW_UDS_HEADER_BYTES,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
+    RawUdsFrameType,
     LocalSTTProtocolError,
     LocalSTTTranscriptEvent,
     build_start_message,
+    decode_raw_uds_frame,
+    decode_raw_uds_json_payload,
+    encode_raw_uds_frame,
+    encode_raw_uds_json_frame,
     parse_server_message,
     parse_transcript_event,
 )
@@ -488,7 +495,39 @@ class LocalStreamingSTTService(STTService):
         return (len(audio) / self.config.bytes_per_second) * 1000.0
 
 
+class RawUdsConnectionAdapter:
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        self._reader = reader
+        self._writer = writer
+
+    async def send(self, data: str | bytes) -> None:
+        if isinstance(data, bytes):
+            frame = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, data)
+        else:
+            frame = encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, json.loads(data))
+        self._writer.write(frame)
+        await self._writer.drain()
+
+    async def recv(self) -> str:
+        header = await self._reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
+            raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
+        frame = decode_raw_uds_frame(header + await self._reader.readexactly(payload_length))
+        return json.dumps(decode_raw_uds_json_payload(frame))
+
+    async def close(self, code: int = 1000) -> None:
+        self._writer.close()
+        await self._writer.wait_closed()
+
+
 async def _default_connect(config: LocalSTTConfig) -> WebSocketConnection:
+    if config.transport == "raw_uds":
+        if config.uds_path is None:
+            raise ValueError("uds_path is required when transport is raw_uds")
+        reader, writer = await asyncio.open_unix_connection(config.uds_path)
+        return RawUdsConnectionAdapter(reader, writer)
+
     import websockets
 
     if config.transport == "uds_ws":

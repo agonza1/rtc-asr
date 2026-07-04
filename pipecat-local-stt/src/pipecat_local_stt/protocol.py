@@ -1,12 +1,68 @@
 from __future__ import annotations
 
+import json
+
 from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import Any
 
 from .config import LocalSTTConfig
 
 PROTOCOL_NAME = "local-stt-v1"
 PROTOCOL_VERSION = "local-stt.v1"
+RAW_UDS_HEADER_BYTES = 5
+RAW_UDS_MAX_PAYLOAD_BYTES = 8 * 1024 * 1024
+
+
+class RawUdsFrameType(IntEnum):
+    JSON_CONTROL = 0x01
+    AUDIO_PCM16 = 0x02
+    JSON_EVENT = 0x03
+    ERROR = 0x04
+    PING = 0x05
+    PONG = 0x06
+
+
+@dataclass(frozen=True, slots=True)
+class RawUdsFrame:
+    frame_type: RawUdsFrameType
+    payload: bytes
+
+
+def encode_raw_uds_frame(frame_type: RawUdsFrameType, payload: bytes) -> bytes:
+    if len(payload) > RAW_UDS_MAX_PAYLOAD_BYTES:
+        raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
+    return bytes([int(frame_type)]) + len(payload).to_bytes(4, "little") + payload
+
+
+def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, Any]) -> bytes:
+    return encode_raw_uds_frame(frame_type, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+
+
+def decode_raw_uds_frame(data: bytes) -> RawUdsFrame:
+    if len(data) < RAW_UDS_HEADER_BYTES:
+        raise LocalSTTProtocolError("Raw UDS frame is missing its header")
+    try:
+        frame_type = RawUdsFrameType(data[0])
+    except ValueError as exc:
+        raise LocalSTTProtocolError(f"Unsupported Raw UDS frame type: {data[0]}") from exc
+    payload_len = int.from_bytes(data[1:RAW_UDS_HEADER_BYTES], "little")
+    if payload_len > RAW_UDS_MAX_PAYLOAD_BYTES:
+        raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
+    payload = data[RAW_UDS_HEADER_BYTES:]
+    if len(payload) != payload_len:
+        raise LocalSTTProtocolError("Raw UDS frame payload length mismatch")
+    return RawUdsFrame(frame_type=frame_type, payload=payload)
+
+
+def decode_raw_uds_json_payload(frame: RawUdsFrame) -> dict[str, Any]:
+    if frame.frame_type not in {RawUdsFrameType.JSON_EVENT, RawUdsFrameType.ERROR, RawUdsFrameType.PONG}:
+        raise LocalSTTProtocolError(f"Raw UDS frame type {frame.frame_type.name} does not carry a server JSON event")
+    payload = json.loads(frame.payload.decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise LocalSTTProtocolError("Raw UDS JSON payload must be an object")
+    return payload
+
 
 
 @dataclass(slots=True)

@@ -76,3 +76,15 @@ def test_rtc_asr_wrapper_accepts_optional_uds_transport() -> None:
     assert service.config.transport == "uds_ws"
     assert service.config.url == "ws://localhost/v1/stt/stream"
     assert service.config.uds_path == "/run/rtc-asr/stt.sock"
+
+
+def test_rtc_asr_wrapper_accepts_optional_raw_uds_transport() -> None:
+    service = RtcAsrSTTService(
+        transport="raw_uds",
+        url="ws://localhost/v1/stt/stream",
+        uds_path="/run/rtc-asr/stt.raw.sock",
+    )
+
+    assert service.config.transport == "raw_uds"
+    assert service.config.url == "ws://localhost/v1/stt/stream"
+    assert service.config.uds_path == "/run/rtc-asr/stt.raw.sock"

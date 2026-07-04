@@ -18,6 +18,7 @@ from pipecat_local_stt.pipecat_compat import (
     VADUserStartedSpeakingFrame,
     VADUserStoppedSpeakingFrame,
 )
+from pipecat_local_stt.protocol import RawUdsFrameType, decode_raw_uds_frame, encode_raw_uds_json_frame
 from pipecat_local_stt.service import _default_connect
 
 
@@ -138,9 +139,18 @@ def test_config_validates_optional_uds_transport() -> None:
     assert config.uds_path == "/tmp/rtc-asr.sock"
 
 
-def test_config_requires_uds_path_only_for_uds_transport() -> None:
+def test_config_validates_optional_raw_uds_transport() -> None:
+    config = LocalSTTConfig(transport="raw_uds", uds_path="/tmp/rtc-asr.raw.sock")
+
+    assert config.transport == "raw_uds"
+    assert config.uds_path == "/tmp/rtc-asr.raw.sock"
+
+
+def test_config_requires_uds_path_for_socket_transports() -> None:
     with pytest.raises(ValueError, match="uds_path is required"):
         LocalSTTConfig(transport="uds_ws")
+    with pytest.raises(ValueError, match="uds_path is required"):
+        LocalSTTConfig(transport="raw_uds")
     with pytest.raises(ValueError, match="only valid"):
         LocalSTTConfig(uds_path="/tmp/rtc-asr.sock")
 
@@ -200,3 +210,62 @@ def test_default_connect_uses_unix_socket_for_uds_transport(monkeypatch: pytest.
         )
     ]
 
+
+
+class FakeRawUdsReader:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = bytearray(payload)
+
+    async def readexactly(self, size: int) -> bytes:
+        if len(self._payload) < size:
+            raise AssertionError(f"expected at least {size} bytes")
+        chunk = bytes(self._payload[:size])
+        del self._payload[:size]
+        return chunk
+
+
+class FakeRawUdsWriter:
+    def __init__(self) -> None:
+        self.writes: list[bytes] = []
+        self.closed = False
+
+    def write(self, data: bytes) -> None:
+        self.writes.append(data)
+
+    async def drain(self) -> None:
+        return None
+
+    def close(self) -> None:
+        self.closed = True
+
+    async def wait_closed(self) -> None:
+        return None
+
+
+def test_default_connect_uses_raw_uds_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "ready"}))
+    calls: list[str] = []
+
+    async def fake_open_unix_connection(path: str):
+        calls.append(path)
+        return reader, writer
+
+    monkeypatch.setattr(asyncio, "open_unix_connection", fake_open_unix_connection)
+
+    connection = asyncio.run(
+        _default_connect(LocalSTTConfig(transport="raw_uds", uds_path="/run/rtc-asr/stt.raw.sock"))
+    )
+    asyncio.run(connection.send(json.dumps({"type": "start", "protocol": "local-stt-v1"})))
+    asyncio.run(connection.send(b"pcm"))
+    event = asyncio.run(connection.recv())
+    asyncio.run(connection.close())
+
+    control_frame = decode_raw_uds_frame(writer.writes[0])
+    audio_frame = decode_raw_uds_frame(writer.writes[1])
+    assert calls == ["/run/rtc-asr/stt.raw.sock"]
+    assert control_frame.frame_type == RawUdsFrameType.JSON_CONTROL
+    assert audio_frame.frame_type == RawUdsFrameType.AUDIO_PCM16
+    assert audio_frame.payload == b"pcm"
+    assert json.loads(event) == {"type": "ready"}
+    assert writer.closed is True
