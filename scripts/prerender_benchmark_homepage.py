@@ -911,7 +911,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     partial_baseline = min_defined([entry.get("streaming", {}).get("partial_mean_ms") for entry in primary])
     final_baseline = min_defined([entry.get("streaming", {}).get("final_mean_ms") for entry in primary])
     baseline_label = "vs validated fastest" if len(baseline_entries) != len(primary) else "vs fastest"
-    max_rest = max([entry.get("rest", {}).get("mean_ms") or 0 for entry in primary] or [1])
+    max_rest = max([entry.get("rest", {}).get("mean_ms") or 0 for entry in primary] or [1]) or 1
     best_primary = primary[0] if primary else None
     alternative = primary[1] if len(primary) > 1 else (secondary[0] if secondary else None)
     best_first_partial = first_visible_partial(best_primary) if best_primary else None
