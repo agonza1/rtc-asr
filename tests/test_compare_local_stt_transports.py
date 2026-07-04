@@ -58,6 +58,7 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
     comparison = compare_module.compare_artifacts([tcp, raw])
 
     assert comparison["missing_transports"] == ["uds_ws"]
+    assert comparison["blocking_gaps"] == ["missing transport benchmark: uds_ws"]
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "tcp_ws"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] is None
@@ -156,6 +157,7 @@ def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["all_present_transports_protocol_error_free"] is False
+    assert comparison["blocking_gaps"] == ["raw_uds protocol_errors p95 is 1.0"]
     assert comparison["transports"]["tcp_ws"]["protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is False
     assert comparison["raw_uds_should_remain_experimental"] is True
@@ -175,6 +177,7 @@ def test_compare_artifacts_reports_missing_required_p95_metrics(tmp_path: Path) 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["missing_p95_metrics_by_transport"] == {"raw_uds": ["asr_queue_delay_p95_ms:p95"]}
+    assert comparison["blocking_gaps"] == ["raw_uds missing metric percentile: asr_queue_delay_p95_ms:p95"]
     assert comparison["transports"]["raw_uds"]["missing_p95_metrics"] == ["asr_queue_delay_p95_ms:p95"]
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["recommendation"] == (
@@ -193,6 +196,7 @@ def test_compare_artifacts_reports_missing_required_first_interim_percentiles(tm
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["missing_p95_metrics_by_transport"] == {"raw_uds": ["time_to_first_interim_ms:p99"]}
+    assert comparison["blocking_gaps"] == ["raw_uds missing metric percentile: time_to_first_interim_ms:p99"]
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["recommendation"] == (
         "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
