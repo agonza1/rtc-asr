@@ -83,6 +83,14 @@ def lowest_cpu_utilization_transport(transports: dict[str, dict[str, Any]]) -> s
     return min(candidates)[1]
 
 
+def missing_cpu_utilization_transports(transports: dict[str, dict[str, Any]]) -> list[str]:
+    return [
+        transport
+        for transport, payload in sorted(transports.items())
+        if payload.get("cpu_utilization_percent") is None
+    ]
+
+
 def protocol_error_free(metrics_p95: dict[str, float | None]) -> bool:
     protocol_errors = metrics_p95.get("protocol_errors")
     return protocol_errors is not None and protocol_errors == 0.0
@@ -184,6 +192,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         by_transport, "time_to_final_after_finalize_ms"
     )
     lowest_cpu_transport = lowest_cpu_utilization_transport(by_transport)
+    missing_cpu_utilization = missing_cpu_utilization_transports(by_transport)
 
     all_present_transports_protocol_error_free = all(
         transport["protocol_error_free"] for transport in by_transport.values()
@@ -203,6 +212,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "fastest_time_to_first_interim_p95_transport": fastest_first_interim_transport,
         "fastest_time_to_final_after_finalize_p95_transport": fastest_final_after_finalize_transport,
         "lowest_cpu_utilization_percent_transport": lowest_cpu_transport,
+        "missing_cpu_utilization_transports": missing_cpu_utilization,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
         "all_present_transports_protocol_error_free": all_present_transports_protocol_error_free,
