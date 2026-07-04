@@ -585,6 +585,10 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     score = "n/a" if derived.get("overall_score") is None else f"{derived['overall_score']:.1f} / 100"
     confidence = "n/a" if derived.get("confidence_score") is None else f"{derived['confidence_score']:.1f} / 100"
     contract_value = "n/a" if contract.get("chunk_ms") is None else f"{contract['chunk_ms']} ms chunks"
+    transport_value = contract.get("transport") or contract.get("path") or "n/a"
+    uds_path_value = contract.get("uds_path") or "n/a"
+    frame_format_value = contract.get("frame_format") or "n/a"
+    frame_header_value = contract.get("frame_header_bytes")
     official_wer_reference = entry.get("official_wer_reference")
     warnings = entry.get("warnings") or {}
     run_command = entry.get("run_command")
@@ -740,7 +744,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Partial backlog latency</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Diagnostic chunk-response delay. Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
-        <article class="card"><span class="label">Buffered contract</span><div class="value">{contract_value}</div><p>Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Sample rate {contract.get("sample_rate") or 'n/a'} Hz · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p></article>
+        <article class="card"><span class="label">Transport contract</span><div class="value">{html.escape(str(transport_value))}</div><p>{contract_value} · Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Sample rate {contract.get("sample_rate") or 'n/a'} Hz · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p><p>UDS path {html.escape(str(uds_path_value))} · Frame format {html.escape(str(frame_format_value))} · Header bytes {html.escape(str(frame_header_value if frame_header_value is not None else 'n/a'))}</p></article>
         <article class="card"><span class="label">Measurement technique</span><div class="value">{html.escape(technique)}</div><p>Separates Local STT v1 websocket artifacts from legacy buffered websocket evidence.</p></article>
         <article class="card"><span class="label">Accuracy context</span><div class="value">{html.escape(official_wer_reference or 'No external WER reference')}</div><p>Shown as external context rather than an official rtc-asr measurement.</p></article>
         <article class="card"><span class="label">Warnings</span><div class="value">{format_count(warnings.get("received_total"))}</div><p>Rate {format_ratio(warnings.get("rate_per_sample"))} per sample · Codes: {html.escape(format_list(warnings.get("codes") or []))}</p></article>
