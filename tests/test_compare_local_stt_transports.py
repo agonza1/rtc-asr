@@ -129,7 +129,20 @@ def test_compare_artifacts_reports_lowest_cpu_transport_when_available(tmp_path:
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["lowest_cpu_utilization_percent_transport"] == "raw_uds"
+    assert comparison["missing_cpu_utilization_transports"] == ["uds_ws"]
     assert comparison["transports"]["uds_ws"]["cpu_utilization_percent"] is None
+
+
+def test_compare_artifacts_reports_all_transports_missing_cpu_when_unavailable(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, cpu_utilization_percent=None)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0, cpu_utilization_percent=None)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0, cpu_utilization_percent=None)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["lowest_cpu_utilization_percent_transport"] is None
+    assert comparison["missing_cpu_utilization_transports"] == ["raw_uds", "tcp_ws", "uds_ws"]
+    assert comparison["raw_uds_should_remain_experimental"] is False
 
 
 def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path: Path) -> None:
