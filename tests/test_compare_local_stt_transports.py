@@ -130,6 +130,12 @@ def test_compare_artifacts_reports_lowest_cpu_transport_when_available(tmp_path:
 
     assert comparison["lowest_cpu_utilization_percent_transport"] == "raw_uds"
     assert comparison["missing_cpu_utilization_transports"] == ["uds_ws"]
+    assert comparison["cpu_utilization_coverage"] == {
+        "available_transports": ["raw_uds", "tcp_ws"],
+        "missing_transports": ["uds_ws"],
+        "required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+        "complete": False,
+    }
     assert comparison["transports"]["uds_ws"]["cpu_utilization_percent"] is None
 
 
@@ -142,6 +148,12 @@ def test_compare_artifacts_reports_all_transports_missing_cpu_when_unavailable(t
 
     assert comparison["lowest_cpu_utilization_percent_transport"] is None
     assert comparison["missing_cpu_utilization_transports"] == ["raw_uds", "tcp_ws", "uds_ws"]
+    assert comparison["cpu_utilization_coverage"] == {
+        "available_transports": [],
+        "missing_transports": ["raw_uds", "tcp_ws", "uds_ws"],
+        "required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+        "complete": False,
+    }
     assert comparison["raw_uds_should_remain_experimental"] is False
 
 
@@ -154,6 +166,12 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
 
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 5.0
+    assert comparison["cpu_utilization_coverage"] == {
+        "available_transports": ["raw_uds", "tcp_ws", "uds_ws"],
+        "missing_transports": [],
+        "required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+        "complete": True,
+    }
     assert comparison["raw_uds_should_remain_experimental"] is False
     assert comparison["all_present_transports_protocol_error_free"] is True
     assert comparison["recommendation"] == "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
