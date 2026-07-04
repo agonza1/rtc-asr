@@ -20,13 +20,18 @@ def write_artifact(
     first_interim_p95: float,
     *,
     final_after_finalize_p95: float = 25.0,
+    cpu_utilization_percent: float | None = 12.5,
 ) -> Path:
     path.write_text(
         json.dumps(
             {
                 "kind": "local-stt-v1-latency-benchmark",
                 "target": {"transport": transport, "url": "ws://localhost/v1/stt/stream", "uds_path": "/tmp/stt.sock" if transport != "tcp_ws" else None},
-                "environment": {"cpu_utilization_percent": 12.5},
+                "environment": (
+                    {"cpu_utilization_percent": cpu_utilization_percent}
+                    if cpu_utilization_percent is not None
+                    else {}
+                ),
                 "runs": 3,
                 "summary": {
                     "time_to_first_interim_ms": {"p50": first_interim_p95 - 1, "p95": first_interim_p95, "p99": first_interim_p95 + 1},
@@ -63,15 +68,34 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
 
 
 def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path: Path) -> None:
-    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, final_after_finalize_p95=31.0)
-    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0, final_after_finalize_p95=24.0)
-    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.5, final_after_finalize_p95=27.0)
+    tcp = write_artifact(
+        tmp_path / "tcp.json",
+        "tcp_ws",
+        18.0,
+        final_after_finalize_p95=31.0,
+        cpu_utilization_percent=15.0,
+    )
+    uds = write_artifact(
+        tmp_path / "uds.json",
+        "uds_ws",
+        16.0,
+        final_after_finalize_p95=24.0,
+        cpu_utilization_percent=13.0,
+    )
+    raw = write_artifact(
+        tmp_path / "raw.json",
+        "raw_uds",
+        12.5,
+        final_after_finalize_p95=27.0,
+        cpu_utilization_percent=11.0,
+    )
 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["missing_transports"] == []
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "uds_ws"
+    assert comparison["lowest_cpu_utilization_percent_transport"] == "raw_uds"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 3.5
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["all_present_transports_protocol_error_free"] is True
@@ -94,6 +118,17 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "p95": 27.0,
         "p99": 32.0,
     }
+
+
+def test_compare_artifacts_reports_lowest_cpu_transport_when_available(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, cpu_utilization_percent=14.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0, cpu_utilization_percent=None)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0, cpu_utilization_percent=11.0)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["lowest_cpu_utilization_percent_transport"] == "raw_uds"
+    assert comparison["transports"]["uds_ws"]["cpu_utilization_percent"] is None
 
 
 def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path: Path) -> None:
