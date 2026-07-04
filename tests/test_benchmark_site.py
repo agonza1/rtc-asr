@@ -32,6 +32,7 @@ render_homepage = prerender_module.render_homepage
 render_row = prerender_module.render_row
 render_secondary_row = prerender_module.render_secondary_row
 measurement_technique = prerender_module.measurement_technique
+evidence_role = prerender_module.evidence_role
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
 render_sitemap = prerender_module.render_sitemap
 
@@ -969,6 +970,29 @@ def test_manifest_contract_marks_raw_uds_without_websocket_url() -> None:
     assert contract["uds_path"] == "/tmp/stt.raw.sock"
     assert contract["chunk_ms"] == 20
     assert contract["sample_rate"] == 16000
+
+
+def test_detail_page_surfaces_evidence_role() -> None:
+    primary_entry = {
+        "label": "Primary",
+        "status": "validated",
+        "status_detail": "Validated Local STT v1 artifact.",
+        "artifact_path": "benchmark-results/primary.json",
+        "contract": {"path": "/v1/stt/stream"},
+    }
+    legacy_entry = {
+        "label": "Legacy",
+        "status": "legacy",
+        "status_detail": "Historical supporting artifact.",
+        "artifact_path": "benchmark-results/legacy.json",
+        "contract": {"path": "/ws/stream"},
+    }
+
+    assert evidence_role(primary_entry) == "Primary comparable evidence"
+    assert evidence_role(legacy_entry) == "Historical supporting evidence"
+    assert "Evidence role" in render_detail_page(primary_entry, None)
+    assert "Primary comparable evidence" in render_detail_page(primary_entry, None)
+    assert "Historical supporting evidence" in render_detail_page(legacy_entry, None)
 
 
 def test_detail_page_measurement_technique_matches_streaming_contract() -> None:

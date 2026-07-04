@@ -560,6 +560,20 @@ def absolute_site_url(site_base_url: str | None, path: str) -> str:
     return f"{site_base_url.rstrip('/')}/{path.lstrip('/')}"
 
 
+def evidence_role(entry: dict[str, Any]) -> str:
+    status = str(entry.get("status") or "").lower()
+    contract = entry.get("contract", {})
+    if status == "validated" and contract.get("path") == "/v1/stt/stream":
+        return "Primary comparable evidence"
+    if status == "validated":
+        return "Published supporting evidence"
+    if status == "blocked":
+        return "Blocked benchmark evidence"
+    if status == "legacy":
+        return "Historical supporting evidence"
+    return "Supporting benchmark evidence"
+
+
 def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] | None, site_base_url: str | None = None) -> str:
     rest = entry.get("rest", {})
     streaming = entry.get("streaming", {})
@@ -581,6 +595,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     manifest_artifact_path = entry.get("artifact_path") or "n/a"
     description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
     technique = measurement_technique(entry)
+    role = evidence_role(entry)
     detail_href = Path(detail_page_path(entry)).name
     detail_url = absolute_site_url(site_base_url, f"benchmark-results/pages/{detail_href}")
     artifact_url = absolute_site_url(site_base_url, f"benchmark-results/{artifact_name}") if site_base_url and artifact_name else artifact_href
@@ -716,6 +731,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <div class="actions">
         <div class="card"><span class="label">Lane</span><div class="value">{html.escape(entry.get("lane") or "unknown")}</div><p>{html.escape(entry.get("backend") or "unknown")} · {html.escape(entry.get("model") or "unknown")}</p></div>
         <div class="card"><span class="label">Runtime</span><div class="value">{html.escape(entry.get("runtime") or "unknown")}</div><p>Status: {html.escape(entry.get("status") or "unknown")} · Sample coverage: {html.escape(sample_coverage)}</p></div>
+        <div class="card"><span class="label">Evidence role</span><div class="value">{html.escape(role)}</div><p>{html.escape(description)}</p></div>
         <div class="card"><span class="label">Links</span><div><a href="{homepage_href}">Back to benchmark homepage</a></div><div><a href="../manifest.json">Open benchmark manifest</a></div><div><a href="{artifact_href}">Open raw JSON artifact</a></div><div><a href="{artifact_href}" download="{html.escape(artifact_name)}">Download raw JSON artifact</a></div><p>Measured {html.escape(format_date(entry.get("measured_at")))}</p></div>
       </div>
       <div class="grid">
