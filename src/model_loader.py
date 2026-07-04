@@ -466,6 +466,7 @@ class VoxtralAdapter:
             "model": self.model_name,
             "device": self.config.asr_device,
             "dtype": self.config.asr_voxtral_dtype,
+            "attn_implementation": self.config.asr_voxtral_attn_implementation,
             "max_new_tokens": self.config.asr_voxtral_max_new_tokens,
             "implementation": "transformers.pipeline",
             "task": "automatic-speech-recognition",
@@ -502,13 +503,18 @@ class VoxtralAdapter:
                 "The voxtral backend requires transformers and torch. Install a Voxtral-compatible Hugging Face runtime to enable ASR_BACKEND=voxtral."
             ) from exc
 
-        self._pipeline = pipeline(
-            "automatic-speech-recognition",
-            model=self.model_name,
-            device=self.config.asr_device,
-            dtype=_resolve_torch_dtype(torch, self.config.asr_voxtral_dtype, self.config.asr_device),
-            trust_remote_code=self.config.asr_voxtral_trust_remote_code,
-        )
+        pipeline_kwargs: dict[str, object] = {
+            "model": self.model_name,
+            "device": self.config.asr_device,
+            "dtype": _resolve_torch_dtype(torch, self.config.asr_voxtral_dtype, self.config.asr_device),
+            "trust_remote_code": self.config.asr_voxtral_trust_remote_code,
+        }
+        if self.config.asr_voxtral_attn_implementation:
+            pipeline_kwargs["model_kwargs"] = {
+                "attn_implementation": self.config.asr_voxtral_attn_implementation,
+            }
+
+        self._pipeline = pipeline("automatic-speech-recognition", **pipeline_kwargs)
         return self._pipeline
 
 

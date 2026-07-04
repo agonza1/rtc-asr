@@ -82,6 +82,7 @@ class AppConfig:
     asr_parakeet_dtype: str = "auto"
     asr_voxtral_model: str = "mistralai/Voxtral-Mini-4B-Realtime-2602"
     asr_voxtral_dtype: str = "auto"
+    asr_voxtral_attn_implementation: str | None = None
     asr_voxtral_max_new_tokens: int = 128
     asr_voxtral_trust_remote_code: bool = True
 
@@ -144,6 +145,10 @@ class AppConfig:
             asr_parakeet_dtype=os.getenv("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype),
             asr_voxtral_model=os.getenv("ASR_VOXTRAL_MODEL", defaults.asr_voxtral_model),
             asr_voxtral_dtype=os.getenv("ASR_VOXTRAL_DTYPE", defaults.asr_voxtral_dtype),
+            asr_voxtral_attn_implementation=os.getenv(
+                "ASR_VOXTRAL_ATTN_IMPLEMENTATION",
+                defaults.asr_voxtral_attn_implementation,
+            ),
             asr_voxtral_max_new_tokens=_positive_int_env(
                 "ASR_VOXTRAL_MAX_NEW_TOKENS",
                 defaults.asr_voxtral_max_new_tokens,
