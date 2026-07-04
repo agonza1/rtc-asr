@@ -1277,6 +1277,19 @@ def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
     assert 'Process RSS 181.5 MB' in rss_alias_html
     assert 'Peak RSS 544.0 MB' in rss_alias_html
 
+    metric_alias_html = render_detail_page(
+        entry,
+        {
+            'environment': {'cpu_percent': 24.5},
+            'metrics': {'power': {'average_package_watts': 6.8, 'joules_per_audio_second': 1.7}},
+            'thermal': {'max_celsius': 58.0},
+        },
+    )
+    assert 'CPU 24.5%' in metric_alias_html
+    assert 'Power 6.8 W' in metric_alias_html
+    assert 'Energy/audio-sec 1.7 J' in metric_alias_html
+    assert 'Thermal 58.0 C' in metric_alias_html
+
 
 def test_homepage_head_includes_launch_seo_metadata() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
