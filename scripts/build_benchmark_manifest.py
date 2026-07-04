@@ -990,6 +990,31 @@ def build_low_power_evidence_summary(entries: list[dict[str, Any]]) -> dict[str,
     }
 
 
+
+def build_sample_coverage_summary(entries: list[dict[str, Any]]) -> dict[str, int]:
+    target_entries = [entry for entry in entries if entry.get("target_sample_count")]
+    complete_entries = [
+        entry
+        for entry in target_entries
+        if (entry.get("sample_count") or 0) >= (entry.get("target_sample_count") or 0)
+    ]
+    partial_entries = [
+        entry
+        for entry in target_entries
+        if entry.get("sample_count") is not None
+        and (entry.get("sample_count") or 0) < (entry.get("target_sample_count") or 0)
+    ]
+    missing_entries = [entry for entry in target_entries if entry.get("sample_count") is None]
+
+    return {
+        "artifact_count": len(entries),
+        "targeted_artifact_count": len(target_entries),
+        "complete_artifact_count": len(complete_entries),
+        "partial_artifact_count": len(partial_entries),
+        "missing_sample_count_artifact_count": len(missing_entries),
+    }
+
+
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
     catalog = load_catalog(tracks_path)
     catalog_tracks = catalog.get("tracks", [])
@@ -1094,6 +1119,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "lane_count": len({entry["lane"] for entry in tracks}),
         "system_coverage": build_system_coverage(artifact_history),
         "low_power_evidence": build_low_power_evidence_summary(artifact_history),
+        "sample_coverage": build_sample_coverage_summary(artifact_history),
         "ranges": ranges,
         "highlights": {
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),
