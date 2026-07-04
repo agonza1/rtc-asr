@@ -123,6 +123,15 @@ def test_api_reference_lists_supported_runtime_aliases() -> None:
         assert alias in api_reference
 
 
+def test_troubleshooting_documents_voxtral_runtime_validation() -> None:
+    troubleshooting = (Path(__file__).resolve().parents[1] / "docs" / "troubleshooting.md").read_text(encoding="utf-8")
+
+    assert "Voxtral Mini realtime fails at startup or first request" in troubleshooting
+    assert "ASR_BACKEND=voxtral-mini-4b ASR_PRELOAD_MODEL=true" in troubleshooting
+    assert "ASR_VOXTRAL_ATTN_IMPLEMENTATION=sdpa" in troubleshooting
+    assert "ASR_VOXTRAL_MAX_NEW_TOKENS" in troubleshooting
+
+
 def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
