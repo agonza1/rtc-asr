@@ -1002,6 +1002,13 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
         summary_cards.append(
             f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Low-power readiness</div><div class="headline-value">{complete_count} complete artifacts</div><p>{low_power_evidence.get("power_evidence_count", 0)} of {artifact_count} artifacts include power evidence; {low_power_evidence.get("sustained_thermal_evidence_count", 0)} include sustained thermal evidence for battery-sensitive deployment decisions.</p></article>'
         )
+    sample_coverage = summary.get("sample_coverage") or {}
+    if sample_coverage:
+        complete_count = sample_coverage.get("complete_artifact_count", 0)
+        targeted_count = sample_coverage.get("targeted_artifact_count", 0)
+        summary_cards.append(
+            f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Sample coverage</div><div class="headline-value">{complete_count} complete targets</div><p>{targeted_count} artifacts declare a sample target; {sample_coverage.get("partial_artifact_count", 0)} are below target and {sample_coverage.get("missing_sample_count_artifact_count", 0)} are missing sample-count metadata.</p></article>'
+        )
     stale_artifact_count = summary.get("stale_artifact_count", 0)
     if stale_artifact_count:
         summary_cards.append(

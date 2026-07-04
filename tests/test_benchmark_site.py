@@ -15,6 +15,7 @@ SPEC.loader.exec_module(manifest_module)
 DEFAULT_RESULTS_DIR = manifest_module.DEFAULT_RESULTS_DIR
 build_manifest = manifest_module.build_manifest
 build_low_power_evidence_summary = manifest_module.build_low_power_evidence_summary
+build_sample_coverage_summary = manifest_module.build_sample_coverage_summary
 comparable_manifest = manifest_module.comparable_manifest
 extract_system_signals = manifest_module.extract_system_signals
 render_manifest = manifest_module.render_manifest
@@ -371,6 +372,36 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert coverage["thermal_duration_minutes_count"] == 0
 
 
+def test_manifest_summarizes_sample_coverage_readiness() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    coverage = manifest["summary"]["sample_coverage"]
+
+    assert coverage == {
+        "artifact_count": len(manifest["artifacts"]),
+        "targeted_artifact_count": 22,
+        "complete_artifact_count": 20,
+        "partial_artifact_count": 2,
+        "missing_sample_count_artifact_count": 0,
+    }
+
+
+def test_sample_coverage_summary_counts_complete_partial_and_missing_targets() -> None:
+    entries = [
+        {"sample_count": 10, "target_sample_count": 10},
+        {"sample_count": 4, "target_sample_count": 10},
+        {"sample_count": None, "target_sample_count": 10},
+        {"sample_count": 1, "target_sample_count": None},
+    ]
+
+    assert build_sample_coverage_summary(entries) == {
+        "artifact_count": 4,
+        "targeted_artifact_count": 3,
+        "complete_artifact_count": 1,
+        "partial_artifact_count": 1,
+        "missing_sample_count_artifact_count": 1,
+    }
+
+
 def test_manifest_summarizes_low_power_evidence_readiness() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
     evidence = manifest["summary"]["low_power_evidence"]
@@ -578,6 +609,8 @@ def test_docs_index_prioritizes_validated_entries_in_rankings() -> None:
     assert 'historical artifacts' in html
     assert 'Low-power readiness' in html
     assert 'complete artifacts' in html
+    assert 'Sample coverage' in html
+    assert 'complete targets' in html
 
 
 def test_sitemap_includes_raw_benchmark_artifacts() -> None:

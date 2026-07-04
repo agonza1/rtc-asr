@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-02T23:10:30Z",
+  "generated_at": "2026-07-04T22:41:37Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -47,6 +47,13 @@
       "power_evidence_count": 0,
       "sustained_thermal_evidence_count": 0,
       "complete_artifact_count": 0
+    },
+    "sample_coverage": {
+      "artifact_count": 22,
+      "targeted_artifact_count": 22,
+      "complete_artifact_count": 20,
+      "partial_artifact_count": 2,
+      "missing_sample_count_artifact_count": 0
     },
     "ranges": {
       "rest_mean_ms": {
