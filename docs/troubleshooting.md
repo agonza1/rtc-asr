@@ -101,7 +101,20 @@ The local Parakeet adapter requires a newer Hugging Face runtime than the defaul
 - upgrade the local runtime pair, or
 - use `make benchmark-compose-parakeet`, which applies the known-good container override for that backend.
 
-### 6. Transcripts are delayed or partials feel stale
+### 6. Voxtral Mini realtime fails at startup or first request
+
+The Voxtral adapter is experimental and uses the Hugging Face Transformers pipeline for `mistralai/Voxtral-Mini-4B-Realtime-2602`. Use the runtime aliases `ASR_BACKEND=voxtral`, `voxtral-realtime`, `voxtral-mini`, or `voxtral-mini-4b` only on hosts with a compatible Transformers/Torch stack and enough accelerator memory for the 4B model.
+
+Start with explicit runtime validation before a demo:
+
+```bash
+ASR_BACKEND=voxtral-mini-4b ASR_PRELOAD_MODEL=true uvicorn src.main:app --host 0.0.0.0 --port 8080
+curl http://localhost:8080/api/models
+```
+
+If preload reports an attention or kernel error, set `ASR_VOXTRAL_ATTN_IMPLEMENTATION=sdpa` before trying backend-specific kernels such as `flash_attention_2`. Keep `ASR_VOXTRAL_MAX_NEW_TOKENS` low, for example `64` or `128`, while checking latency.
+
+### 7. Transcripts are delayed or partials feel stale
 
 Check these settings in the `start` event:
 
@@ -115,7 +128,7 @@ Check these settings in the `start` event:
 
 Lower `partial_interval_chunks` for more frequent updates, and keep your transport chunk cadence steady.
 
-### 7. Need to verify the exact backend capabilities exposed to a client
+### 8. Need to verify the exact backend capabilities exposed to a client
 
 Use:
 
