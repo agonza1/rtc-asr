@@ -607,6 +607,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     title = html.escape(entry.get("label") or "Benchmark artifact")
     artifact_href = html.escape("../" + Path(entry.get("artifact_path") or "").name)
     homepage_href = html.escape("../../index.html")
+    sitemap_href = html.escape("../../sitemap.xml")
     score = "n/a" if derived.get("overall_score") is None else f"{derived['overall_score']:.1f} / 100"
     confidence = "n/a" if derived.get("confidence_score") is None else f"{derived['confidence_score']:.1f} / 100"
     contract_value = "n/a" if contract.get("chunk_ms") is None else f"{contract['chunk_ms']} ms chunks"
@@ -719,6 +720,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta property="article:modified_time" content="{html.escape(article_modified_at or '')}">
     <meta name="twitter:card" content="summary">
     <link rel="canonical" href="{html.escape(detail_url)}">
+    <link rel="sitemap" type="application/xml" href="{sitemap_href}">
     <link rel="alternate" type="application/json" href="{artifact_href}" title="Raw benchmark JSON artifact">
     <link rel="alternate" type="application/json" href="../manifest.json" title="Benchmark results manifest">
     <title>{title} | rtc-asr benchmark artifact</title>

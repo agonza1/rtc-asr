@@ -1092,6 +1092,7 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert '<meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
     assert '<meta name="twitter:card" content="summary">' in rss_detail
     assert '<link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
+    assert '<link rel="sitemap" type="application/xml" href="../../sitemap.xml">' in rss_detail
     assert '<link rel="alternate" type="application/json" href="../parakeet-mlx-110m-service-2026-06-21.json" title="Raw benchmark JSON artifact">' in rss_detail
     assert '<link rel="alternate" type="application/json" href="../manifest.json" title="Benchmark results manifest">' in rss_detail
     assert '<a href="../manifest.json">Open benchmark manifest</a>' in rss_detail
