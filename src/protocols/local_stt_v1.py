@@ -399,7 +399,7 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
     if frame.frame_type == RawUdsFrameType.AUDIO_PCM16:
         return validate_audio_chunk(frame.payload)
     if frame.frame_type == RawUdsFrameType.JSON_CONTROL:
-        return parse_client_message(decode_raw_uds_json_payload(frame))
+        return parse_client_message(_normalize_raw_uds_control_payload(decode_raw_uds_json_payload(frame)))
     if frame.frame_type == RawUdsFrameType.PING:
         payload = {} if not frame.payload else decode_raw_uds_json_payload(frame)
         payload.setdefault("type", "ping")
@@ -408,6 +408,31 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
         f"Raw UDS frame type {frame.frame_type.name} is not a client frame",
         code="raw_uds_invalid_client_frame_type",
     )
+
+
+def _normalize_raw_uds_control_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("type") != "start" or "audio" in payload or "version" in payload:
+        return payload
+    if payload.get("protocol") != "local-stt-v1":
+        return payload
+    return {
+        "type": "start",
+        "version": PROTOCOL_VERSION,
+        "audio": {
+            "sample_rate": payload.get("sample_rate"),
+            "channels": payload.get("channels"),
+            "format": payload.get("format"),
+            "frame_ms": payload.get("frame_ms", HOT_PATH_FRAME_MS),
+            "bytes_per_frame": payload.get("bytes_per_frame"),
+        },
+        "language": payload.get("language"),
+        "interim_results": payload.get("interim_results", True),
+        "partial_interval_ms": payload.get("partial_interval_ms"),
+        "partial_window_seconds": payload.get("partial_window_seconds"),
+        "max_buffer_seconds": payload.get("max_buffer_seconds"),
+        "client_stream_id": payload.get("client_stream_id"),
+        "metadata": payload.get("metadata", {}),
+    }
 
 
 def encode_raw_uds_server_message(payload: dict[str, Any]) -> bytes:

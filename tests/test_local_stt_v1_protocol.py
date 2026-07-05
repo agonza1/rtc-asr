@@ -451,6 +451,33 @@ def test_raw_uds_client_frame_parser_maps_control_ping_and_audio() -> None:
     assert audio == b"\x00\x01"
 
 
+def test_raw_uds_client_frame_parser_accepts_issue_88_flat_start_payload() -> None:
+    frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(
+            RawUdsFrameType.JSON_CONTROL,
+            {
+                "type": "start",
+                "protocol": "local-stt-v1",
+                "sample_rate": 16000,
+                "channels": 1,
+                "format": "pcm_s16le",
+                "frame_ms": 20,
+                "partial_interval_ms": 100,
+                "client_stream_id": "raw-uds-experiment",
+            },
+        )
+    )
+
+    start = parse_raw_uds_client_frame(frame)
+
+    assert start.type == "start"
+    assert start.version == "local-stt.v1"
+    assert start.audio.sample_rate == 16000
+    assert start.audio.frame_ms == 20
+    assert start.partial_interval_ms == 100
+    assert start.client_stream_id == "raw-uds-experiment"
+
+
 def test_raw_uds_client_frame_parser_rejects_server_frame_types() -> None:
     event_frame = decode_raw_uds_frame(
         encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, build_ready_message().model_dump())
