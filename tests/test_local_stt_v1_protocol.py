@@ -393,6 +393,15 @@ def test_raw_uds_frame_decoder_rejects_oversized_payload_before_body_arrives() -
     assert excinfo.value.as_event().code == "raw_uds_payload_too_large"
 
 
+def test_raw_uds_client_ping_frame_accepts_empty_payload() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.PING, b""))
+
+    message = parse_raw_uds_client_frame(frame)
+
+    assert message.type == "ping"
+    assert message.ping_id is None
+
+
 def test_raw_uds_frame_decoder_rejects_length_mismatch() -> None:
     encoded = b"\x01\x04\x00\x00\x00{}"
 
