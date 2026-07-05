@@ -348,6 +348,14 @@ def test_realtime_style_turn_lifecycle_maps_to_local_stt_v1_contract() -> None:
     assert cancel.type == "cancel"
 
 
+def test_protocol_package_exports_raw_uds_server_helpers() -> None:
+    from src.protocols import RawUdsFrameDecoder as ExportedDecoder
+    from src.protocols import parse_raw_uds_server_frame as exported_parse_server_frame
+
+    assert ExportedDecoder is RawUdsFrameDecoder
+    assert exported_parse_server_frame is parse_raw_uds_server_frame
+
+
 def test_raw_uds_frame_codec_round_trips_binary_audio_payload() -> None:
     encoded = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x01\x02\x03")
 
