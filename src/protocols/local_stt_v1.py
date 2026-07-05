@@ -401,7 +401,7 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
     if frame.frame_type == RawUdsFrameType.JSON_CONTROL:
         return parse_client_message(decode_raw_uds_json_payload(frame))
     if frame.frame_type == RawUdsFrameType.PING:
-        payload = decode_raw_uds_json_payload(frame)
+        payload = {} if not frame.payload else decode_raw_uds_json_payload(frame)
         payload.setdefault("type", "ping")
         return parse_client_message(payload)
     raise LocalSttProtocolError(
