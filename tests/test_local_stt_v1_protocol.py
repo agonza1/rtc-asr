@@ -27,6 +27,7 @@ from src.protocols.local_stt_v1 import (
     encode_raw_uds_json_frame,
     encode_raw_uds_server_message,
     parse_raw_uds_client_frame,
+    parse_raw_uds_server_frame,
     validate_audio_chunk,
 )
 
@@ -504,3 +505,29 @@ def test_raw_uds_server_encoder_selects_event_error_and_pong_frame_types() -> No
     assert error.frame_type == RawUdsFrameType.ERROR
     assert pong.frame_type == RawUdsFrameType.PONG
     assert decode_raw_uds_json_payload(pong)["ping_id"] == "p1"
+
+
+def test_raw_uds_server_frame_parser_maps_event_error_and_empty_pong() -> None:
+    ready_frame = decode_raw_uds_frame(encode_raw_uds_server_message(build_ready_message().model_dump()))
+    error_payload = ErrorMessage(type="error", code="bad", message="bad request").model_dump()
+    error_frame = decode_raw_uds_frame(encode_raw_uds_server_message(error_payload))
+    empty_pong_frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.PONG, b""))
+
+    ready = parse_raw_uds_server_frame(ready_frame)
+    error = parse_raw_uds_server_frame(error_frame)
+    pong = parse_raw_uds_server_frame(empty_pong_frame)
+
+    assert ready.type == "ready"
+    assert error.type == "error"
+    assert error.code == "bad"
+    assert pong.type == "pong"
+    assert pong.ping_id is None
+
+
+def test_raw_uds_server_frame_parser_rejects_client_frame_types() -> None:
+    audio_frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x01"))
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_raw_uds_server_frame(audio_frame)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_server_frame_type"
