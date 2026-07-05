@@ -22,7 +22,7 @@ REQUIRED_PERCENTILES_BY_METRIC = {
     "time_to_final_after_finalize_ms": PERCENTILES,
     "audio_send_queue_depth_p95_ms": ("p95",),
     "asr_queue_delay_p95_ms": ("p95",),
-    "protocol_errors": ("p95",),
+    "protocol_errors": PERCENTILES,
 }
 
 
@@ -158,9 +158,9 @@ def metric_delta_ms(
     return round(float(baseline_p95) - float(candidate_p95), 1)
 
 
-def protocol_error_free(metrics_p95: dict[str, float | None]) -> bool:
-    protocol_errors = metrics_p95.get("protocol_errors")
-    return protocol_errors is not None and protocol_errors == 0.0
+def protocol_error_free(metrics: dict[str, dict[str, float | None]]) -> bool:
+    protocol_errors = metrics.get("protocol_errors", {})
+    return all(protocol_errors.get(percentile) == 0.0 for percentile in PERCENTILES)
 
 
 def missing_required_metrics(metrics: dict[str, dict[str, float | None]]) -> list[str]:
@@ -218,8 +218,11 @@ def blocking_gap_reasons(
     reasons.extend(run_gaps)
     for transport, payload in sorted(transports.items()):
         if not payload["protocol_error_free"]:
-            protocol_errors = payload.get("metrics_p95", {}).get("protocol_errors")
-            reasons.append(f"{transport} protocol_errors p95 is {protocol_errors}")
+            protocol_errors = payload.get("metrics", {}).get("protocol_errors", {})
+            recorded = ", ".join(
+                f"{percentile}={protocol_errors.get(percentile)}" for percentile in PERCENTILES
+            )
+            reasons.append(f"{transport} protocol_errors must be zero at p50/p95/p99; got {recorded}")
     return reasons
 
 
@@ -254,7 +257,7 @@ def compare_artifacts(
             "metrics": metrics,
             "metrics_p95": metrics_p95,
             "missing_p95_metrics": missing_metrics,
-            "protocol_error_free": protocol_error_free(metrics_p95),
+            "protocol_error_free": protocol_error_free(metrics),
             "cpu_utilization_percent": environment.get("cpu_utilization_percent"),
         }
 
