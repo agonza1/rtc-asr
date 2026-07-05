@@ -279,13 +279,33 @@ def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["all_present_transports_protocol_error_free"] is False
-    assert comparison["blocking_gaps"] == ["raw_uds protocol_errors p95 is 1.0"]
+    assert comparison["blocking_gaps"] == [
+        "raw_uds protocol_errors must be zero at p50/p95/p99; got p50=0.0, p95=1.0, p99=0.0"
+    ]
     assert comparison["transports"]["tcp_ws"]["protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is False
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["recommendation"] == (
         "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
     )
+
+
+def test_compare_artifacts_flags_protocol_error_tail_percentiles(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["summary"]["protocol_errors"]["p99"] = 1.0
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["all_present_transports_protocol_error_free"] is False
+    assert comparison["blocking_gaps"] == [
+        "raw_uds protocol_errors must be zero at p50/p95/p99; got p50=0.0, p95=0.0, p99=1.0"
+    ]
+    assert comparison["transports"]["raw_uds"]["protocol_error_free"] is False
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
 def test_compare_artifacts_reports_missing_required_p95_metrics(tmp_path: Path) -> None:
