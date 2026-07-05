@@ -62,6 +62,7 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "tcp_ws"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] is None
+    assert comparison["raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms"] is None
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["all_present_transports_protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is True
@@ -98,6 +99,7 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
     assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "uds_ws"
     assert comparison["lowest_cpu_utilization_percent_transport"] == "raw_uds"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 3.5
+    assert comparison["raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms"] == -3.0
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["all_present_transports_protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is True
@@ -166,6 +168,7 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
 
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 5.0
+    assert comparison["raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms"] == 0.0
     assert comparison["cpu_utilization_coverage"] == {
         "available_transports": ["raw_uds", "tcp_ws", "uds_ws"],
         "missing_transports": [],
