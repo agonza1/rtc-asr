@@ -15,6 +15,7 @@ from src.protocols.local_stt_v1 import (
     decode_raw_uds_json_payload,
     decode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    LocalSttProtocolError,
 )
 from src.rtc_client import AsyncASRClient, AsyncLocalSttClient, AsyncRawUdsLocalSttClient
 
@@ -413,6 +414,20 @@ def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
         (RawUdsFrameType.JSON_CONTROL, {"type": "finalize"}),
         (RawUdsFrameType.JSON_CONTROL, {"type": "close"}),
     ]
+
+
+def test_async_raw_uds_client_rejects_invalid_pcm16_without_connecting() -> None:
+    async def fail_connect(_path: str):
+        raise AssertionError("invalid audio should not open the raw UDS socket")
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=fail_connect)
+        with pytest.raises(LocalSttProtocolError) as excinfo:
+            await client.send_audio(b"\x00")
+
+        assert excinfo.value.as_event().code == "invalid_audio_chunk"
+
+    asyncio.run(scenario())
 
 
 def test_async_raw_uds_client_rejects_oversized_payload_before_body_read() -> None:
