@@ -102,6 +102,23 @@ def cpu_utilization_coverage(transports: dict[str, dict[str, Any]]) -> dict[str,
     }
 
 
+def run_count_coverage(transports: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    run_counts = {
+        transport: payload.get("runs")
+        for transport, payload in sorted(transports.items())
+        if isinstance(payload.get("runs"), int)
+    }
+    missing = sorted(transport for transport in transports if transport not in run_counts)
+    return {
+        "available_transports": sorted(run_counts),
+        "missing_transports": missing,
+        "required_transports": list(REQUIRED_TRANSPORTS),
+        "run_counts": run_counts,
+        "min_runs": min(run_counts.values()) if run_counts else None,
+        "complete": not missing and all(transport in transports for transport in REQUIRED_TRANSPORTS),
+    }
+
+
 def metric_delta_ms(
     transports: dict[str, dict[str, Any]],
     *,
@@ -225,6 +242,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     lowest_cpu_transport = lowest_cpu_utilization_transport(by_transport)
     missing_cpu_utilization = missing_cpu_utilization_transports(by_transport)
     cpu_coverage = cpu_utilization_coverage(by_transport)
+    run_coverage = run_count_coverage(by_transport)
 
     all_present_transports_protocol_error_free = all(
         transport["protocol_error_free"] for transport in by_transport.values()
@@ -246,6 +264,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "lowest_cpu_utilization_percent_transport": lowest_cpu_transport,
         "missing_cpu_utilization_transports": missing_cpu_utilization,
         "cpu_utilization_coverage": cpu_coverage,
+        "run_count_coverage": run_coverage,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
