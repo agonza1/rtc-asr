@@ -21,6 +21,7 @@ from .protocols import (
     decode_raw_uds_json_payload,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    validate_audio_chunk,
 )
 
 
@@ -418,7 +419,7 @@ class AsyncRawUdsLocalSttClient:
         return ready_event
 
     async def send_audio(self, chunk: bytes, *, on_sent: Callable[[], None] | None = None) -> None:
-        await self._send_frame(RawUdsFrameType.AUDIO_PCM16, chunk)
+        await self._send_frame(RawUdsFrameType.AUDIO_PCM16, validate_audio_chunk(chunk))
         if on_sent is not None:
             on_sent()
 
