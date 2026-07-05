@@ -39,6 +39,16 @@ stt = RtcAsrSTTService(
 )
 ```
 
+The experimental raw UDS client path uses the same `RtcAsrSTTService` API, but swaps WebSocket frames for the Local STT v1 length-prefixed raw UDS frame codec. Use it only with a matching raw UDS server/proxy during issue 88 transport experiments, and keep it out of default deployments unless benchmark artifacts show a p95 first-interim win of at least 5 ms over UDS WebSocket:
+
+```python
+stt = RtcAsrSTTService(
+    transport="raw_uds",
+    uds_path="/run/rtc-asr/stt.raw.sock",
+    language="en",
+)
+```
+
 Place the service after `transport.input()` and before `context_aggregator.user()` in a Pipecat pipeline. The plugin does not implement RTC, VAD, LLM context aggregation, or TTS.
 
 ## Running Against `rtc-asr`
