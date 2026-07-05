@@ -19,7 +19,7 @@ from pipecat_local_stt.pipecat_compat import (
     VADUserStoppedSpeakingFrame,
 )
 from pipecat_local_stt.protocol import RawUdsFrameType, decode_raw_uds_frame, encode_raw_uds_json_frame
-from pipecat_local_stt.service import _default_connect
+from pipecat_local_stt.service import RawUdsConnectionAdapter, _default_connect
 
 
 class FakeLocalSTTWebSocket:
@@ -269,3 +269,15 @@ def test_default_connect_uses_raw_uds_adapter(monkeypatch: pytest.MonkeyPatch) -
     assert audio_frame.payload == b"pcm"
     assert json.loads(event) == {"type": "ready"}
     assert writer.closed is True
+
+
+def test_raw_uds_adapter_encodes_ping_as_ping_frame() -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(b"")
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    asyncio.run(connection.send(json.dumps({"type": "ping", "ping_id": "p1"})))
+
+    ping_frame = decode_raw_uds_frame(writer.writes[0])
+    assert ping_frame.frame_type == RawUdsFrameType.PING
+    assert json.loads(ping_frame.payload.decode("utf-8")) == {"type": "ping", "ping_id": "p1"}
