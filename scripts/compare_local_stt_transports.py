@@ -7,6 +7,7 @@ from typing import Any
 
 
 REQUIRED_TRANSPORTS = ("tcp_ws", "uds_ws", "raw_uds")
+DEFAULT_RAW_UDS_MIN_WIN_MS = 5.0
 KEY_METRICS = (
     "time_to_first_interim_ms",
     "time_to_final_after_finalize_ms",
@@ -38,6 +39,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--min-runs",
         type=int,
         help="Require each transport artifact to record at least this many benchmark runs",
+    )
+    parser.add_argument(
+        "--raw-uds-min-win-ms",
+        type=float,
+        default=DEFAULT_RAW_UDS_MIN_WIN_MS,
+        help="Minimum first-interim P95 win over UDS websocket before raw UDS can be recommended",
     )
     return parser.parse_args(argv)
 
@@ -174,6 +181,7 @@ def recommendation_text(
     *,
     missing: list[str],
     raw_vs_uds_delta_ms: float | None,
+    raw_uds_min_win_ms: float,
     raw_uds_experimental: bool,
     all_present_transports_protocol_error_free: bool,
     missing_metrics: dict[str, list[str]],
@@ -190,7 +198,7 @@ def recommendation_text(
     if raw_vs_uds_delta_ms is None:
         return "Raw UDS and UDS websocket first-interim P95 metrics were unavailable; keep raw UDS experimental."
     if raw_uds_experimental:
-        return "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 5 ms."
+        return f"Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least {raw_uds_min_win_ms:g} ms."
     return "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
 
 
@@ -215,9 +223,16 @@ def blocking_gap_reasons(
     return reasons
 
 
-def compare_artifacts(paths: list[Path], *, min_runs: int | None = None) -> dict[str, Any]:
+def compare_artifacts(
+    paths: list[Path],
+    *,
+    min_runs: int | None = None,
+    raw_uds_min_win_ms: float = DEFAULT_RAW_UDS_MIN_WIN_MS,
+) -> dict[str, Any]:
     if min_runs is not None and min_runs <= 0:
         raise ValueError("min_runs must be positive")
+    if raw_uds_min_win_ms <= 0:
+        raise ValueError("raw_uds_min_win_ms must be positive")
     artifacts = [load_artifact(path) for path in paths]
     by_transport: dict[str, dict[str, Any]] = {}
     for path, artifact in zip(paths, artifacts, strict=True):
@@ -262,7 +277,7 @@ def compare_artifacts(paths: list[Path], *, min_runs: int | None = None) -> dict
         candidate_transport="raw_uds",
         metric="time_to_final_after_finalize_ms",
     )
-    raw_uds_latency_experimental = raw_vs_uds_delta_ms is None or raw_vs_uds_delta_ms < 5.0
+    raw_uds_latency_experimental = raw_vs_uds_delta_ms is None or raw_vs_uds_delta_ms < raw_uds_min_win_ms
     fastest_first_interim_transport = fastest_transport_by_metric(by_transport, "time_to_first_interim_ms")
     fastest_final_after_finalize_transport = fastest_transport_by_metric(
         by_transport, "time_to_final_after_finalize_ms"
@@ -298,6 +313,7 @@ def compare_artifacts(paths: list[Path], *, min_runs: int | None = None) -> dict
         "run_count_coverage": run_coverage,
         "minimum_required_runs": min_runs,
         "run_count_gaps": run_gaps,
+        "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
@@ -313,6 +329,7 @@ def compare_artifacts(paths: list[Path], *, min_runs: int | None = None) -> dict
         "recommendation": recommendation_text(
             missing=missing,
             raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
+            raw_uds_min_win_ms=raw_uds_min_win_ms,
             raw_uds_experimental=raw_uds_experimental,
             all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
             missing_metrics=missing_metrics_by_transport,
@@ -336,7 +353,11 @@ def comparison_has_blocking_gaps(
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    comparison = compare_artifacts(args.artifacts, min_runs=args.min_runs)
+    comparison = compare_artifacts(
+        args.artifacts,
+        min_runs=args.min_runs,
+        raw_uds_min_win_ms=args.raw_uds_min_win_ms,
+    )
     encoded = json.dumps(comparison, indent=2, sort_keys=True) + "\n"
     if args.output is not None:
         args.output.write_text(encoded, encoding="utf8")
