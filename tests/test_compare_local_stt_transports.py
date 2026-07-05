@@ -242,6 +242,32 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
     assert comparison["recommendation"] == "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
 
 
+def test_compare_artifacts_can_raise_raw_uds_recommendation_threshold(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw], raw_uds_min_win_ms=7.5)
+
+    assert comparison["raw_uds_min_win_ms"] == 7.5
+    assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 5.0
+    assert comparison["raw_uds_should_remain_experimental"] is True
+    assert comparison["recommendation"] == (
+        "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 7.5 ms."
+    )
+
+
+def test_compare_artifacts_rejects_invalid_raw_uds_recommendation_threshold(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+
+    try:
+        compare_module.compare_artifacts([tcp], raw_uds_min_win_ms=0)
+    except ValueError as exc:
+        assert "raw_uds_min_win_ms must be positive" in str(exc)
+    else:
+        raise AssertionError("expected raw_uds_min_win_ms validation failure")
+
+
 def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
