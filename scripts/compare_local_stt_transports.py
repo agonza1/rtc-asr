@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -57,6 +58,14 @@ def load_artifact(path: Path) -> dict[str, Any]:
     if not isinstance(target, dict) or not isinstance(target.get("transport"), str):
         raise ValueError(f"{path} is missing target.transport")
     return payload
+
+
+def artifact_provenance(path: Path) -> dict[str, Any]:
+    content = path.read_bytes()
+    return {
+        "artifact_sha256": hashlib.sha256(content).hexdigest(),
+        "artifact_size_bytes": len(content),
+    }
 
 
 def _percentile(summary: dict[str, Any], metric: str, percentile: str) -> float | None:
@@ -251,6 +260,7 @@ def compare_artifacts(
         missing_metrics = missing_required_metrics(metrics)
         by_transport[transport] = {
             "artifact": str(path),
+            **artifact_provenance(path),
             "url": artifact["target"].get("url"),
             "uds_path": artifact["target"].get("uds_path"),
             "runs": artifact.get("runs"),
