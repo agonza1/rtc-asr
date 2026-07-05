@@ -102,6 +102,20 @@ def cpu_utilization_coverage(transports: dict[str, dict[str, Any]]) -> dict[str,
     }
 
 
+def metric_delta_ms(
+    transports: dict[str, dict[str, Any]],
+    *,
+    baseline_transport: str,
+    candidate_transport: str,
+    metric: str,
+) -> float | None:
+    baseline_p95 = transports.get(baseline_transport, {}).get("metrics_p95", {}).get(metric)
+    candidate_p95 = transports.get(candidate_transport, {}).get("metrics_p95", {}).get(metric)
+    if baseline_p95 is None or candidate_p95 is None:
+        return None
+    return round(float(baseline_p95) - float(candidate_p95), 1)
+
+
 def protocol_error_free(metrics_p95: dict[str, float | None]) -> bool:
     protocol_errors = metrics_p95.get("protocol_errors")
     return protocol_errors is not None and protocol_errors == 0.0
@@ -191,13 +205,19 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         for transport, payload in by_transport.items()
         if payload["missing_p95_metrics"]
     }
-    raw_p95 = by_transport.get("raw_uds", {}).get("metrics_p95", {}).get("time_to_first_interim_ms")
-    uds_p95 = by_transport.get("uds_ws", {}).get("metrics_p95", {}).get("time_to_first_interim_ms")
-    raw_vs_uds_delta_ms = None
-    raw_uds_latency_experimental = True
-    if raw_p95 is not None and uds_p95 is not None:
-        raw_vs_uds_delta_ms = round(float(uds_p95) - float(raw_p95), 1)
-        raw_uds_latency_experimental = raw_vs_uds_delta_ms < 5.0
+    raw_vs_uds_delta_ms = metric_delta_ms(
+        by_transport,
+        baseline_transport="uds_ws",
+        candidate_transport="raw_uds",
+        metric="time_to_first_interim_ms",
+    )
+    raw_vs_uds_final_after_finalize_delta_ms = metric_delta_ms(
+        by_transport,
+        baseline_transport="uds_ws",
+        candidate_transport="raw_uds",
+        metric="time_to_final_after_finalize_ms",
+    )
+    raw_uds_latency_experimental = raw_vs_uds_delta_ms is None or raw_vs_uds_delta_ms < 5.0
     fastest_first_interim_transport = fastest_transport_by_metric(by_transport, "time_to_first_interim_ms")
     fastest_final_after_finalize_transport = fastest_transport_by_metric(
         by_transport, "time_to_final_after_finalize_ms"
@@ -227,6 +247,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "missing_cpu_utilization_transports": missing_cpu_utilization,
         "cpu_utilization_coverage": cpu_coverage,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
+        "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
         "all_present_transports_protocol_error_free": all_present_transports_protocol_error_free,
         "missing_p95_metrics_by_transport": missing_metrics_by_transport,
