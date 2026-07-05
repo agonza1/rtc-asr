@@ -70,6 +70,21 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
     assert comparison["recommendation"] == "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
 
 
+def test_compare_artifacts_reports_unexpected_transport_artifacts(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    legacy = write_artifact(tmp_path / "legacy.json", "websocket", 21.0)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw, legacy])
+
+    assert comparison["missing_transports"] == []
+    assert comparison["unexpected_transports"] == ["websocket"]
+    assert comparison["blocking_gaps"] == ["unexpected transport benchmark: websocket"]
+    assert comparison["raw_uds_should_remain_experimental"] is True
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+
+
 def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path: Path) -> None:
     tcp = write_artifact(
         tmp_path / "tcp.json",
