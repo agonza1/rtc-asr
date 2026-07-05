@@ -10,6 +10,7 @@ from .local_stt_v1 import (
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
     RawUdsFrame,
+    RawUdsFrameDecoder,
     RawUdsFrameType,
     AudioFormat,
     CancelMessage,
@@ -34,6 +35,7 @@ from .local_stt_v1 import (
     encode_raw_uds_server_message,
     parse_client_message,
     parse_raw_uds_client_frame,
+    parse_raw_uds_server_frame,
     parse_server_message,
     validate_audio_chunk,
 )
@@ -57,6 +59,7 @@ __all__ = [
     "RAW_UDS_HEADER_BYTES",
     "RAW_UDS_MAX_PAYLOAD_BYTES",
     "RawUdsFrame",
+    "RawUdsFrameDecoder",
     "RawUdsFrameType",
     "ReadyMessage",
     "StartMessage",
@@ -72,6 +75,7 @@ __all__ = [
     "encode_raw_uds_server_message",
     "parse_client_message",
     "parse_raw_uds_client_frame",
+    "parse_raw_uds_server_frame",
     "parse_server_message",
     "validate_audio_chunk",
 ]
