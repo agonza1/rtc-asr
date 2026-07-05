@@ -34,6 +34,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero unless raw UDS clears the recommendation gate",
     )
+    parser.add_argument(
+        "--min-runs",
+        type=int,
+        help="Require each transport artifact to record at least this many benchmark runs",
+    )
     return parser.parse_args(argv)
 
 
@@ -119,6 +124,19 @@ def run_count_coverage(transports: dict[str, dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def run_count_gaps(transports: dict[str, dict[str, Any]], min_runs: int | None) -> list[str]:
+    if min_runs is None:
+        return []
+    gaps: list[str] = []
+    for transport, payload in sorted(transports.items()):
+        runs = payload.get("runs")
+        if not isinstance(runs, int):
+            gaps.append(f"{transport} missing run count")
+        elif runs < min_runs:
+            gaps.append(f"{transport} has {runs} runs; requires at least {min_runs}")
+    return gaps
+
+
 def metric_delta_ms(
     transports: dict[str, dict[str, Any]],
     *,
@@ -159,11 +177,14 @@ def recommendation_text(
     raw_uds_experimental: bool,
     all_present_transports_protocol_error_free: bool,
     missing_metrics: dict[str, list[str]],
+    run_gaps: list[str],
 ) -> str:
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
     if missing_metrics:
         return "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
+    if run_gaps:
+        return "Re-run transport benchmarks with enough repeated runs before recommending raw UDS."
     if not all_present_transports_protocol_error_free:
         return "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
     if raw_vs_uds_delta_ms is None:
@@ -178,6 +199,7 @@ def blocking_gap_reasons(
     missing: list[str],
     unexpected: list[str],
     missing_metrics: dict[str, list[str]],
+    run_gaps: list[str],
     transports: dict[str, dict[str, Any]],
 ) -> list[str]:
     reasons: list[str] = []
@@ -185,6 +207,7 @@ def blocking_gap_reasons(
     reasons.extend(f"unexpected transport benchmark: {transport}" for transport in unexpected)
     for transport, metric_gaps in sorted(missing_metrics.items()):
         reasons.extend(f"{transport} missing metric percentile: {metric_gap}" for metric_gap in metric_gaps)
+    reasons.extend(run_gaps)
     for transport, payload in sorted(transports.items()):
         if not payload["protocol_error_free"]:
             protocol_errors = payload.get("metrics_p95", {}).get("protocol_errors")
@@ -192,7 +215,9 @@ def blocking_gap_reasons(
     return reasons
 
 
-def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
+def compare_artifacts(paths: list[Path], *, min_runs: int | None = None) -> dict[str, Any]:
+    if min_runs is not None and min_runs <= 0:
+        raise ValueError("min_runs must be positive")
     artifacts = [load_artifact(path) for path in paths]
     by_transport: dict[str, dict[str, Any]] = {}
     for path, artifact in zip(paths, artifacts, strict=True):
@@ -246,6 +271,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     missing_cpu_utilization = missing_cpu_utilization_transports(by_transport)
     cpu_coverage = cpu_utilization_coverage(by_transport)
     run_coverage = run_count_coverage(by_transport)
+    run_gaps = run_count_gaps(by_transport, min_runs)
 
     all_present_transports_protocol_error_free = all(
         transport["protocol_error_free"] for transport in by_transport.values()
@@ -270,6 +296,8 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "missing_cpu_utilization_transports": missing_cpu_utilization,
         "cpu_utilization_coverage": cpu_coverage,
         "run_count_coverage": run_coverage,
+        "minimum_required_runs": min_runs,
+        "run_count_gaps": run_gaps,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
@@ -279,6 +307,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
             missing=missing,
             unexpected=unexpected,
             missing_metrics=missing_metrics_by_transport,
+            run_gaps=run_gaps,
             transports=by_transport,
         ),
         "recommendation": recommendation_text(
@@ -287,6 +316,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
             raw_uds_experimental=raw_uds_experimental,
             all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
             missing_metrics=missing_metrics_by_transport,
+            run_gaps=run_gaps,
         ),
     }
 
@@ -298,6 +328,7 @@ def comparison_has_blocking_gaps(
         comparison["missing_transports"]
         or comparison["unexpected_transports"]
         or comparison["missing_p95_metrics_by_transport"]
+        or comparison.get("run_count_gaps")
         or not comparison["all_present_transports_protocol_error_free"]
         or (require_raw_uds_recommendation and comparison["raw_uds_should_remain_experimental"])
     )
@@ -305,7 +336,7 @@ def comparison_has_blocking_gaps(
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    comparison = compare_artifacts(args.artifacts)
+    comparison = compare_artifacts(args.artifacts, min_runs=args.min_runs)
     encoded = json.dumps(comparison, indent=2, sort_keys=True) + "\n"
     if args.output is not None:
         args.output.write_text(encoded, encoding="utf8")

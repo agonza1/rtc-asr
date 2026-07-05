@@ -191,6 +191,36 @@ def test_compare_artifacts_reports_all_transports_missing_cpu_when_unavailable(t
     assert comparison["raw_uds_should_remain_experimental"] is False
 
 
+def test_compare_artifacts_can_require_minimum_run_counts(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, runs=3)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0, runs=2)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0, runs=None)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw], min_runs=3)
+
+    assert comparison["minimum_required_runs"] == 3
+    assert comparison["run_count_gaps"] == [
+        "raw_uds missing run count",
+        "uds_ws has 2 runs; requires at least 3",
+    ]
+    assert comparison["blocking_gaps"] == comparison["run_count_gaps"]
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+    assert comparison["recommendation"] == (
+        "Re-run transport benchmarks with enough repeated runs before recommending raw UDS."
+    )
+
+
+def test_compare_artifacts_rejects_invalid_minimum_run_count(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+
+    try:
+        compare_module.compare_artifacts([tcp], min_runs=0)
+    except ValueError as exc:
+        assert "min_runs must be positive" in str(exc)
+    else:
+        raise AssertionError("expected min_runs validation failure")
+
+
 def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
@@ -286,6 +316,15 @@ def test_main_succeeds_when_all_transport_comparison_gates_pass(tmp_path: Path) 
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
 
     assert compare_module.main([str(tcp), str(uds), str(raw)]) == 0
+
+
+def test_main_can_require_minimum_run_counts(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, runs=3)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0, runs=3)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0, runs=2)
+
+    assert compare_module.main([str(tcp), str(uds), str(raw)]) == 0
+    assert compare_module.main(["--min-runs", "3", str(tcp), str(uds), str(raw)]) == 1
 
 
 def test_main_can_require_raw_uds_recommendation_gate(tmp_path: Path) -> None:
