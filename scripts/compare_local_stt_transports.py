@@ -176,11 +176,13 @@ def recommendation_text(
 def blocking_gap_reasons(
     *,
     missing: list[str],
+    unexpected: list[str],
     missing_metrics: dict[str, list[str]],
     transports: dict[str, dict[str, Any]],
 ) -> list[str]:
     reasons: list[str] = []
     reasons.extend(f"missing transport benchmark: {transport}" for transport in missing)
+    reasons.extend(f"unexpected transport benchmark: {transport}" for transport in unexpected)
     for transport, metric_gaps in sorted(missing_metrics.items()):
         reasons.extend(f"{transport} missing metric percentile: {metric_gap}" for metric_gap in metric_gaps)
     for transport, payload in sorted(transports.items()):
@@ -217,6 +219,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         }
 
     missing = [transport for transport in REQUIRED_TRANSPORTS if transport not in by_transport]
+    unexpected = sorted(transport for transport in by_transport if transport not in REQUIRED_TRANSPORTS)
     missing_metrics_by_transport = {
         transport: payload["missing_p95_metrics"]
         for transport, payload in by_transport.items()
@@ -249,6 +252,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
     )
     raw_uds_experimental = bool(
         missing
+        or unexpected
         or missing_metrics_by_transport
         or not all_present_transports_protocol_error_free
         or raw_uds_latency_experimental
@@ -258,6 +262,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "kind": "local-stt-v1-transport-comparison",
         "required_transports": list(REQUIRED_TRANSPORTS),
         "missing_transports": missing,
+        "unexpected_transports": unexpected,
         "transports": by_transport,
         "fastest_time_to_first_interim_p95_transport": fastest_first_interim_transport,
         "fastest_time_to_final_after_finalize_p95_transport": fastest_final_after_finalize_transport,
@@ -272,6 +277,7 @@ def compare_artifacts(paths: list[Path]) -> dict[str, Any]:
         "missing_p95_metrics_by_transport": missing_metrics_by_transport,
         "blocking_gaps": blocking_gap_reasons(
             missing=missing,
+            unexpected=unexpected,
             missing_metrics=missing_metrics_by_transport,
             transports=by_transport,
         ),
@@ -290,6 +296,7 @@ def comparison_has_blocking_gaps(
 ) -> bool:
     return bool(
         comparison["missing_transports"]
+        or comparison["unexpected_transports"]
         or comparison["missing_p95_metrics_by_transport"]
         or not comparison["all_present_transports_protocol_error_free"]
         or (require_raw_uds_recommendation and comparison["raw_uds_should_remain_experimental"])
