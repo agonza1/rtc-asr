@@ -31,7 +31,9 @@ from .local_stt_v1 import (
     decode_raw_uds_json_payload,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    encode_raw_uds_server_message,
     parse_client_message,
+    parse_raw_uds_client_frame,
     parse_server_message,
     validate_audio_chunk,
 )
@@ -67,7 +69,9 @@ __all__ = [
     "decode_raw_uds_json_payload",
     "encode_raw_uds_frame",
     "encode_raw_uds_json_frame",
+    "encode_raw_uds_server_message",
     "parse_client_message",
+    "parse_raw_uds_client_frame",
     "parse_server_message",
     "validate_audio_chunk",
 ]

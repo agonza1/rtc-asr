@@ -25,6 +25,8 @@ from src.protocols.local_stt_v1 import (
     decode_raw_uds_json_payload,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    encode_raw_uds_server_message,
+    parse_raw_uds_client_frame,
     validate_audio_chunk,
 )
 
@@ -416,3 +418,53 @@ def test_raw_uds_json_decoder_rejects_audio_frames() -> None:
         decode_raw_uds_json_payload(frame)
 
     assert excinfo.value.as_event().code == "raw_uds_invalid_json_frame_type"
+
+
+def test_raw_uds_client_frame_parser_maps_control_ping_and_audio() -> None:
+    start_frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(
+            RawUdsFrameType.JSON_CONTROL,
+            build_start_message(partial_interval_ms=100).model_dump(),
+        )
+    )
+    ping_frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(RawUdsFrameType.PING, {"ping_id": "p1"})
+    )
+    audio_frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x01"))
+
+    start = parse_raw_uds_client_frame(start_frame)
+    ping = parse_raw_uds_client_frame(ping_frame)
+    audio = parse_raw_uds_client_frame(audio_frame)
+
+    assert start.type == "start"
+    assert ping.type == "ping"
+    assert ping.ping_id == "p1"
+    assert audio == b"\x00\x01"
+
+
+def test_raw_uds_client_frame_parser_rejects_server_frame_types() -> None:
+    event_frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, build_ready_message().model_dump())
+    )
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_raw_uds_client_frame(event_frame)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_client_frame_type"
+
+
+def test_raw_uds_server_encoder_selects_event_error_and_pong_frame_types() -> None:
+    ready = decode_raw_uds_frame(encode_raw_uds_server_message(build_ready_message().model_dump()))
+    error = decode_raw_uds_frame(
+        encode_raw_uds_server_message(
+            ErrorMessage(type="error", code="bad", message="bad request").model_dump()
+        )
+    )
+    pong = decode_raw_uds_frame(
+        encode_raw_uds_server_message({"type": "pong", "ping_id": "p1", "metadata": {}})
+    )
+
+    assert ready.frame_type == RawUdsFrameType.JSON_EVENT
+    assert error.frame_type == RawUdsFrameType.ERROR
+    assert pong.frame_type == RawUdsFrameType.PONG
+    assert decode_raw_uds_json_payload(pong)["ping_id"] == "p1"
