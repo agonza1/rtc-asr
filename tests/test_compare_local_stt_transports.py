@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -127,6 +128,9 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "asr_queue_delay_p95_ms": 5.0,
         "protocol_errors": 0.0,
     }
+    raw_payload = raw.read_bytes()
+    assert comparison["transports"]["raw_uds"]["artifact_sha256"] == hashlib.sha256(raw_payload).hexdigest()
+    assert comparison["transports"]["raw_uds"]["artifact_size_bytes"] == len(raw_payload)
     assert comparison["transports"]["raw_uds"]["metrics"]["time_to_first_interim_ms"] == {
         "p50": 11.5,
         "p95": 12.5,
