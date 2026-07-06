@@ -374,6 +374,17 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, An
     return encode_raw_uds_frame(frame_type, json_payload)
 
 
+def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
+    normalized = _normalize_raw_uds_control_payload(dict(payload))
+    message = parse_client_message(normalized)
+    frame_type = RawUdsFrameType.PING if isinstance(message, PingMessage) else RawUdsFrameType.JSON_CONTROL
+    return encode_raw_uds_json_frame(frame_type, payload)
+
+
+def encode_raw_uds_audio_frame(payload: bytes | bytearray | memoryview) -> bytes:
+    return encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, validate_audio_chunk(payload))
+
+
 def decode_raw_uds_json_payload(frame: RawUdsFrame) -> dict[str, Any]:
     if frame.frame_type == RawUdsFrameType.AUDIO_PCM16:
         raise LocalSttProtocolError(
