@@ -291,3 +291,22 @@ def test_raw_uds_adapter_decodes_empty_pong_frame() -> None:
     event = asyncio.run(connection.recv())
 
     assert json.loads(event) == {"type": "pong"}
+
+
+def test_raw_uds_adapter_decodes_empty_ping_frame() -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(encode_raw_uds_frame(RawUdsFrameType.PING, b""))
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    event = asyncio.run(connection.recv())
+
+    assert json.loads(event) == {"type": "ping"}
+
+
+def test_service_ignores_server_heartbeat_events() -> None:
+    service = LocalStreamingSTTService()
+
+    asyncio.run(service._handle_server_payload({"type": "ping"}))
+    asyncio.run(service._handle_server_payload({"type": "pong"}))
+
+    assert service.metrics.local_stt_protocol_errors_total == 0
