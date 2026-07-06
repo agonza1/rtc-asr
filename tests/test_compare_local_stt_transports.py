@@ -30,7 +30,11 @@ def write_artifact(
         json.dumps(
             {
                 "kind": "local-stt-v1-latency-benchmark",
-                "target": {"transport": transport, "url": "ws://localhost/v1/stt/stream", "uds_path": "/tmp/stt.sock" if transport != "tcp_ws" else None},
+                "target": {
+                    "transport": transport,
+                    "url": "ws://localhost/v1/stt/stream" if transport != "raw_uds" else None,
+                    "uds_path": "/tmp/stt.sock" if transport != "tcp_ws" else None,
+                },
                 "environment": (
                     {"cpu_utilization_percent": cpu_utilization_percent}
                     if cpu_utilization_percent is not None
@@ -99,6 +103,35 @@ def test_compare_artifacts_reports_unexpected_transport_artifacts(tmp_path: Path
     assert comparison["unexpected_transports"] == ["websocket"]
     assert comparison["blocking_gaps"] == ["unexpected transport benchmark: websocket"]
     assert comparison["raw_uds_should_remain_experimental"] is True
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+
+
+def test_compare_artifacts_requires_transport_target_fields(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 10.0)
+
+    for path, missing_field in [(tcp, "url"), (uds, "uds_path"), (raw, "uds_path")]:
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["target"][missing_field] = None
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["target_field_gaps"] == [
+        "tcp_ws missing target.url",
+        "uds_ws missing target.uds_path",
+        "raw_uds missing target.uds_path",
+    ]
+    assert comparison["blocking_gaps"] == comparison["target_field_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "target:tcp_ws missing target.url",
+        "target:uds_ws missing target.uds_path",
+        "target:raw_uds missing target.uds_path",
+    ]
+    assert comparison["recommendation"] == (
+        "Re-run transport benchmarks with explicit endpoint targets before recommending raw UDS."
+    )
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
