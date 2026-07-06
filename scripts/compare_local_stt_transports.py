@@ -25,6 +25,11 @@ REQUIRED_PERCENTILES_BY_METRIC = {
     "asr_queue_delay_p95_ms": ("p95",),
     "protocol_errors": PERCENTILES,
 }
+REQUIRED_TARGET_FIELDS_BY_TRANSPORT = {
+    "tcp_ws": ("url",),
+    "uds_ws": ("url", "uds_path"),
+    "raw_uds": ("uds_path",),
+}
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -153,6 +158,18 @@ def run_count_gaps(transports: dict[str, dict[str, Any]], min_runs: int | None) 
     return gaps
 
 
+def target_field_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
+    gaps: list[str] = []
+    for transport, required_fields in REQUIRED_TARGET_FIELDS_BY_TRANSPORT.items():
+        payload = transports.get(transport)
+        if payload is None:
+            continue
+        for field in required_fields:
+            if not payload.get(field):
+                gaps.append(f"{transport} missing target.{field}")
+    return gaps
+
+
 def metric_delta_ms(
     transports: dict[str, dict[str, Any]],
     *,
@@ -207,6 +224,7 @@ def recommendation_text(
     all_present_transports_protocol_error_free: bool,
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
+    target_gaps: list[str],
 ) -> str:
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
@@ -214,6 +232,8 @@ def recommendation_text(
         return "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
     if run_gaps:
         return "Re-run transport benchmarks with enough repeated runs before recommending raw UDS."
+    if target_gaps:
+        return "Re-run transport benchmarks with explicit endpoint targets before recommending raw UDS."
     if not all_present_transports_protocol_error_free:
         return "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
     if raw_vs_uds_delta_ms is None:
@@ -229,6 +249,7 @@ def blocking_gap_reasons(
     unexpected: list[str],
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
+    target_gaps: list[str],
     transports: dict[str, dict[str, Any]],
 ) -> list[str]:
     reasons: list[str] = []
@@ -237,6 +258,7 @@ def blocking_gap_reasons(
     for transport, metric_gaps in sorted(missing_metrics.items()):
         reasons.extend(f"{transport} missing metric percentile: {metric_gap}" for metric_gap in metric_gaps)
     reasons.extend(run_gaps)
+    reasons.extend(target_gaps)
     for transport, payload in sorted(transports.items()):
         if not payload["protocol_error_free"]:
             protocol_errors = payload.get("metrics", {}).get("protocol_errors", {})
@@ -253,6 +275,7 @@ def raw_uds_recommendation_gate(
     unexpected: list[str],
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
+    target_gaps: list[str],
     all_present_transports_protocol_error_free: bool,
     raw_vs_uds_delta_ms: float | None,
     raw_uds_min_win_ms: float,
@@ -263,6 +286,7 @@ def raw_uds_recommendation_gate(
     for transport, metric_gaps in sorted(missing_metrics.items()):
         blockers.extend(f"missing_metric:{transport}:{metric_gap}" for metric_gap in metric_gaps)
     blockers.extend(f"run_count:{gap}" for gap in run_gaps)
+    blockers.extend(f"target:{gap}" for gap in target_gaps)
     if not all_present_transports_protocol_error_free:
         blockers.append("protocol_errors")
     if raw_vs_uds_delta_ms is None:
@@ -333,6 +357,7 @@ def compare_artifacts(
     cpu_coverage = cpu_utilization_coverage(by_transport)
     run_coverage = run_count_coverage(by_transport)
     run_gaps = run_count_gaps(by_transport, min_runs)
+    target_gaps = target_field_gaps(by_transport)
 
     all_present_transports_protocol_error_free = all(
         transport["protocol_error_free"] for transport in by_transport.values()
@@ -342,6 +367,7 @@ def compare_artifacts(
         unexpected=unexpected,
         missing_metrics=missing_metrics_by_transport,
         run_gaps=run_gaps,
+        target_gaps=target_gaps,
         all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
         raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
         raw_uds_min_win_ms=raw_uds_min_win_ms,
@@ -362,6 +388,7 @@ def compare_artifacts(
         "run_count_coverage": run_coverage,
         "minimum_required_runs": min_runs,
         "run_count_gaps": run_gaps,
+        "target_field_gaps": target_gaps,
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_recommendation_gate": recommendation_gate,
         "raw_uds_vs_uds_ws_p95_deltas_ms": raw_vs_uds_deltas,
@@ -375,6 +402,7 @@ def compare_artifacts(
             unexpected=unexpected,
             missing_metrics=missing_metrics_by_transport,
             run_gaps=run_gaps,
+            target_gaps=target_gaps,
             transports=by_transport,
         ),
         "recommendation": recommendation_text(
@@ -385,6 +413,7 @@ def compare_artifacts(
             all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
             missing_metrics=missing_metrics_by_transport,
             run_gaps=run_gaps,
+            target_gaps=target_gaps,
         ),
     }
 
@@ -397,6 +426,7 @@ def comparison_has_blocking_gaps(
         or comparison["unexpected_transports"]
         or comparison["missing_p95_metrics_by_transport"]
         or comparison.get("run_count_gaps")
+        or comparison.get("target_field_gaps")
         or not comparison["all_present_transports_protocol_error_free"]
         or (require_raw_uds_recommendation and comparison["raw_uds_should_remain_experimental"])
     )
