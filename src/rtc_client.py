@@ -18,9 +18,9 @@ from .protocols import (
     RAW_UDS_MAX_PAYLOAD_BYTES,
     RawUdsFrameType,
     decode_raw_uds_frame,
-    decode_raw_uds_json_payload,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    parse_raw_uds_server_frame,
     validate_audio_chunk,
 )
 
@@ -493,7 +493,7 @@ class AsyncRawUdsLocalSttClient:
                 f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes"
             )
         frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
-        payload = decode_raw_uds_json_payload(frame)
+        payload = parse_raw_uds_server_frame(frame).model_dump(exclude_none=True)
         if payload.get("type") == "error" and not allow_error:
             raise RuntimeError(str(payload.get("message", "Unknown Local STT raw UDS error")))
         return payload
