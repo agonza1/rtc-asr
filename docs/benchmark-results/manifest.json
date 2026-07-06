@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-04T22:41:37Z",
+  "generated_at": "2026-07-06T07:11:44Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -54,6 +54,12 @@
       "complete_artifact_count": 20,
       "partial_artifact_count": 2,
       "missing_sample_count_artifact_count": 0
+    },
+    "warnings": {
+      "artifact_count": 22,
+      "artifacts_with_warnings_count": 0,
+      "received_total": null,
+      "codes": []
     },
     "ranges": {
       "rest_mean_ms": {

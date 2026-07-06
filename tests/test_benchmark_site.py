@@ -16,6 +16,7 @@ DEFAULT_RESULTS_DIR = manifest_module.DEFAULT_RESULTS_DIR
 build_manifest = manifest_module.build_manifest
 build_low_power_evidence_summary = manifest_module.build_low_power_evidence_summary
 build_sample_coverage_summary = manifest_module.build_sample_coverage_summary
+build_warning_summary = manifest_module.build_warning_summary
 comparable_manifest = manifest_module.comparable_manifest
 extract_system_signals = manifest_module.extract_system_signals
 render_manifest = manifest_module.render_manifest
@@ -1623,5 +1624,26 @@ def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
         "rate_per_sample": 1.5,
         "codes": ["partial_dropped", "stream_canceled", "stream_jitter"],
     }
+    assert manifest["summary"]["warnings"] == {
+        "artifact_count": 1,
+        "artifacts_with_warnings_count": 1,
+        "received_total": 3,
+        "codes": ["partial_dropped", "stream_canceled", "stream_jitter"],
+    }
     assert "<span class=\"label\">Warnings</span><div class=\"value\">3</div>" in detail
     assert "Rate 1.500 per sample · Codes: partial_dropped, stream_canceled, stream_jitter" in detail
+
+
+def test_warning_summary_counts_codes_without_numeric_totals() -> None:
+    entries = [
+        {"warnings": {"codes": ["late_partial"], "received_total": None}},
+        {"warnings": {"codes": [], "received_total": 0}},
+        {"warnings": {"codes": ["stream_jitter"], "received_total": 2}},
+    ]
+
+    assert build_warning_summary(entries) == {
+        "artifact_count": 3,
+        "artifacts_with_warnings_count": 2,
+        "received_total": 2,
+        "codes": ["late_partial", "stream_jitter"],
+    }

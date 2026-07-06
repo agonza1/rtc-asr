@@ -1015,6 +1015,30 @@ def build_sample_coverage_summary(entries: list[dict[str, Any]]) -> dict[str, in
     }
 
 
+def build_warning_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    warned_entries = []
+    received_total = 0
+    has_received_total = False
+    codes: set[str] = set()
+    for entry in entries:
+        warnings = entry.get("warnings") or {}
+        entry_codes = [code for code in warnings.get("codes", []) if isinstance(code, str) and code]
+        received = warnings.get("received_total")
+        if entry_codes or (isinstance(received, (int, float)) and received > 0):
+            warned_entries.append(entry)
+        if isinstance(received, (int, float)):
+            received_total += received
+            has_received_total = True
+        codes.update(entry_codes)
+
+    return {
+        "artifact_count": len(entries),
+        "artifacts_with_warnings_count": len(warned_entries),
+        "received_total": received_total if has_received_total else None,
+        "codes": sorted(codes),
+    }
+
+
 def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -> dict[str, Any]:
     catalog = load_catalog(tracks_path)
     catalog_tracks = catalog.get("tracks", [])
@@ -1120,6 +1144,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "system_coverage": build_system_coverage(artifact_history),
         "low_power_evidence": build_low_power_evidence_summary(artifact_history),
         "sample_coverage": build_sample_coverage_summary(artifact_history),
+        "warnings": build_warning_summary(artifact_history),
         "ranges": ranges,
         "highlights": {
             "fastest_rest": build_highlight("Fastest REST mean", ("rest", "mean_ms"), highlight_entries),
