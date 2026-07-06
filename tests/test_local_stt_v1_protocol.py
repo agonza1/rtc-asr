@@ -23,6 +23,8 @@ from src.protocols.local_stt_v1 import (
     build_start_message,
     decode_raw_uds_frame,
     decode_raw_uds_json_payload,
+    encode_raw_uds_audio_frame,
+    encode_raw_uds_client_message,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
     encode_raw_uds_server_message,
@@ -350,9 +352,11 @@ def test_realtime_style_turn_lifecycle_maps_to_local_stt_v1_contract() -> None:
 
 def test_protocol_package_exports_raw_uds_server_helpers() -> None:
     from src.protocols import RawUdsFrameDecoder as ExportedDecoder
+    from src.protocols import encode_raw_uds_client_message as exported_encode_client_message
     from src.protocols import parse_raw_uds_server_frame as exported_parse_server_frame
 
     assert ExportedDecoder is RawUdsFrameDecoder
+    assert exported_encode_client_message is encode_raw_uds_client_message
     assert exported_parse_server_frame is parse_raw_uds_server_frame
 
 
@@ -373,6 +377,42 @@ def test_raw_uds_json_frame_codec_uses_compact_object_payload() -> None:
     assert decoded.frame_type == RawUdsFrameType.JSON_CONTROL
     assert decoded.payload == b'{"type":"ping","ping_id":"p1"}'
     assert decode_raw_uds_json_payload(decoded) == {"type": "ping", "ping_id": "p1"}
+
+
+def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
+    start = decode_raw_uds_frame(encode_raw_uds_client_message(build_start_message().model_dump()))
+    ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping", "ping_id": "p1"}))
+    audio = decode_raw_uds_frame(encode_raw_uds_audio_frame(memoryview(b"\x00\x01")))
+
+    assert start.frame_type == RawUdsFrameType.JSON_CONTROL
+    assert ping.frame_type == RawUdsFrameType.PING
+    assert decode_raw_uds_json_payload(ping) == {"type": "ping", "ping_id": "p1"}
+    assert audio.frame_type == RawUdsFrameType.AUDIO_PCM16
+    assert audio.payload == b"\x00\x01"
+
+
+def test_raw_uds_client_encoder_accepts_issue_88_flat_start_payload() -> None:
+    encoded = encode_raw_uds_client_message(
+        {
+            "type": "start",
+            "protocol": "local-stt-v1",
+            "sample_rate": 16000,
+            "channels": 1,
+            "format": "pcm_s16le",
+            "frame_ms": 20,
+        }
+    )
+    frame = decode_raw_uds_frame(encoded)
+
+    assert frame.frame_type == RawUdsFrameType.JSON_CONTROL
+    assert parse_raw_uds_client_frame(frame).type == "start"
+
+
+def test_raw_uds_audio_encoder_rejects_invalid_pcm16_payloads() -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        encode_raw_uds_audio_frame(b"\x00")
+
+    assert excinfo.value.as_event().code == "invalid_audio_chunk"
 
 
 def test_raw_uds_frame_decoder_buffers_socket_chunk_boundaries() -> None:
