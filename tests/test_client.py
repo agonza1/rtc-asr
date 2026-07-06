@@ -493,6 +493,38 @@ def test_async_raw_uds_client_rejects_oversized_payload_before_body_read() -> No
     assert reader.reads == [RAW_UDS_HEADER_BYTES]
 
 
+def test_async_raw_uds_client_maps_truncated_server_frames_to_protocol_errors() -> None:
+    class TruncatedFrameReader:
+        def __init__(self) -> None:
+            self._reads = 0
+
+        async def readexactly(self, size: int) -> bytes:
+            self._reads += 1
+            if self._reads == 1:
+                return bytes([RawUdsFrameType.JSON_EVENT]) + (4).to_bytes(4, "little")
+            raise asyncio.IncompleteReadError(partial=b"{", expected=size)
+
+    class NoopWriter:
+        def close(self) -> None:
+            pass
+
+        async def wait_closed(self) -> None:
+            pass
+
+    async def connect_fn(_path: str):
+        return TruncatedFrameReader(), NoopWriter()
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.sock", connect_fn=connect_fn)
+        with pytest.raises(LocalSttProtocolError) as excinfo:
+            await client.recv_event()
+
+        assert excinfo.value.as_event().code == "raw_uds_incomplete_frame"
+        assert "reading frame payload" in excinfo.value.message
+
+    asyncio.run(scenario())
+
+
 def test_async_raw_uds_client_rejects_inbound_client_frame_types() -> None:
     class ClientFrameReader:
         def __init__(self) -> None:
