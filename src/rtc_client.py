@@ -13,6 +13,7 @@ from .protocols import (
     HOT_PATH_FRAME_MS,
     HOT_PATH_PCM_FORMAT,
     HOT_PATH_SAMPLE_RATE,
+    LocalSttProtocolError,
     PROTOCOL_VERSION,
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
@@ -486,13 +487,26 @@ class AsyncRawUdsLocalSttClient:
 
     async def _recv_json(self, *, allow_error: bool = False) -> dict[str, Any]:
         reader, _ = await self.connect()
-        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        try:
+            header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        except asyncio.IncompleteReadError as exc:
+            raise LocalSttProtocolError(
+                f"Raw UDS stream ended while reading frame header; received {len(exc.partial)} of {RAW_UDS_HEADER_BYTES} bytes",
+                code="raw_uds_incomplete_frame",
+            ) from exc
         payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
         if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
             raise RuntimeError(
                 f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes"
             )
-        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+        try:
+            frame_payload = await reader.readexactly(payload_length)
+        except asyncio.IncompleteReadError as exc:
+            raise LocalSttProtocolError(
+                f"Raw UDS stream ended while reading frame payload; received {len(exc.partial)} of {payload_length} bytes",
+                code="raw_uds_incomplete_frame",
+            ) from exc
+        frame = decode_raw_uds_frame(header + frame_payload)
         payload = parse_raw_uds_server_frame(frame).model_dump(exclude_none=True)
         if payload.get("type") == "error" and not allow_error:
             raise RuntimeError(str(payload.get("message", "Unknown Local STT raw UDS error")))
