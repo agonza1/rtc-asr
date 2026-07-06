@@ -336,7 +336,22 @@ def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
     async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         start_frame = await read_raw_frame(reader)
         received_frames.append((start_frame.frame_type, decode_raw_uds_json_payload(start_frame)))
-        await send_json(writer, RawUdsFrameType.JSON_EVENT, {"type": "ready", "version": "local-stt.v1", "metadata": {"stream_id": 7}})
+        await send_json(
+            writer,
+            RawUdsFrameType.JSON_EVENT,
+            {
+                "type": "ready",
+                "version": "local-stt.v1",
+                "audio": {
+                    "sample_rate": 16000,
+                    "channels": 1,
+                    "format": "pcm_s16le",
+                    "frame_ms": 20,
+                    "bytes_per_frame": 640,
+                },
+                "metadata": {"stream_id": 7},
+            },
+        )
 
         ping_frame = await read_raw_frame(reader)
         received_frames.append((ping_frame.frame_type, decode_raw_uds_json_payload(ping_frame)))
@@ -461,6 +476,40 @@ def test_async_raw_uds_client_rejects_oversized_payload_before_body_read() -> No
     asyncio.run(scenario())
 
     assert reader.reads == [RAW_UDS_HEADER_BYTES]
+
+
+def test_async_raw_uds_client_rejects_inbound_client_frame_types() -> None:
+    class ClientFrameReader:
+        def __init__(self) -> None:
+            self._payload = encode_raw_uds_json_frame(
+                RawUdsFrameType.JSON_CONTROL,
+                {"type": "ping", "ping_id": "wrong-direction"},
+            )
+            self._offset = 0
+
+        async def readexactly(self, size: int) -> bytes:
+            chunk = self._payload[self._offset : self._offset + size]
+            self._offset += size
+            return chunk
+
+    class NoopWriter:
+        def close(self) -> None:
+            pass
+
+        async def wait_closed(self) -> None:
+            pass
+
+    async def connect_fn(_path: str):
+        return ClientFrameReader(), NoopWriter()
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.sock", connect_fn=connect_fn)
+        with pytest.raises(LocalSttProtocolError) as excinfo:
+            await client.recv_event()
+
+        assert excinfo.value.as_event().code == "raw_uds_invalid_server_frame_type"
+
+    asyncio.run(scenario())
 
 
 def test_async_asr_client_invokes_on_sent_callback_before_waiting_for_response() -> None:
