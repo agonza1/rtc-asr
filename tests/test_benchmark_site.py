@@ -261,7 +261,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     assert summary["lane_count"] >= 3
     assert summary["published_artifact_count"] == summary["asr_count"]
     assert summary["artifact_total_size_bytes"] >= summary["published_artifact_total_size_bytes"] > 0
-    assert summary["stale_artifact_count"] == 14
+    assert summary["stale_artifact_count"] == 15
     assert summary["stale_artifact_total_size_bytes"] > 0
     assert summary["ranges"]["overall_score"] is not None
     assert summary["highlights"]["best_overall"] is not None
@@ -361,7 +361,7 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert track["system"]["memory_total_mb"] == 24576.0
 
     coverage = manifest["summary"]["system_coverage"]
-    assert coverage["memory_total_mb_count"] == 16
+    assert coverage["memory_total_mb_count"] == 17
     assert coverage["process_rss_mb_count"] == 10
     assert coverage["peak_rss_mb_count"] == 10
     assert coverage["accelerator_count"] == 0
@@ -379,8 +379,8 @@ def test_manifest_summarizes_sample_coverage_readiness() -> None:
 
     assert coverage == {
         "artifact_count": len(manifest["artifacts"]),
-        "targeted_artifact_count": 22,
-        "complete_artifact_count": 20,
+        "targeted_artifact_count": 23,
+        "complete_artifact_count": 21,
         "partial_artifact_count": 2,
         "missing_sample_count_artifact_count": 0,
     }
