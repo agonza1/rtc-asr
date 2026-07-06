@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-07-06T07:42:05Z",
+  "generated_at": "2026-07-06T14:47:21Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
     "published_artifact_count": 8,
-    "artifact_file_count": 22,
-    "artifact_total_size_bytes": 801422,
-    "stale_artifact_count": 14,
-    "stale_artifact_total_size_bytes": 374759,
+    "artifact_file_count": 23,
+    "artifact_total_size_bytes": 858856,
+    "stale_artifact_count": 15,
+    "stale_artifact_total_size_bytes": 432193,
     "published_artifact_total_size_bytes": 426663,
     "validated_count": 7,
     "legacy_count": 0,
@@ -31,7 +31,7 @@
     "backend_count": 5,
     "lane_count": 5,
     "system_coverage": {
-      "memory_total_mb_count": 16,
+      "memory_total_mb_count": 17,
       "process_rss_mb_count": 10,
       "peak_rss_mb_count": 10,
       "accelerator_count": 0,
@@ -43,23 +43,23 @@
       "thermal_duration_minutes_count": 0
     },
     "low_power_evidence": {
-      "artifact_count": 22,
+      "artifact_count": 23,
       "power_evidence_count": 0,
       "sustained_thermal_evidence_count": 0,
       "complete_artifact_count": 0
     },
     "sample_coverage": {
-      "artifact_count": 22,
-      "targeted_artifact_count": 22,
-      "complete_artifact_count": 20,
+      "artifact_count": 23,
+      "targeted_artifact_count": 23,
+      "complete_artifact_count": 21,
       "partial_artifact_count": 2,
       "missing_sample_count_artifact_count": 0
     },
     "warnings": {
-      "artifact_count": 22,
+      "artifact_count": 23,
       "artifacts_with_warnings_count": 0,
       "received_total": null,
-      "sample_count": 156,
+      "sample_count": 166,
       "rate_per_sample": null,
       "codes": []
     },
@@ -954,6 +954,101 @@
     }
   ],
   "artifacts": [
+    {
+      "kind": "asr",
+      "backend": "voxtral-mlx",
+      "model": "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+      "runtime": "apple-silicon / int8",
+      "measured_at": "2026-07-06T14:46:59Z",
+      "sample_count": 10,
+      "artifact_path": "benchmark-results/voxtral-mlx-4bit-service-2026-07-06.json",
+      "artifact_sha256": "c609db80d278dbfe339565a5313c9368b2eba092af872007a9a2336589001a9d",
+      "artifact_size_bytes": 57434,
+      "system": {
+        "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+        "processor": "arm",
+        "python": "3.14.6",
+        "cpu_logical_cores": 10,
+        "accelerator": null,
+        "memory_total_mb": 24576.0,
+        "process_rss_mb": null,
+        "process_metrics_pid": null,
+        "peak_rss_mb": null,
+        "cpu_utilization_percent": null,
+        "package_power_watts": null,
+        "energy_per_audio_second_j": null,
+        "thermal_peak_celsius": null,
+        "thermal_observation": null,
+        "thermal_duration_minutes": null
+      },
+      "contract": {
+        "chunk_ms": 100,
+        "partial_interval_chunks": 1,
+        "partial_window_seconds": 2.0,
+        "binary_frames": true,
+        "sample_rate": 16000,
+        "live_metrics_comparable": true,
+        "transport": "v1-stt-stream",
+        "protocol": "local-stt-v1",
+        "path": "/v1/stt/stream",
+        "source_frame_ms": 20,
+        "aggregation_ms": 100,
+        "partial_interval_ms": 100,
+        "simulate_realtime": true,
+        "partial_event_timeout_seconds": 0.1,
+        "final_event_timeout_seconds": 10.0
+      },
+      "rest": {
+        "mean_ms": 7342.6,
+        "p95_ms": 7394.2,
+        "rtf_mean": 1.009,
+        "runs_per_sample": 5
+      },
+      "streaming": {
+        "transport": "v1-stt-stream",
+        "live_metrics_comparable": true,
+        "partial_mean_ms": 3090.2,
+        "partial_p95_ms": 4098.5,
+        "first_partial_end_to_end_mean_ms": 3308.9,
+        "first_partial_end_to_end_p95_ms": 3344.4,
+        "partial_gap_mean_ms": 2762.6,
+        "partial_gap_p95_ms": 2812.4,
+        "partial_transcript_churn_char_mean": 0.88,
+        "partial_transcript_churn_word_mean": 0.875,
+        "late_partial_events": 20,
+        "late_partial_ratio": 1.0,
+        "final_mean_ms": 8897.1,
+        "final_p95_ms": 9480.1
+      },
+      "warnings": {
+        "received_total": null,
+        "sample_count": 0,
+        "rate_per_sample": null,
+        "codes": []
+      },
+      "accuracy": {
+        "word_error_rate_mean": 0.095,
+        "character_error_rate_mean": 0.0
+      },
+      "label": "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+      "status": "legacy",
+      "status_detail": "Historical benchmark artifact retained as supporting evidence.",
+      "target_sample_count": 10,
+      "derived": {
+        "latency_score": 0.0,
+        "live_caption_score": 11.9,
+        "partial_backlog_score": 20.4,
+        "finalization_score": 0.0,
+        "stability_score": 97.2,
+        "efficiency_score": 0.0,
+        "overall_score": 16.7,
+        "confidence_score": 85.0,
+        "sample_coverage_pct": 100.0,
+        "rest_jitter_ratio": 1.007,
+        "partial_jitter_ratio": 1.326,
+        "final_jitter_ratio": 1.066
+      }
+    },
     {
       "kind": "asr",
       "backend": "qwen-asr",

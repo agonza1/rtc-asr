@@ -97,6 +97,10 @@
     <lastmod>2026-06-21</lastmod>
   </url>
   <url>
+    <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/voxtral-mlx-4bit-service-2026-07-06.json</loc>
+    <lastmod>2026-07-06</lastmod>
+  </url>
+  <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-2026-06-10.html</loc>
     <lastmod>2026-06-10</lastmod>
   </url>
@@ -183,5 +187,9 @@
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-21.html</loc>
     <lastmod>2026-06-21</lastmod>
+  </url>
+  <url>
+    <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/voxtral-mlx-4bit-service-2026-07-06.html</loc>
+    <lastmod>2026-07-06</lastmod>
   </url>
 </urlset>

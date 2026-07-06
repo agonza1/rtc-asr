@@ -6,6 +6,8 @@ PYTHON := $(VENV)/bin/python
 PIP := $(PYTHON) -m pip
 MLX_VENV ?= .venv-mlx
 MLX_PYTHON := $(MLX_VENV)/bin/python
+MLX_TRANSFORMERS_VERSION ?= 4.57.6
+MLX_HUGGINGFACE_HUB_VERSION ?= 0.36.2
 UVICORN := $(VENV)/bin/uvicorn
 COMPOSE_URL ?= http://127.0.0.1:8080
 COMPOSE_WS_URL ?= ws://127.0.0.1:8080/ws/stream
@@ -132,13 +134,14 @@ venv:
 
 mlx-venv:
 	@echo "Preparing MLX virtualenv..."
-	@if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import fastapi, httpx, mlx_audio, numpy, parakeet_mlx, soundfile, uvicorn, websockets" >/dev/null 2>&1; then \
+	@if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import fastapi, httpx, mlx_audio, mlx_lm, numpy, parakeet_mlx, soundfile, uvicorn, websockets" >/dev/null 2>&1; then \
 		echo "  ✓ Reusing existing MLX virtualenv at $(MLX_VENV)"; \
 	else \
 		echo "  Rebuilding $(MLX_VENV) because the MLX benchmark runtime is missing or broken..."; \
 		rm -rf $(MLX_VENV); \
 		python3 -m venv $(MLX_VENV); \
 		$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx "mlx-audio[stt]" psutil; \
+		$(MLX_PYTHON) -m pip install "transformers==$(MLX_TRANSFORMERS_VERSION)" "huggingface-hub==$(MLX_HUGGINGFACE_HUB_VERSION)"; \
 	fi
 	@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"
 
