@@ -1621,6 +1621,7 @@ def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
 
     assert track["warnings"] == {
         "received_total": 3,
+        "sample_count": 2,
         "rate_per_sample": 1.5,
         "codes": ["partial_dropped", "stream_canceled", "stream_jitter"],
     }
@@ -1628,6 +1629,8 @@ def test_manifest_surfaces_warning_counts_and_codes(tmp_path: Path) -> None:
         "artifact_count": 1,
         "artifacts_with_warnings_count": 1,
         "received_total": 3,
+        "sample_count": 2,
+        "rate_per_sample": 1.5,
         "codes": ["partial_dropped", "stream_canceled", "stream_jitter"],
     }
     assert "<span class=\"label\">Warnings</span><div class=\"value\">3</div>" in detail
@@ -1645,5 +1648,24 @@ def test_warning_summary_counts_codes_without_numeric_totals() -> None:
         "artifact_count": 3,
         "artifacts_with_warnings_count": 2,
         "received_total": 2,
+        "sample_count": 0,
+        "rate_per_sample": None,
+        "codes": ["late_partial", "stream_jitter"],
+    }
+
+
+def test_warning_summary_reports_cross_artifact_rate_per_sample() -> None:
+    entries = [
+        {"sample_count": 2, "warnings": {"codes": ["late_partial"], "received_total": 1, "sample_count": 2}},
+        {"sample_count": 6, "warnings": {"codes": [], "received_total": 3, "sample_count": 6}},
+        {"sample_count": None, "warnings": {"codes": ["stream_jitter"], "received_total": None}},
+    ]
+
+    assert build_warning_summary(entries) == {
+        "artifact_count": 3,
+        "artifacts_with_warnings_count": 3,
+        "received_total": 4,
+        "sample_count": 8,
+        "rate_per_sample": 0.5,
         "codes": ["late_partial", "stream_jitter"],
     }
