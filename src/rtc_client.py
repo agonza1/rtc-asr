@@ -18,8 +18,8 @@ from .protocols import (
     RAW_UDS_MAX_PAYLOAD_BYTES,
     RawUdsFrameType,
     decode_raw_uds_frame,
+    encode_raw_uds_client_message,
     encode_raw_uds_frame,
-    encode_raw_uds_json_frame,
     parse_raw_uds_server_frame,
     validate_audio_chunk,
 )
@@ -412,7 +412,7 @@ class AsyncRawUdsLocalSttClient:
             payload["client_stream_id"] = client_stream_id
         if metadata:
             payload["metadata"] = dict(metadata)
-        await self._send_json(RawUdsFrameType.JSON_CONTROL, payload)
+        await self._send_client_message(payload)
         ready_event = await self._recv_json()
         if ready_event.get("type") != "ready":
             raise RuntimeError(f"Expected ready event, got: {ready_event}")
@@ -424,10 +424,10 @@ class AsyncRawUdsLocalSttClient:
             on_sent()
 
     async def finalize(self) -> None:
-        await self._send_json(RawUdsFrameType.JSON_CONTROL, {"type": "finalize"})
+        await self._send_client_message({"type": "finalize"})
 
     async def cancel(self) -> None:
-        await self._send_json(RawUdsFrameType.JSON_CONTROL, {"type": "cancel"})
+        await self._send_client_message({"type": "cancel"})
 
     async def ping(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"type": "ping"}
@@ -435,7 +435,7 @@ class AsyncRawUdsLocalSttClient:
             payload["ping_id"] = ping_id
         if timestamp_ms is not None:
             payload["timestamp_ms"] = timestamp_ms
-        await self._send_json(RawUdsFrameType.PING, payload)
+        await self._send_client_message(payload)
         pong_event = await self._recv_json()
         if pong_event.get("type") != "pong":
             raise RuntimeError(f"Expected pong event, got: {pong_event}")
@@ -461,7 +461,7 @@ class AsyncRawUdsLocalSttClient:
 
         closed_event: dict[str, Any] | None = None
         if graceful:
-            await self._send_json(RawUdsFrameType.JSON_CONTROL, {"type": "close"})
+            await self._send_client_message({"type": "close"})
             closed_event = await self._recv_json(allow_error=True)
             if closed_event.get("type") != "closed":
                 raise RuntimeError(f"Expected closed event, got: {closed_event}")
@@ -473,8 +473,8 @@ class AsyncRawUdsLocalSttClient:
         self._writer = None
         return closed_event
 
-    async def _send_json(self, frame_type: RawUdsFrameType, payload: dict[str, Any]) -> None:
-        await self._send_bytes(encode_raw_uds_json_frame(frame_type, payload))
+    async def _send_client_message(self, payload: dict[str, Any]) -> None:
+        await self._send_bytes(encode_raw_uds_client_message(payload))
 
     async def _send_frame(self, frame_type: RawUdsFrameType, payload: bytes) -> None:
         await self._send_bytes(encode_raw_uds_frame(frame_type, payload))
