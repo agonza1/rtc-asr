@@ -442,6 +442,44 @@ def test_raw_uds_frame_decoder_rejects_oversized_payload_before_body_arrives() -
     assert excinfo.value.as_event().code == "raw_uds_payload_too_large"
 
 
+def test_raw_uds_frame_decoder_clears_oversized_frame_after_error() -> None:
+    decoder = RawUdsFrameDecoder()
+    oversized_header = bytes([RawUdsFrameType.AUDIO_PCM16]) + (
+        RAW_UDS_MAX_PAYLOAD_BYTES + 1
+    ).to_bytes(4, "little")
+    valid_ping = encode_raw_uds_json_frame(
+        RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "after-error"}
+    )
+
+    with pytest.raises(LocalSttProtocolError):
+        decoder.feed(oversized_header)
+
+    assert decoder.buffered_bytes == 0
+    frames = decoder.feed(valid_ping)
+    decoded_frames = [(frame.frame_type, decode_raw_uds_json_payload(frame)) for frame in frames]
+    assert decoded_frames == [
+        (RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "after-error"})
+    ]
+
+
+def test_raw_uds_frame_decoder_clears_unknown_frame_after_error() -> None:
+    decoder = RawUdsFrameDecoder()
+    unknown_header = b"\xff\x00\x00\x00\x00"
+    valid_ping = encode_raw_uds_json_frame(
+        RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "after-unknown"}
+    )
+
+    with pytest.raises(LocalSttProtocolError):
+        decoder.feed(unknown_header)
+
+    assert decoder.buffered_bytes == 0
+    frames = decoder.feed(valid_ping)
+    decoded_frames = [(frame.frame_type, decode_raw_uds_json_payload(frame)) for frame in frames]
+    assert decoded_frames == [
+        (RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "after-unknown"})
+    ]
+
+
 def test_raw_uds_client_ping_frame_accepts_empty_payload() -> None:
     frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.PING, b""))
 
