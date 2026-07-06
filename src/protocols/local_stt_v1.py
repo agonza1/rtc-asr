@@ -74,6 +74,16 @@ class RawUdsFrameDecoder:
     def buffered_bytes(self) -> int:
         return len(self._buffer)
 
+    def finish(self) -> None:
+        if not self._buffer:
+            return
+        buffered = len(self._buffer)
+        self._buffer.clear()
+        raise LocalSttProtocolError(
+            f"Raw UDS stream ended with {buffered} buffered frame bytes",
+            code="raw_uds_incomplete_frame",
+        )
+
 
 class LocalSttModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
