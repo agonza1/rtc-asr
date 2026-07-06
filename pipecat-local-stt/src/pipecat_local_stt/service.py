@@ -322,6 +322,8 @@ class LocalStreamingSTTService(STTService):
 
     async def _handle_server_payload(self, payload: dict[str, Any]) -> None:
         event_type = payload.get("type")
+        if event_type in {"ping", "pong"}:
+            return
         if event_type == "ready":
             if self._ready_event is not None:
                 self._ready_event.set()
@@ -516,8 +518,8 @@ class RawUdsConnectionAdapter:
         if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
             raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
         frame = decode_raw_uds_frame(header + await self._reader.readexactly(payload_length))
-        if frame.frame_type == RawUdsFrameType.PONG and not frame.payload:
-            return json.dumps({"type": "pong"})
+        if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
+            return json.dumps({"type": frame.frame_type.name.lower()})
         return json.dumps(decode_raw_uds_json_payload(frame))
 
     async def close(self, code: int = 1000) -> None:
