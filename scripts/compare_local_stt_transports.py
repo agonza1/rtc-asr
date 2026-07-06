@@ -235,6 +235,36 @@ def blocking_gap_reasons(
     return reasons
 
 
+def raw_uds_recommendation_gate(
+    *,
+    missing: list[str],
+    unexpected: list[str],
+    missing_metrics: dict[str, list[str]],
+    run_gaps: list[str],
+    all_present_transports_protocol_error_free: bool,
+    raw_vs_uds_delta_ms: float | None,
+    raw_uds_min_win_ms: float,
+) -> dict[str, Any]:
+    blockers: list[str] = []
+    blockers.extend(f"missing_transport:{transport}" for transport in missing)
+    blockers.extend(f"unexpected_transport:{transport}" for transport in unexpected)
+    for transport, metric_gaps in sorted(missing_metrics.items()):
+        blockers.extend(f"missing_metric:{transport}:{metric_gap}" for metric_gap in metric_gaps)
+    blockers.extend(f"run_count:{gap}" for gap in run_gaps)
+    if not all_present_transports_protocol_error_free:
+        blockers.append("protocol_errors")
+    if raw_vs_uds_delta_ms is None:
+        blockers.append("missing_raw_uds_latency_delta")
+    elif raw_vs_uds_delta_ms < raw_uds_min_win_ms:
+        blockers.append("insufficient_raw_uds_latency_win")
+    return {
+        "passed": not blockers,
+        "blockers": blockers,
+        "raw_uds_min_win_ms": raw_uds_min_win_ms,
+        "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
+    }
+
+
 def compare_artifacts(
     paths: list[Path],
     *,
@@ -304,13 +334,16 @@ def compare_artifacts(
     all_present_transports_protocol_error_free = all(
         transport["protocol_error_free"] for transport in by_transport.values()
     )
-    raw_uds_experimental = bool(
-        missing
-        or unexpected
-        or missing_metrics_by_transport
-        or not all_present_transports_protocol_error_free
-        or raw_uds_latency_experimental
+    recommendation_gate = raw_uds_recommendation_gate(
+        missing=missing,
+        unexpected=unexpected,
+        missing_metrics=missing_metrics_by_transport,
+        run_gaps=run_gaps,
+        all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
+        raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
+        raw_uds_min_win_ms=raw_uds_min_win_ms,
     )
+    raw_uds_experimental = bool(raw_uds_latency_experimental or not recommendation_gate["passed"])
 
     return {
         "kind": "local-stt-v1-transport-comparison",
@@ -327,6 +360,7 @@ def compare_artifacts(
         "minimum_required_runs": min_runs,
         "run_count_gaps": run_gaps,
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
+        "raw_uds_recommendation_gate": recommendation_gate,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
