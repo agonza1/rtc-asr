@@ -21,6 +21,8 @@ def write_artifact(
     first_interim_p95: float,
     *,
     final_after_finalize_p95: float = 25.0,
+    audio_send_queue_depth_p95: float = 2.0,
+    asr_queue_delay_p95: float = 5.0,
     cpu_utilization_percent: float | None = 12.5,
     runs: int | None = 3,
 ) -> Path:
@@ -42,8 +44,16 @@ def write_artifact(
                         "p95": final_after_finalize_p95,
                         "p99": final_after_finalize_p95 + 5.0,
                     },
-                    "audio_send_queue_depth_p95_ms": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
-                    "asr_queue_delay_p95_ms": {"p50": 4.0, "p95": 5.0, "p99": 6.0},
+                    "audio_send_queue_depth_p95_ms": {
+                        "p50": audio_send_queue_depth_p95 - 1.0,
+                        "p95": audio_send_queue_depth_p95,
+                        "p99": audio_send_queue_depth_p95 + 1.0,
+                    },
+                    "asr_queue_delay_p95_ms": {
+                        "p50": asr_queue_delay_p95 - 1.0,
+                        "p95": asr_queue_delay_p95,
+                        "p99": asr_queue_delay_p95 + 1.0,
+                    },
                     "protocol_errors": {"p50": 0.0, "p95": 0.0, "p99": 0.0},
                 },
             }
@@ -105,6 +115,8 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "uds_ws",
         16.0,
         final_after_finalize_p95=24.0,
+        audio_send_queue_depth_p95=7.0,
+        asr_queue_delay_p95=11.0,
         cpu_utilization_percent=13.0,
     )
     raw = write_artifact(
@@ -112,6 +124,8 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "raw_uds",
         12.5,
         final_after_finalize_p95=27.0,
+        audio_send_queue_depth_p95=4.0,
+        asr_queue_delay_p95=6.5,
         cpu_utilization_percent=11.0,
     )
 
@@ -121,6 +135,13 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "uds_ws"
     assert comparison["lowest_cpu_utilization_percent_transport"] == "raw_uds"
+    assert comparison["raw_uds_vs_uds_ws_p95_deltas_ms"] == {
+        "time_to_first_interim_ms": 3.5,
+        "time_to_final_after_finalize_ms": -3.0,
+        "audio_send_queue_depth_p95_ms": 3.0,
+        "asr_queue_delay_p95_ms": 4.5,
+        "protocol_errors": 0.0,
+    }
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 3.5
     assert comparison["raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms"] == -3.0
     assert comparison["raw_uds_should_remain_experimental"] is True
@@ -136,8 +157,8 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
     assert comparison["transports"]["raw_uds"]["metrics_p95"] == {
         "time_to_first_interim_ms": 12.5,
         "time_to_final_after_finalize_ms": 27.0,
-        "audio_send_queue_depth_p95_ms": 2.0,
-        "asr_queue_delay_p95_ms": 5.0,
+        "audio_send_queue_depth_p95_ms": 4.0,
+        "asr_queue_delay_p95_ms": 6.5,
         "protocol_errors": 0.0,
     }
     raw_payload = raw.read_bytes()

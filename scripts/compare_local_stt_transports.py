@@ -167,6 +167,18 @@ def metric_delta_ms(
     return round(float(baseline_p95) - float(candidate_p95), 1)
 
 
+def raw_uds_vs_uds_p95_deltas(transports: dict[str, dict[str, Any]]) -> dict[str, float | None]:
+    return {
+        metric: metric_delta_ms(
+            transports,
+            baseline_transport="uds_ws",
+            candidate_transport="raw_uds",
+            metric=metric,
+        )
+        for metric in KEY_METRICS
+    }
+
+
 def protocol_error_free(metrics: dict[str, dict[str, float | None]]) -> bool:
     protocol_errors = metrics.get("protocol_errors", {})
     return all(protocol_errors.get(percentile) == 0.0 for percentile in PERCENTILES)
@@ -308,18 +320,9 @@ def compare_artifacts(
         for transport, payload in by_transport.items()
         if payload["missing_p95_metrics"]
     }
-    raw_vs_uds_delta_ms = metric_delta_ms(
-        by_transport,
-        baseline_transport="uds_ws",
-        candidate_transport="raw_uds",
-        metric="time_to_first_interim_ms",
-    )
-    raw_vs_uds_final_after_finalize_delta_ms = metric_delta_ms(
-        by_transport,
-        baseline_transport="uds_ws",
-        candidate_transport="raw_uds",
-        metric="time_to_final_after_finalize_ms",
-    )
+    raw_vs_uds_deltas = raw_uds_vs_uds_p95_deltas(by_transport)
+    raw_vs_uds_delta_ms = raw_vs_uds_deltas["time_to_first_interim_ms"]
+    raw_vs_uds_final_after_finalize_delta_ms = raw_vs_uds_deltas["time_to_final_after_finalize_ms"]
     raw_uds_latency_experimental = raw_vs_uds_delta_ms is None or raw_vs_uds_delta_ms < raw_uds_min_win_ms
     fastest_first_interim_transport = fastest_transport_by_metric(by_transport, "time_to_first_interim_ms")
     fastest_final_after_finalize_transport = fastest_transport_by_metric(
@@ -361,6 +364,7 @@ def compare_artifacts(
         "run_count_gaps": run_gaps,
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_recommendation_gate": recommendation_gate,
+        "raw_uds_vs_uds_ws_p95_deltas_ms": raw_vs_uds_deltas,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
