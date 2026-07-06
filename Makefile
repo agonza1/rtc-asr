@@ -25,6 +25,9 @@ PARAKEET_MLX_MODEL ?= mlx-community/parakeet-tdt-0.6b-v3
 PARAKEET_MLX_ARTIFACT_SLUG ?= parakeet-mlx
 PARAKEET_MLX_SAMPLE_COUNT ?= 3
 PARAKEET_MLX_SERVICE_ARTIFACT_SLUG ?= parakeet-mlx-service
+VOXTRAL_MLX_MODEL ?= mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit
+VOXTRAL_MLX_SERVICE_ARTIFACT_SLUG ?= voxtral-mlx-4bit-service
+VOXTRAL_MLX_TRANSCRIPTION_DELAY_MS ?= 480
 BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
 LOCAL_STT_TRANSPORT_ARTIFACTS ?=
 LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.json
@@ -68,7 +71,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-site benchmark-site-check benchmark-artifact-report clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-site benchmark-site-check benchmark-artifact-report clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -105,6 +108,7 @@ help:
 	@echo "  make benchmark-parakeet-mlx-110m - Run the 110M Parakeet MLX ASR benchmark with its own artifact slug"
 	@echo "  make benchmark-parakeet-mlx-service - Run the warmed MLX service benchmark through the /v1/stt/stream harness"
 	@echo "  make benchmark-parakeet-mlx-service-110m - Run the warmed 110M MLX service benchmark through the /v1/stt/stream harness"
+	@echo "  make benchmark-voxtral-mlx-service - Run the warmed Voxtral Mini 4B realtime 4-bit MLX service benchmark"
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
 	@echo "  make benchmark-artifact-report - List legacy benchmark artifacts that are no longer current"
@@ -128,13 +132,13 @@ venv:
 
 mlx-venv:
 	@echo "Preparing MLX virtualenv..."
-	@if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import fastapi, httpx, numpy, parakeet_mlx, soundfile, uvicorn, websockets" >/dev/null 2>&1; then \
+	@if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import fastapi, httpx, mlx_audio, numpy, parakeet_mlx, soundfile, uvicorn, websockets" >/dev/null 2>&1; then \
 		echo "  ✓ Reusing existing MLX virtualenv at $(MLX_VENV)"; \
 	else \
 		echo "  Rebuilding $(MLX_VENV) because the MLX benchmark runtime is missing or broken..."; \
 		rm -rf $(MLX_VENV); \
 		python3 -m venv $(MLX_VENV); \
-		$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx psutil; \
+		$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx "mlx-audio[stt]" psutil; \
 	fi
 	@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"
 
@@ -500,6 +504,11 @@ benchmark-parakeet-mlx-service-110m:
 
 benchmark-parakeet-mlx-service-110m-legacy:
 	@$(MAKE) benchmark-parakeet-mlx-service-legacy PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service
+
+benchmark-voxtral-mlx-service: mlx-venv
+	@echo "Benchmarking $(VOXTRAL_MLX_MODEL) through the warmed MLX /v1/stt/stream harness..."
+	@test "$$(uname -s)-$$(uname -m)" = "Darwin-arm64" || (echo "MLX benchmarks require macOS on Apple Silicon." >&2; exit 1)
+	@{ set -e; 	cleanup() { if [ -n "$$server_pid" ] && kill -0 "$$server_pid" >/dev/null 2>&1; then kill "$$server_pid" >/dev/null 2>&1 || true; wait "$$server_pid" 2>/dev/null || true; fi; rm -f "$$log_file"; }; 	trap cleanup EXIT INT TERM; 	log_file="$$(mktemp -t rtc-asr-voxtral-mlx.XXXXXX.log)"; 	PYTHONPATH=. ASR_BACKEND=voxtral-mlx ASR_DEVICE=apple-silicon ASR_PRELOAD_MODEL=true ASR_VOXTRAL_MLX_MODEL=$(VOXTRAL_MLX_MODEL) ASR_VOXTRAL_TRANSCRIPTION_DELAY_MS=$(VOXTRAL_MLX_TRANSCRIPTION_DELAY_MS) $(MLX_PYTHON) -m uvicorn src.main:app --host 127.0.0.1 --port 8090 --log-level warning >"$$log_file" 2>&1 & 	server_pid=$$!; 	for attempt in $$(seq 1 180); do 		if curl -sf http://127.0.0.1:8090/ready >/dev/null; then break; fi; 		if ! kill -0 "$$server_pid" >/dev/null 2>&1; then cat "$$log_file"; exit 1; fi; 		sleep 1; 	done; 	curl -sf http://127.0.0.1:8090/ready >/dev/null || (cat "$$log_file"; exit 1); 	PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --mode v1-stt-stream --url http://127.0.0.1:8090 --v1-ws-url ws://127.0.0.1:8090/v1/stt/stream --backend voxtral-mlx --model $(VOXTRAL_MLX_MODEL) --device apple-silicon --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/$(VOXTRAL_MLX_SERVICE_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json; 	}
 
 lint: venv
 	@echo "Running linter..."

@@ -103,16 +103,17 @@ The local Parakeet adapter requires a newer Hugging Face runtime than the defaul
 
 ### 6. Voxtral Mini realtime fails at startup or first request
 
-The Voxtral adapter is experimental and uses the Hugging Face Transformers pipeline for `mistralai/Voxtral-Mini-4B-Realtime-2602`. Use the runtime aliases `ASR_BACKEND=voxtral`, `voxtral-realtime`, `voxtral-mini`, or `voxtral-mini-4b` only on hosts with a compatible Transformers/Torch stack and enough accelerator memory for the 4B model.
+The Voxtral adapters are experimental. The default `voxtral` path uses the Hugging Face Transformers pipeline for `mistralai/Voxtral-Mini-4B-Realtime-2602`; the `voxtral-mlx` path uses `mlx-audio[stt]` with `mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit` on Apple Silicon. Use the runtime aliases `ASR_BACKEND=voxtral`, `voxtral-realtime`, `voxtral-mini`, or `voxtral-mini-4b` only on hosts with a compatible Transformers/Torch stack and enough accelerator memory for the 4B model. Use `ASR_BACKEND=voxtral-mlx`, `voxtral-realtime-mlx`, `voxtral-mini-mlx`, or `voxtral-mini-4b-mlx` for the 4-bit MLX runtime.
 
 Start with explicit runtime validation before a demo:
 
 ```bash
 ASR_BACKEND=voxtral-mini-4b ASR_PRELOAD_MODEL=true uvicorn src.main:app --host 0.0.0.0 --port 8080
+ASR_BACKEND=voxtral-mlx ASR_PRELOAD_MODEL=true uvicorn src.main:app --host 0.0.0.0 --port 8080
 curl http://localhost:8080/api/models
 ```
 
-If preload reports an attention or kernel error, set `ASR_VOXTRAL_ATTN_IMPLEMENTATION=sdpa` before trying backend-specific kernels such as `flash_attention_2`. Keep `ASR_VOXTRAL_MAX_NEW_TOKENS` low, for example `64` or `128`, while checking latency.
+If preload reports an attention or kernel error on the Transformers path, set `ASR_VOXTRAL_ATTN_IMPLEMENTATION=sdpa` before trying backend-specific kernels such as `flash_attention_2`. Keep `ASR_VOXTRAL_MAX_NEW_TOKENS` low, for example `64` or `128`, while checking latency. On the MLX path, start with `ASR_VOXTRAL_TRANSCRIPTION_DELAY_MS=480`, then sweep lower multiples of `80` ms when latency matters more than accuracy.
 
 ### 7. Transcripts are delayed or partials feel stale
 

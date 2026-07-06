@@ -465,11 +465,11 @@ def test_makefile_mlx_venv_target_repairs_broken_virtualenvs_before_benchmarks()
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
     mlx_venv_block = makefile.split("mlx-venv:\n", 1)[1].split("\n\n", 1)[0]
-    assert 'if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import fastapi, httpx, numpy, parakeet_mlx, soundfile, uvicorn, websockets" >/dev/null 2>&1; then \\' in mlx_venv_block
+    assert 'if [ -x $(MLX_PYTHON) ] && $(MLX_PYTHON) -c "import fastapi, httpx, mlx_audio, numpy, parakeet_mlx, soundfile, uvicorn, websockets" >/dev/null 2>&1; then \\' in mlx_venv_block
     assert 'echo "  Rebuilding $(MLX_VENV) because the MLX benchmark runtime is missing or broken..."; \\' in mlx_venv_block
     assert "rm -rf $(MLX_VENV); \\" in mlx_venv_block
     assert "python3 -m venv $(MLX_VENV); \\" in mlx_venv_block
-    assert '$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx psutil; \\' in mlx_venv_block
+    assert '$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx "mlx-audio[stt]" psutil; \\' in mlx_venv_block
     assert '@echo "  ✓ MLX virtualenv ready at $(MLX_VENV)"' in mlx_venv_block
 
 def test_makefile_exposes_benchmark_site_sync_targets() -> None:
@@ -535,11 +535,15 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "PARAKEET_MLX_MODEL ?= mlx-community/parakeet-tdt-0.6b-v3" in makefile
     assert "PARAKEET_MLX_ARTIFACT_SLUG ?= parakeet-mlx" in makefile
     assert "PARAKEET_MLX_SERVICE_ARTIFACT_SLUG ?= parakeet-mlx-service" in makefile
+    assert "VOXTRAL_MLX_MODEL ?= mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit" in makefile
+    assert "VOXTRAL_MLX_SERVICE_ARTIFACT_SLUG ?= voxtral-mlx-4bit-service" in makefile
+    assert "VOXTRAL_MLX_TRANSCRIPTION_DELAY_MS ?= 480" in makefile
     assert "MLX_VENV ?= .venv-mlx" in makefile
     assert "benchmark-parakeet-mlx: mlx-venv" in makefile
     assert "benchmark-parakeet-mlx-110m:" in makefile
     assert "benchmark-parakeet-mlx-service: mlx-venv" in makefile
     assert "benchmark-parakeet-mlx-service-110m:" in makefile
+    assert "benchmark-voxtral-mlx-service: mlx-venv" in makefile
     assert "BENCHMARK_PIPECAT_REALTIME_FLAG ?= --simulate-realtime" in makefile
     assert "COMPOSE_V1_WS_URL ?= ws://127.0.0.1:8080/v1/stt/stream" in makefile
     assert "BENCHMARK_V1_SOURCE_FRAME_MS ?= 20" in makefile
@@ -548,7 +552,7 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "BENCHMARK_V1_REALTIME_FLAG ?= --simulate-realtime" in makefile
     assert "benchmark-pipecat-e2e: venv" in makefile
     assert "$(BENCHMARK_RESULTS_DIR)/$(BENCHMARK_PIPECAT_BACKEND)-$(BENCHMARK_PIPECAT_MODEL)-$(BENCHMARK_PIPECAT_COMPUTE_TYPE)-pipecat-e2e-$(BENCHMARK_RESULT_DATE).json" in makefile
-    assert '$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx psutil' in makefile
+    assert '$(MLX_PYTHON) -m pip install --upgrade pip fastapi "uvicorn[standard]" pydantic python-multipart websockets numpy soundfile httpx parakeet-mlx "mlx-audio[stt]" psutil' in makefile
     assert "scripts/benchmark_mlx_asr.py --model $(PARAKEET_MLX_MODEL)" in makefile
     assert "$(BENCHMARK_RESULTS_DIR)/$(PARAKEET_MLX_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json" in makefile
     assert "PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_ARTIFACT_SLUG=parakeet-mlx-110m" in makefile
@@ -558,6 +562,10 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "curl -sf http://127.0.0.1:8090/ready >/dev/null" in mlx_service_block
     assert "PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --mode v1-stt-stream --url http://127.0.0.1:8090 --v1-ws-url ws://127.0.0.1:8090/v1/stt/stream --backend parakeet-mlx" in mlx_service_block
     assert "PARAKEET_MLX_MODEL=mlx-community/parakeet-tdt_ctc-110m PARAKEET_MLX_SERVICE_ARTIFACT_SLUG=parakeet-mlx-110m-service" in makefile
+    voxtral_mlx_service_block = makefile.split("benchmark-voxtral-mlx-service: mlx-venv\n", 1)[1].split("\n\n", 1)[0]
+    assert "ASR_BACKEND=voxtral-mlx ASR_DEVICE=apple-silicon ASR_PRELOAD_MODEL=true ASR_VOXTRAL_MLX_MODEL=$(VOXTRAL_MLX_MODEL) ASR_VOXTRAL_TRANSCRIPTION_DELAY_MS=$(VOXTRAL_MLX_TRANSCRIPTION_DELAY_MS)" in voxtral_mlx_service_block
+    assert "PYTHONPATH=. $(MLX_PYTHON) tests/benchmark.py --mode v1-stt-stream --url http://127.0.0.1:8090 --v1-ws-url ws://127.0.0.1:8090/v1/stt/stream --backend voxtral-mlx --model $(VOXTRAL_MLX_MODEL)" in voxtral_mlx_service_block
+    assert "$(BENCHMARK_RESULTS_DIR)/$(VOXTRAL_MLX_SERVICE_ARTIFACT_SLUG)-$(BENCHMARK_RESULT_DATE).json" in voxtral_mlx_service_block
     assert "benchmark-compose-qwen-legacy: venv" in makefile
     assert "benchmark-compose-parakeet-nemo-legacy: venv" in makefile
     assert "benchmark-parakeet-mlx-service-legacy: mlx-venv" in makefile

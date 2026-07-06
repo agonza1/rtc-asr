@@ -6,7 +6,7 @@
 http://localhost:8080
 ```
 
-Supported backends: `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, `parakeet-nemo`, and experimental `voxtral`. Aliases `whisper`, `qwen`, `qwen3-asr`, `parakeet-asr`, `parakeet-ctc`, `voxtral-realtime`, `voxtral-mini`, and `voxtral-mini-4b` resolve to the matching canonical backends. The HTTP and websocket response shapes stay stable across backends, but backend-specific metadata can vary.
+Supported backends: `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, `parakeet-nemo`, experimental `voxtral`, and experimental `voxtral-mlx`. Aliases `whisper`, `qwen`, `qwen3-asr`, `parakeet-asr`, `parakeet-ctc`, `voxtral-realtime`, `voxtral-mini`, `voxtral-mini-4b`, `voxtral-realtime-mlx`, `voxtral-mini-mlx`, and `voxtral-mini-4b-mlx` resolve to the matching canonical backends. The HTTP and websocket response shapes stay stable across backends, but backend-specific metadata can vary.
 
 ## Health Check
 

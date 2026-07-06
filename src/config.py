@@ -81,9 +81,11 @@ class AppConfig:
     asr_parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
     asr_parakeet_dtype: str = "auto"
     asr_voxtral_model: str = "mistralai/Voxtral-Mini-4B-Realtime-2602"
+    asr_voxtral_mlx_model: str = "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
     asr_voxtral_dtype: str = "auto"
     asr_voxtral_attn_implementation: str | None = None
     asr_voxtral_max_new_tokens: int = 128
+    asr_voxtral_transcription_delay_ms: int = 480
     asr_voxtral_trust_remote_code: bool = True
 
     @classmethod
@@ -144,6 +146,7 @@ class AppConfig:
             asr_parakeet_model=os.getenv("ASR_PARAKEET_MODEL", defaults.asr_parakeet_model),
             asr_parakeet_dtype=os.getenv("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype),
             asr_voxtral_model=os.getenv("ASR_VOXTRAL_MODEL", defaults.asr_voxtral_model),
+            asr_voxtral_mlx_model=os.getenv("ASR_VOXTRAL_MLX_MODEL", defaults.asr_voxtral_mlx_model),
             asr_voxtral_dtype=os.getenv("ASR_VOXTRAL_DTYPE", defaults.asr_voxtral_dtype),
             asr_voxtral_attn_implementation=os.getenv(
                 "ASR_VOXTRAL_ATTN_IMPLEMENTATION",
@@ -152,6 +155,10 @@ class AppConfig:
             asr_voxtral_max_new_tokens=_positive_int_env(
                 "ASR_VOXTRAL_MAX_NEW_TOKENS",
                 defaults.asr_voxtral_max_new_tokens,
+            ),
+            asr_voxtral_transcription_delay_ms=_positive_int_env(
+                "ASR_VOXTRAL_TRANSCRIPTION_DELAY_MS",
+                defaults.asr_voxtral_transcription_delay_ms,
             ),
             asr_voxtral_trust_remote_code=_env_flag(
                 "ASR_VOXTRAL_TRUST_REMOTE_CODE",

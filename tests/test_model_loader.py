@@ -9,7 +9,7 @@ import pytest
 
 from src.audio_processor import AudioProcessor
 from src.config import AppConfig
-from src.model_loader import ASRUnavailableError, ParakeetAdapter, ParakeetMLXAdapter, ParakeetNemoAdapter, QwenASRAdapter, VoxtralAdapter, build_transcriber
+from src.model_loader import ASRUnavailableError, ParakeetAdapter, ParakeetMLXAdapter, ParakeetNemoAdapter, QwenASRAdapter, VoxtralAdapter, VoxtralMLXAdapter, build_transcriber
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 
@@ -69,6 +69,17 @@ def test_build_transcriber_accepts_voxtral_aliases(backend: str) -> None:
     assert transcriber.model_name == "mistralai/Voxtral-Mini-4B-Realtime-2602"
 
 
+@pytest.mark.parametrize("backend", ["voxtral-mlx", "voxtral-mini-mlx", "voxtral-mini-4b-mlx", "voxtral-realtime-mlx"])
+def test_build_transcriber_accepts_voxtral_mlx_aliases(backend: str) -> None:
+    transcriber = build_transcriber(
+        AppConfig(asr_backend=backend),
+        AudioProcessor(),
+    )
+
+    assert isinstance(transcriber, VoxtralMLXAdapter)
+    assert transcriber.model_name == "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+
+
 def test_voxtral_describe_exposes_realtime_profile() -> None:
     transcriber = build_transcriber(
         AppConfig(asr_backend="voxtral-mini-4b"),
@@ -97,6 +108,35 @@ def test_voxtral_describe_exposes_realtime_profile() -> None:
     }
 
 
+def test_voxtral_mlx_describe_exposes_realtime_profile() -> None:
+    transcriber = build_transcriber(
+        AppConfig(asr_backend="voxtral-mlx"),
+        AudioProcessor(),
+    )
+
+    description = transcriber.describe()
+
+    assert description["backend"] == "voxtral-mlx"
+    assert description["model"] == "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+    assert description["model_card"] == "https://huggingface.co/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+    assert description["runtime_aliases"] == [
+        "voxtral-mlx",
+        "voxtral-mini-mlx",
+        "voxtral-mini-4b-mlx",
+        "voxtral-realtime-mlx",
+    ]
+    assert description["realtime_profile"] == {
+        "provider": "mlx-community",
+        "family": "Voxtral Mini",
+        "size": "4B",
+        "quantization": "4bit",
+        "recommended_backend": "voxtral-mlx",
+        "serving_mode": "mlx_audio_file_generate",
+        "transcription_delay_ms": 480,
+        "streaming_contract": "local-stt-v1-compatible-buffered-decode",
+    }
+
+
 def test_api_reference_lists_supported_runtime_aliases() -> None:
     api_reference = (Path(__file__).resolve().parents[1] / "docs" / "api-reference.md").read_text(encoding="utf-8")
 
@@ -107,6 +147,7 @@ def test_api_reference_lists_supported_runtime_aliases() -> None:
         "`parakeet-mlx`",
         "`parakeet-nemo`",
         "`voxtral`",
+        "`voxtral-mlx`",
     ]:
         assert backend in api_reference
 
@@ -119,6 +160,9 @@ def test_api_reference_lists_supported_runtime_aliases() -> None:
         "`voxtral-realtime`",
         "`voxtral-mini`",
         "`voxtral-mini-4b`",
+        "`voxtral-realtime-mlx`",
+        "`voxtral-mini-mlx`",
+        "`voxtral-mini-4b-mlx`",
     ]:
         assert alias in api_reference
 
@@ -128,8 +172,10 @@ def test_troubleshooting_documents_voxtral_runtime_validation() -> None:
 
     assert "Voxtral Mini realtime fails at startup or first request" in troubleshooting
     assert "ASR_BACKEND=voxtral-mini-4b ASR_PRELOAD_MODEL=true" in troubleshooting
+    assert "ASR_BACKEND=voxtral-mlx ASR_PRELOAD_MODEL=true" in troubleshooting
     assert "ASR_VOXTRAL_ATTN_IMPLEMENTATION=sdpa" in troubleshooting
     assert "ASR_VOXTRAL_MAX_NEW_TOKENS" in troubleshooting
+    assert "ASR_VOXTRAL_TRANSCRIPTION_DELAY_MS=480" in troubleshooting
 
 
 def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -405,6 +451,50 @@ def test_parakeet_mlx_adapter_transcribe_uses_mlx_model(monkeypatch: pytest.Monk
     assert str(calls["path"]).endswith(".wav")
 
 
+def test_voxtral_mlx_adapter_transcribe_uses_mlx_audio(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    class FakeAlignedResult:
+        text = " Please hold. "
+
+    class FakeModel:
+        def generate(self, path: str, *, transcription_delay_ms: int) -> FakeAlignedResult:
+            calls["path"] = path
+            calls["transcription_delay_ms"] = transcription_delay_ms
+            return FakeAlignedResult()
+
+    fake_mlx_audio = ModuleType("mlx_audio")
+    fake_stt = ModuleType("mlx_audio.stt")
+    fake_utils = ModuleType("mlx_audio.stt.utils")
+    fake_utils.load = lambda model_name: calls.update({"model_name": model_name}) or FakeModel()
+    monkeypatch.setitem(sys.modules, "mlx_audio", fake_mlx_audio)
+    monkeypatch.setitem(sys.modules, "mlx_audio.stt", fake_stt)
+    monkeypatch.setitem(sys.modules, "mlx_audio.stt.utils", fake_utils)
+
+    adapter = VoxtralMLXAdapter(
+        config=AppConfig(
+            asr_backend="voxtral-mlx",
+            asr_device="apple-silicon",
+            asr_voxtral_mlx_model="mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+            asr_voxtral_transcription_delay_ms=480,
+        ),
+        audio_processor=AudioProcessor(),
+    )
+
+    result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
+
+    assert result == {
+        "text": "Please hold.",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "voxtral-mlx",
+        "model": "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+    }
+    assert calls["model_name"] == "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+    assert calls["transcription_delay_ms"] == 480
+    assert str(calls["path"]).endswith(".wav")
+
+
 def test_qwen_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     real_import = builtins.__import__
 
@@ -529,6 +619,25 @@ def test_parakeet_mlx_adapter_raises_when_dependency_missing(monkeypatch: pytest
         adapter.preload()
 
 
+def test_voxtral_mlx_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    real_import = builtins.__import__
+
+    def fake_import(name: str, globals: object = None, locals: object = None, fromlist: tuple[str, ...] = (), level: int = 0):
+        if name == "mlx_audio.stt.utils":
+            raise ImportError(name)
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    adapter = VoxtralMLXAdapter(
+        config=AppConfig(asr_backend="voxtral-mlx"),
+        audio_processor=AudioProcessor(),
+    )
+
+    with pytest.raises(ASRUnavailableError, match=r"voxtral-mlx backend requires mlx-audio\[stt\]"):
+        adapter.preload()
+
+
 def test_parakeet_nemo_adapter_raises_when_dependency_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     real_import = builtins.__import__
 
@@ -569,18 +678,22 @@ def test_app_config_reads_qwen_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_app_config_reads_voxtral_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ASR_BACKEND", "voxtral")
     monkeypatch.setenv("ASR_VOXTRAL_MODEL", "mistralai/Voxtral-Mini-4B-Realtime-2602")
+    monkeypatch.setenv("ASR_VOXTRAL_MLX_MODEL", "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit")
     monkeypatch.setenv("ASR_VOXTRAL_DTYPE", "float32")
     monkeypatch.setenv("ASR_VOXTRAL_ATTN_IMPLEMENTATION", "sdpa")
     monkeypatch.setenv("ASR_VOXTRAL_MAX_NEW_TOKENS", "96")
+    monkeypatch.setenv("ASR_VOXTRAL_TRANSCRIPTION_DELAY_MS", "320")
     monkeypatch.setenv("ASR_VOXTRAL_TRUST_REMOTE_CODE", "false")
 
     config = AppConfig.from_env()
 
     assert config.asr_backend == "voxtral"
     assert config.asr_voxtral_model == "mistralai/Voxtral-Mini-4B-Realtime-2602"
+    assert config.asr_voxtral_mlx_model == "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
     assert config.asr_voxtral_dtype == "float32"
     assert config.asr_voxtral_attn_implementation == "sdpa"
     assert config.asr_voxtral_max_new_tokens == 96
+    assert config.asr_voxtral_transcription_delay_ms == 320
     assert config.asr_voxtral_trust_remote_code is False
 
 
