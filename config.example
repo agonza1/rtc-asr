@@ -40,13 +40,16 @@ ASR_PARAKEET_MODEL=nvidia/parakeet-tdt-0.6b-v3
 ASR_PARAKEET_DTYPE=auto
 
 # Optional experimental Voxtral backend settings
-# Set ASR_BACKEND=voxtral to enable these. Use ASR_PRELOAD_MODEL=true to fail fast
-# when the local Transformers runtime is not Voxtral-compatible.
+# Set ASR_BACKEND=voxtral for the Transformers path, or ASR_BACKEND=voxtral-mlx
+# for the Apple Silicon MLX 4-bit realtime path. Use ASR_PRELOAD_MODEL=true to
+# fail fast when the local runtime is not Voxtral-compatible.
 ASR_VOXTRAL_MODEL=mistralai/Voxtral-Mini-4B-Realtime-2602
+ASR_VOXTRAL_MLX_MODEL=mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit
 ASR_VOXTRAL_DTYPE=auto
 # Optional: sdpa, flash_attention_2, or eager when supported by the installed Transformers/Torch stack.
 # ASR_VOXTRAL_ATTN_IMPLEMENTATION=sdpa
 ASR_VOXTRAL_MAX_NEW_TOKENS=128
+ASR_VOXTRAL_TRANSCRIPTION_DELAY_MS=480
 ASR_VOXTRAL_TRUST_REMOTE_CODE=true
 
 

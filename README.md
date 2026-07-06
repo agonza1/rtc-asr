@@ -78,7 +78,7 @@ ASR_PRELOAD_MODEL=false
 ASR_FAIL_FAST=false
 ```
 
-Backend-specific variables are available for Qwen, Parakeet, NeMo Parakeet, and experimental Voxtral. Set `ASR_VOXTRAL_MAX_NEW_TOKENS` to cap realtime decode length for predictable latency, and optionally set `ASR_VOXTRAL_ATTN_IMPLEMENTATION` when a local Transformers/Torch stack needs a specific attention backend such as `sdpa` or `flash_attention_2`. Voxtral accepts `ASR_BACKEND=voxtral`, `voxtral-realtime`, `voxtral-mini`, or `voxtral-mini-4b` for the current Mini 4B realtime adapter. Set `ASR_PRELOAD_MODEL=true` when you want startup-time backend validation instead of lazy first-use loading. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
+Backend-specific variables are available for Qwen, Parakeet, NeMo Parakeet, and experimental Voxtral. Set `ASR_VOXTRAL_MAX_NEW_TOKENS` to cap realtime decode length for predictable latency on the Transformers path, and optionally set `ASR_VOXTRAL_ATTN_IMPLEMENTATION` when a local Transformers/Torch stack needs a specific attention backend such as `sdpa` or `flash_attention_2`. Voxtral accepts `ASR_BACKEND=voxtral`, `voxtral-realtime`, `voxtral-mini`, or `voxtral-mini-4b` for the Mini 4B Transformers adapter, and `ASR_BACKEND=voxtral-mlx`, `voxtral-realtime-mlx`, `voxtral-mini-mlx`, or `voxtral-mini-4b-mlx` for the Apple Silicon MLX 4-bit adapter. Set `ASR_VOXTRAL_TRANSCRIPTION_DELAY_MS=480` for the MLX model-card default latency/accuracy balance. Set `ASR_PRELOAD_MODEL=true` when you want startup-time backend validation instead of lazy first-use loading. See [API Reference](./docs/api-reference.md) and [Troubleshooting](./docs/troubleshooting.md) for backend-specific behavior.
 
 If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service defaults to `cuda`. Legacy aliases `MODEL_NAME` and `AUDIO_SAMPLE_RATE` are still accepted for compatibility.
 
@@ -88,7 +88,7 @@ If `ASR_DEVICE` is unset but `CUDA_VISIBLE_DEVICES` exposes a GPU, the service d
 | --- | --- | --- | --- | --- |
 | Tiny CPU | Raspberry Pi / mini PC | `faster-whisper` | `tiny.en` `int8` | Best smoke test, lowest accuracy |
 | Practical CPU | Mac Mini / N100 / laptop | `faster-whisper` or `parakeet-nemo` | `base.en` `int8` or `nvidia/parakeet-tdt_ctc-110m` | Good default benchmark lane; 110M Parakeet is the higher-quality CPU comparison |
-| Apple Silicon | M-series Mac | `parakeet-mlx` | `mlx-community/parakeet-tdt_ctc-110m` or `mlx-community/parakeet-tdt-0.6b-v3` | Strong warmed latency and power tradeoff; 0.6B MLX is useful when quality matters more than footprint |
+| Apple Silicon | M-series Mac | `parakeet-mlx` or `voxtral-mlx` | `mlx-community/parakeet-tdt_ctc-110m`, `mlx-community/parakeet-tdt-0.6b-v3`, or `mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit` | Strong warmed latency and power tradeoff; Voxtral MLX is the 4-bit realtime comparison lane |
 | Not low-power | Large CPU or accelerator comparison lane | `qwen-asr`, experimental `voxtral`, Canary Flash, or larger Parakeet variants | `Qwen/Qwen3-ASR-0.6B`, `mistralai/Voxtral-Mini-4B-Realtime-2602`, `nvidia/canary-1b-flash`, or `nvidia/parakeet-tdt-0.6b-v3` | Useful comparison, not the default edge path |
 
 Current checked-in benchmarks make the Apple Silicon story especially strong for the warmed `parakeet-mlx-service-110m` lane. See [Benchmarks](./docs/benchmarks.md) for the latest artifact-backed numbers.

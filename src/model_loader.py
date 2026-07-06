@@ -518,6 +518,94 @@ class VoxtralAdapter:
         return self._pipeline
 
 
+@dataclass(slots=True)
+class VoxtralMLXAdapter:
+    """MLX-backed Voxtral Mini realtime adapter for Apple Silicon benchmarks."""
+
+    config: AppConfig
+    audio_processor: AudioProcessor
+    backend_name: str = field(init=False, default="voxtral-mlx")
+    model_name: str = field(init=False)
+    _model: Any | None = field(init=False, default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        self.model_name = self.config.asr_voxtral_mlx_model
+
+    def is_loaded(self) -> bool:
+        return self._model is not None
+
+    def preload(self) -> None:
+        self._load_model()
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
+        decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
+        model = self._load_model()
+        try:
+            import soundfile as sf
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The voxtral-mlx backend requires soundfile. Install the MLX benchmark runtime to enable ASR_BACKEND=voxtral-mlx."
+            ) from exc
+
+        with tempfile.NamedTemporaryFile(prefix="rtc_asr_voxtral_mlx_", suffix=".wav") as audio_file:
+            sf.write(audio_file.name, decoded_audio.samples, decoded_audio.sample_rate)
+            result = model.generate(
+                audio_file.name,
+                transcription_delay_ms=self.config.asr_voxtral_transcription_delay_ms,
+            )
+
+        return {
+            "text": _extract_mlx_text(result),
+            "language": language,
+            "duration_ms": decoded_audio.duration_ms,
+            "backend": self.backend_name,
+            "model": self.model_name,
+        }
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "device": self.config.asr_device,
+            "implementation": "mlx_audio.stt.utils.load",
+            "task": "automatic-speech-recognition",
+            "experimental": True,
+            "model_card": "https://huggingface.co/mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+            "runtime_aliases": [
+                "voxtral-mlx",
+                "voxtral-mini-mlx",
+                "voxtral-mini-4b-mlx",
+                "voxtral-realtime-mlx",
+            ],
+            "realtime_profile": {
+                "provider": "mlx-community",
+                "family": "Voxtral Mini",
+                "size": "4B",
+                "quantization": "4bit",
+                "recommended_backend": "voxtral-mlx",
+                "serving_mode": "mlx_audio_file_generate",
+                "transcription_delay_ms": self.config.asr_voxtral_transcription_delay_ms,
+                "streaming_contract": "local-stt-v1-compatible-buffered-decode",
+            },
+            "loaded": self.is_loaded(),
+            **_shared_capabilities(self.audio_processor),
+        }
+
+    def _load_model(self) -> Any:
+        if self._model is not None:
+            return self._model
+
+        try:
+            from mlx_audio.stt.utils import load
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The voxtral-mlx backend requires mlx-audio[stt]. Install the MLX benchmark runtime to enable ASR_BACKEND=voxtral-mlx."
+            ) from exc
+
+        self._model = load(self.model_name)
+        return self._model
+
+
 BACKEND_ALIASES = {
     "faster-whisper": "faster-whisper",
     "whisper": "faster-whisper",
@@ -533,6 +621,10 @@ BACKEND_ALIASES = {
     "voxtral-mini": "voxtral",
     "voxtral-mini-4b": "voxtral",
     "voxtral-realtime": "voxtral",
+    "voxtral-mlx": "voxtral-mlx",
+    "voxtral-mini-mlx": "voxtral-mlx",
+    "voxtral-mini-4b-mlx": "voxtral-mlx",
+    "voxtral-realtime-mlx": "voxtral-mlx",
 }
 
 
@@ -670,4 +762,6 @@ def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Tra
         return ParakeetMLXAdapter(config=config, audio_processor=audio_processor)
     if backend == "voxtral":
         return VoxtralAdapter(config=config, audio_processor=audio_processor)
+    if backend == "voxtral-mlx":
+        return VoxtralMLXAdapter(config=config, audio_processor=audio_processor)
     raise ASRUnavailableError(f"Unsupported ASR backend: {config.asr_backend}")
