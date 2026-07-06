@@ -513,6 +513,7 @@ def summarize_warnings(payload: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "received_total": total,
+        "sample_count": len(samples),
         "rate_per_sample": rate_per_sample,
         "codes": warning_codes,
     }
@@ -1019,22 +1020,32 @@ def build_warning_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
     warned_entries = []
     received_total = 0
     has_received_total = False
+    sample_total = 0
     codes: set[str] = set()
     for entry in entries:
         warnings = entry.get("warnings") or {}
         entry_codes = [code for code in warnings.get("codes", []) if isinstance(code, str) and code]
         received = warnings.get("received_total")
+        sample_count = warnings.get("sample_count") or entry.get("sample_count")
         if entry_codes or (isinstance(received, (int, float)) and received > 0):
             warned_entries.append(entry)
         if isinstance(received, (int, float)):
             received_total += received
             has_received_total = True
+        if isinstance(sample_count, (int, float)) and sample_count > 0:
+            sample_total += sample_count
         codes.update(entry_codes)
+
+    rate_per_sample = None
+    if has_received_total and sample_total > 0:
+        rate_per_sample = received_total / sample_total
 
     return {
         "artifact_count": len(entries),
         "artifacts_with_warnings_count": len(warned_entries),
         "received_total": received_total if has_received_total else None,
+        "sample_count": sample_total,
+        "rate_per_sample": rate_per_sample,
         "codes": sorted(codes),
     }
 
