@@ -432,6 +432,33 @@ def test_raw_uds_frame_decoder_buffers_socket_chunk_boundaries() -> None:
     assert decoder.buffered_bytes == 0
 
 
+def test_raw_uds_frame_decoder_finish_rejects_partial_tail() -> None:
+    decoder = RawUdsFrameDecoder()
+    encoded = encode_raw_uds_json_frame(
+        RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "truncated"}
+    )
+
+    assert decoder.feed(encoded[:-1]) == []
+    assert decoder.buffered_bytes == len(encoded) - 1
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        decoder.finish()
+
+    assert excinfo.value.as_event().code == "raw_uds_incomplete_frame"
+    assert "buffered frame bytes" in excinfo.value.message
+    assert decoder.buffered_bytes == 0
+    frames = decoder.feed(encode_raw_uds_frame(RawUdsFrameType.PING, b""))
+
+    assert frames[0].frame_type == RawUdsFrameType.PING
+
+
+def test_raw_uds_frame_decoder_finish_accepts_empty_buffer() -> None:
+    decoder = RawUdsFrameDecoder()
+
+    decoder.finish()
+
+    assert decoder.buffered_bytes == 0
+
+
 def test_raw_uds_frame_decoder_rejects_oversized_payload_before_body_arrives() -> None:
     decoder = RawUdsFrameDecoder()
     header = bytes([RawUdsFrameType.AUDIO_PCM16]) + (RAW_UDS_MAX_PAYLOAD_BYTES + 1).to_bytes(4, "little")
