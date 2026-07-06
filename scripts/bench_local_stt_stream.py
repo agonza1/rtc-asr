@@ -22,7 +22,14 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.protocols import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_FRAME_MS, HOT_PATH_SAMPLE_RATE
+from src.protocols import (
+    HOT_PATH_BYTES_PER_FRAME,
+    HOT_PATH_FRAME_MS,
+    HOT_PATH_SAMPLE_RATE,
+    RAW_UDS_HEADER_BYTES,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
+    RawUdsFrameType,
+)
 from src.rtc_client import AsyncLocalSttClient, AsyncRawUdsLocalSttClient, TranscriptEvent
 
 
@@ -227,6 +234,40 @@ def make_client_factory(*, transport: str, uds_path: str | None) -> ClientFactor
     raise ValueError(f"Unsupported benchmark transport: {transport}")
 
 
+def describe_transport_contract(transport: str) -> dict[str, Any]:
+    validate_transport_args(transport, Path("/tmp/local-stt.sock") if transport != "tcp_ws" else None)
+    if transport == "raw_uds":
+        return {
+            "control_channel": "unix_stream",
+            "audio_framing": "length_prefixed_pcm16",
+            "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
+            "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+            "frame_types": {
+                "json_control": int(RawUdsFrameType.JSON_CONTROL),
+                "audio_pcm16": int(RawUdsFrameType.AUDIO_PCM16),
+                "json_event": int(RawUdsFrameType.JSON_EVENT),
+                "error": int(RawUdsFrameType.ERROR),
+                "ping": int(RawUdsFrameType.PING),
+                "pong": int(RawUdsFrameType.PONG),
+            },
+        }
+    if transport == "uds_ws":
+        return {
+            "control_channel": "unix_stream_websocket",
+            "audio_framing": "binary_websocket_pcm16",
+            "per_frame_overhead_bytes": 0,
+            "max_payload_bytes": None,
+        }
+    if transport == "tcp_ws":
+        return {
+            "control_channel": "tcp_websocket",
+            "audio_framing": "binary_websocket_pcm16",
+            "per_frame_overhead_bytes": 0,
+            "max_payload_bytes": None,
+        }
+    raise ValueError(f"Unsupported benchmark transport: {transport}")
+
+
 def load_audio_input(*, input_wav: Path | None, input_raw_pcm: Path | None, sample_rate: int, frame_ms: int) -> AudioInput:
     if input_wav is None and input_raw_pcm is None:
         raise ValueError("input_wav or input_raw_pcm is required")
@@ -397,6 +438,7 @@ async def run_benchmark(
         "kind": "local-stt-v1-latency-benchmark",
         "protocol": "local-stt.v1",
         "target": {"transport": transport, "url": url, "uds_path": uds_path},
+        "target_contract": describe_transport_contract(transport),
         "environment": describe_environment(
             process_pid=metrics_pid,
             peak_rss_mb=metrics_monitor.peak_rss_mb,

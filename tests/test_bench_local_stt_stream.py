@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+from src.protocols import RAW_UDS_HEADER_BYTES, RAW_UDS_MAX_PAYLOAD_BYTES
 from src.rtc_client import TranscriptEvent
 
 
@@ -463,6 +464,12 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     sample = payload["samples"][0]
     assert payload["kind"] == "local-stt-v1-latency-benchmark"
     assert payload["target"] == {"transport": "tcp_ws", "url": "ws://example.test/v1/stt/stream", "uds_path": None}
+    assert payload["target_contract"] == {
+        "control_channel": "tcp_websocket",
+        "audio_framing": "binary_websocket_pcm16",
+        "per_frame_overhead_bytes": 0,
+        "max_payload_bytes": None,
+    }
     assert payload["environment"]["cpu_logical_cores"] is not None
     assert payload["environment"]["process_metrics_sample_count"] == 0
     assert payload["audio"]["bytes_per_frame"] == 640
@@ -767,6 +774,25 @@ def test_make_client_factory_uses_raw_uds_client() -> None:
     assert client.uds_path == "/tmp/stt.raw.sock"
 
 
+def test_describe_transport_contract_records_raw_uds_framing() -> None:
+    contract = benchmark_module.describe_transport_contract("raw_uds")
+
+    assert contract == {
+        "control_channel": "unix_stream",
+        "audio_framing": "length_prefixed_pcm16",
+        "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
+        "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+        "frame_types": {
+            "json_control": 1,
+            "audio_pcm16": 2,
+            "json_event": 3,
+            "error": 4,
+            "ping": 5,
+            "pong": 6,
+        },
+    }
+
+
 def test_parse_args_rejects_uds_path_for_default_tcp_transport(tmp_path: Path) -> None:
     raw_path = tmp_path / "clip.pcm"
     raw_path.write_bytes(b"a" * 640)
@@ -817,6 +843,39 @@ def test_run_benchmark_records_uds_ws_target_with_injected_client() -> None:
     )
 
     assert payload["target"] == {"transport": "uds_ws", "url": "ws://localhost/v1/stt/stream", "uds_path": "/tmp/stt.sock"}
+    assert payload["target_contract"] == {
+        "control_channel": "unix_stream_websocket",
+        "audio_framing": "binary_websocket_pcm16",
+        "per_frame_overhead_bytes": 0,
+        "max_payload_bytes": None,
+    }
+
+
+def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://ignored/v1/stt/stream",
+            transport="raw_uds",
+            uds_path="/tmp/stt.raw.sock",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=FakeLocalSttClient,
+        )
+    )
+
+    assert payload["target"] == {"transport": "raw_uds", "url": "ws://ignored/v1/stt/stream", "uds_path": "/tmp/stt.raw.sock"}
+    assert payload["target_contract"]["control_channel"] == "unix_stream"
+    assert payload["target_contract"]["audio_framing"] == "length_prefixed_pcm16"
+    assert payload["target_contract"]["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
 
 
 def test_run_benchmark_requires_uds_path_for_uds_ws_even_with_injected_client() -> None:
