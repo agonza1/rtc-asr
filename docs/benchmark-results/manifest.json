@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-06T14:47:21Z",
+  "generated_at": "2026-07-07T03:42:14Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -54,6 +54,21 @@
       "complete_artifact_count": 21,
       "partial_artifact_count": 2,
       "missing_sample_count_artifact_count": 0
+    },
+    "transport_coverage": {
+      "artifact_count": 23,
+      "by_transport": {
+        "direct": 4,
+        "pipecat-e2e": 6,
+        "unknown": 5,
+        "v1-stt-stream": 8
+      },
+      "by_path": {
+        "/v1/stt/stream": 8,
+        "/ws/stream": 4,
+        "unknown": 11
+      },
+      "comparable_local_stt_artifact_count": 8
     },
     "warnings": {
       "artifact_count": 23,

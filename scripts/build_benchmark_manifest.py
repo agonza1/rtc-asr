@@ -1016,6 +1016,28 @@ def build_sample_coverage_summary(entries: list[dict[str, Any]]) -> dict[str, in
     }
 
 
+def build_transport_coverage_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    by_transport: dict[str, int] = {}
+    by_path: dict[str, int] = {}
+    comparable_local_stt_entries = 0
+    for entry in entries:
+        contract = entry.get("contract") or {}
+        streaming = entry.get("streaming") or {}
+        transport = contract.get("transport") or streaming.get("transport") or "unknown"
+        path = contract.get("path") or "unknown"
+        by_transport[str(transport)] = by_transport.get(str(transport), 0) + 1
+        by_path[str(path)] = by_path.get(str(path), 0) + 1
+        if path == "/v1/stt/stream" and streaming.get("live_metrics_comparable") is True:
+            comparable_local_stt_entries += 1
+
+    return {
+        "artifact_count": len(entries),
+        "by_transport": dict(sorted(by_transport.items())),
+        "by_path": dict(sorted(by_path.items())),
+        "comparable_local_stt_artifact_count": comparable_local_stt_entries,
+    }
+
+
 def build_warning_summary(entries: list[dict[str, Any]]) -> dict[str, Any]:
     warned_entries = []
     received_total = 0
@@ -1155,6 +1177,7 @@ def build_manifest(results_dir: Path, tracks_path: Path = DEFAULT_TRACKS_PATH) -
         "system_coverage": build_system_coverage(artifact_history),
         "low_power_evidence": build_low_power_evidence_summary(artifact_history),
         "sample_coverage": build_sample_coverage_summary(artifact_history),
+        "transport_coverage": build_transport_coverage_summary(artifact_history),
         "warnings": build_warning_summary(artifact_history),
         "ranges": ranges,
         "highlights": {
