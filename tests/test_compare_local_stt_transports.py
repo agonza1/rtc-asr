@@ -34,6 +34,11 @@ def write_artifact(
                     "transport": transport,
                     "url": "ws://localhost/v1/stt/stream" if transport != "raw_uds" else None,
                     "uds_path": "/tmp/stt.sock" if transport != "tcp_ws" else None,
+                    **(
+                        {"frame_format": "uint8_type_uint32_len_le", "frame_header_bytes": 5}
+                        if transport == "raw_uds"
+                        else {}
+                    ),
                 },
                 "environment": (
                     {"cpu_utilization_percent": cpu_utilization_percent}
@@ -133,6 +138,30 @@ def test_compare_artifacts_requires_transport_target_fields(tmp_path: Path) -> N
     assert comparison["recommendation"] == (
         "Re-run transport benchmarks with explicit endpoint targets before recommending raw UDS."
     )
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+
+
+def test_compare_artifacts_requires_raw_uds_frame_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("frame_format")
+    raw_payload["target"]["frame_header_bytes"] = 4
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_contract_gaps"] == [
+        "raw_uds missing target.frame_format=uint8_type_uint32_len_le",
+        "raw_uds missing target.frame_header_bytes=5",
+    ]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_frame_contract_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "frame_contract:raw_uds missing target.frame_format=uint8_type_uint32_len_le",
+        "frame_contract:raw_uds missing target.frame_header_bytes=5",
+    ]
+    assert comparison["raw_uds_should_remain_experimental"] is True
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
