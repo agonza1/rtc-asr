@@ -27,6 +27,7 @@ from src.protocols.local_stt_v1 import (
     encode_raw_uds_client_message,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    encode_raw_uds_protocol_error,
     encode_raw_uds_server_message,
     parse_raw_uds_client_frame,
     parse_raw_uds_server_frame,
@@ -353,10 +354,12 @@ def test_realtime_style_turn_lifecycle_maps_to_local_stt_v1_contract() -> None:
 def test_protocol_package_exports_raw_uds_server_helpers() -> None:
     from src.protocols import RawUdsFrameDecoder as ExportedDecoder
     from src.protocols import encode_raw_uds_client_message as exported_encode_client_message
+    from src.protocols import encode_raw_uds_protocol_error as exported_encode_protocol_error
     from src.protocols import parse_raw_uds_server_frame as exported_parse_server_frame
 
     assert ExportedDecoder is RawUdsFrameDecoder
     assert exported_encode_client_message is encode_raw_uds_client_message
+    assert exported_encode_protocol_error is encode_raw_uds_protocol_error
     assert exported_parse_server_frame is parse_raw_uds_server_frame
 
 
@@ -618,6 +621,21 @@ def test_raw_uds_server_encoder_selects_event_error_and_pong_frame_types() -> No
     assert error.frame_type == RawUdsFrameType.ERROR
     assert pong.frame_type == RawUdsFrameType.PONG
     assert decode_raw_uds_json_payload(pong)["ping_id"] == "p1"
+
+
+def test_raw_uds_protocol_error_encoder_emits_parseable_error_frame() -> None:
+    exc = LocalSttProtocolError(
+        "Raw UDS JSON frame payload must be valid UTF-8 JSON",
+        code="raw_uds_invalid_json",
+    )
+
+    frame = decode_raw_uds_frame(encode_raw_uds_protocol_error(exc))
+    message = parse_raw_uds_server_frame(frame)
+
+    assert frame.frame_type == RawUdsFrameType.ERROR
+    assert message.type == "error"
+    assert message.code == "raw_uds_invalid_json"
+    assert message.message == "Raw UDS JSON frame payload must be valid UTF-8 JSON"
 
 
 def test_raw_uds_server_frame_parser_maps_event_error_and_empty_pong() -> None:
