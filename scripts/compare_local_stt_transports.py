@@ -473,6 +473,12 @@ def _format_optional_ms(value: float | None) -> str:
     return f"{value:.1f} ms"
 
 
+def _format_optional_value(value: Any) -> str:
+    if value is None or value == "":
+        return "missing"
+    return str(value)
+
+
 def format_markdown_summary(comparison: dict[str, Any]) -> str:
     lines = [
         "# Local STT v1 Transport Comparison",
@@ -501,6 +507,33 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                     str(metrics.get("protocol_errors") if metrics.get("protocol_errors") is not None else "missing"),
                     cpu,
                     str(runs if runs is not None else "missing"),
+                ]
+            )
+            + " |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Transport targets:",
+            "| Transport | URL | UDS path | Raw frame format | Header bytes |",
+            "| --- | --- | --- | --- | ---: |",
+        ]
+    )
+    for transport in comparison["required_transports"]:
+        payload = comparison["transports"].get(transport)
+        if payload is None:
+            lines.append(f"| {transport} | missing | missing | missing | missing |")
+            continue
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    transport,
+                    _format_optional_value(payload.get("url")),
+                    _format_optional_value(payload.get("uds_path")),
+                    _format_optional_value(payload.get("frame_format")),
+                    _format_optional_value(payload.get("frame_header_bytes")),
                 ]
             )
             + " |"
