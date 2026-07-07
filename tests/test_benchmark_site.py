@@ -16,6 +16,7 @@ DEFAULT_RESULTS_DIR = manifest_module.DEFAULT_RESULTS_DIR
 build_manifest = manifest_module.build_manifest
 build_low_power_evidence_summary = manifest_module.build_low_power_evidence_summary
 build_sample_coverage_summary = manifest_module.build_sample_coverage_summary
+build_transport_coverage_summary = manifest_module.build_transport_coverage_summary
 build_warning_summary = manifest_module.build_warning_summary
 comparable_manifest = manifest_module.comparable_manifest
 extract_system_signals = manifest_module.extract_system_signals
@@ -371,6 +372,33 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     assert coverage["thermal_peak_celsius_count"] == 0
     assert coverage["thermal_observation_count"] == 0
     assert coverage["thermal_duration_minutes_count"] == 0
+
+
+def test_transport_coverage_summary_counts_paths_and_transports() -> None:
+    entries = [
+        {"contract": {"transport": "v1-stt-stream", "path": "/v1/stt/stream"}, "streaming": {"live_metrics_comparable": True}},
+        {"contract": {"transport": "tcp_ws", "path": "/v1/stt/stream"}, "streaming": {"live_metrics_comparable": True}},
+        {"contract": {"path": "/ws/stream"}, "streaming": {"transport": "direct", "live_metrics_comparable": False}},
+        {"contract": {}, "streaming": {}},
+    ]
+
+    assert build_transport_coverage_summary(entries) == {
+        "artifact_count": 4,
+        "by_transport": {"direct": 1, "tcp_ws": 1, "unknown": 1, "v1-stt-stream": 1},
+        "by_path": {"/v1/stt/stream": 2, "/ws/stream": 1, "unknown": 1},
+        "comparable_local_stt_artifact_count": 2,
+    }
+
+
+def test_manifest_summarizes_transport_coverage() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    coverage = manifest["summary"]["transport_coverage"]
+
+    assert coverage["artifact_count"] == len(manifest["artifacts"])
+    assert coverage["by_path"]["/v1/stt/stream"] == 8
+    assert coverage["by_path"]["/ws/stream"] == 4
+    assert coverage["by_path"]["unknown"] == 11
+    assert coverage["comparable_local_stt_artifact_count"] == 8
 
 
 def test_manifest_summarizes_sample_coverage_readiness() -> None:

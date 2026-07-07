@@ -2,11 +2,11 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/</loc>
-    <lastmod>2026-07-06</lastmod>
+    <lastmod>2026-07-07</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json</loc>
-    <lastmod>2026-07-06</lastmod>
+    <lastmod>2026-07-07</lastmod>
   </url>
   <url>
     <loc>https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/faster-whisper-base.en-int8-2026-06-10.json</loc>
