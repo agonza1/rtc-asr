@@ -809,10 +809,14 @@ def test_render_row_shows_sample_target_context() -> None:
         "target_sample_count": 10,
         "artifact_path": "benchmark-results/demo.json",
         "rest": {"mean_ms": 10},
-        "streaming": {"first_partial_end_to_end_mean_ms": 20, "partial_mean_ms": 30, "final_mean_ms": 40},
+        "streaming": {"first_partial_end_to_end_mean_ms": 20, "partial_mean_ms": 30, "partial_p95_ms": 35, "partial_gap_mean_ms": 12, "partial_gap_p95_ms": 18, "final_mean_ms": 40},
     }, 20, 30, 40, "vs fastest", 10)
 
     assert "Target 10" in row
+    assert "12.0 ms" in row
+    assert "P95 18.0 ms" in row
+    assert "30.0 ms" not in row
+    assert "P95 35.0 ms" not in row
 
 
 def test_render_secondary_row_shows_sample_target_context() -> None:
@@ -841,6 +845,8 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'Primary ranking scope' in html
     assert 'Best live numbers' in html
     assert 'data-label="Partial backlog latency"' in html
+    assert "entry.streaming.partial_gap_mean_ms" in html
+    assert "entry.streaming.partial_gap_p95_ms" in html
     assert 'data-label="Audio-end finalization"' in html
     assert 'data-label="REST throughput context"' in html
     assert 'function artifactHashLabel(entry)' in html
