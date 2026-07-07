@@ -470,3 +470,32 @@ def test_main_raw_uds_recommendation_gate_passes_at_five_ms_win(tmp_path: Path) 
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
 
     assert compare_module.main(["--require-raw-uds-recommendation", str(tcp), str(uds), str(raw)]) == 0
+
+def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    comparison = compare_module.compare_artifacts([tcp, raw])
+    markdown = compare_module.format_markdown_summary(comparison)
+
+    assert "# Local STT v1 Transport Comparison" in markdown
+    assert "| tcp_ws | 18.0 ms | 25.0 ms | 0.0 | 12.5% | 3 |" in markdown
+    assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
+    assert "- missing transport benchmark: uds_ws" in markdown
+    assert "Raw UDS recommendation gate: blocked" in markdown
+    assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown
+
+
+def test_main_writes_markdown_summary(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+    markdown_path = tmp_path / "comparison.md"
+
+    assert compare_module.main(["--markdown-output", str(markdown_path), str(tcp), str(uds), str(raw)]) == 0
+
+    markdown = markdown_path.read_text(encoding="utf8")
+    assert "Recommendation: Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype." in markdown
+    assert "Raw UDS recommendation gate: passed" in markdown
+    assert "Minimum required win: 5 ms" in markdown
+
