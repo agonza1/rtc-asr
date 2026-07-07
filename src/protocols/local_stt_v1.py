@@ -486,6 +486,10 @@ def encode_raw_uds_server_message(payload: dict[str, Any]) -> bytes:
     return encode_raw_uds_json_frame(frame_type, message.model_dump())
 
 
+def encode_raw_uds_protocol_error(exc: LocalSttProtocolError) -> bytes:
+    return encode_raw_uds_server_message(exc.as_event().model_dump())
+
+
 def _parse_raw_uds_frame_type(frame_type: RawUdsFrameType | int) -> RawUdsFrameType:
     try:
         return frame_type if isinstance(frame_type, RawUdsFrameType) else RawUdsFrameType(int(frame_type))
