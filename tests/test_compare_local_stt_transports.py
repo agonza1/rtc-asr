@@ -511,6 +511,10 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "# Local STT v1 Transport Comparison" in markdown
     assert "| tcp_ws | 18.0 ms | 25.0 ms | 0.0 | 12.5% | 3 |" in markdown
     assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
+    assert "Transport targets:" in markdown
+    assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing |" in markdown
+    assert "| uds_ws | missing | missing | missing | missing |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 |" in markdown
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
     assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown
@@ -530,5 +534,6 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     markdown = markdown_path.read_text(encoding="utf8")
     assert "Recommendation: Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype." in markdown
     assert "Raw UDS recommendation gate: passed" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 |" in markdown
     assert "Minimum required win: 5 ms" in markdown
 
