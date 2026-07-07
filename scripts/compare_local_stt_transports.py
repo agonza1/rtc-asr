@@ -36,6 +36,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare Local STT v1 transport benchmark artifacts")
     parser.add_argument("artifacts", nargs="+", type=Path, help="Benchmark JSON artifacts from bench_local_stt_stream.py")
     parser.add_argument("--output", type=Path, help="Optional JSON comparison output path")
+    parser.add_argument("--markdown-output", type=Path, help="Optional Markdown summary output path")
     parser.add_argument(
         "--require-raw-uds-recommendation",
         action="store_true",
@@ -432,6 +433,63 @@ def comparison_has_blocking_gaps(
     )
 
 
+def _format_optional_ms(value: float | None) -> str:
+    if value is None:
+        return "missing"
+    return f"{value:.1f} ms"
+
+
+def format_markdown_summary(comparison: dict[str, Any]) -> str:
+    lines = [
+        "# Local STT v1 Transport Comparison",
+        "",
+        f"Recommendation: {comparison['recommendation']}",
+        "",
+        "| Transport | First interim p95 | Final-after-finalize p95 | Protocol errors p95 | CPU utilization | Runs |",
+        "| --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for transport in comparison["required_transports"]:
+        payload = comparison["transports"].get(transport)
+        if payload is None:
+            lines.append(f"| {transport} | missing | missing | missing | missing | missing |")
+            continue
+        metrics = payload["metrics_p95"]
+        cpu_value = payload.get("cpu_utilization_percent")
+        cpu = "missing" if cpu_value is None else f"{float(cpu_value):.1f}%"
+        runs = payload.get("runs")
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    transport,
+                    _format_optional_ms(metrics.get("time_to_first_interim_ms")),
+                    _format_optional_ms(metrics.get("time_to_final_after_finalize_ms")),
+                    str(metrics.get("protocol_errors") if metrics.get("protocol_errors") is not None else "missing"),
+                    cpu,
+                    str(runs if runs is not None else "missing"),
+                ]
+            )
+            + " |"
+        )
+
+    blockers = comparison.get("blocking_gaps", [])
+    if blockers:
+        lines.extend(["", "Blocking gaps:"])
+        lines.extend(f"- {blocker}" for blocker in blockers)
+
+    gate = comparison["raw_uds_recommendation_gate"]
+    lines.extend(
+        [
+            "",
+            f"Raw UDS recommendation gate: {'passed' if gate['passed'] else 'blocked'}",
+            f"Raw UDS first-interim p95 win over UDS WebSocket: {_format_optional_ms(gate['raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms'])}",
+            f"Minimum required win: {gate['raw_uds_min_win_ms']:g} ms",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     comparison = compare_artifacts(
@@ -444,6 +502,8 @@ def main(argv: list[str] | None = None) -> int:
         args.output.write_text(encoded, encoding="utf8")
     else:
         print(encoded, end="")
+    if args.markdown_output is not None:
+        args.markdown_output.write_text(format_markdown_summary(comparison), encoding="utf8")
     return 1 if comparison_has_blocking_gaps(
         comparison,
         require_raw_uds_recommendation=args.require_raw_uds_recommendation,
