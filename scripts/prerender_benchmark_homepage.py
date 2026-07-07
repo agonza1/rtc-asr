@@ -855,6 +855,10 @@ def sitemap_lastmod(value: str | None) -> str | None:
     return parsed.astimezone(UTC).date().isoformat()
 
 
+def sitemap_entry_lastmod(entry: dict[str, Any]) -> str | None:
+    return sitemap_lastmod(entry.get("artifact_modified_at") or entry.get("measured_at"))
+
+
 def render_sitemap(manifest: dict[str, Any], base_url: str) -> str:
     generated_lastmod = sitemap_lastmod(manifest.get("generated_at"))
     detail_lastmods: dict[str, str | None] = {}
@@ -863,7 +867,7 @@ def render_sitemap(manifest: dict[str, Any], base_url: str) -> str:
         artifact_path = entry.get("artifact_path")
         if not artifact_path:
             continue
-        lastmod = sitemap_lastmod(entry.get("measured_at"))
+        lastmod = sitemap_entry_lastmod(entry)
         if str(artifact_path).endswith(".json"):
             current_artifact_lastmod = artifact_lastmods.get(artifact_path)
             if current_artifact_lastmod is None or (lastmod is not None and lastmod > current_artifact_lastmod):
