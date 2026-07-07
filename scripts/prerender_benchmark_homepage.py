@@ -117,6 +117,14 @@ def ttfb_first_partial_description() -> str:
     return "End-to-end ASR time-to-first-byte equivalent: stream start until the first visible partial transcript appears."
 
 
+def partial_backlog_mean(entry: dict[str, Any]) -> float | None:
+    return entry.get("streaming", {}).get("partial_gap_mean_ms")
+
+
+def partial_backlog_p95(entry: dict[str, Any]) -> float | None:
+    return entry.get("streaming", {}).get("partial_gap_p95_ms")
+
+
 def published_tracks(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     return [track for track in manifest.get("tracks", []) if track.get("artifact_path") and track.get("status") != "blocked"]
 
@@ -768,7 +776,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <div class="grid">
         <article class="card"><span class="label">Overall score</span><div class="value">{score}</div><p>Confidence {confidence}</p></article>
         <article class="card"><span class="label">TTFB / first partial</span><div class="value">{format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</div><p>P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</p></article>
-        <article class="card"><span class="label">Partial backlog latency</span><div class="value">{format_ms(streaming.get("partial_mean_ms"))}</div><p>Diagnostic chunk-response delay. Gap {format_ms(streaming.get("partial_gap_mean_ms"))} · Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
+        <article class="card"><span class="label">Partial backlog latency</span><div class="value">{format_ms(partial_backlog_mean(entry))}</div><p>Diagnostic partial cadence after streaming is underway. P95 {format_ms(partial_backlog_p95(entry))} . Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
         <article class="card"><span class="label">Transport contract</span><div class="value">{html.escape(str(transport_value))}</div><p>{contract_value} · Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Sample rate {contract.get("sample_rate") or 'n/a'} Hz · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p><p>UDS path {html.escape(str(uds_path_value))} · Frame format {html.escape(str(frame_format_value))} · Header bytes {html.escape(str(frame_header_value if frame_header_value is not None else 'n/a'))}</p></article>
@@ -893,7 +901,7 @@ def render_row(
     rest = entry.get("rest", {})
     derived = entry.get("derived", {})
     first_partial_value = first_visible_partial(entry)
-    partial_value = streaming.get("partial_mean_ms")
+    partial_value = partial_backlog_mean(entry)
     final_value = streaming.get("final_mean_ms")
     first_partial_delta = None if first_partial_value is None or first_partial_baseline is None else first_partial_value - first_partial_baseline
     partial_delta = None if partial_value is None or partial_baseline is None else partial_value - partial_baseline
@@ -915,7 +923,7 @@ def render_row(
             f'<td data-label="State"><span class="status status-{status}">{status}</span></td>',
             f'<td data-label="Score"><strong>{score}</strong><div class="tiny">Confidence {confidence_text}</div></td>',
             f'<td data-label="TTFB / first partial"><strong>{format_ms(first_partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</div><div class="tiny">{delta_text(first_partial_delta)} {html.escape(baseline_label)}</div></td>',
-            f'<td data-label="Partial backlog latency"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("partial_p95_ms"))}</div><div class="tiny">{delta_text(partial_delta)} vs lowest diagnostic</div></td>',
+            f'<td data-label="Partial backlog latency"><strong>{format_ms(partial_value)}</strong><div class="tiny">P95 {format_ms(partial_backlog_p95(entry))}</div><div class="tiny">{delta_text(partial_delta)} vs lowest diagnostic</div></td>',
             f'<td data-label="Audio-end finalization"><strong>{format_ms(final_value)}</strong><div class="tiny">P95 {format_ms(streaming.get("final_p95_ms"))}</div><div class="tiny">{delta_text(final_delta)} vs fastest</div></td>',
             f'<td data-label="REST throughput context"><strong>{format_ms(rest.get("mean_ms"))}</strong><div class="tiny">P95 {format_ms(rest.get("p95_ms"))} . RTF {format_ratio(rest.get("rtf_mean"))}</div><div class="metric-bar"><span style="width:{rest_width}%"></span></div></td>',
             f'<td data-label="Samples"><strong>{entry.get("sample_count") or "n/a"}</strong><div class="tiny">Target {sample_target_label}</div><div class="tiny">Measured {html.escape(format_date(entry.get("measured_at")))}</div></td>',
@@ -955,7 +963,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     secondary = sort_entries(secondary + [entry for entry in historical_secondary if entry.get("artifact_path") not in secondary_paths])
     baseline_entries = comparable_entries(primary)
     first_partial_baseline = min_defined([first_visible_partial(entry) for entry in baseline_entries])
-    partial_baseline = min_defined([entry.get("streaming", {}).get("partial_mean_ms") for entry in primary])
+    partial_baseline = min_defined([partial_backlog_mean(entry) for entry in primary])
     final_baseline = min_defined([entry.get("streaming", {}).get("final_mean_ms") for entry in primary])
     baseline_label = "vs validated fastest" if len(baseline_entries) != len(primary) else "vs fastest"
     max_rest = max([entry.get("rest", {}).get("mean_ms") or 0 for entry in primary] or [1]) or 1
