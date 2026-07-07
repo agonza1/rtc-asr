@@ -1130,6 +1130,9 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert '<meta property="og:title" content="Parakeet 110M NeMo MLX | rtc-asr benchmark artifact">' in rss_detail
     assert '<meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
     assert '<meta name="twitter:card" content="summary">' in rss_detail
+    assert '<meta name="keywords" content="rtc-asr, ASR latency benchmark, Parakeet 110M NeMo MLX, parakeet-mlx, apple-silicon / auto, Local Python Apple Silicon MLX Service, v1-stt-stream">' in rss_detail
+    assert '"keywords": [' in rss_detail
+    assert '"Parakeet 110M NeMo MLX"' in rss_detail
     assert '<link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html">' in rss_detail
     assert '<link rel="sitemap" type="application/xml" href="../../sitemap.xml">' in rss_detail
     assert '<link rel="alternate" type="application/json" href="../parakeet-mlx-110m-service-2026-06-21.json" title="Raw benchmark JSON artifact">' in rss_detail
