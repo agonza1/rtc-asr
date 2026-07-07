@@ -642,6 +642,15 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     measured_at = entry.get("measured_at")
     artifact_modified_at = entry.get("artifact_modified_at")
     article_modified_at = artifact_modified_at or measured_at
+    keywords = [
+        "rtc-asr",
+        "ASR latency benchmark",
+        str(entry.get("label") or artifact_name or "benchmark artifact"),
+        str(entry.get("backend") or "unknown backend"),
+        str(entry.get("runtime") or "unknown runtime"),
+        str(entry.get("lane") or "unknown lane"),
+        str(contract.get("transport") or contract.get("path") or "unknown transport"),
+    ]
     structured_data = {
         "@context": "https://schema.org",
         "@type": "Dataset",
@@ -652,6 +661,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "datePublished": measured_at,
         "dateModified": article_modified_at,
         "measurementTechnique": technique,
+        "keywords": keywords,
         "variableMeasured": [
             "ASR TTFB / first visible partial latency",
             "partial backlog latency",
@@ -720,6 +730,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{html.escape(description)}">
+    <meta name="keywords" content="{html.escape(', '.join(keywords))}">
     <meta property="og:type" content="article">
     <meta property="og:title" content="{html.escape(preview_title)}">
     <meta property="og:description" content="{html.escape(description)}">
