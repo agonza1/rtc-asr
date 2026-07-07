@@ -219,6 +219,7 @@ def missing_required_metrics(metrics: dict[str, dict[str, float | None]]) -> lis
 def recommendation_text(
     *,
     missing: list[str],
+    unexpected: list[str],
     raw_vs_uds_delta_ms: float | None,
     raw_uds_min_win_ms: float,
     raw_uds_experimental: bool,
@@ -229,6 +230,8 @@ def recommendation_text(
 ) -> str:
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
+    if unexpected:
+        return "Remove unexpected transport benchmark artifacts before recommending raw UDS."
     if missing_metrics:
         return "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
     if run_gaps:
@@ -408,6 +411,7 @@ def compare_artifacts(
         ),
         "recommendation": recommendation_text(
             missing=missing,
+            unexpected=unexpected,
             raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
             raw_uds_min_win_ms=raw_uds_min_win_ms,
             raw_uds_experimental=raw_uds_experimental,

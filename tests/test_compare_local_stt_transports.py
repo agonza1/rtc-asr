@@ -103,6 +103,7 @@ def test_compare_artifacts_reports_unexpected_transport_artifacts(tmp_path: Path
     assert comparison["unexpected_transports"] == ["websocket"]
     assert comparison["blocking_gaps"] == ["unexpected transport benchmark: websocket"]
     assert comparison["raw_uds_should_remain_experimental"] is True
+    assert comparison["recommendation"] == "Remove unexpected transport benchmark artifacts before recommending raw UDS."
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
