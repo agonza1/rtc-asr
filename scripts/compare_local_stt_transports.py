@@ -30,6 +30,8 @@ REQUIRED_TARGET_FIELDS_BY_TRANSPORT = {
     "uds_ws": ("url", "uds_path"),
     "raw_uds": ("uds_path",),
 }
+RAW_UDS_FRAME_FORMAT = "uint8_type_uint32_len_le"
+RAW_UDS_FRAME_HEADER_BYTES = 5
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -171,6 +173,19 @@ def target_field_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     return gaps
 
 
+def raw_uds_frame_contract_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
+    raw_uds = transports.get("raw_uds")
+    if raw_uds is None:
+        return []
+
+    gaps: list[str] = []
+    if raw_uds.get("frame_format") != RAW_UDS_FRAME_FORMAT:
+        gaps.append(f"raw_uds missing target.frame_format={RAW_UDS_FRAME_FORMAT}")
+    if raw_uds.get("frame_header_bytes") != RAW_UDS_FRAME_HEADER_BYTES:
+        gaps.append(f"raw_uds missing target.frame_header_bytes={RAW_UDS_FRAME_HEADER_BYTES}")
+    return gaps
+
+
 def metric_delta_ms(
     transports: dict[str, dict[str, Any]],
     *,
@@ -227,6 +242,7 @@ def recommendation_text(
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
     target_gaps: list[str],
+    frame_contract_gaps: list[str],
 ) -> str:
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
@@ -238,6 +254,8 @@ def recommendation_text(
         return "Re-run transport benchmarks with enough repeated runs before recommending raw UDS."
     if target_gaps:
         return "Re-run transport benchmarks with explicit endpoint targets before recommending raw UDS."
+    if frame_contract_gaps:
+        return "Re-run raw UDS benchmarks with the required length-prefixed frame contract before recommending raw UDS."
     if not all_present_transports_protocol_error_free:
         return "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
     if raw_vs_uds_delta_ms is None:
@@ -254,6 +272,7 @@ def blocking_gap_reasons(
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
     target_gaps: list[str],
+    frame_contract_gaps: list[str],
     transports: dict[str, dict[str, Any]],
 ) -> list[str]:
     reasons: list[str] = []
@@ -263,6 +282,7 @@ def blocking_gap_reasons(
         reasons.extend(f"{transport} missing metric percentile: {metric_gap}" for metric_gap in metric_gaps)
     reasons.extend(run_gaps)
     reasons.extend(target_gaps)
+    reasons.extend(frame_contract_gaps)
     for transport, payload in sorted(transports.items()):
         if not payload["protocol_error_free"]:
             protocol_errors = payload.get("metrics", {}).get("protocol_errors", {})
@@ -280,6 +300,7 @@ def raw_uds_recommendation_gate(
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
     target_gaps: list[str],
+    frame_contract_gaps: list[str],
     all_present_transports_protocol_error_free: bool,
     raw_vs_uds_delta_ms: float | None,
     raw_uds_min_win_ms: float,
@@ -291,6 +312,7 @@ def raw_uds_recommendation_gate(
         blockers.extend(f"missing_metric:{transport}:{metric_gap}" for metric_gap in metric_gaps)
     blockers.extend(f"run_count:{gap}" for gap in run_gaps)
     blockers.extend(f"target:{gap}" for gap in target_gaps)
+    blockers.extend(f"frame_contract:{gap}" for gap in frame_contract_gaps)
     if not all_present_transports_protocol_error_free:
         blockers.append("protocol_errors")
     if raw_vs_uds_delta_ms is None:
@@ -333,6 +355,8 @@ def compare_artifacts(
             **artifact_provenance(path),
             "url": artifact["target"].get("url"),
             "uds_path": artifact["target"].get("uds_path"),
+            "frame_format": artifact["target"].get("frame_format"),
+            "frame_header_bytes": artifact["target"].get("frame_header_bytes"),
             "runs": artifact.get("runs"),
             "metrics": metrics,
             "metrics_p95": metrics_p95,
@@ -362,6 +386,7 @@ def compare_artifacts(
     run_coverage = run_count_coverage(by_transport)
     run_gaps = run_count_gaps(by_transport, min_runs)
     target_gaps = target_field_gaps(by_transport)
+    frame_contract_gaps = raw_uds_frame_contract_gaps(by_transport)
 
     all_present_transports_protocol_error_free = all(
         transport["protocol_error_free"] for transport in by_transport.values()
@@ -372,6 +397,7 @@ def compare_artifacts(
         missing_metrics=missing_metrics_by_transport,
         run_gaps=run_gaps,
         target_gaps=target_gaps,
+        frame_contract_gaps=frame_contract_gaps,
         all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
         raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
         raw_uds_min_win_ms=raw_uds_min_win_ms,
@@ -393,6 +419,7 @@ def compare_artifacts(
         "minimum_required_runs": min_runs,
         "run_count_gaps": run_gaps,
         "target_field_gaps": target_gaps,
+        "raw_uds_frame_contract_gaps": frame_contract_gaps,
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_recommendation_gate": recommendation_gate,
         "raw_uds_vs_uds_ws_p95_deltas_ms": raw_vs_uds_deltas,
@@ -407,6 +434,7 @@ def compare_artifacts(
             missing_metrics=missing_metrics_by_transport,
             run_gaps=run_gaps,
             target_gaps=target_gaps,
+            frame_contract_gaps=frame_contract_gaps,
             transports=by_transport,
         ),
         "recommendation": recommendation_text(
@@ -419,6 +447,7 @@ def compare_artifacts(
             missing_metrics=missing_metrics_by_transport,
             run_gaps=run_gaps,
             target_gaps=target_gaps,
+            frame_contract_gaps=frame_contract_gaps,
         ),
     }
 
@@ -432,6 +461,7 @@ def comparison_has_blocking_gaps(
         or comparison["missing_p95_metrics_by_transport"]
         or comparison.get("run_count_gaps")
         or comparison.get("target_field_gaps")
+        or comparison.get("raw_uds_frame_contract_gaps")
         or not comparison["all_present_transports_protocol_error_free"]
         or (require_raw_uds_recommendation and comparison["raw_uds_should_remain_experimental"])
     )
