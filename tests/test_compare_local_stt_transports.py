@@ -485,6 +485,9 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
     assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown
+    assert "Raw UDS gate blockers:" in markdown
+    assert "- missing_transport:uds_ws" in markdown
+    assert "- missing_raw_uds_latency_delta" in markdown
 
 
 def test_main_writes_markdown_summary(tmp_path: Path) -> None:

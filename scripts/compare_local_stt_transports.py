@@ -488,9 +488,12 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
             f"Raw UDS recommendation gate: {'passed' if gate['passed'] else 'blocked'}",
             f"Raw UDS first-interim p95 win over UDS WebSocket: {_format_optional_ms(gate['raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms'])}",
             f"Minimum required win: {gate['raw_uds_min_win_ms']:g} ms",
-            "",
         ]
     )
+    if gate["blockers"]:
+        lines.extend(["", "Raw UDS gate blockers:"])
+        lines.extend(f"- {blocker}" for blocker in gate["blockers"])
+    lines.append("")
     return "\n".join(lines)
 
 
