@@ -270,6 +270,18 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
     raise ValueError(f"Unsupported benchmark transport: {transport}")
 
 
+def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None) -> dict[str, Any]:
+    target: dict[str, Any] = {"transport": transport, "url": url, "uds_path": uds_path}
+    if transport == "raw_uds":
+        target.update(
+            {
+                "frame_format": "uint8_type_uint32_len_le",
+                "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+            }
+        )
+    return target
+
+
 def load_audio_input(*, input_wav: Path | None, input_raw_pcm: Path | None, sample_rate: int, frame_ms: int) -> AudioInput:
     if input_wav is None and input_raw_pcm is None:
         raise ValueError("input_wav or input_raw_pcm is required")
@@ -439,7 +451,7 @@ async def run_benchmark(
     return {
         "kind": "local-stt-v1-latency-benchmark",
         "protocol": "local-stt.v1",
-        "target": {"transport": transport, "url": url, "uds_path": uds_path},
+        "target": describe_benchmark_target(transport=transport, url=url, uds_path=uds_path),
         "target_contract": describe_transport_contract(transport),
         "environment": describe_environment(
             process_pid=metrics_pid,
