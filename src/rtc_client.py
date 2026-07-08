@@ -496,8 +496,9 @@ class AsyncRawUdsLocalSttClient:
             ) from exc
         payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
         if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
-            raise RuntimeError(
-                f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes"
+            raise LocalSttProtocolError(
+                f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+                code="raw_uds_payload_too_large",
             )
         try:
             frame_payload = await reader.readexactly(payload_length)
