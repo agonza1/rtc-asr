@@ -57,6 +57,16 @@ DEFAULT_PROTOCOLS = [
                 "status": "codec_only",
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+                "benchmark_metrics": [
+                    "time_to_first_interim_ms",
+                    "time_to_final_after_finalize_ms",
+                    "send_queue_depth_p95",
+                    "asr_queue_delay_p95",
+                    "protocol_errors",
+                    "cpu_utilization",
+                ],
+                "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
                 "frame_types": {
                     "json_control": 1,
                     "audio_pcm16": 2,
