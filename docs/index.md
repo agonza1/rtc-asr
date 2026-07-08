@@ -1,6 +1,6 @@
 # Documentation Index
 
-`rtc-asr` is a modular transcription service for RTC and voice-agent workloads. Start with the benchmark notes when you need a decision on live-ASR tradeoffs, then drop into the API or integration guides only for implementation details.
+`rtc-asr` is a modular transcription service for RTC and voice-agent workloads. Start with the benchmark notes when you need a decision on live-ASR tradeoffs for local inference, edge devices, CPU sidecars, or small Apple Silicon deployments, then drop into the API or integration guides only for implementation details.
 
 ## Quick Links
 
@@ -16,6 +16,7 @@
 ## Recommended Reading Order
 
 - Start with [Benchmarks](./benchmarks.md) if you are deciding which ASR lane deserves a closer look.
+- Treat the benchmark leaderboard as an edge/local comparison. High-power GPU or hosted inference results may be much faster and should be tracked separately.
 - Use the [README](../../README.md) for local setup and operator defaults.
 - Use the [API Reference](./api-reference.md) for the current service contract, and [Local STT v1](./local-stt-v1.md) when you need the shared next-step websocket protocol for colocated plugins or sidecars.
 - Use the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide when you are wiring an RTC client around that service contract. Use the [Browser Pipecat Demo](../examples/browser_pipecat_demo/README.md) when you need the local browser -> Pipecat -> `rtc-asr` sidecar path and Docker Compose commands.

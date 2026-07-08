@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>
-    <meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications across ASR TTFB / first partial, partial cadence, audio-end finalization delay, throughput context, sample coverage, and benchmark methodology.">
+    <title>Edge ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>
+    <meta name="description" content="Compare low-latency local ASR backends for WebRTC and Voice AI applications on practical CPU sidecars and small Apple Silicon edge deployments across ASR TTFB / first partial, partial cadence, audio-end finalization delay, throughput context, sample coverage, and benchmark methodology.">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI">
-    <meta name="twitter:description" content="A reproducible benchmark comparing streaming ASR latency for real-time WebRTC and Voice AI applications.">
-    <meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI">
-    <meta property="og:description" content="A reproducible benchmark comparing streaming ASR latency for real-time WebRTC and Voice AI applications.">
+    <meta name="twitter:title" content="Edge ASR Latency Benchmarks for WebRTC Voice AI">
+    <meta name="twitter:description" content="A reproducible benchmark comparing streaming ASR latency for real-time WebRTC and Voice AI applications on local CPU and small Apple Silicon inference targets.">
+    <meta property="og:title" content="Edge ASR Latency Benchmarks for WebRTC Voice AI">
+    <meta property="og:description" content="A reproducible benchmark comparing streaming ASR latency for real-time WebRTC and Voice AI applications on local CPU and small Apple Silicon inference targets.">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="WebRTC.ventures Benchmarks">
     <meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/">
@@ -22,8 +22,8 @@
             "@type": "WebPage",
             "@id": "https://benchmarks.webrtc.ventures/asr-latency/#webpage",
             "url": "https://benchmarks.webrtc.ventures/asr-latency/",
-            "name": "Real-Time ASR Latency Benchmarks for WebRTC Voice AI",
-            "description": "Compare low-latency ASR backends for WebRTC and Voice AI applications, including ASR TTFB / first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology.",
+            "name": "Edge ASR Latency Benchmarks for WebRTC Voice AI",
+            "description": "Compare low-latency local ASR backends for WebRTC and Voice AI applications on practical CPU sidecars and small Apple Silicon edge deployments, including ASR TTFB / first partial, final transcript, REST latency, streaming responsiveness, sample coverage, and benchmark methodology.",
             "isPartOf": {
               "@id": "https://benchmarks.webrtc.ventures/#website"
             },
@@ -37,8 +37,8 @@
           {
             "@type": "Dataset",
             "@id": "https://benchmarks.webrtc.ventures/asr-latency/#dataset",
-            "name": "Real-Time ASR Latency Benchmarks for WebRTC Voice AI",
-            "description": "A reproducible benchmark comparing low-latency ASR backends for real-time WebRTC and Voice AI applications across ASR TTFB / first partial, partial cadence, audio-end finalization delay, throughput context, and sample coverage.",
+            "name": "Edge ASR Latency Benchmarks for WebRTC Voice AI",
+            "description": "A reproducible benchmark comparing low-latency local ASR backends for real-time WebRTC and Voice AI applications on practical CPU sidecars and small Apple Silicon edge deployments across ASR TTFB / first partial, partial cadence, audio-end finalization delay, throughput context, and sample coverage.",
             "url": "https://benchmarks.webrtc.ventures/asr-latency/",
             "creator": {
               "@id": "https://webrtc.ventures/#organization"
@@ -68,7 +68,7 @@
                 "name": "What does this benchmark actually measure?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "The homepage compares checked-in ASR artifacts across ASR TTFB / first partial responsiveness, partial cadence, audio-end finalization delay, throughput context, sample coverage, and runtime profile so teams can evaluate turn-taking readiness before voice AI launches."
+                  "text": "The homepage compares checked-in edge/local ASR artifacts across ASR TTFB / first partial responsiveness, partial cadence, audio-end finalization delay, throughput context, sample coverage, and runtime profile so teams can evaluate turn-taking readiness before voice AI launches on practical CPU sidecars or small Apple Silicon deployments."
                 }
               },
               {
@@ -596,9 +596,9 @@
         <div class="hero-grid">
           <div>
             <div class="eyebrow">WebRTC.ventures benchmarks</div>
-            <h1>Real-time ASR latency benchmarks for WebRTC voice AI.</h1>
-            <p class="lede">Compare low-latency ASR backends where turn-taking, barge-in, and transcript closeout matter most. The page now leads with a recommendation, keeps REST throughput in a supporting role, and separates incomplete lanes from the primary decision path.</p>
-            <p class="hero-copy">Built by WebRTC.ventures, this benchmark is meant to help teams choose a live-ASR starting point fast, then inspect supporting artifacts only when they need deeper validation.</p>
+            <h1>Edge ASR latency benchmarks for WebRTC voice AI.</h1>
+            <p class="lede">Compare low-latency local ASR backends where turn-taking, barge-in, and transcript closeout matter most on practical CPU sidecars and small Apple Silicon deployments. The page leads with a recommendation, keeps REST throughput in a supporting role, and separates incomplete lanes from the primary decision path.</p>
+            <p class="hero-copy">Built by WebRTC.ventures, this benchmark is meant to help teams choose a live-ASR starting point for edge and colocated inference. High-power GPUs, cloud accelerators, and tuned hosted inference stacks may perform much better and should be tracked separately.</p>
             <div class="hero-actions">
               <a class="action-link primary" href="#static-summary">Open primary ranking</a>
               <a class="action-link" href="benchmarks.md">Benchmark notes</a>
@@ -620,9 +620,10 @@ Published Jul 07, 2026, 03:42 AM UTC . 7 visible ASR lanes . 8 current artifact-
     <h2>Start with Parakeet 110M NeMo MLX for live turn-taking.</h2>
   </div>
   <p class="subcopy">Parakeet 110M NeMo MLX is the strongest publishable default right now: 250.7 ms ASR TTFB / first visible partial, 251.8 ms audio-end finalization, and backlog diagnostics that stay separated from perceived latency. The main ranking stays focused on fully comparable live lanes, while historical or differently scoped artifacts remain available through the appendix and detail pages.</p>
+  <p class="subcopy">These benchmarks target real-time voice AI on practical edge and local inference setups: CPU sidecars, Docker Compose CPU lanes, and small Apple Silicon runtimes. High-power GPUs, cloud accelerators, or tuned hosted inference may perform much better and should be published as separate tracks.</p>
 </section>
 <div class="snapshot-grid">
-  <article class="snapshot-card tone-moss"><div class="section-kicker">Recommended default</div><div class="headline-value">Parakeet 110M NeMo MLX</div><p>Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-06-21.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Alternative lane</div><div class="headline-value">Faster-Whisper Base</div><p>Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane now anchors the primary comparable live leaderboard while the remaining /ws/stream artifacts stay published as supporting evidence.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">7 fully comparable lanes</div><p>The main ranking only includes lanes with comparable live metrics. Historical and differently scoped artifacts remain available through the appendix and detail pages.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Published live contract</div><div class="headline-value">7 comparable artifacts</div><p>7 lanes are eligible for primary ranking after validation and publication filters; the rest stay discoverable as supporting evidence.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Best live numbers</div><div class="headline-value">250.7 ms</div><p>Fastest ASR TTFB / first visible partial in the primary comparison. Best finalization is 251.8 ms.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">System evidence</div><div class="headline-value">10 memory traces</div><p>5 artifacts include CPU utilization; 0 include power or energy readings; 0 include sustained thermal notes.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Low-power readiness</div><div class="headline-value">0 complete artifacts</div><p>0 of 23 artifacts include power evidence; 0 include sustained thermal evidence for battery-sensitive deployment decisions.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Sample coverage</div><div class="headline-value">21 complete targets</div><p>23 artifacts declare a sample target; 2 are below target and 0 are missing sample-count metadata.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Warning telemetry</div><div class="headline-value">0 flagged artifacts</div><p>n/a warnings recorded across checked-in artifacts. Codes: none recorded.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Archive hygiene</div><div class="headline-value">15 historical artifacts</div><p>422.1 KB of older evidence stays linked through detail pages while current tracked artifacts drive the homepage ranking.</p></article>
+  <article class="snapshot-card tone-moss"><div class="section-kicker">Recommended default</div><div class="headline-value">Parakeet 110M NeMo MLX</div><p>Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-06-21.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Alternative lane</div><div class="headline-value">Faster-Whisper Base</div><p>Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane now anchors the primary comparable live leaderboard while the remaining /ws/stream artifacts stay published as supporting evidence.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">7 edge/local lanes</div><p>The main ranking only includes comparable live metrics from practical local inference targets. Historical, high-power, or differently scoped artifacts belong in separate tracks and detail pages.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Published live contract</div><div class="headline-value">7 comparable artifacts</div><p>7 lanes are eligible for primary ranking after validation and publication filters; the rest stay discoverable as supporting evidence.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Best live numbers</div><div class="headline-value">250.7 ms</div><p>Fastest ASR TTFB / first visible partial in the primary comparison. Best finalization is 251.8 ms.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">System evidence</div><div class="headline-value">10 memory traces</div><p>5 artifacts include CPU utilization; 0 include power or energy readings; 0 include sustained thermal notes.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Low-power readiness</div><div class="headline-value">0 complete artifacts</div><p>0 of 23 artifacts include power evidence; 0 include sustained thermal evidence for battery-sensitive deployment decisions.</p></article><article class="snapshot-card tone-olive"><div class="section-kicker">Sample coverage</div><div class="headline-value">21 complete targets</div><p>23 artifacts declare a sample target; 2 are below target and 0 are missing sample-count metadata.</p></article><article class="snapshot-card tone-moss"><div class="section-kicker">Warning telemetry</div><div class="headline-value">0 flagged artifacts</div><p>n/a warnings recorded across checked-in artifacts. Codes: none recorded.</p></article><article class="snapshot-card tone-sage"><div class="section-kicker">Archive hygiene</div><div class="headline-value">15 historical artifacts</div><p>422.1 KB of older evidence stays linked through detail pages while current tracked artifacts drive the homepage ranking.</p></article>
 </div>
 <div class="story-grid" id="story-grid">
 <article class="story-card panel tone-moss"><div class="section-kicker">Rank 1</div><div class="story-rank">Parakeet 110M NeMo MLX</div><div class="chip-row"><div class="chip"><strong>apple-silicon / auto</strong> runtime</div><div class="chip"><strong>Local Python Apple Silicon MLX Service</strong> lane</div></div><p>Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-06-21.</p></article><article class="story-card panel tone-sage"><div class="section-kicker">Rank 2</div><div class="story-rank">Faster-Whisper Base</div><div class="chip-row"><div class="chip"><strong>cpu / int8</strong> runtime</div><div class="chip"><strong>Local Python CPU</strong> lane</div></div><p>Validated paced /v1/stt/stream artifact refreshed on 2026-06-20. This lane now anchors the primary comparable live leaderboard while the remaining /ws/stream artifacts stay published as supporting evidence.</p></article><article class="story-card panel tone-olive"><div class="section-kicker">Rank 3</div><div class="story-rank">Parakeet 110M NeMo</div><div class="chip-row"><div class="chip"><strong>cpu / float32</strong> runtime</div><div class="chip"><strong>Docker Compose CPU</strong> lane</div></div><p>Validated paced /v1/stt/stream Compose CPU artifact refreshed on 2026-06-21.</p></article>

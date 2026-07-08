@@ -1,11 +1,13 @@
-# Low-Latency ASR Benchmarks
+# Edge ASR Latency Benchmarks
 
-The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/manifest.json` and renders a public low-latency ASR dashboard with ranking, derived operator scores, and a homepage comparison flow limited to publishable artifacts. The manifest is built from two checked-in sources of truth:
+The GitHub Pages homepage at `docs/index.html` reads `docs/benchmark-results/manifest.json` and renders a public low-latency ASR dashboard with ranking, derived operator scores, and a homepage comparison flow limited to publishable artifacts. These benchmarks are scoped to real-time voice AI on practical local inference targets: CPU sidecars, Docker Compose CPU lanes, and small Apple Silicon deployments. They are edge-device and colocated-runtime benchmarks, not claims about what the same models could do on high-power GPUs, cloud accelerators, or larger dedicated inference servers.
+
+The manifest is built from two checked-in sources of truth:
 
 - benchmark artifacts under `docs/benchmark-results/*.json`
 - the tracked benchmark registry in `docs/benchmark-results/tracks.json`
 
-Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. The homepage stays latency-first, and this notes page labels external reference WER separately until the repo has its own reproducible quality track.
+Run `make benchmark-site` after changing either source so the homepage and this document stay aligned. The homepage stays latency-first for edge/local deployments, and this notes page labels external reference WER separately until the repo has its own reproducible quality track.
 
 Current publication policy: checked-in `/ws/stream` artifacts remain visible only as legacy supporting evidence. Paced `/v1/stt/stream` artifacts with `streaming.live_metrics_comparable == true` now populate the primary live leaderboard as they are regenerated.
 
@@ -14,6 +16,10 @@ Current publication policy: checked-in `/ws/stream` artifacts remain visible onl
 The homepage ranking is latency-first. Reference WER is shown only as external model-card or upstream benchmark context, not as an official rtc-asr accuracy claim.
 
 Official WER/CER results should appear only after they are tied to a named dataset, a repo-owned evaluation recipe, and a checked-in run artifact.
+
+## Scope Note
+
+Use these results to choose a realistic local ASR lane for WebRTC and voice-agent turn-taking when the service is running near the media pipeline. A workstation GPU, datacenter accelerator, or tuned hosted inference stack may make slower local lanes perform much better than they do here. Those results should be published as separate high-power tracks instead of being mixed into the edge/local leaderboard.
 
 ## Recommended Quality Methodology
 
