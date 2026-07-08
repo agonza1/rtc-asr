@@ -165,6 +165,26 @@ def test_compare_artifacts_requires_raw_uds_frame_contract(tmp_path: Path) -> No
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
+def test_compare_artifacts_accepts_raw_uds_frame_contract_from_benchmark_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("frame_format")
+    raw_payload["target"].pop("frame_header_bytes")
+    raw_payload["target_contract"] = {
+        "frame_format": "uint8_type_uint32_len_le",
+        "frame_header_bytes": 5,
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_contract_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["frame_format"] == "uint8_type_uint32_len_le"
+    assert comparison["transports"]["raw_uds"]["frame_header_bytes"] == 5
+
+
 def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path: Path) -> None:
     tcp = write_artifact(
         tmp_path / "tcp.json",
