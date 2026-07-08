@@ -135,6 +135,11 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                 {
                     "transport": "raw_uds",
                     "status": "codec_only",
+                    "uds_path": (
+                        config.local_stt_raw_uds_path
+                        if config is not None
+                        else AppConfig().local_stt_raw_uds_path
+                    ),
                     "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                     "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],

@@ -66,6 +66,7 @@ class AppConfig:
     local_stt_target_sample_rate: int = 16000
     local_stt_socket_mode: Literal["tcp", "uds"] = "tcp"
     local_stt_uds_path: str = "/run/rtc-asr/stt.sock"
+    local_stt_raw_uds_path: str = "/run/rtc-asr/stt.raw.sock"
     asr_backend: str = "faster-whisper"
     asr_model_size: str = "base.en"
     asr_device: str = "cpu"
@@ -102,6 +103,9 @@ class AppConfig:
         local_stt_uds_path = os.getenv("LOCAL_STT_UDS_PATH", defaults.local_stt_uds_path)
         if local_stt_socket_mode == "uds" and not local_stt_uds_path.strip():
             raise ValueError("LOCAL_STT_UDS_PATH is required when LOCAL_STT_SOCKET_MODE=uds")
+        local_stt_raw_uds_path = os.getenv("LOCAL_STT_RAW_UDS_PATH", defaults.local_stt_raw_uds_path)
+        if not local_stt_raw_uds_path.strip():
+            raise ValueError("LOCAL_STT_RAW_UDS_PATH must not be empty")
 
         return cls(
             app_name=os.getenv("APP_NAME", defaults.app_name),
@@ -125,6 +129,7 @@ class AppConfig:
             ),
             local_stt_socket_mode=local_stt_socket_mode,
             local_stt_uds_path=str(Path(local_stt_uds_path)),
+            local_stt_raw_uds_path=str(Path(local_stt_raw_uds_path)),
             asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
             asr_device=_default_asr_device(defaults.asr_device),
