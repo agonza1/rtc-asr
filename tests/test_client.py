@@ -485,8 +485,11 @@ def test_async_raw_uds_client_rejects_oversized_payload_before_body_read() -> No
 
     async def scenario() -> None:
         client = AsyncRawUdsLocalSttClient("/tmp/stt.sock", connect_fn=connect_fn)
-        with pytest.raises(RuntimeError, match="Raw UDS frame payload exceeds"):
+        with pytest.raises(LocalSttProtocolError) as excinfo:
             await client.recv_event()
+
+        assert excinfo.value.as_event().code == "raw_uds_payload_too_large"
+        assert f"{RAW_UDS_MAX_PAYLOAD_BYTES} bytes" in excinfo.value.as_event().message
 
     asyncio.run(scenario())
 
