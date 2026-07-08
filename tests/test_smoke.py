@@ -55,6 +55,7 @@ DEFAULT_PROTOCOLS = [
             {
                 "transport": "raw_uds",
                 "status": "codec_only",
+                "uds_path": AppConfig().local_stt_raw_uds_path,
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
@@ -376,6 +377,20 @@ def test_health_reports_active_uds_local_stt_transport(tmp_path: Path) -> None:
         "path": "/v1/stt/stream",
         "uds_path": str(socket_path),
     }
+
+
+def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    config = AppConfig(local_stt_raw_uds_path=str(raw_socket_path))
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as client:
+        protocols = client.get("/health").json()["protocols"]
+
+    local_stt = next(protocol for protocol in protocols if protocol["id"] == PROTOCOL_VERSION)
+    raw_uds = next(
+        transport for transport in local_stt["experimental_transports"] if transport["transport"] == "raw_uds"
+    )
+    assert raw_uds["uds_path"] == str(raw_socket_path)
 
 
 def test_ready_returns_503_when_preload_is_degraded() -> None:
@@ -1659,22 +1674,34 @@ def test_stream_max_buffer_bytes_must_be_positive(
 def test_local_stt_socket_mode_env_defaults_to_tcp(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
     monkeypatch.delenv("LOCAL_STT_UDS_PATH", raising=False)
+    monkeypatch.delenv("LOCAL_STT_RAW_UDS_PATH", raising=False)
 
     config = AppConfig.from_env()
 
     assert config.local_stt_socket_mode == "tcp"
     assert config.local_stt_uds_path == "/run/rtc-asr/stt.sock"
+    assert config.local_stt_raw_uds_path == "/run/rtc-asr/stt.raw.sock"
 
 
 def test_local_stt_socket_mode_env_supports_uds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     socket_path = tmp_path / "stt.sock"
+    raw_socket_path = tmp_path / "stt.raw.sock"
     monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "uds")
     monkeypatch.setenv("LOCAL_STT_UDS_PATH", str(socket_path))
+    monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", str(raw_socket_path))
 
     config = AppConfig.from_env()
 
     assert config.local_stt_socket_mode == "uds"
     assert config.local_stt_uds_path == str(socket_path)
+    assert config.local_stt_raw_uds_path == str(raw_socket_path)
+
+
+def test_local_stt_raw_uds_path_rejects_empty_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", "   ")
+
+    with pytest.raises(ValueError, match="LOCAL_STT_RAW_UDS_PATH must not be empty"):
+        AppConfig.from_env()
 
 
 def test_local_stt_socket_mode_rejects_invalid_value(monkeypatch: pytest.MonkeyPatch) -> None:
