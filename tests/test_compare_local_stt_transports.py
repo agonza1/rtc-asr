@@ -400,6 +400,32 @@ def test_compare_artifacts_rejects_invalid_raw_uds_recommendation_threshold(tmp_
         raise AssertionError("expected raw_uds_min_win_ms validation failure")
 
 
+def test_compare_artifacts_requires_matching_benchmark_inputs(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    for path, frame_ms in [(tcp, 20), (uds, 20), (raw, 40)]:
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["audio"] = {"sample_rate": 16000, "frame_ms": frame_ms, "duration_ms": 1000}
+        payload["settings"] = {"partial_interval_ms": 100, "realtime_pace": True}
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == [
+        "benchmark input mismatch for audio.frame_ms: raw_uds=40, tcp_ws=20, uds_ws=20"
+    ]
+    assert comparison["blocking_gaps"] == comparison["benchmark_input_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "benchmark_input:benchmark input mismatch for audio.frame_ms: raw_uds=40, tcp_ws=20, uds_ws=20"
+    ]
+    assert comparison["raw_uds_should_remain_experimental"] is True
+    assert comparison["recommendation"] == (
+        "Re-run transport benchmarks with matching audio and pacing settings before recommending raw UDS."
+    )
+
+
 def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
