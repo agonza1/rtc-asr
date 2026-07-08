@@ -35,8 +35,8 @@ from .protocol import (
     LocalSTTTranscriptEvent,
     build_start_message,
     decode_raw_uds_frame,
-    decode_raw_uds_json_payload,
     encode_raw_uds_frame,
+    parse_raw_uds_server_frame,
     encode_raw_uds_json_frame,
     parse_server_message,
     parse_transcript_event,
@@ -518,9 +518,7 @@ class RawUdsConnectionAdapter:
         if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
             raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
         frame = decode_raw_uds_frame(header + await self._reader.readexactly(payload_length))
-        if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
-            return json.dumps({"type": frame.frame_type.name.lower()})
-        return json.dumps(decode_raw_uds_json_payload(frame))
+        return json.dumps(parse_raw_uds_server_frame(frame))
 
     async def close(self, code: int = 1000) -> None:
         self._writer.close()

@@ -64,6 +64,19 @@ def decode_raw_uds_json_payload(frame: RawUdsFrame) -> dict[str, Any]:
     return payload
 
 
+def parse_raw_uds_server_frame(frame: RawUdsFrame) -> dict[str, Any]:
+    if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
+        return {"type": frame.frame_type.name.lower()}
+    if frame.frame_type in {RawUdsFrameType.JSON_EVENT, RawUdsFrameType.ERROR, RawUdsFrameType.PING, RawUdsFrameType.PONG}:
+        payload = decode_raw_uds_json_payload(frame)
+        if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG}:
+            payload.setdefault("type", frame.frame_type.name.lower())
+        return parse_server_message(payload)
+    raise LocalSTTProtocolError(
+        f"Raw UDS frame type {frame.frame_type.name} is not a server frame",
+        code="raw_uds_invalid_server_frame_type",
+    )
+
 
 @dataclass(slots=True)
 class LocalSTTProtocolError(ValueError):

@@ -18,7 +18,13 @@ from pipecat_local_stt.pipecat_compat import (
     VADUserStartedSpeakingFrame,
     VADUserStoppedSpeakingFrame,
 )
-from pipecat_local_stt.protocol import RawUdsFrameType, decode_raw_uds_frame, encode_raw_uds_frame, encode_raw_uds_json_frame
+from pipecat_local_stt.protocol import (
+    LocalSTTProtocolError,
+    RawUdsFrameType,
+    decode_raw_uds_frame,
+    encode_raw_uds_frame,
+    encode_raw_uds_json_frame,
+)
 from pipecat_local_stt.service import RawUdsConnectionAdapter, _default_connect
 
 
@@ -301,6 +307,17 @@ def test_raw_uds_adapter_decodes_empty_ping_frame() -> None:
     event = asyncio.run(connection.recv())
 
     assert json.loads(event) == {"type": "ping"}
+
+
+def test_raw_uds_adapter_rejects_client_frame_types_from_server() -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x00"))
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    with pytest.raises(LocalSTTProtocolError, match="not a server frame") as excinfo:
+        asyncio.run(connection.recv())
+
+    assert excinfo.value.code == "raw_uds_invalid_server_frame_type"
 
 
 def test_service_ignores_server_heartbeat_events() -> None:
