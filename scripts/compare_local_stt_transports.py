@@ -347,6 +347,7 @@ def compare_artifacts(
         if not isinstance(summary, dict):
             raise ValueError(f"{path} is missing summary")
         environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
+        target_contract = artifact.get("target_contract") if isinstance(artifact.get("target_contract"), dict) else {}
         metrics = {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS}
         metrics_p95 = {metric: metrics[metric]["p95"] for metric in KEY_METRICS}
         missing_metrics = missing_required_metrics(metrics)
@@ -355,8 +356,8 @@ def compare_artifacts(
             **artifact_provenance(path),
             "url": artifact["target"].get("url"),
             "uds_path": artifact["target"].get("uds_path"),
-            "frame_format": artifact["target"].get("frame_format"),
-            "frame_header_bytes": artifact["target"].get("frame_header_bytes"),
+            "frame_format": artifact["target"].get("frame_format") or target_contract.get("frame_format"),
+            "frame_header_bytes": artifact["target"].get("frame_header_bytes") or target_contract.get("frame_header_bytes"),
             "runs": artifact.get("runs"),
             "metrics": metrics,
             "metrics_p95": metrics_p95,

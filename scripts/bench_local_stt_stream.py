@@ -240,6 +240,8 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
         return {
             "control_channel": "unix_stream",
             "audio_framing": "length_prefixed_pcm16",
+            "frame_format": "uint8_type_uint32_len_le",
+            "frame_header_bytes": RAW_UDS_HEADER_BYTES,
             "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
             "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
             "frame_types": {
