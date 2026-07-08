@@ -117,6 +117,15 @@ def ttfb_first_partial_description() -> str:
     return "End-to-end ASR time-to-first-byte equivalent: stream start until the first visible partial transcript appears."
 
 
+def benchmark_scope_copy() -> str:
+    return (
+        "These benchmarks target real-time voice AI on practical edge and local inference setups: "
+        "CPU sidecars, Docker Compose CPU lanes, and small Apple Silicon runtimes. High-power GPUs, "
+        "cloud accelerators, or tuned hosted inference may perform much better and should be published "
+        "as separate tracks."
+    )
+
+
 def partial_backlog_mean(entry: dict[str, Any]) -> float | None:
     return entry.get("streaming", {}).get("partial_gap_mean_ms")
 
@@ -1002,7 +1011,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
             f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Alternative lane</div><div class="headline-value">{html.escape(alternative.get("label") or "unknown")}</div><p>{html.escape(alternative.get("status_detail") or "Supporting lane")}</p></article>'
         )
     summary_cards.append(
-        f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">{len(primary)} fully comparable lanes</div><p>The main ranking only includes lanes with comparable live metrics. Historical and differently scoped artifacts remain available through the appendix and detail pages.</p></article>'
+        f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Primary ranking scope</div><div class="headline-value">{len(primary)} edge/local lanes</div><p>The main ranking only includes comparable live metrics from practical local inference targets. Historical, high-power, or differently scoped artifacts belong in separate tracks and detail pages.</p></article>'
     )
     live_comparable_count = summary.get("live_comparable_count", len(primary))
     summary_cards.append(
@@ -1061,6 +1070,7 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     <h2>{html.escape(recommendation_title)}</h2>
   </div>
   <p class="subcopy">{html.escape(recommendation_copy)} The main ranking stays focused on fully comparable live lanes, while historical or differently scoped artifacts remain available through the appendix and detail pages.</p>
+  <p class="subcopy">{html.escape(benchmark_scope_copy())}</p>
 </section>
 <div class="snapshot-grid">
   {''.join(summary_cards)}

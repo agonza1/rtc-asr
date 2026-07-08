@@ -791,7 +791,8 @@ def test_render_homepage_keeps_historical_supporting_artifacts_discoverable() ->
 
     html = render_homepage(manifest, homepage)
 
-    assert "Historical and differently scoped artifacts remain available through the appendix and detail pages." in html
+    assert "These benchmarks target real-time voice AI on practical edge and local inference setups" in html
+    assert "Historical, high-power, or differently scoped artifacts belong in separate tracks and detail pages." in html
     assert "Artifacts kept out of the primary ranking" not in html
     assert "qwen-mps-2026-06-20.html" not in html
 
@@ -1370,9 +1371,9 @@ def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
 def test_homepage_head_includes_launch_seo_metadata() -> None:
     homepage = HOMEPAGE_PATH.read_text(encoding="utf-8")
 
-    assert "<title>Real-Time ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>" in homepage
-    assert 'meta name="description" content="Compare low-latency ASR backends for WebRTC and Voice AI applications across ASR TTFB / first partial, partial cadence, audio-end finalization delay, throughput context, sample coverage, and benchmark methodology."' in homepage
-    assert 'meta property="og:title" content="Real-Time ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
+    assert "<title>Edge ASR Latency Benchmarks for WebRTC Voice AI | WebRTC.ventures</title>" in homepage
+    assert 'meta name="description" content="Compare low-latency local ASR backends for WebRTC and Voice AI applications on practical CPU sidecars and small Apple Silicon edge deployments across ASR TTFB / first partial, partial cadence, audio-end finalization delay, throughput context, sample coverage, and benchmark methodology."' in homepage
+    assert 'meta property="og:title" content="Edge ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
     assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
     assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
     assert 'meta name="twitter:card" content="summary_large_image"' in homepage
