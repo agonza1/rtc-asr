@@ -478,7 +478,7 @@ def test_compare_artifacts_requires_matching_benchmark_inputs(tmp_path: Path) ->
 
     for path, frame_ms in [(tcp, 20), (uds, 20), (raw, 40)]:
         payload = json.loads(path.read_text(encoding="utf8"))
-        payload["audio"] = {"sample_rate": 16000, "frame_ms": frame_ms, "duration_ms": 1000}
+        payload["audio"] = {"source": "sample.raw", "sample_rate": 16000, "frame_ms": frame_ms, "duration_ms": 1000}
         payload["settings"] = {"partial_interval_ms": 100, "realtime_pace": True}
         path.write_text(json.dumps(payload), encoding="utf8")
 
@@ -662,7 +662,7 @@ def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_pat
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
     for path in (tcp, uds, raw):
         payload = json.loads(path.read_text(encoding="utf8"))
-        payload["audio"] = {"sample_rate": 16000, "frame_ms": 20, "duration_ms": 1000}
+        payload["audio"] = {"source": "sample.raw", "sample_rate": 16000, "frame_ms": 20, "duration_ms": 1000}
         payload["settings"] = {"partial_interval_ms": 100, "realtime_pace": True}
         path.write_text(json.dumps(payload), encoding="utf8")
 
@@ -671,7 +671,7 @@ def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_pat
     markdown = compare_module.format_markdown_summary(comparison)
 
     assert "Benchmark inputs:" in markdown
-    assert "| tcp_ws | 16000 | 20 | 1000 | 100 | True |" in markdown
-    assert "| uds_ws | 16000 | 20 | 1000 | 100 | True |" in markdown
-    assert "| raw_uds | 16000 | 20 | 1000 | 100 | True |" in markdown
+    assert "| tcp_ws | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
+    assert "| uds_ws | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
+    assert "| raw_uds | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
 
