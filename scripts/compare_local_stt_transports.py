@@ -33,6 +33,9 @@ REQUIRED_TARGET_FIELDS_BY_TRANSPORT = {
 RAW_UDS_FRAME_FORMAT = "uint8_type_uint32_len_le"
 RAW_UDS_FRAME_HEADER_BYTES = 5
 RAW_UDS_REQUIRED_LIFECYCLE = ("start", "audio", "transcript", "finalize", "cancel", "close")
+RAW_UDS_LIFECYCLE_ORDER = {
+    event: position for position, event in enumerate(RAW_UDS_REQUIRED_LIFECYCLE)
+}
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -199,6 +202,12 @@ def raw_uds_lifecycle_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     missing = [event for event in RAW_UDS_REQUIRED_LIFECYCLE if event not in lifecycle]
     if missing:
         return [f"raw_uds missing lifecycle coverage: {','.join(missing)}"]
+    ordered_events = [event for event in lifecycle if event in RAW_UDS_LIFECYCLE_ORDER]
+    ordered_positions = [RAW_UDS_LIFECYCLE_ORDER[event] for event in ordered_events]
+    if ordered_positions != sorted(ordered_positions):
+        expected = ",".join(RAW_UDS_REQUIRED_LIFECYCLE)
+        observed = ",".join(ordered_events)
+        return [f"raw_uds lifecycle order mismatch: expected {expected}; got {observed}"]
     return []
 
 
