@@ -35,7 +35,11 @@ def write_artifact(
                     "url": "ws://localhost/v1/stt/stream" if transport != "raw_uds" else None,
                     "uds_path": "/tmp/stt.sock" if transport != "tcp_ws" else None,
                     **(
-                        {"frame_format": "uint8_type_uint32_len_le", "frame_header_bytes": 5}
+                        {
+                            "frame_format": "uint8_type_uint32_len_le",
+                            "frame_header_bytes": 5,
+                            "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+                        }
                         if transport == "raw_uds"
                         else {}
                     ),
@@ -183,6 +187,51 @@ def test_compare_artifacts_accepts_raw_uds_frame_contract_from_benchmark_contrac
     assert comparison["raw_uds_frame_contract_gaps"] == []
     assert comparison["transports"]["raw_uds"]["frame_format"] == "uint8_type_uint32_len_le"
     assert comparison["transports"]["raw_uds"]["frame_header_bytes"] == 5
+
+
+def test_compare_artifacts_requires_raw_uds_lifecycle_coverage(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["lifecycle"] = ["start", "audio", "transcript", "finalize"]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_lifecycle_gaps"] == ["raw_uds missing lifecycle coverage: cancel,close"]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_lifecycle_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "lifecycle:raw_uds missing lifecycle coverage: cancel,close"
+    ]
+    assert comparison["recommendation"] == (
+        "Re-run raw UDS benchmarks with full Local STT v1 lifecycle coverage before recommending raw UDS."
+    )
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+
+
+def test_compare_artifacts_accepts_raw_uds_lifecycle_from_benchmark_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("lifecycle")
+    raw_payload["target_contract"] = {
+        "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_lifecycle_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["lifecycle"] == [
+        "start",
+        "audio",
+        "transcript",
+        "finalize",
+        "cancel",
+        "close",
+    ]
 
 
 def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path: Path) -> None:
