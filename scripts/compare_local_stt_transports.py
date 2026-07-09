@@ -213,6 +213,7 @@ def raw_uds_lifecycle_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
 
 def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     comparable_fields = (
+        ("audio", "source"),
         ("audio", "sample_rate"),
         ("audio", "frame_ms"),
         ("audio", "duration_ms"),
@@ -633,14 +634,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
             [
                 "",
                 "Benchmark inputs:",
-                "| Transport | Sample rate | Frame ms | Duration ms | Partial interval ms | Realtime pace |",
-                "| --- | ---: | ---: | ---: | ---: | --- |",
+                "| Transport | Source | Sample rate | Frame ms | Duration ms | Partial interval ms | Realtime pace |",
+                "| --- | --- | ---: | ---: | ---: | ---: | --- |",
             ]
         )
         for transport in comparison["required_transports"]:
             payload = comparison["transports"].get(transport)
             if payload is None:
-                lines.append(f"| {transport} | missing | missing | missing | missing | missing |")
+                lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing |")
                 continue
             audio = payload.get("audio") or {}
             settings = payload.get("settings") or {}
@@ -649,6 +650,7 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                 + " | ".join(
                     [
                         transport,
+                        _format_optional_value(audio.get("source")),
                         _format_optional_value(audio.get("sample_rate")),
                         _format_optional_value(audio.get("frame_ms")),
                         _format_optional_value(audio.get("duration_ms")),
