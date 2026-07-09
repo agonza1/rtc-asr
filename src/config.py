@@ -66,6 +66,7 @@ class AppConfig:
     local_stt_target_sample_rate: int = 16000
     local_stt_socket_mode: Literal["tcp", "uds"] = "tcp"
     local_stt_uds_path: str = "/run/rtc-asr/stt.sock"
+    local_stt_raw_uds_enabled: bool = False
     local_stt_raw_uds_path: str = "/run/rtc-asr/stt.raw.sock"
     asr_backend: str = "faster-whisper"
     asr_model_size: str = "base.en"
@@ -129,6 +130,10 @@ class AppConfig:
             ),
             local_stt_socket_mode=local_stt_socket_mode,
             local_stt_uds_path=str(Path(local_stt_uds_path)),
+            local_stt_raw_uds_enabled=_env_flag(
+                "LOCAL_STT_RAW_UDS_ENABLED",
+                defaults.local_stt_raw_uds_enabled,
+            ),
             local_stt_raw_uds_path=str(Path(local_stt_raw_uds_path)),
             asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,

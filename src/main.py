@@ -9,7 +9,7 @@ import json
 import logging
 import math
 import stat
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -30,6 +30,9 @@ from .protocols import (
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
     PROTOCOL_VERSION,
+    CancelMessage,
+    CloseMessage,
+    PingMessage,
     AudioFormat,
     ErrorMessage,
     FinalizeMessage,
@@ -38,7 +41,11 @@ from .protocols import (
     StartMessage,
     TranscriptMessage,
     WarningMessage,
+    decode_raw_uds_frame,
+    encode_raw_uds_protocol_error,
+    encode_raw_uds_server_message,
     parse_client_message,
+    parse_raw_uds_client_frame,
     validate_audio_chunk,
 )
 
@@ -134,7 +141,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
             "experimental_transports": [
                 {
                     "transport": "raw_uds",
-                    "status": "codec_only",
+                    "status": "served" if config is not None and config.local_stt_raw_uds_enabled else "codec_only",
                     "uds_path": (
                         config.local_stt_raw_uds_path
                         if config is not None
@@ -160,7 +167,11 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "ping": 5,
                         "pong": 6,
                     },
-                    "notes": "Raw UDS framing is available as a tested codec for latency experiments; it is not a served transport yet.",
+                    "notes": (
+                        "Raw UDS framing is served on the configured Unix socket when LOCAL_STT_RAW_UDS_ENABLED=true; keep it experimental until benchmarked against UDS websocket."
+                        if config is not None and config.local_stt_raw_uds_enabled
+                        else "Raw UDS framing is available as a tested codec for latency experiments; enable LOCAL_STT_RAW_UDS_ENABLED=true to serve it."
+                    ),
                 }
             ],
             "audio": {
@@ -317,6 +328,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         app.state.services = services
+        raw_uds_server: asyncio.Server | None = None
         logger.info(
             "ASR service starting with backend=%s model=%s",
             services.transcriber.backend_name,
@@ -330,9 +342,20 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                 logger.warning("ASR preload failed: %s", exc)
                 if services.config.asr_fail_fast:
                     raise
+        if services.config.local_stt_raw_uds_enabled:
+            raw_uds_server = await asyncio.start_unix_server(
+                lambda reader, writer: _raw_uds_stream_client(reader, writer, services),
+                path=_prepare_uds_socket(services.config.local_stt_raw_uds_path, env_name="LOCAL_STT_RAW_UDS_PATH"),
+            )
+            logger.info("Raw UDS Local STT v1 listener ready at %s", services.config.local_stt_raw_uds_path)
         try:
             yield
         finally:
+            if raw_uds_server is not None:
+                raw_uds_server.close()
+                await raw_uds_server.wait_closed()
+                with suppress(FileNotFoundError):
+                    Path(services.config.local_stt_raw_uds_path).unlink()
             services.audio_processor.cleanup()
             logger.info("ASR service shutdown complete")
 
@@ -727,6 +750,237 @@ async def _send_queued_events(websocket: WebSocket, runtime: StreamRuntime) -> N
         finally:
             runtime.outgoing_events.task_done()
 
+
+class RawUdsClientDisconnected(Exception):
+    """Raised when a raw UDS client closes the socket between frames."""
+
+
+async def _raw_uds_stream_client(
+    reader: asyncio.StreamReader,
+    writer: asyncio.StreamWriter,
+    services: AppServices,
+) -> None:
+    runtime: StreamRuntime | None = None
+    worker_task: asyncio.Task[None] | None = None
+    send_task: asyncio.Task[None] | None = None
+    next_stream_id = 1
+
+    async def stop_runtime() -> None:
+        nonlocal runtime, worker_task, send_task
+        if runtime is not None:
+            runtime.close()
+        if worker_task is not None:
+            with suppress(asyncio.CancelledError, Exception):
+                await worker_task
+        if send_task is not None and not send_task.done():
+            send_task.cancel()
+        if send_task is not None:
+            with suppress(asyncio.CancelledError, Exception):
+                await send_task
+        runtime = None
+        worker_task = None
+        send_task = None
+
+    try:
+        while True:
+            receive_task = asyncio.create_task(_receive_raw_uds_event(reader))
+            wait_tasks: set[asyncio.Task[object]] = {receive_task}
+            if worker_task is not None:
+                wait_tasks.add(worker_task)
+            done, _pending = await asyncio.wait(wait_tasks, return_when=asyncio.FIRST_COMPLETED)
+
+            if worker_task is not None and worker_task in done:
+                receive_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await receive_task
+                await worker_task
+
+            payload, event_type = await receive_task
+
+            if event_type == "start":
+                if runtime is not None:
+                    raise LocalSttProtocolError(
+                        "Finish the active stream before starting a new one",
+                        code="invalid_state",
+                    )
+                assert isinstance(payload, LocalSttStartConfig)
+                session = _create_local_stt_stream_session(
+                    payload,
+                    services.config,
+                    stream_id=next_stream_id,
+                )
+                next_stream_id += 1
+                runtime = StreamRuntime(
+                    stream_id=session.stream_id,
+                    client_stream_id=session.client_stream_id,
+                    session=session,
+                    services=services,
+                )
+                worker_task = asyncio.create_task(_local_stt_asr_worker(runtime))
+                send_task = asyncio.create_task(_send_queued_raw_uds_events(writer, runtime))
+                await _write_raw_uds_event(
+                    writer,
+                    _local_stt_ready_event(
+                        session,
+                        backend=services.transcriber.backend_name,
+                        model=services.transcriber.model_name,
+                    ),
+                )
+                continue
+
+            if event_type == "audio":
+                if runtime is None:
+                    raise LocalSttProtocolError(
+                        "Send a start event before audio chunks",
+                        code="invalid_state",
+                    )
+                try:
+                    runtime.session.append_audio(payload)
+                except StreamClientError as exc:
+                    raise LocalSttProtocolError(
+                        str(exc),
+                        code="buffer_limit_exceeded",
+                        metadata={"max_buffer_bytes": runtime.session.max_buffer_bytes},
+                    ) from exc
+                runtime.note_audio()
+                continue
+
+            if event_type == "finalize":
+                if runtime is None:
+                    raise LocalSttProtocolError(
+                        "Send a start event before finalizing the stream",
+                        code="invalid_state",
+                    )
+                if not runtime.session.audio_buffer:
+                    raise LocalSttProtocolError(
+                        "No audio chunks received for this stream",
+                        code="invalid_state",
+                    )
+                runtime.request_finalize()
+                assert worker_task is not None
+                await worker_task
+                await runtime.outgoing_events.join()
+                if send_task is not None:
+                    send_task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await send_task
+                runtime = None
+                worker_task = None
+                send_task = None
+                continue
+
+            if event_type == "cancel":
+                if runtime is None:
+                    raise LocalSttProtocolError(
+                        "Send a start event before canceling the stream",
+                        code="invalid_state",
+                    )
+                runtime.request_cancel()
+                await runtime.outgoing_events.put(_local_stt_cancel_warning_event(runtime.session))
+                await runtime.outgoing_events.join()
+                await stop_runtime()
+                continue
+
+            if event_type == "ping":
+                if runtime is None or send_task is None:
+                    await _write_raw_uds_event(writer, _local_stt_pong_event(payload))
+                else:
+                    await runtime.outgoing_events.put(_local_stt_pong_event(payload))
+                continue
+
+            if event_type == "close":
+                if runtime is not None:
+                    await stop_runtime()
+                await _write_raw_uds_event(writer, {"type": "closed", "reason": "client_close", "metadata": {}})
+                return
+
+            raise LocalSttProtocolError(
+                f"Unsupported Local STT v1 message type: {event_type}",
+                code="unsupported_message_type",
+            )
+    except RawUdsClientDisconnected:
+        await stop_runtime()
+    except ASRUnavailableError as exc:
+        services.preload_error = str(exc)
+        await stop_runtime()
+        await _write_raw_uds_event(
+            writer,
+            ErrorMessage(type="error", code="backend_unavailable", message=str(exc)).model_dump(),
+        )
+    except LocalSttProtocolError as exc:
+        await stop_runtime()
+        await _write_raw_uds_protocol_error(writer, exc)
+    except Exception as exc:  # pragma: no cover - defensive socket boundary
+        _record_lazy_load_failure(services, exc)
+        await stop_runtime()
+        logger.exception("Unexpected Local STT v1 raw UDS stream error")
+        await _write_raw_uds_event(
+            writer,
+            ErrorMessage(type="error", code="internal_error", message="Unexpected streaming error").model_dump(),
+        )
+    finally:
+        writer.close()
+        with suppress(ConnectionError, RuntimeError):
+            await writer.wait_closed()
+
+
+async def _send_queued_raw_uds_events(writer: asyncio.StreamWriter, runtime: StreamRuntime) -> None:
+    while not runtime.closed or not runtime.outgoing_events.empty():
+        try:
+            event = await asyncio.wait_for(runtime.outgoing_events.get(), timeout=0.1)
+        except TimeoutError:
+            continue
+        try:
+            await _write_raw_uds_event(writer, event)
+        finally:
+            runtime.outgoing_events.task_done()
+
+
+async def _receive_raw_uds_event(reader: asyncio.StreamReader) -> tuple[object, str]:
+    try:
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
+            raise LocalSttProtocolError(
+                f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+                code="raw_uds_payload_too_large",
+            )
+        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+    except asyncio.IncompleteReadError as exc:
+        if not exc.partial:
+            raise RawUdsClientDisconnected() from exc
+        raise LocalSttProtocolError(
+            "Raw UDS stream ended while reading frame payload",
+            code="raw_uds_incomplete_frame",
+        ) from exc
+
+    payload = parse_raw_uds_client_frame(frame)
+    if isinstance(payload, bytes):
+        return payload, "audio"
+    if isinstance(payload, StartMessage):
+        return _parse_local_stt_start_message(payload.model_dump()), "start"
+    if isinstance(payload, FinalizeMessage):
+        return payload, "finalize"
+    if isinstance(payload, CancelMessage):
+        return payload, "cancel"
+    if isinstance(payload, CloseMessage):
+        return payload, "close"
+    if isinstance(payload, PingMessage):
+        return payload, "ping"
+    raise LocalSttProtocolError(
+        f"Unsupported Local STT v1 message type: {getattr(payload, 'type', type(payload).__name__)}",
+        code="unsupported_message_type",
+    )
+
+
+async def _write_raw_uds_event(writer: asyncio.StreamWriter, payload: dict[str, Any]) -> None:
+    writer.write(encode_raw_uds_server_message(payload))
+    await writer.drain()
+
+
+async def _write_raw_uds_protocol_error(writer: asyncio.StreamWriter, exc: LocalSttProtocolError) -> None:
+    writer.write(encode_raw_uds_protocol_error(exc))
+    await writer.drain()
 
 async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
     session = runtime.session
@@ -1283,13 +1537,13 @@ async def _close_websocket_error(websocket: WebSocket, message: str, *, code: in
 app = create_app()
 
 
-def _prepare_uds_socket(path: str) -> str:
+def _prepare_uds_socket(path: str, *, env_name: str = "LOCAL_STT_UDS_PATH") -> str:
     socket_path = Path(path)
     try:
         socket_path.parent.mkdir(parents=True, exist_ok=True)
     except PermissionError as exc:
         raise RuntimeError(
-            f"Cannot create LOCAL_STT_UDS_PATH parent directory for {socket_path}. "
+            f"Cannot create {env_name} parent directory for {socket_path}. "
             "Choose a writable socket path or fix directory permissions."
         ) from exc
 
@@ -1299,20 +1553,20 @@ def _prepare_uds_socket(path: str) -> str:
         return str(socket_path)
     except PermissionError as exc:
         raise RuntimeError(
-            f"Cannot inspect LOCAL_STT_UDS_PATH {socket_path}. "
+            f"Cannot inspect {env_name} {socket_path}. "
             "Choose a readable socket path or fix file permissions."
         ) from exc
 
     if not stat.S_ISSOCK(mode):
         raise RuntimeError(
-            f"LOCAL_STT_UDS_PATH exists and is not a socket: {socket_path}. "
+            f"{env_name} exists and is not a socket: {socket_path}. "
             "Remove it or choose a different path."
         )
     try:
         socket_path.unlink()
     except PermissionError as exc:
         raise RuntimeError(
-            f"Cannot remove stale LOCAL_STT_UDS_PATH socket {socket_path}. "
+            f"Cannot remove stale {env_name} socket {socket_path}. "
             "Fix socket directory permissions or remove the stale socket manually."
         ) from exc
     return str(socket_path)

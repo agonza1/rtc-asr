@@ -39,7 +39,7 @@ stt = RtcAsrSTTService(
 )
 ```
 
-The experimental raw UDS client path uses the same `RtcAsrSTTService` API, but swaps WebSocket frames for the Local STT v1 length-prefixed raw UDS frame codec. Use it only with a matching raw UDS server/proxy during issue 88 transport experiments, and keep it out of default deployments unless benchmark artifacts show a p95 first-interim win of at least 5 ms over UDS WebSocket:
+The experimental raw UDS client path uses the same `RtcAsrSTTService` API, but swaps WebSocket frames for the Local STT v1 length-prefixed raw UDS frame codec. Use it only after starting `rtc-asr` with `LOCAL_STT_RAW_UDS_ENABLED=true` and a matching `LOCAL_STT_RAW_UDS_PATH`, and keep it out of default deployments unless benchmark artifacts show a p95 first-interim win of at least 5 ms over UDS WebSocket:
 
 ```python
 stt = RtcAsrSTTService(

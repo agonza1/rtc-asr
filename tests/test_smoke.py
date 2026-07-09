@@ -22,7 +22,18 @@ from src.main import (
     main,
 )
 from src.model_loader import ASRUnavailableError
-from src.protocols.local_stt_v1 import HOT_PATH_BYTES_PER_FRAME, HOT_PATH_CHANNELS, HOT_PATH_FRAME_MS, HOT_PATH_PCM_FORMAT, HOT_PATH_SAMPLE_RATE, RAW_UDS_HEADER_BYTES, RAW_UDS_MAX_PAYLOAD_BYTES, PROTOCOL_VERSION, parse_server_message
+from src.protocols.local_stt_v1 import (
+    HOT_PATH_BYTES_PER_FRAME,
+    HOT_PATH_CHANNELS,
+    HOT_PATH_FRAME_MS,
+    HOT_PATH_PCM_FORMAT,
+    HOT_PATH_SAMPLE_RATE,
+    RAW_UDS_HEADER_BYTES,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
+    PROTOCOL_VERSION,
+    parse_server_message,
+)
+from src.rtc_client import AsyncRawUdsLocalSttClient
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
@@ -76,7 +87,7 @@ DEFAULT_PROTOCOLS = [
                     "ping": 5,
                     "pong": 6,
                 },
-                "notes": "Raw UDS framing is available as a tested codec for latency experiments; it is not a served transport yet.",
+                "notes": "Raw UDS framing is available as a tested codec for latency experiments; enable LOCAL_STT_RAW_UDS_ENABLED=true to serve it.",
             }
         ],
         "audio": {
@@ -392,6 +403,66 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     )
     assert raw_uds["uds_path"] == str(raw_socket_path)
 
+
+def test_health_reports_enabled_raw_uds_server_path(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as client:
+        protocols = client.get("/health").json()["protocols"]
+        assert raw_socket_path.exists()
+
+    local_stt = next(protocol for protocol in protocols if protocol["id"] == PROTOCOL_VERSION)
+    raw_uds = next(
+        transport for transport in local_stt["experimental_transports"] if transport["transport"] == "raw_uds"
+    )
+    assert raw_uds["status"] == "served"
+    assert raw_uds["uds_path"] == str(raw_socket_path)
+    assert "LOCAL_STT_RAW_UDS_ENABLED=true" in raw_uds["notes"]
+    assert not raw_socket_path.exists()
+
+
+def test_raw_uds_server_shares_local_stt_v1_stream_runtime(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    transcriber = FakeTranscriber()
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+    chunk = b"r" * HOT_PATH_BYTES_PER_FRAME
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient(str(raw_socket_path))
+        ready = await client.start(
+            client_stream_id="raw-turn-1",
+            metadata={"turn_id": "raw-turn-1"},
+            partial_interval_ms=HOT_PATH_FRAME_MS,
+        )
+        assert ready["metadata"]["client_stream_id"] == "raw-turn-1"
+
+        await client.send_audio(chunk)
+        partial = await client.recv_event()
+        assert partial is not None
+        assert partial.type == "partial"
+        assert partial.metadata["chunks_received"] == 1
+
+        await client.finalize()
+        final = await client.recv_event()
+        assert final is not None
+        assert final.type == "final"
+        assert final.metadata["client_stream_id"] == "raw-turn-1"
+
+        closed = await client.close()
+        assert closed == {"type": "closed", "reason": "client_close", "metadata": {}}
+
+    with TestClient(create_app(config=config, transcriber=transcriber)):
+        asyncio.run(scenario())
+
+    assert transcriber.calls == [
+        {
+            "audio_size": len(chunk),
+            "language": "en",
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "prefix": chunk[:4],
+        }
+    ]
 
 def test_ready_returns_503_when_preload_is_degraded() -> None:
     transcriber = FailingPreloadTranscriber(ASRUnavailableError("backend unavailable"))
