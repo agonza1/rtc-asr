@@ -547,6 +547,10 @@ def _format_optional_ms(value: float | None) -> str:
 def _format_optional_value(value: Any) -> str:
     if value is None or value == "":
         return "missing"
+    if isinstance(value, list):
+        if not value:
+            return "missing"
+        return ",".join(str(item) for item in value)
     return str(value)
 
 
@@ -587,14 +591,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
         [
             "",
             "Transport targets:",
-            "| Transport | URL | UDS path | Raw frame format | Header bytes |",
-            "| --- | --- | --- | --- | ---: |",
+            "| Transport | URL | UDS path | Raw frame format | Header bytes | Lifecycle |",
+            "| --- | --- | --- | --- | ---: | --- |",
         ]
     )
     for transport in comparison["required_transports"]:
         payload = comparison["transports"].get(transport)
         if payload is None:
-            lines.append(f"| {transport} | missing | missing | missing | missing |")
+            lines.append(f"| {transport} | missing | missing | missing | missing | missing |")
             continue
         lines.append(
             "| "
@@ -605,6 +609,7 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                     _format_optional_value(payload.get("uds_path")),
                     _format_optional_value(payload.get("frame_format")),
                     _format_optional_value(payload.get("frame_header_bytes")),
+                    _format_optional_value(payload.get("lifecycle")),
                 ]
             )
             + " |"
