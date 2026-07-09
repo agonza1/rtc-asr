@@ -210,6 +210,28 @@ def test_compare_artifacts_requires_raw_uds_lifecycle_coverage(tmp_path: Path) -
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
+def test_compare_artifacts_requires_raw_uds_lifecycle_order(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["lifecycle"] = ["start", "audio", "finalize", "transcript", "cancel", "close"]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_lifecycle_gaps"] == [
+        "raw_uds lifecycle order mismatch: expected start,audio,transcript,finalize,cancel,close; "
+        "got start,audio,finalize,transcript,cancel,close"
+    ]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_lifecycle_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "lifecycle:raw_uds lifecycle order mismatch: expected start,audio,transcript,finalize,cancel,close; "
+        "got start,audio,finalize,transcript,cancel,close"
+    ]
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+
+
 def test_compare_artifacts_accepts_raw_uds_lifecycle_from_benchmark_contract(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
