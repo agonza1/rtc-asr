@@ -561,6 +561,7 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing |" in markdown
     assert "| uds_ws | missing | missing | missing | missing |" in markdown
     assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 |" in markdown
+    assert "Benchmark inputs:" not in markdown
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
     assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown
@@ -582,4 +583,24 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     assert "Raw UDS recommendation gate: passed" in markdown
     assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 |" in markdown
     assert "Minimum required win: 5 ms" in markdown
+
+
+def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+    for path in (tcp, uds, raw):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["audio"] = {"sample_rate": 16000, "frame_ms": 20, "duration_ms": 1000}
+        payload["settings"] = {"partial_interval_ms": 100, "realtime_pace": True}
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    markdown = compare_module.format_markdown_summary(comparison)
+
+    assert "Benchmark inputs:" in markdown
+    assert "| tcp_ws | 16000 | 20 | 1000 | 100 | True |" in markdown
+    assert "| uds_ws | 16000 | 20 | 1000 | 100 | True |" in markdown
+    assert "| raw_uds | 16000 | 20 | 1000 | 100 | True |" in markdown
 
