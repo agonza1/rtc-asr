@@ -16,6 +16,7 @@ DEFAULT_MANIFEST_PATH = Path("docs") / "benchmark-results" / "manifest.json"
 DEFAULT_HOMEPAGE_PATH = Path("docs") / "index.html"
 DEFAULT_DETAIL_DIR = Path("docs") / "benchmark-results" / "pages"
 DEFAULT_SITEMAP_PATH = Path("docs") / "sitemap.xml"
+DEFAULT_ROBOTS_PATH = Path("docs") / "robots.txt"
 DEFAULT_SITE_BASE_URL = "https://benchmarks.webrtc.ventures/asr-latency/"
 
 
@@ -25,6 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--homepage", type=Path, default=DEFAULT_HOMEPAGE_PATH, help="Homepage HTML path")
     parser.add_argument("--detail-dir", type=Path, default=DEFAULT_DETAIL_DIR, help="Detail pages output directory")
     parser.add_argument("--sitemap", type=Path, default=DEFAULT_SITEMAP_PATH, help="Sitemap XML path")
+    parser.add_argument("--robots", type=Path, default=DEFAULT_ROBOTS_PATH, help="Robots.txt output path")
     parser.add_argument("--site-base-url", default=DEFAULT_SITE_BASE_URL, help="Absolute public base URL for sitemap entries")
     parser.add_argument("--check", action="store_true", help="Exit non-zero when the homepage prerender is stale")
     return parser.parse_args()
@@ -928,6 +930,10 @@ def render_sitemap(manifest: dict[str, Any], base_url: str) -> str:
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{url_entries}\n</urlset>\n'
 
 
+def render_robots(base_url: str) -> str:
+    return "User-agent: *\nAllow: /\nSitemap: " + html.escape(sitemap_url(base_url, "sitemap.xml")) + "\n"
+
+
 def summarize_detail_page_drift(missing: list[Path], stale: list[Path], orphaned: list[Path]) -> str:
     counts = []
     if missing:
@@ -1131,6 +1137,7 @@ def main() -> None:
     rendered = render_homepage(manifest, homepage)
     detail_pages = render_detail_pages(manifest, args.manifest, args.detail_dir, args.site_base_url)
     sitemap = render_sitemap(manifest, args.site_base_url)
+    robots = render_robots(args.site_base_url)
     if args.check:
         if homepage != rendered:
             raise SystemExit(
@@ -1149,9 +1156,14 @@ def main() -> None:
             raise SystemExit(
                 f"Benchmark sitemap is stale: {args.sitemap}. Run scripts/prerender_benchmark_homepage.py to regenerate it."
             )
+        if not args.robots.exists() or args.robots.read_text(encoding="utf-8") != robots:
+            raise SystemExit(
+                f"Benchmark robots.txt is stale: {args.robots}. Run scripts/prerender_benchmark_homepage.py to regenerate it."
+            )
         return
     args.homepage.write_text(rendered, encoding="utf-8")
     args.sitemap.write_text(sitemap, encoding="utf-8")
+    args.robots.write_text(robots, encoding="utf-8")
     args.detail_dir.mkdir(parents=True, exist_ok=True)
     for path in orphaned_detail_pages(args.detail_dir, detail_pages):
         path.unlink()

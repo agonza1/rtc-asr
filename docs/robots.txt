@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://benchmarks.webrtc.ventures/asr-latency/sitemap.xml
