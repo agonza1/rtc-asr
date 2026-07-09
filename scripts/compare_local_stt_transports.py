@@ -579,6 +579,41 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
             + " |"
         )
 
+    has_benchmark_inputs = any(
+        payload.get("audio") or payload.get("settings")
+        for payload in comparison["transports"].values()
+    )
+    if has_benchmark_inputs:
+        lines.extend(
+            [
+                "",
+                "Benchmark inputs:",
+                "| Transport | Sample rate | Frame ms | Duration ms | Partial interval ms | Realtime pace |",
+                "| --- | ---: | ---: | ---: | ---: | --- |",
+            ]
+        )
+        for transport in comparison["required_transports"]:
+            payload = comparison["transports"].get(transport)
+            if payload is None:
+                lines.append(f"| {transport} | missing | missing | missing | missing | missing |")
+                continue
+            audio = payload.get("audio") or {}
+            settings = payload.get("settings") or {}
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        transport,
+                        _format_optional_value(audio.get("sample_rate")),
+                        _format_optional_value(audio.get("frame_ms")),
+                        _format_optional_value(audio.get("duration_ms")),
+                        _format_optional_value(settings.get("partial_interval_ms")),
+                        _format_optional_value(settings.get("realtime_pace")),
+                    ]
+                )
+                + " |"
+            )
+
     blockers = comparison.get("blocking_gaps", [])
     if blockers:
         lines.extend(["", "Blocking gaps:"])
