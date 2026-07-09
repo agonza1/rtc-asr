@@ -37,6 +37,7 @@ render_secondary_row = prerender_module.render_secondary_row
 measurement_technique = prerender_module.measurement_technique
 evidence_role = prerender_module.evidence_role
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
+detail_variable_measured = prerender_module.detail_variable_measured
 render_sitemap = prerender_module.render_sitemap
 summarize_detail_page_drift = prerender_module.summarize_detail_page_drift
 
@@ -499,6 +500,47 @@ def test_telemetry_coverage_text_summarizes_missing_optional_signals() -> None:
     assert coverage.startswith("4 of 15 telemetry fields recorded.")
     assert "processor" in coverage
     assert "package power" not in coverage
+
+
+def test_detail_variable_measured_includes_recorded_low_power_signals() -> None:
+    variables = detail_variable_measured({
+        "process_rss_mb": 180.0,
+        "cpu_utilization_percent": 42.0,
+        "package_power_watts": 7.4,
+        "thermal_duration_minutes": 5.0,
+    })
+
+    assert "ASR TTFB / first visible partial latency" in variables
+    assert "process RSS memory" in variables
+    assert "CPU utilization" in variables
+    assert "package power" in variables
+    assert "thermal observation duration" in variables
+    assert "peak RSS memory" not in variables
+
+
+def test_detail_structured_data_lists_low_power_measurements_when_recorded() -> None:
+    detail_html = render_detail_page(
+        {
+            "label": "Demo artifact",
+            "artifact_path": "benchmark-results/demo-artifact-2026-06-14.json",
+            "measured_at": "2026-06-14T00:00:00Z",
+            "rest": {},
+            "streaming": {},
+            "contract": {},
+            "derived": {},
+        },
+        {
+            "metrics": {
+                "cpu": {"percent": 42.0},
+                "power": {"package_watts": 7.4},
+                "thermal": {"duration_minutes": 5.0},
+            }
+        },
+    )
+
+    assert '"CPU utilization"' in detail_html
+    assert '"package power"' in detail_html
+    assert '"thermal observation duration"' in detail_html
 
 
 def test_manifest_preserves_energy_per_audio_second_metadata() -> None:

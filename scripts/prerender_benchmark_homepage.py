@@ -616,6 +616,26 @@ def evidence_role(entry: dict[str, Any]) -> str:
     return "Supporting benchmark evidence"
 
 
+def detail_variable_measured(system_signals: dict[str, Any]) -> list[str]:
+    variables = [
+        "ASR TTFB / first visible partial latency",
+        "partial backlog latency",
+        "audio-end finalization latency",
+        "REST throughput latency",
+    ]
+    optional_variables = [
+        ("process RSS memory", system_signals.get("process_rss_mb")),
+        ("peak RSS memory", system_signals.get("peak_rss_mb")),
+        ("CPU utilization", system_signals.get("cpu_utilization_percent")),
+        ("package power", system_signals.get("package_power_watts")),
+        ("energy per audio second", system_signals.get("energy_per_audio_second_j")),
+        ("thermal peak temperature", system_signals.get("thermal_peak_celsius")),
+        ("thermal observation duration", system_signals.get("thermal_duration_minutes")),
+    ]
+    variables.extend(label for label, value in optional_variables if value not in (None, ""))
+    return variables
+
+
 def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] | None, site_base_url: str | None = None) -> str:
     rest = entry.get("rest", {})
     streaming = entry.get("streaming", {})
@@ -651,6 +671,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     measured_at = entry.get("measured_at")
     artifact_modified_at = entry.get("artifact_modified_at")
     article_modified_at = artifact_modified_at or measured_at
+    system_signals = extract_system_signals(artifact_payload)
     keywords = [
         "rtc-asr",
         "ASR latency benchmark",
@@ -671,12 +692,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "dateModified": article_modified_at,
         "measurementTechnique": technique,
         "keywords": keywords,
-        "variableMeasured": [
-            "ASR TTFB / first visible partial latency",
-            "partial backlog latency",
-            "audio-end finalization latency",
-            "REST throughput latency",
-        ],
+        "variableMeasured": detail_variable_measured(system_signals),
         "isPartOf": {
             "@type": "Dataset",
             "name": "rtc-asr benchmark results",
@@ -708,7 +724,6 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         },
     }
     structured_data_json = json.dumps(structured_data, indent=6).replace("</", "<\\/")
-    system_signals = extract_system_signals(artifact_payload)
     system_summary = " · ".join(
         [
             format_system_text(system_signals.get("platform")),
