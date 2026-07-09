@@ -38,6 +38,7 @@ measurement_technique = prerender_module.measurement_technique
 evidence_role = prerender_module.evidence_role
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
 render_sitemap = prerender_module.render_sitemap
+summarize_detail_page_drift = prerender_module.summarize_detail_page_drift
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -1544,6 +1545,15 @@ def test_manifest_check_succeeds_when_checked_in_file_matches_generated_output(t
     assert result.stderr == ""
 
 
+def test_detail_page_drift_summary_reports_each_drift_type() -> None:
+    assert summarize_detail_page_drift(
+        [Path("missing-a.html"), Path("missing-b.html")],
+        [Path("stale.html")],
+        [Path("old.html")],
+    ) == "2 missing, 1 stale, 1 orphaned"
+    assert summarize_detail_page_drift([], [], []) == "no detail page drift"
+
+
 def test_prerender_check_fails_for_orphaned_detail_pages(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     manifest_path = repo_root / RESULTS_DIR / "manifest.json"
@@ -1571,7 +1581,8 @@ def test_prerender_check_fails_for_orphaned_detail_pages(tmp_path: Path) -> None
     )
 
     assert result.returncode == 1
-    assert f"Benchmark detail pages are stale: {detail_dir}" in result.stderr
+    assert f"Benchmark detail pages are stale: {detail_dir} (" in result.stderr
+    assert "1 orphaned" in result.stderr
 
 
 

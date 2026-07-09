@@ -913,6 +913,17 @@ def render_sitemap(manifest: dict[str, Any], base_url: str) -> str:
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n{url_entries}\n</urlset>\n'
 
 
+def summarize_detail_page_drift(missing: list[Path], stale: list[Path], orphaned: list[Path]) -> str:
+    counts = []
+    if missing:
+        counts.append(f"{len(missing)} missing")
+    if stale:
+        counts.append(f"{len(stale)} stale")
+    if orphaned:
+        counts.append(f"{len(orphaned)} orphaned")
+    return ", ".join(counts) if counts else "no detail page drift"
+
+
 def render_row(
     entry: dict[str, Any],
     first_partial_baseline: float | None,
@@ -1115,7 +1126,9 @@ def main() -> None:
         orphaned = orphaned_detail_pages(args.detail_dir, detail_pages) if args.detail_dir.exists() else []
         if missing or stale or orphaned:
             raise SystemExit(
-                f"Benchmark detail pages are stale: {args.detail_dir}. Run scripts/prerender_benchmark_homepage.py to regenerate them."
+                f"Benchmark detail pages are stale: {args.detail_dir} "
+                f"({summarize_detail_page_drift(missing, stale, orphaned)}). "
+                "Run scripts/prerender_benchmark_homepage.py to regenerate them."
             )
         if not args.sitemap.exists() or args.sitemap.read_text(encoding="utf-8") != sitemap:
             raise SystemExit(
