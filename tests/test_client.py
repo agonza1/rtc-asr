@@ -17,7 +17,13 @@ from src.protocols.local_stt_v1 import (
     encode_raw_uds_json_frame,
     LocalSttProtocolError,
 )
-from src.rtc_client import AsyncASRClient, AsyncLocalSttClient, AsyncRawUdsLocalSttClient
+from src.rtc_client import (
+    AsyncASRClient,
+    AsyncLocalSttClient,
+    AsyncRawUdsLocalSttClient,
+    LocalSTTConfig,
+    build_async_local_stt_client,
+)
 
 
 class FakeWebSocket:
@@ -319,6 +325,24 @@ def test_async_local_stt_client_stream_flow() -> None:
 
     asyncio.run(scenario())
 
+
+
+def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
+    tcp_client = build_async_local_stt_client(LocalSTTConfig(url="ws://example.test/v1/stt/stream"))
+    uds_ws_client = build_async_local_stt_client(
+        LocalSTTConfig(transport="uds_ws", url="ws://example.test/v1/stt/stream", uds_path="/tmp/stt.sock")
+    )
+    raw_client = build_async_local_stt_client(LocalSTTConfig(transport="raw_uds", uds_path="/tmp/stt.raw.sock"))
+
+    assert isinstance(tcp_client, AsyncLocalSttClient)
+    assert isinstance(uds_ws_client, AsyncLocalSttClient)
+    assert isinstance(raw_client, AsyncRawUdsLocalSttClient)
+    assert raw_client.uds_path == "/tmp/stt.raw.sock"
+
+
+def test_local_stt_config_requires_raw_uds_path() -> None:
+    with pytest.raises(ValueError, match="uds_path is required"):
+        LocalSTTConfig(transport="raw_uds")
 
 def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
     socket_path = tmp_path / "stt.raw.sock"
