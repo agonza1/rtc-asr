@@ -5,7 +5,7 @@ import base64
 import json
 import math
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Protocol
+from typing import Any, Awaitable, Callable, Literal, Protocol
 
 from .protocols import (
     HOT_PATH_BYTES_PER_FRAME,
@@ -36,6 +36,31 @@ class WebSocketConnection(Protocol):
 
 ConnectFn = Callable[[str], Awaitable[WebSocketConnection]]
 RawUdsConnectFn = Callable[[str], Awaitable[tuple[asyncio.StreamReader, asyncio.StreamWriter]]]
+
+
+@dataclass(slots=True, frozen=True)
+class LocalSTTConfig:
+    transport: Literal["tcp_ws", "uds_ws", "raw_uds"] = "tcp_ws"
+    url: str = "ws://127.0.0.1:8080/v1/stt/stream"
+    uds_path: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.transport in {"tcp_ws", "uds_ws"} and not self.url.strip():
+            raise ValueError("url is required for Local STT websocket transports")
+        if self.transport == "raw_uds" and not (self.uds_path and self.uds_path.strip()):
+            raise ValueError("uds_path is required when transport='raw_uds'")
+
+
+def build_async_local_stt_client(
+    config: LocalSTTConfig,
+    *,
+    connect_fn: ConnectFn | None = None,
+    raw_uds_connect_fn: RawUdsConnectFn | None = None,
+) -> "AsyncLocalSttClient | AsyncRawUdsLocalSttClient":
+    if config.transport == "raw_uds":
+        return AsyncRawUdsLocalSttClient(config.uds_path or "", connect_fn=raw_uds_connect_fn)
+
+    return AsyncLocalSttClient(config.url, connect_fn=connect_fn)
 
 
 @dataclass(slots=True)
