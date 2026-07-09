@@ -142,6 +142,9 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                 {
                     "transport": "raw_uds",
                     "status": "served" if config is not None and config.local_stt_raw_uds_enabled else "codec_only",
+                    "enabled": bool(config is not None and config.local_stt_raw_uds_enabled),
+                    "enable_env": "LOCAL_STT_RAW_UDS_ENABLED",
+                    "path_env": "LOCAL_STT_RAW_UDS_PATH",
                     "uds_path": (
                         config.local_stt_raw_uds_path
                         if config is not None
