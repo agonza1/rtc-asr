@@ -1426,6 +1426,7 @@ def test_homepage_head_includes_launch_seo_metadata() -> None:
     assert 'meta property="og:title" content="Edge ASR Latency Benchmarks for WebRTC Voice AI"' in homepage
     assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
     assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
+    assert 'link rel="sitemap" type="application/xml" href="https://benchmarks.webrtc.ventures/asr-latency/sitemap.xml"' in homepage
     assert 'meta name="twitter:card" content="summary_large_image"' in homepage
     assert '"@type": "WebPage"' in homepage
     assert '"@type": "Dataset"' in homepage
