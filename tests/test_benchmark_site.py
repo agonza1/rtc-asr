@@ -39,6 +39,7 @@ evidence_role = prerender_module.evidence_role
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
 detail_variable_measured = prerender_module.detail_variable_measured
 render_sitemap = prerender_module.render_sitemap
+render_robots = prerender_module.render_robots
 summarize_detail_page_drift = prerender_module.summarize_detail_page_drift
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
@@ -693,6 +694,12 @@ def test_sitemap_includes_raw_benchmark_artifacts() -> None:
     assert "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json" in sitemap
     assert "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/qwen-mps-2026-06-21.json" in sitemap
     assert "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-21.html" in sitemap
+
+
+def test_render_robots_points_crawlers_to_benchmark_sitemap() -> None:
+    robots = render_robots("https://benchmarks.webrtc.ventures/asr-latency/")
+
+    assert robots == "User-agent: *\nAllow: /\nSitemap: https://benchmarks.webrtc.ventures/asr-latency/sitemap.xml\n"
 
 
 def test_render_homepage_omits_unpublished_registry_gap_copy() -> None:
