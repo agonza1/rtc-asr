@@ -66,6 +66,9 @@ DEFAULT_PROTOCOLS = [
             {
                 "transport": "raw_uds",
                 "status": "codec_only",
+                "enabled": False,
+                "enable_env": "LOCAL_STT_RAW_UDS_ENABLED",
+                "path_env": "LOCAL_STT_RAW_UDS_PATH",
                 "uds_path": AppConfig().local_stt_raw_uds_path,
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
@@ -401,6 +404,9 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     raw_uds = next(
         transport for transport in local_stt["experimental_transports"] if transport["transport"] == "raw_uds"
     )
+    assert raw_uds["enabled"] is False
+    assert raw_uds["enable_env"] == "LOCAL_STT_RAW_UDS_ENABLED"
+    assert raw_uds["path_env"] == "LOCAL_STT_RAW_UDS_PATH"
     assert raw_uds["uds_path"] == str(raw_socket_path)
 
 
@@ -417,6 +423,7 @@ def test_health_reports_enabled_raw_uds_server_path(tmp_path: Path) -> None:
         transport for transport in local_stt["experimental_transports"] if transport["transport"] == "raw_uds"
     )
     assert raw_uds["status"] == "served"
+    assert raw_uds["enabled"] is True
     assert raw_uds["uds_path"] == str(raw_socket_path)
     assert "LOCAL_STT_RAW_UDS_ENABLED=true" in raw_uds["notes"]
     assert not raw_socket_path.exists()
