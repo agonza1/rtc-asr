@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import math
+import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Literal, Protocol
 
@@ -49,6 +50,18 @@ class LocalSTTConfig:
             raise ValueError("url is required for Local STT websocket transports")
         if self.transport == "raw_uds" and not (self.uds_path and self.uds_path.strip()):
             raise ValueError("uds_path is required when transport='raw_uds'")
+
+    @classmethod
+    def from_env(cls) -> "LocalSTTConfig":
+        transport = os.getenv("LOCAL_STT_TRANSPORT", cls.transport).strip().lower()
+        if transport not in {"tcp_ws", "uds_ws", "raw_uds"}:
+            raise ValueError("LOCAL_STT_TRANSPORT must be 'tcp_ws', 'uds_ws', or 'raw_uds'")
+        uds_path_env = "LOCAL_STT_RAW_UDS_PATH" if transport == "raw_uds" else "LOCAL_STT_UDS_PATH"
+        return cls(
+            transport=transport,
+            url=os.getenv("LOCAL_STT_URL", cls.url),
+            uds_path=os.getenv(uds_path_env),
+        )
 
 
 def build_async_local_stt_client(

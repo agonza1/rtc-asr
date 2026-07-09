@@ -344,6 +344,38 @@ def test_local_stt_config_requires_raw_uds_path() -> None:
     with pytest.raises(ValueError, match="uds_path is required"):
         LocalSTTConfig(transport="raw_uds")
 
+
+def test_local_stt_config_from_env_selects_raw_uds(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "raw_uds")
+    monkeypatch.setenv("LOCAL_STT_URL", "ws://example.test/ignored")
+    monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", "/tmp/stt.raw.sock")
+
+    config = LocalSTTConfig.from_env()
+
+    assert config.transport == "raw_uds"
+    assert config.url == "ws://example.test/ignored"
+    assert config.uds_path == "/tmp/stt.raw.sock"
+
+
+def test_local_stt_config_from_env_selects_uds_ws(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "uds_ws")
+    monkeypatch.setenv("LOCAL_STT_URL", "ws://example.test/v1/stt/stream")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", "/tmp/stt.sock")
+
+    config = LocalSTTConfig.from_env()
+
+    assert config.transport == "uds_ws"
+    assert config.url == "ws://example.test/v1/stt/stream"
+    assert config.uds_path == "/tmp/stt.sock"
+
+
+def test_local_stt_config_from_env_rejects_unknown_transport(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "named_pipe")
+
+    with pytest.raises(ValueError, match="LOCAL_STT_TRANSPORT"):
+        LocalSTTConfig.from_env()
+
+
 def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
     socket_path = tmp_path / "stt.raw.sock"
     received_frames: list[tuple[RawUdsFrameType, object]] = []
