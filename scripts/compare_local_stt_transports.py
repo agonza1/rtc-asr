@@ -359,6 +359,8 @@ def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     comparable_fields = (
         ("audio", "source"),
         ("audio", "sample_rate"),
+        ("audio", "channels"),
+        ("audio", "format"),
         ("audio", "frame_ms"),
         ("audio", "duration_ms"),
         ("settings", "partial_interval_ms"),

@@ -43,6 +43,8 @@ class LocalSttClient(Protocol):
 
 ClientFactory = Callable[[str], LocalSttClient]
 SUPPORTED_TRANSPORTS = {"tcp_ws", "uds_ws", "raw_uds"}
+LOCAL_STT_AUDIO_CHANNELS = 1
+LOCAL_STT_AUDIO_FORMAT = "pcm_s16le"
 
 
 @dataclass(slots=True)
@@ -467,6 +469,8 @@ async def run_benchmark(
         "audio": {
             "source": audio.source,
             "sample_rate": audio.sample_rate,
+            "channels": LOCAL_STT_AUDIO_CHANNELS,
+            "format": LOCAL_STT_AUDIO_FORMAT,
             "frame_ms": audio.frame_ms,
             "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME if audio.sample_rate == HOT_PATH_SAMPLE_RATE and audio.frame_ms == HOT_PATH_FRAME_MS else len(audio.frames[0]) if audio.frames else 0,
             "frames": len(audio.frames),
