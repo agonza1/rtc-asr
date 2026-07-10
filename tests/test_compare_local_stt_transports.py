@@ -831,6 +831,7 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| time_to_first_interim_ms | raw_uds |" in markdown
     assert "| time_to_final_after_finalize_ms | raw_uds |" in markdown
     assert "First-interim p95 deltas:" in markdown
+    assert "| TCP WebSocket | protocol_errors | 0 | 0 | 0 | matched |" in markdown
     assert "| TCP WebSocket | baseline | missing | 5.0 ms |" in markdown
     assert "| Raw UDS | -5.0 ms | missing | baseline |" in markdown
     assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing | missing |" in markdown
