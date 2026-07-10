@@ -843,14 +843,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
             [
                 "",
                 "Benchmark inputs:",
-                "| Transport | Source | Sample rate | Frame ms | Duration ms | Partial interval ms | Realtime pace |",
-                "| --- | --- | ---: | ---: | ---: | ---: | --- |",
+                "| Transport | Source | Sample rate | Channels | Format | Frame ms | Duration ms | Partial interval ms | Realtime pace |",
+                "| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- |",
             ]
         )
         for transport in comparison["required_transports"]:
             payload = comparison["transports"].get(transport)
             if payload is None:
-                lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing |")
+                lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing | missing | missing |")
                 continue
             audio = payload.get("audio") or {}
             settings = payload.get("settings") or {}
@@ -861,6 +861,8 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                         transport,
                         _format_optional_value(audio.get("source")),
                         _format_optional_value(audio.get("sample_rate")),
+                        _format_optional_value(audio.get("channels")),
+                        _format_optional_value(audio.get("format")),
                         _format_optional_value(audio.get("frame_ms")),
                         _format_optional_value(audio.get("duration_ms")),
                         _format_optional_value(settings.get("partial_interval_ms")),

@@ -881,8 +881,8 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
     assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close |" in markdown
     assert "Benchmark inputs:" in markdown
-    assert "| tcp_ws | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
-    assert "| raw_uds | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
+    assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
+    assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
     assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown
@@ -914,7 +914,7 @@ def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_pat
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
     for path in (tcp, uds, raw):
         payload = json.loads(path.read_text(encoding="utf8"))
-        payload["audio"] = {"source": "sample.raw", "sample_rate": 16000, "frame_ms": 20, "duration_ms": 1000}
+        payload["audio"] = {"source": "sample.raw", "sample_rate": 16000, "channels": 1, "format": "pcm_s16le", "frame_ms": 20, "duration_ms": 1000}
         payload["settings"] = {"partial_interval_ms": 100, "realtime_pace": True}
         path.write_text(json.dumps(payload), encoding="utf8")
 
@@ -923,7 +923,7 @@ def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_pat
     markdown = compare_module.format_markdown_summary(comparison)
 
     assert "Benchmark inputs:" in markdown
-    assert "| tcp_ws | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
-    assert "| uds_ws | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
-    assert "| raw_uds | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
+    assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
+    assert "| uds_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
+    assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
 
