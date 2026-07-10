@@ -105,6 +105,10 @@ def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: s
     return min(candidates)[1]
 
 
+def p95_metric_leaders(transports: dict[str, dict[str, Any]]) -> dict[str, str | None]:
+    return {metric: fastest_transport_by_metric(transports, metric) for metric in KEY_METRICS}
+
+
 def lowest_cpu_utilization_transport(transports: dict[str, dict[str, Any]]) -> str | None:
     candidates: list[tuple[float, str]] = []
     for transport, payload in transports.items():
@@ -470,6 +474,7 @@ def compare_artifacts(
     fastest_final_after_finalize_transport = fastest_transport_by_metric(
         by_transport, "time_to_final_after_finalize_ms"
     )
+    metric_leaders = p95_metric_leaders(by_transport)
     lowest_cpu_transport = lowest_cpu_utilization_transport(by_transport)
     missing_cpu_utilization = missing_cpu_utilization_transports(by_transport)
     cpu_coverage = cpu_utilization_coverage(by_transport)
@@ -506,6 +511,7 @@ def compare_artifacts(
         "transports": by_transport,
         "fastest_time_to_first_interim_p95_transport": fastest_first_interim_transport,
         "fastest_time_to_final_after_finalize_p95_transport": fastest_final_after_finalize_transport,
+        "p95_metric_leaders": metric_leaders,
         "lowest_cpu_utilization_percent_transport": lowest_cpu_transport,
         "missing_cpu_utilization_transports": missing_cpu_utilization,
         "cpu_utilization_coverage": cpu_coverage,
@@ -690,6 +696,19 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                 )
                 + " |"
             )
+
+    metric_leaders = comparison.get("p95_metric_leaders", {})
+    if metric_leaders:
+        lines.extend(
+            [
+                "",
+                "P95 metric leaders:",
+                "| Metric | Best transport |",
+                "| --- | --- |",
+            ]
+        )
+        for metric in KEY_METRICS:
+            lines.append(f"| {metric} | {_format_optional_value(metric_leaders.get(metric))} |")
 
     pairwise_deltas = comparison.get("pairwise_p95_deltas_ms", {}).get("time_to_first_interim_ms", {})
     if pairwise_deltas:

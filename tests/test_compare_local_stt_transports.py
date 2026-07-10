@@ -288,6 +288,13 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
     assert comparison["missing_transports"] == []
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "uds_ws"
+    assert comparison["p95_metric_leaders"] == {
+        "time_to_first_interim_ms": "raw_uds",
+        "time_to_final_after_finalize_ms": "uds_ws",
+        "audio_send_queue_depth_p95_ms": "tcp_ws",
+        "asr_queue_delay_p95_ms": "tcp_ws",
+        "protocol_errors": "raw_uds",
+    }
     assert comparison["lowest_cpu_utilization_percent_transport"] == "raw_uds"
     assert comparison["raw_uds_vs_uds_ws_p95_deltas_ms"] == {
         "time_to_first_interim_ms": 3.5,
@@ -639,6 +646,9 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| tcp_ws | 18.0 ms | 25.0 ms | 0.0 | 12.5% | 3 |" in markdown
     assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
     assert "Transport targets:" in markdown
+    assert "P95 metric leaders:" in markdown
+    assert "| time_to_first_interim_ms | raw_uds |" in markdown
+    assert "| time_to_final_after_finalize_ms | raw_uds |" in markdown
     assert "First-interim p95 deltas:" in markdown
     assert "| TCP WebSocket | baseline | missing | 5.0 ms |" in markdown
     assert "| Raw UDS | -5.0 ms | missing | baseline |" in markdown
@@ -665,6 +675,8 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     markdown = markdown_path.read_text(encoding="utf8")
     assert "Recommendation: Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype." in markdown
     assert "Raw UDS recommendation gate: passed" in markdown
+    assert "P95 metric leaders:" in markdown
+    assert "| time_to_first_interim_ms | raw_uds |" in markdown
     assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | start,audio,transcript,finalize,cancel,close |" in markdown
     assert "Minimum required win: 5 ms" in markdown
 
