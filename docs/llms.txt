@@ -1,0 +1,23 @@
+# Edge ASR Latency Benchmarks for WebRTC Voice AI
+
+This site publishes reproducible local and edge ASR latency evidence for real-time WebRTC and Voice AI systems.
+Use the manifest for machine-readable benchmark metadata and the detail pages for artifact-level provenance, integrity, and measurement notes.
+
+## Key URLs
+- Benchmark homepage: https://benchmarks.webrtc.ventures/asr-latency/
+- Manifest JSON: https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json
+- Sitemap: https://benchmarks.webrtc.ventures/asr-latency/sitemap.xml
+
+## Current Comparable Tracks
+- Parakeet 110M NeMo MLX: apple-silicon / auto; TTFB / first partial 250.7 ms; audio-end finalization 251.8 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html
+- Faster-Whisper Base: cpu / int8; TTFB / first partial 676.5 ms; audio-end finalization 768.8 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-2026-06-20.html
+- Parakeet 110M NeMo: cpu / float32; TTFB / first partial 348.1 ms; audio-end finalization 622.1 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-21.html
+- Qwen MPS: mps / auto; TTFB / first partial 336.4 ms; audio-end finalization 1541.9 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-21.html
+- Faster-Whisper Small: cpu / int8; TTFB / first partial 1921.7 ms; audio-end finalization 1939.4 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-small.en-int8-2026-06-20.html
+- Parakeet 0.6B Compose: cpu / float32; TTFB / first partial 953.7 ms; audio-end finalization 2214.0 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-compose-2026-06-20.html
+- Qwen Compose: cpu / float16; TTFB / first partial 680.1 ms; audio-end finalization 5802.5 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-compose-2026-06-21.html
+
+## Coverage
+- Published current artifacts: 8
+- Raw artifact files: 23
+- Historical artifacts linked from detail pages: 15

@@ -17,6 +17,7 @@ DEFAULT_HOMEPAGE_PATH = Path("docs") / "index.html"
 DEFAULT_DETAIL_DIR = Path("docs") / "benchmark-results" / "pages"
 DEFAULT_SITEMAP_PATH = Path("docs") / "sitemap.xml"
 DEFAULT_ROBOTS_PATH = Path("docs") / "robots.txt"
+DEFAULT_LLMS_PATH = Path("docs") / "llms.txt"
 DEFAULT_SITE_BASE_URL = "https://benchmarks.webrtc.ventures/asr-latency/"
 
 
@@ -27,6 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--detail-dir", type=Path, default=DEFAULT_DETAIL_DIR, help="Detail pages output directory")
     parser.add_argument("--sitemap", type=Path, default=DEFAULT_SITEMAP_PATH, help="Sitemap XML path")
     parser.add_argument("--robots", type=Path, default=DEFAULT_ROBOTS_PATH, help="Robots.txt output path")
+    parser.add_argument("--llms", type=Path, default=DEFAULT_LLMS_PATH, help="llms.txt output path")
     parser.add_argument("--site-base-url", default=DEFAULT_SITE_BASE_URL, help="Absolute public base URL for sitemap entries")
     parser.add_argument("--check", action="store_true", help="Exit non-zero when the homepage prerender is stale")
     return parser.parse_args()
@@ -934,6 +936,45 @@ def render_robots(base_url: str) -> str:
     return "User-agent: *\nAllow: /\nSitemap: " + html.escape(sitemap_url(base_url, "sitemap.xml")) + "\n"
 
 
+def render_llms(manifest: dict[str, Any], base_url: str) -> str:
+    summary = manifest.get("summary", {})
+    primary = primary_entries(published_tracks(manifest))
+    lines = [
+        "# Edge ASR Latency Benchmarks for WebRTC Voice AI",
+        "",
+        "This site publishes reproducible local and edge ASR latency evidence for real-time WebRTC and Voice AI systems.",
+        "Use the manifest for machine-readable benchmark metadata and the detail pages for artifact-level provenance, integrity, and measurement notes.",
+        "",
+        "## Key URLs",
+        f"- Benchmark homepage: {sitemap_url(base_url, '')}",
+        f"- Manifest JSON: {sitemap_url(base_url, 'benchmark-results/manifest.json')}",
+        f"- Sitemap: {sitemap_url(base_url, 'sitemap.xml')}",
+        "",
+        "## Current Comparable Tracks",
+    ]
+    if not primary:
+        lines.append("- No comparable artifact-backed tracks are published yet.")
+    for entry in primary[:8]:
+        label = entry.get("label") or entry.get("slug") or "unknown"
+        detail_path = detail_page_path(entry)
+        first_partial = format_ms(first_visible_partial(entry))
+        final_latency = format_ms(entry.get("streaming", {}).get("final_mean_ms"))
+        lines.append(
+            f"- {label}: {entry.get('runtime') or 'unknown runtime'}; "
+            f"TTFB / first partial {first_partial}; audio-end finalization {final_latency}; "
+            f"details {sitemap_url(base_url, detail_path)}"
+        )
+    lines.extend([
+        "",
+        "## Coverage",
+        f"- Published current artifacts: {summary.get('published_artifact_count', len(published_tracks(manifest)))}",
+        f"- Raw artifact files: {summary.get('artifact_file_count', 0)}",
+        f"- Historical artifacts linked from detail pages: {summary.get('stale_artifact_count', 0)}",
+        "",
+    ])
+    return "\n".join(lines)
+
+
 def summarize_detail_page_drift(missing: list[Path], stale: list[Path], orphaned: list[Path]) -> str:
     counts = []
     if missing:
@@ -1138,6 +1179,7 @@ def main() -> None:
     detail_pages = render_detail_pages(manifest, args.manifest, args.detail_dir, args.site_base_url)
     sitemap = render_sitemap(manifest, args.site_base_url)
     robots = render_robots(args.site_base_url)
+    llms = render_llms(manifest, args.site_base_url)
     if args.check:
         if homepage != rendered:
             raise SystemExit(
@@ -1160,10 +1202,15 @@ def main() -> None:
             raise SystemExit(
                 f"Benchmark robots.txt is stale: {args.robots}. Run scripts/prerender_benchmark_homepage.py to regenerate it."
             )
+        if not args.llms.exists() or args.llms.read_text(encoding="utf-8") != llms:
+            raise SystemExit(
+                f"Benchmark llms.txt is stale: {args.llms}. Run scripts/prerender_benchmark_homepage.py to regenerate it."
+            )
         return
     args.homepage.write_text(rendered, encoding="utf-8")
     args.sitemap.write_text(sitemap, encoding="utf-8")
     args.robots.write_text(robots, encoding="utf-8")
+    args.llms.write_text(llms, encoding="utf-8")
     args.detail_dir.mkdir(parents=True, exist_ok=True)
     for path in orphaned_detail_pages(args.detail_dir, detail_pages):
         path.unlink()
