@@ -1427,6 +1427,7 @@ def test_homepage_head_includes_launch_seo_metadata() -> None:
     assert 'meta property="og:url" content="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
     assert 'link rel="canonical" href="https://benchmarks.webrtc.ventures/asr-latency/"' in homepage
     assert 'link rel="sitemap" type="application/xml" href="https://benchmarks.webrtc.ventures/asr-latency/sitemap.xml"' in homepage
+    assert 'link rel="alternate" type="application/json" href="https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json" title="Benchmark results manifest"' in homepage
     assert 'meta name="twitter:card" content="summary_large_image"' in homepage
     assert '"@type": "WebPage"' in homepage
     assert '"@type": "Dataset"' in homepage
