@@ -65,7 +65,7 @@ def write_artifact(
                     if cpu_utilization_percent is not None
                     else {}
                 ),
-                "audio": {"source": "sample.raw", "sample_rate": 16000, "frame_ms": 20, "duration_ms": 1000},
+                "audio": {"source": "sample.raw", "sample_rate": 16000, "channels": 1, "format": "pcm_s16le", "frame_ms": 20, "duration_ms": 1000},
                 "settings": {"partial_interval_ms": 100, "realtime_pace": True},
                 **({"runs": runs} if runs is not None else {}),
                 "summary": {
@@ -699,7 +699,7 @@ def test_compare_artifacts_requires_matching_benchmark_inputs(tmp_path: Path) ->
 
     for path, frame_ms in [(tcp, 20), (uds, 20), (raw, 40)]:
         payload = json.loads(path.read_text(encoding="utf8"))
-        payload["audio"] = {"source": "sample.raw", "sample_rate": 16000, "frame_ms": frame_ms, "duration_ms": 1000}
+        payload["audio"] = {"source": "sample.raw", "sample_rate": 16000, "channels": 1, "format": "pcm_s16le", "frame_ms": frame_ms, "duration_ms": 1000}
         payload["settings"] = {"partial_interval_ms": 100, "realtime_pace": True}
         path.write_text(json.dumps(payload), encoding="utf8")
 
@@ -716,6 +716,26 @@ def test_compare_artifacts_requires_matching_benchmark_inputs(tmp_path: Path) ->
     assert comparison["recommendation"] == (
         "Re-run transport benchmarks with matching audio and pacing settings before recommending raw UDS."
     )
+
+
+def test_compare_artifacts_requires_matching_audio_format(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    payload = json.loads(raw.read_text(encoding="utf8"))
+    payload["audio"]["format"] = "pcm_f32le"
+    raw.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == [
+        "benchmark input mismatch for audio.format: raw_uds='pcm_f32le', tcp_ws='pcm_s16le', uds_ws='pcm_s16le'"
+    ]
+    assert comparison["blocking_gaps"] == comparison["benchmark_input_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "benchmark_input:benchmark input mismatch for audio.format: raw_uds='pcm_f32le', tcp_ws='pcm_s16le', uds_ws='pcm_s16le'"
+    ]
 
 
 def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: Path) -> None:

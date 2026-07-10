@@ -472,6 +472,8 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     }
     assert payload["environment"]["cpu_logical_cores"] is not None
     assert payload["environment"]["process_metrics_sample_count"] == 0
+    assert payload["audio"]["channels"] == 1
+    assert payload["audio"]["format"] == "pcm_s16le"
     assert payload["audio"]["bytes_per_frame"] == 640
     assert payload["audio"]["duration_ms"] == 40
     assert payload["settings"] == {
