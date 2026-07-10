@@ -40,6 +40,14 @@ RAW_UDS_REQUIRED_FRAME_TYPES = (
     "PING",
     "PONG",
 )
+RAW_UDS_REQUIRED_FRAME_TYPE_CODES = {
+    "JSON_CONTROL": 0x01,
+    "AUDIO_PCM16": 0x02,
+    "JSON_EVENT": 0x03,
+    "ERROR": 0x04,
+    "PING": 0x05,
+    "PONG": 0x06,
+}
 RAW_UDS_REQUIRED_LIFECYCLE = ("start", "audio", "transcript", "finalize", "cancel", "close")
 RAW_UDS_LIFECYCLE_ORDER = {
     event: position for position, event in enumerate(RAW_UDS_REQUIRED_LIFECYCLE)
@@ -298,19 +306,53 @@ def raw_uds_lifecycle_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     return []
 
 
+def parse_frame_type_code(value: Any) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value, 0)
+        except ValueError:
+            return None
+    return None
+
+
 def raw_uds_frame_type_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     raw_uds = transports.get("raw_uds")
     if raw_uds is None:
         return []
 
+    gaps: list[str] = []
     frame_types = raw_uds.get("frame_types")
     if not isinstance(frame_types, list):
-        return ["raw_uds missing target.frame_types coverage"]
+        gaps.append("raw_uds missing target.frame_types coverage")
+    else:
+        missing = [frame_type for frame_type in RAW_UDS_REQUIRED_FRAME_TYPES if frame_type not in frame_types]
+        if missing:
+            gaps.append(f"raw_uds missing frame type coverage: {','.join(missing)}")
 
-    missing = [frame_type for frame_type in RAW_UDS_REQUIRED_FRAME_TYPES if frame_type not in frame_types]
-    if missing:
-        return [f"raw_uds missing frame type coverage: {','.join(missing)}"]
-    return []
+    frame_type_codes = raw_uds.get("frame_type_codes")
+    if not isinstance(frame_type_codes, dict):
+        gaps.append("raw_uds missing target.frame_type_codes coverage")
+        return gaps
+
+    missing_codes = []
+    wrong_codes = []
+    for frame_type, expected_code in RAW_UDS_REQUIRED_FRAME_TYPE_CODES.items():
+        observed_code = frame_type_codes.get(frame_type)
+        if observed_code is None:
+            missing_codes.append(frame_type)
+            continue
+        observed_int = parse_frame_type_code(observed_code)
+        if observed_int != expected_code:
+            observed_display = "invalid" if observed_int is None else f"0x{observed_int:02x}"
+            wrong_codes.append(f"{frame_type}={observed_display},expected=0x{expected_code:02x}")
+
+    if missing_codes:
+        gaps.append(f"raw_uds missing frame type code coverage: {','.join(missing_codes)}")
+    if wrong_codes:
+        gaps.append(f"raw_uds frame type code mismatch: {','.join(wrong_codes)}")
+    return gaps
 
 
 def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
@@ -542,6 +584,7 @@ def compare_artifacts(
         target_contract = artifact.get("target_contract") if isinstance(artifact.get("target_contract"), dict) else {}
         target_lifecycle = artifact["target"].get("lifecycle") or target_contract.get("lifecycle")
         target_frame_types = artifact["target"].get("frame_types") or target_contract.get("frame_types")
+        target_frame_type_codes = artifact["target"].get("frame_type_codes") or target_contract.get("frame_type_codes")
         metrics = {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS}
         metrics_p95 = {metric: metrics[metric]["p95"] for metric in KEY_METRICS}
         missing_metrics = missing_required_metrics(metrics)
@@ -553,6 +596,7 @@ def compare_artifacts(
             "frame_format": artifact["target"].get("frame_format") or target_contract.get("frame_format"),
             "frame_header_bytes": artifact["target"].get("frame_header_bytes") or target_contract.get("frame_header_bytes"),
             "frame_types": target_frame_types,
+            "frame_type_codes": target_frame_type_codes,
             "lifecycle": target_lifecycle,
             "audio": artifact.get("audio") if isinstance(artifact.get("audio"), dict) else {},
             "settings": artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {},
