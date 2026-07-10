@@ -1020,6 +1020,7 @@ def build_transport_coverage_summary(entries: list[dict[str, Any]]) -> dict[str,
     by_transport: dict[str, int] = {}
     by_path: dict[str, int] = {}
     comparable_local_stt_entries = 0
+    raw_uds_entries = 0
     for entry in entries:
         contract = entry.get("contract") or {}
         streaming = entry.get("streaming") or {}
@@ -1029,12 +1030,15 @@ def build_transport_coverage_summary(entries: list[dict[str, Any]]) -> dict[str,
         by_path[str(path)] = by_path.get(str(path), 0) + 1
         if path == "/v1/stt/stream" and streaming.get("live_metrics_comparable") is True:
             comparable_local_stt_entries += 1
+        if transport == "raw_uds" or path == "raw_uds":
+            raw_uds_entries += 1
 
     return {
         "artifact_count": len(entries),
         "by_transport": dict(sorted(by_transport.items())),
         "by_path": dict(sorted(by_path.items())),
         "comparable_local_stt_artifact_count": comparable_local_stt_entries,
+        "raw_uds_artifact_count": raw_uds_entries,
     }
 
 

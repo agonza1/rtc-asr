@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-07T03:42:14Z",
+  "generated_at": "2026-07-10T15:42:59Z",
   "summary": {
     "asr_count": 8,
     "tracked_count": 8,
@@ -68,7 +68,8 @@
         "/ws/stream": 4,
         "unknown": 11
       },
-      "comparable_local_stt_artifact_count": 8
+      "comparable_local_stt_artifact_count": 8,
+      "raw_uds_artifact_count": 0
     },
     "warnings": {
       "artifact_count": 23,
