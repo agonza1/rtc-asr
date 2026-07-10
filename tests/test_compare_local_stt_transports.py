@@ -46,6 +46,14 @@ def write_artifact(
                                 "PING",
                                 "PONG",
                             ],
+                            "frame_type_codes": {
+                                "JSON_CONTROL": 1,
+                                "AUDIO_PCM16": 2,
+                                "JSON_EVENT": 3,
+                                "ERROR": 4,
+                                "PING": 5,
+                                "PONG": 6,
+                            },
                             "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                         }
                         if transport == "raw_uds"
@@ -241,6 +249,64 @@ def test_compare_artifacts_accepts_raw_uds_frame_types_from_benchmark_contract(t
         "PONG",
     ]
 
+
+def test_compare_artifacts_requires_raw_uds_frame_type_code_coverage(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["frame_type_codes"] = {
+        "JSON_CONTROL": 1,
+        "AUDIO_PCM16": 2,
+        "JSON_EVENT": 3,
+        "ERROR": 4,
+        "PING": 7,
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_type_gaps"] == [
+        "raw_uds missing frame type code coverage: PONG",
+        "raw_uds frame type code mismatch: PING=0x07,expected=0x05",
+    ]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_frame_type_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "frame_type:raw_uds missing frame type code coverage: PONG",
+        "frame_type:raw_uds frame type code mismatch: PING=0x07,expected=0x05",
+    ]
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+
+
+def test_compare_artifacts_accepts_raw_uds_frame_type_codes_from_benchmark_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("frame_type_codes")
+    raw_payload["target_contract"] = {
+        "frame_type_codes": {
+            "JSON_CONTROL": 1,
+            "AUDIO_PCM16": 2,
+            "JSON_EVENT": 3,
+            "ERROR": 4,
+            "PING": 5,
+            "PONG": 6,
+        },
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_type_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["frame_type_codes"] == {
+        "JSON_CONTROL": 1,
+        "AUDIO_PCM16": 2,
+        "JSON_EVENT": 3,
+        "ERROR": 4,
+        "PING": 5,
+        "PONG": 6,
+    }
 
 def test_compare_artifacts_requires_raw_uds_lifecycle_coverage(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
