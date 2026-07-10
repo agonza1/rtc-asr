@@ -786,14 +786,16 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
         "frame_header_bytes": RAW_UDS_HEADER_BYTES,
         "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
         "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
-        "frame_types": {
-            "json_control": 1,
-            "audio_pcm16": 2,
-            "json_event": 3,
-            "error": 4,
-            "ping": 5,
-            "pong": 6,
+        "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
+        "frame_type_codes": {
+            "JSON_CONTROL": 1,
+            "AUDIO_PCM16": 2,
+            "JSON_EVENT": 3,
+            "ERROR": 4,
+            "PING": 5,
+            "PONG": 6,
         },
+        "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
     }
 
 
@@ -882,6 +884,16 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
         "uds_path": "/tmp/stt.raw.sock",
         "frame_format": "uint8_type_uint32_len_le",
         "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+        "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
+        "frame_type_codes": {
+            "JSON_CONTROL": 1,
+            "AUDIO_PCM16": 2,
+            "JSON_EVENT": 3,
+            "ERROR": 4,
+            "PING": 5,
+            "PONG": 6,
+        },
+        "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
     }
     assert payload["target_contract"]["control_channel"] == "unix_stream"
     assert payload["target_contract"]["audio_framing"] == "length_prefixed_pcm16"

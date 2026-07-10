@@ -239,6 +239,14 @@ def make_client_factory(*, transport: str, uds_path: str | None) -> ClientFactor
 def describe_transport_contract(transport: str) -> dict[str, Any]:
     validate_transport_args(transport, Path("/tmp/local-stt.sock") if transport != "tcp_ws" else None)
     if transport == "raw_uds":
+        frame_type_codes = {
+            "JSON_CONTROL": int(RawUdsFrameType.JSON_CONTROL),
+            "AUDIO_PCM16": int(RawUdsFrameType.AUDIO_PCM16),
+            "JSON_EVENT": int(RawUdsFrameType.JSON_EVENT),
+            "ERROR": int(RawUdsFrameType.ERROR),
+            "PING": int(RawUdsFrameType.PING),
+            "PONG": int(RawUdsFrameType.PONG),
+        }
         return {
             "control_channel": "unix_stream",
             "audio_framing": "length_prefixed_pcm16",
@@ -246,14 +254,9 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
             "frame_header_bytes": RAW_UDS_HEADER_BYTES,
             "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
             "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
-            "frame_types": {
-                "json_control": int(RawUdsFrameType.JSON_CONTROL),
-                "audio_pcm16": int(RawUdsFrameType.AUDIO_PCM16),
-                "json_event": int(RawUdsFrameType.JSON_EVENT),
-                "error": int(RawUdsFrameType.ERROR),
-                "ping": int(RawUdsFrameType.PING),
-                "pong": int(RawUdsFrameType.PONG),
-            },
+            "frame_types": list(frame_type_codes),
+            "frame_type_codes": frame_type_codes,
+            "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         }
     if transport == "uds_ws":
         return {
@@ -275,10 +278,21 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
 def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None) -> dict[str, Any]:
     target: dict[str, Any] = {"transport": transport, "url": url, "uds_path": uds_path}
     if transport == "raw_uds":
+        frame_type_codes = {
+            "JSON_CONTROL": int(RawUdsFrameType.JSON_CONTROL),
+            "AUDIO_PCM16": int(RawUdsFrameType.AUDIO_PCM16),
+            "JSON_EVENT": int(RawUdsFrameType.JSON_EVENT),
+            "ERROR": int(RawUdsFrameType.ERROR),
+            "PING": int(RawUdsFrameType.PING),
+            "PONG": int(RawUdsFrameType.PONG),
+        }
         target.update(
             {
                 "frame_format": "uint8_type_uint32_len_le",
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+                "frame_types": list(frame_type_codes),
+                "frame_type_codes": frame_type_codes,
+                "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
             }
         )
     return target
