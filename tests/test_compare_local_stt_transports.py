@@ -373,6 +373,31 @@ def test_compare_artifacts_reports_lowest_cpu_transport_when_available(tmp_path:
     assert comparison["transports"]["uds_ws"]["cpu_utilization_percent"] is None
 
 
+def test_compare_artifacts_reads_nested_cpu_utilization_aliases(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, cpu_utilization_percent=None)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0, cpu_utilization_percent=None)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0, cpu_utilization_percent=None)
+
+    tcp_payload = json.loads(tcp.read_text(encoding="utf8"))
+    tcp_payload["metrics"] = {"cpu": {"average_percent": 10.5}}
+    tcp.write_text(json.dumps(tcp_payload), encoding="utf8")
+    uds_payload = json.loads(uds.read_text(encoding="utf8"))
+    uds_payload["system"] = {"cpu_percent": 12.0}
+    uds.write_text(json.dumps(uds_payload), encoding="utf8")
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["cpu"] = {"utilization_percent": 9.5}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["lowest_cpu_utilization_percent_transport"] == "raw_uds"
+    assert comparison["missing_cpu_utilization_transports"] == []
+    assert comparison["cpu_utilization_coverage"]["complete"] is True
+    assert comparison["transports"]["tcp_ws"]["cpu_utilization_percent"] == 10.5
+    assert comparison["transports"]["uds_ws"]["cpu_utilization_percent"] == 12.0
+    assert comparison["transports"]["raw_uds"]["cpu_utilization_percent"] == 9.5
+
+
 def test_compare_artifacts_reports_all_transports_missing_cpu_when_unavailable(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, cpu_utilization_percent=None, runs=5)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0, cpu_utilization_percent=None, runs=None)
