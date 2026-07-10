@@ -374,6 +374,10 @@ def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
 
     gaps: list[str] = []
     for field, values in values_by_field.items():
+        missing = [transport for transport, value in values.items() if value is None or value == ""]
+        if missing:
+            gaps.append(f"benchmark input missing for {field}: {','.join(missing)}")
+            continue
         if len(set(values.values())) > 1:
             rendered = ", ".join(f"{transport}={value!r}" for transport, value in values.items())
             gaps.append(f"benchmark input mismatch for {field}: {rendered}")
