@@ -65,6 +65,8 @@ def write_artifact(
                     if cpu_utilization_percent is not None
                     else {}
                 ),
+                "audio": {"source": "sample.raw", "sample_rate": 16000, "frame_ms": 20, "duration_ms": 1000},
+                "settings": {"partial_interval_ms": 100, "realtime_pace": True},
                 **({"runs": runs} if runs is not None else {}),
                 "summary": {
                     "time_to_first_interim_ms": {"p50": first_interim_p95 - 1, "p95": first_interim_p95, "p99": first_interim_p95 + 1},
@@ -669,6 +671,27 @@ def test_compare_artifacts_rejects_invalid_raw_uds_recommendation_threshold(tmp_
         raise AssertionError("expected raw_uds_min_win_ms validation failure")
 
 
+def test_compare_artifacts_requires_complete_benchmark_inputs(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    payload = json.loads(raw.read_text(encoding="utf8"))
+    del payload["audio"]["duration_ms"]
+    raw.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == [
+        "benchmark input missing for audio.duration_ms: raw_uds"
+    ]
+    assert comparison["blocking_gaps"] == comparison["benchmark_input_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "benchmark_input:benchmark input missing for audio.duration_ms: raw_uds"
+    ]
+    assert comparison["raw_uds_should_remain_experimental"] is True
+
+
 def test_compare_artifacts_requires_matching_benchmark_inputs(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
@@ -837,7 +860,9 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing | missing |" in markdown
     assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
     assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close |" in markdown
-    assert "Benchmark inputs:" not in markdown
+    assert "Benchmark inputs:" in markdown
+    assert "| tcp_ws | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
+    assert "| raw_uds | sample.raw | 16000 | 20 | 1000 | 100 | True |" in markdown
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
     assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown
