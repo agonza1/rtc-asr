@@ -692,6 +692,12 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "description": description,
         "identifier": artifact_sha256 or manifest_artifact_path,
         "url": detail_url,
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": detail_url,
+            "url": detail_url,
+            "name": preview_title,
+        },
         "datePublished": measured_at,
         "dateModified": article_modified_at,
         "measurementTechnique": technique,

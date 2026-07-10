@@ -1206,6 +1206,8 @@ def test_benchmark_detail_pages_exist_for_artifact_backed_tracks() -> None:
     assert "Manifest artifact path: <code>benchmark-results/parakeet-mlx-110m-service-2026-06-21.json</code>" in rss_detail
     assert "SHA-256" in rss_detail
     assert '"@type": "Dataset"' in rss_detail
+    assert '"mainEntityOfPage": {' in rss_detail
+    assert '"@id": "https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html"' in rss_detail
     assert '"@type": "DataDownload"' in rss_detail
     assert '"@type": "BreadcrumbList"' in rss_detail
     assert '"measurementTechnique": "REST and Local STT v1 websocket ASR latency benchmark"' in rss_detail
@@ -1259,6 +1261,8 @@ def test_render_detail_page_uses_absolute_public_urls_when_site_base_is_provided
     assert '<link rel="canonical" href="https://example.test/asr-latency/benchmark-results/pages/demo-artifact-2026-06-14.html">' in detail_html
     assert '<meta property="og:url" content="https://example.test/asr-latency/benchmark-results/pages/demo-artifact-2026-06-14.html">' in detail_html
     assert '"url": "https://example.test/asr-latency/benchmark-results/pages/demo-artifact-2026-06-14.html"' in detail_html
+    assert '"mainEntityOfPage": {' in detail_html
+    assert '"@id": "https://example.test/asr-latency/benchmark-results/pages/demo-artifact-2026-06-14.html"' in detail_html
     assert '"url": "https://example.test/asr-latency/index.html"' in detail_html
     assert '"contentUrl": "https://example.test/asr-latency/benchmark-results/demo-artifact-2026-06-14.json"' in detail_html
     assert '"identifier": "benchmark-results/demo-artifact-2026-06-14.json"' in detail_html
