@@ -262,6 +262,26 @@ def raw_uds_vs_uds_p95_deltas(transports: dict[str, dict[str, Any]]) -> dict[str
     }
 
 
+def pairwise_p95_delta_matrix(transports: dict[str, dict[str, Any]]) -> dict[str, dict[str, dict[str, float | None]]]:
+    return {
+        metric: {
+            baseline: {
+                candidate: None
+                if baseline == candidate
+                else metric_delta_ms(
+                    transports,
+                    baseline_transport=baseline,
+                    candidate_transport=candidate,
+                    metric=metric,
+                )
+                for candidate in REQUIRED_TRANSPORTS
+            }
+            for baseline in REQUIRED_TRANSPORTS
+        }
+        for metric in KEY_METRICS
+    }
+
+
 def protocol_error_free(metrics: dict[str, dict[str, float | None]]) -> bool:
     protocol_errors = metrics.get("protocol_errors", {})
     return all(protocol_errors.get(percentile) == 0.0 for percentile in PERCENTILES)
@@ -442,6 +462,7 @@ def compare_artifacts(
         if payload["missing_p95_metrics"]
     }
     raw_vs_uds_deltas = raw_uds_vs_uds_p95_deltas(by_transport)
+    p95_delta_matrix = pairwise_p95_delta_matrix(by_transport)
     raw_vs_uds_delta_ms = raw_vs_uds_deltas["time_to_first_interim_ms"]
     raw_vs_uds_final_after_finalize_delta_ms = raw_vs_uds_deltas["time_to_final_after_finalize_ms"]
     raw_uds_latency_experimental = raw_vs_uds_delta_ms is None or raw_vs_uds_delta_ms < raw_uds_min_win_ms
@@ -498,6 +519,7 @@ def compare_artifacts(
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_recommendation_gate": recommendation_gate,
         "raw_uds_vs_uds_ws_p95_deltas_ms": raw_vs_uds_deltas,
+        "pairwise_p95_deltas_ms": p95_delta_matrix,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
@@ -562,6 +584,14 @@ def _format_optional_value(value: Any) -> str:
             return "missing"
         return ",".join(str(item) for item in value)
     return str(value)
+
+
+def _format_pairwise_delta(
+    candidates: dict[str, float | None], *, baseline: str, candidate: str
+) -> str:
+    if baseline == candidate:
+        return "baseline"
+    return _format_optional_ms(candidates.get(candidate))
 
 
 def format_markdown_summary(comparison: dict[str, Any]) -> str:
@@ -656,6 +686,32 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                         _format_optional_value(audio.get("duration_ms")),
                         _format_optional_value(settings.get("partial_interval_ms")),
                         _format_optional_value(settings.get("realtime_pace")),
+                    ]
+                )
+                + " |"
+            )
+
+    pairwise_deltas = comparison.get("pairwise_p95_deltas_ms", {}).get("time_to_first_interim_ms", {})
+    if pairwise_deltas:
+        lines.extend(
+            [
+                "",
+                "First-interim p95 deltas:",
+                "| Baseline | TCP WebSocket | UDS WebSocket | Raw UDS |",
+                "| --- | ---: | ---: | ---: |",
+            ]
+        )
+        labels = {"tcp_ws": "TCP WebSocket", "uds_ws": "UDS WebSocket", "raw_uds": "Raw UDS"}
+        for baseline in comparison["required_transports"]:
+            candidates = pairwise_deltas.get(baseline, {})
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        labels[baseline],
+                        _format_pairwise_delta(candidates, baseline=baseline, candidate="tcp_ws"),
+                        _format_pairwise_delta(candidates, baseline=baseline, candidate="uds_ws"),
+                        _format_pairwise_delta(candidates, baseline=baseline, candidate="raw_uds"),
                     ]
                 )
                 + " |"
