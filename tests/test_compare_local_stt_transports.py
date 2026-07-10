@@ -38,6 +38,14 @@ def write_artifact(
                         {
                             "frame_format": "uint8_type_uint32_len_le",
                             "frame_header_bytes": 5,
+                            "frame_types": [
+                                "JSON_CONTROL",
+                                "AUDIO_PCM16",
+                                "JSON_EVENT",
+                                "ERROR",
+                                "PING",
+                                "PONG",
+                            ],
                             "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                         }
                         if transport == "raw_uds"
@@ -187,6 +195,51 @@ def test_compare_artifacts_accepts_raw_uds_frame_contract_from_benchmark_contrac
     assert comparison["raw_uds_frame_contract_gaps"] == []
     assert comparison["transports"]["raw_uds"]["frame_format"] == "uint8_type_uint32_len_le"
     assert comparison["transports"]["raw_uds"]["frame_header_bytes"] == 5
+
+
+def test_compare_artifacts_requires_raw_uds_frame_type_coverage(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["frame_types"] = ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR"]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_type_gaps"] == ["raw_uds missing frame type coverage: PING,PONG"]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_frame_type_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "frame_type:raw_uds missing frame type coverage: PING,PONG"
+    ]
+    assert comparison["recommendation"] == (
+        "Re-run raw UDS benchmarks with complete frame type coverage before recommending raw UDS."
+    )
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+
+
+def test_compare_artifacts_accepts_raw_uds_frame_types_from_benchmark_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("frame_types")
+    raw_payload["target_contract"] = {
+        "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_type_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["frame_types"] == [
+        "JSON_CONTROL",
+        "AUDIO_PCM16",
+        "JSON_EVENT",
+        "ERROR",
+        "PING",
+        "PONG",
+    ]
 
 
 def test_compare_artifacts_requires_raw_uds_lifecycle_coverage(tmp_path: Path) -> None:
@@ -716,7 +769,7 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| Raw UDS | -5.0 ms | missing | baseline |" in markdown
     assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing | missing |" in markdown
     assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
-    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | start,audio,transcript,finalize,cancel,close |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close |" in markdown
     assert "Benchmark inputs:" not in markdown
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
@@ -739,7 +792,7 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     assert "Raw UDS recommendation gate: passed" in markdown
     assert "P95 metric leaders:" in markdown
     assert "| time_to_first_interim_ms | raw_uds |" in markdown
-    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | start,audio,transcript,finalize,cancel,close |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close |" in markdown
     assert "Minimum required win: 5 ms" in markdown
 
 

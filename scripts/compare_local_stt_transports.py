@@ -32,6 +32,14 @@ REQUIRED_TARGET_FIELDS_BY_TRANSPORT = {
 }
 RAW_UDS_FRAME_FORMAT = "uint8_type_uint32_len_le"
 RAW_UDS_FRAME_HEADER_BYTES = 5
+RAW_UDS_REQUIRED_FRAME_TYPES = (
+    "JSON_CONTROL",
+    "AUDIO_PCM16",
+    "JSON_EVENT",
+    "ERROR",
+    "PING",
+    "PONG",
+)
 RAW_UDS_REQUIRED_LIFECYCLE = ("start", "audio", "transcript", "finalize", "cancel", "close")
 RAW_UDS_LIFECYCLE_ORDER = {
     event: position for position, event in enumerate(RAW_UDS_REQUIRED_LIFECYCLE)
@@ -290,6 +298,21 @@ def raw_uds_lifecycle_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     return []
 
 
+def raw_uds_frame_type_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
+    raw_uds = transports.get("raw_uds")
+    if raw_uds is None:
+        return []
+
+    frame_types = raw_uds.get("frame_types")
+    if not isinstance(frame_types, list):
+        return ["raw_uds missing target.frame_types coverage"]
+
+    missing = [frame_type for frame_type in RAW_UDS_REQUIRED_FRAME_TYPES if frame_type not in frame_types]
+    if missing:
+        return [f"raw_uds missing frame type coverage: {','.join(missing)}"]
+    return []
+
+
 def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     comparable_fields = (
         ("audio", "source"),
@@ -392,6 +415,7 @@ def recommendation_text(
     run_gaps: list[str],
     target_gaps: list[str],
     frame_contract_gaps: list[str],
+    frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     input_gaps: list[str],
 ) -> str:
@@ -407,6 +431,8 @@ def recommendation_text(
         return "Re-run transport benchmarks with explicit endpoint targets before recommending raw UDS."
     if frame_contract_gaps:
         return "Re-run raw UDS benchmarks with the required length-prefixed frame contract before recommending raw UDS."
+    if frame_type_gaps:
+        return "Re-run raw UDS benchmarks with complete frame type coverage before recommending raw UDS."
     if lifecycle_gaps:
         return "Re-run raw UDS benchmarks with full Local STT v1 lifecycle coverage before recommending raw UDS."
     if input_gaps:
@@ -428,6 +454,7 @@ def blocking_gap_reasons(
     run_gaps: list[str],
     target_gaps: list[str],
     frame_contract_gaps: list[str],
+    frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     input_gaps: list[str],
     transports: dict[str, dict[str, Any]],
@@ -440,6 +467,7 @@ def blocking_gap_reasons(
     reasons.extend(run_gaps)
     reasons.extend(target_gaps)
     reasons.extend(frame_contract_gaps)
+    reasons.extend(frame_type_gaps)
     reasons.extend(lifecycle_gaps)
     reasons.extend(input_gaps)
     for transport, payload in sorted(transports.items()):
@@ -460,6 +488,7 @@ def raw_uds_recommendation_gate(
     run_gaps: list[str],
     target_gaps: list[str],
     frame_contract_gaps: list[str],
+    frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     input_gaps: list[str],
     all_present_transports_protocol_error_free: bool,
@@ -474,6 +503,7 @@ def raw_uds_recommendation_gate(
     blockers.extend(f"run_count:{gap}" for gap in run_gaps)
     blockers.extend(f"target:{gap}" for gap in target_gaps)
     blockers.extend(f"frame_contract:{gap}" for gap in frame_contract_gaps)
+    blockers.extend(f"frame_type:{gap}" for gap in frame_type_gaps)
     blockers.extend(f"lifecycle:{gap}" for gap in lifecycle_gaps)
     blockers.extend(f"benchmark_input:{gap}" for gap in input_gaps)
     if not all_present_transports_protocol_error_free:
@@ -511,6 +541,7 @@ def compare_artifacts(
             raise ValueError(f"{path} is missing summary")
         target_contract = artifact.get("target_contract") if isinstance(artifact.get("target_contract"), dict) else {}
         target_lifecycle = artifact["target"].get("lifecycle") or target_contract.get("lifecycle")
+        target_frame_types = artifact["target"].get("frame_types") or target_contract.get("frame_types")
         metrics = {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS}
         metrics_p95 = {metric: metrics[metric]["p95"] for metric in KEY_METRICS}
         missing_metrics = missing_required_metrics(metrics)
@@ -521,6 +552,7 @@ def compare_artifacts(
             "uds_path": artifact["target"].get("uds_path"),
             "frame_format": artifact["target"].get("frame_format") or target_contract.get("frame_format"),
             "frame_header_bytes": artifact["target"].get("frame_header_bytes") or target_contract.get("frame_header_bytes"),
+            "frame_types": target_frame_types,
             "lifecycle": target_lifecycle,
             "audio": artifact.get("audio") if isinstance(artifact.get("audio"), dict) else {},
             "settings": artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {},
@@ -557,6 +589,7 @@ def compare_artifacts(
     run_gaps = run_count_gaps(by_transport, min_runs)
     target_gaps = target_field_gaps(by_transport)
     frame_contract_gaps = raw_uds_frame_contract_gaps(by_transport)
+    frame_type_gaps = raw_uds_frame_type_gaps(by_transport)
     lifecycle_gaps = raw_uds_lifecycle_gaps(by_transport)
     input_gaps = benchmark_input_gaps(by_transport)
 
@@ -570,6 +603,7 @@ def compare_artifacts(
         run_gaps=run_gaps,
         target_gaps=target_gaps,
         frame_contract_gaps=frame_contract_gaps,
+        frame_type_gaps=frame_type_gaps,
         lifecycle_gaps=lifecycle_gaps,
         input_gaps=input_gaps,
         all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
@@ -595,6 +629,7 @@ def compare_artifacts(
         "run_count_gaps": run_gaps,
         "target_field_gaps": target_gaps,
         "raw_uds_frame_contract_gaps": frame_contract_gaps,
+        "raw_uds_frame_type_gaps": frame_type_gaps,
         "raw_uds_lifecycle_gaps": lifecycle_gaps,
         "benchmark_input_gaps": input_gaps,
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
@@ -614,6 +649,7 @@ def compare_artifacts(
             run_gaps=run_gaps,
             target_gaps=target_gaps,
             frame_contract_gaps=frame_contract_gaps,
+            frame_type_gaps=frame_type_gaps,
             lifecycle_gaps=lifecycle_gaps,
             input_gaps=input_gaps,
             transports=by_transport,
@@ -629,6 +665,7 @@ def compare_artifacts(
             run_gaps=run_gaps,
             target_gaps=target_gaps,
             frame_contract_gaps=frame_contract_gaps,
+            frame_type_gaps=frame_type_gaps,
             lifecycle_gaps=lifecycle_gaps,
             input_gaps=input_gaps,
         ),
@@ -645,6 +682,7 @@ def comparison_has_blocking_gaps(
         or comparison.get("run_count_gaps")
         or comparison.get("target_field_gaps")
         or comparison.get("raw_uds_frame_contract_gaps")
+        or comparison.get("raw_uds_frame_type_gaps")
         or comparison.get("raw_uds_lifecycle_gaps")
         or comparison.get("benchmark_input_gaps")
         or not comparison["all_present_transports_protocol_error_free"]
@@ -713,14 +751,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
         [
             "",
             "Transport targets:",
-            "| Transport | URL | UDS path | Raw frame format | Header bytes | Lifecycle |",
-            "| --- | --- | --- | --- | ---: | --- |",
+            "| Transport | URL | UDS path | Raw frame format | Header bytes | Frame types | Lifecycle |",
+            "| --- | --- | --- | --- | ---: | --- | --- |",
         ]
     )
     for transport in comparison["required_transports"]:
         payload = comparison["transports"].get(transport)
         if payload is None:
-            lines.append(f"| {transport} | missing | missing | missing | missing | missing |")
+            lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing |")
             continue
         lines.append(
             "| "
@@ -731,6 +769,7 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                     _format_optional_value(payload.get("uds_path")),
                     _format_optional_value(payload.get("frame_format")),
                     _format_optional_value(payload.get("frame_header_bytes")),
+                    _format_optional_value(payload.get("frame_types")),
                     _format_optional_value(payload.get("lifecycle")),
                 ]
             )
