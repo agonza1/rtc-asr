@@ -40,6 +40,7 @@ telemetry_coverage_text = prerender_module.telemetry_coverage_text
 detail_variable_measured = prerender_module.detail_variable_measured
 render_sitemap = prerender_module.render_sitemap
 render_robots = prerender_module.render_robots
+render_llms = prerender_module.render_llms
 summarize_detail_page_drift = prerender_module.summarize_detail_page_drift
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
@@ -700,6 +701,36 @@ def test_render_robots_points_crawlers_to_benchmark_sitemap() -> None:
     robots = render_robots("https://benchmarks.webrtc.ventures/asr-latency/")
 
     assert robots == "User-agent: *\nAllow: /\nSitemap: https://benchmarks.webrtc.ventures/asr-latency/sitemap.xml\n"
+
+
+def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
+    manifest = {
+        "summary": {"published_artifact_count": 1, "artifact_file_count": 2, "stale_artifact_count": 1},
+        "tracks": [
+            {
+                "label": "Demo ASR",
+                "slug": "demo-asr",
+                "runtime": "cpu / int8",
+                "status": "validated",
+                "artifact_path": "benchmark-results/demo-2026-06-14.json",
+                "streaming": {
+                    "live_metrics_comparable": True,
+                    "first_partial_end_to_end_mean_ms": 123.4,
+                    "partial_gap_mean_ms": 45.6,
+                    "final_mean_ms": 789.0,
+                },
+                "contract": {"path": "/v1/stt/stream"},
+            }
+        ],
+    }
+
+    llms = render_llms(manifest, "https://example.test/asr-latency/")
+
+    assert "# Edge ASR Latency Benchmarks for WebRTC Voice AI" in llms
+    assert "Manifest JSON: https://example.test/asr-latency/benchmark-results/manifest.json" in llms
+    assert "Demo ASR: cpu / int8; TTFB / first partial 123.4 ms" in llms
+    assert "details https://example.test/asr-latency/benchmark-results/pages/demo-2026-06-14.html" in llms
+    assert "Published current artifacts: 1" in llms
 
 
 def test_render_homepage_omits_unpublished_registry_gap_copy() -> None:
