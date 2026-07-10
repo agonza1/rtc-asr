@@ -94,6 +94,48 @@ def metric_percentiles(summary: dict[str, Any], metric: str) -> dict[str, float 
     return {percentile: _percentile(summary, metric, percentile) for percentile in PERCENTILES}
 
 
+def first_defined(*values: Any) -> Any:
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, str) and value == "":
+            continue
+        return value
+
+
+def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
+    current: Any = mapping
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
+    environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
+    metrics = artifact.get("metrics") if isinstance(artifact.get("metrics"), dict) else {}
+    system = artifact.get("system") if isinstance(artifact.get("system"), dict) else {}
+    cpu = artifact.get("cpu") if isinstance(artifact.get("cpu"), dict) else {}
+    value = first_defined(
+        environment.get("cpu_utilization_percent"),
+        environment.get("cpu_percent"),
+        system.get("cpu_utilization_percent"),
+        system.get("cpu_percent"),
+        metrics.get("cpu_utilization_percent"),
+        metrics.get("cpu_percent"),
+        nested_value(metrics, "cpu", "utilization_percent"),
+        nested_value(metrics, "cpu", "average_utilization_percent"),
+        nested_value(metrics, "cpu", "percent"),
+        nested_value(metrics, "cpu", "average_percent"),
+        cpu.get("utilization_percent"),
+        cpu.get("average_utilization_percent"),
+        cpu.get("percent"),
+        cpu.get("average_percent"),
+    )
+    return None if value is None else float(value)
+
+
 def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: str) -> str | None:
     candidates: list[tuple[float, str]] = []
     for transport, payload in transports.items():
@@ -434,7 +476,6 @@ def compare_artifacts(
         summary = artifact.get("summary")
         if not isinstance(summary, dict):
             raise ValueError(f"{path} is missing summary")
-        environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
         target_contract = artifact.get("target_contract") if isinstance(artifact.get("target_contract"), dict) else {}
         target_lifecycle = artifact["target"].get("lifecycle") or target_contract.get("lifecycle")
         metrics = {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS}
@@ -455,7 +496,7 @@ def compare_artifacts(
             "metrics_p95": metrics_p95,
             "missing_p95_metrics": missing_metrics,
             "protocol_error_free": protocol_error_free(metrics),
-            "cpu_utilization_percent": environment.get("cpu_utilization_percent"),
+            "cpu_utilization_percent": extract_cpu_utilization_percent(artifact),
         }
 
     missing = [transport for transport in REQUIRED_TRANSPORTS if transport not in by_transport]
