@@ -151,6 +151,39 @@ def p95_metric_leaders(transports: dict[str, dict[str, Any]]) -> dict[str, str |
     return {metric: fastest_transport_by_metric(transports, metric) for metric in KEY_METRICS}
 
 
+def classify_p95_delta(delta_ms: float | None) -> str:
+    if delta_ms is None:
+        return "missing"
+    if delta_ms > 0:
+        return "improved"
+    if delta_ms < 0:
+        return "regressed"
+    return "matched"
+
+
+def raw_uds_p95_comparison_summary(
+    transports: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, dict[str, float | str | None]]]:
+    raw_uds = transports.get("raw_uds")
+    summary: dict[str, dict[str, dict[str, float | str | None]]] = {}
+    for baseline in ("tcp_ws", "uds_ws"):
+        baseline_payload = transports.get(baseline)
+        summary[baseline] = {}
+        for metric in KEY_METRICS:
+            baseline_value = None if baseline_payload is None else baseline_payload.get("metrics_p95", {}).get(metric)
+            raw_value = None if raw_uds is None else raw_uds.get("metrics_p95", {}).get(metric)
+            delta_ms = None
+            if baseline_value is not None and raw_value is not None:
+                delta_ms = round(float(baseline_value) - float(raw_value), 3)
+            summary[baseline][metric] = {
+                "baseline_p95": baseline_value,
+                "raw_uds_p95": raw_value,
+                "delta_ms": delta_ms,
+                "status": classify_p95_delta(delta_ms),
+            }
+    return summary
+
+
 def lowest_cpu_utilization_transport(transports: dict[str, dict[str, Any]]) -> str | None:
     candidates: list[tuple[float, str]] = []
     for transport, payload in transports.items():
@@ -508,6 +541,7 @@ def compare_artifacts(
     }
     raw_vs_uds_deltas = raw_uds_vs_uds_p95_deltas(by_transport)
     p95_delta_matrix = pairwise_p95_delta_matrix(by_transport)
+    raw_uds_comparison_summary = raw_uds_p95_comparison_summary(by_transport)
     raw_vs_uds_delta_ms = raw_vs_uds_deltas["time_to_first_interim_ms"]
     raw_vs_uds_final_after_finalize_delta_ms = raw_vs_uds_deltas["time_to_final_after_finalize_ms"]
     raw_uds_latency_experimental = raw_vs_uds_delta_ms is None or raw_vs_uds_delta_ms < raw_uds_min_win_ms
@@ -566,6 +600,7 @@ def compare_artifacts(
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_recommendation_gate": recommendation_gate,
         "raw_uds_vs_uds_ws_p95_deltas_ms": raw_vs_uds_deltas,
+        "raw_uds_p95_comparison_summary": raw_uds_comparison_summary,
         "pairwise_p95_deltas_ms": p95_delta_matrix,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
@@ -750,6 +785,35 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
         )
         for metric in KEY_METRICS:
             lines.append(f"| {metric} | {_format_optional_value(metric_leaders.get(metric))} |")
+
+    raw_uds_summary = comparison.get("raw_uds_p95_comparison_summary", {})
+    if raw_uds_summary:
+        labels = {"tcp_ws": "TCP WebSocket", "uds_ws": "UDS WebSocket"}
+        lines.extend(
+            [
+                "",
+                "Raw UDS p95 comparison:",
+                "| Baseline | Metric | Baseline p95 | Raw UDS p95 | Delta | Status |",
+                "| --- | --- | ---: | ---: | ---: | --- |",
+            ]
+        )
+        for baseline in ("tcp_ws", "uds_ws"):
+            for metric in KEY_METRICS:
+                payload = raw_uds_summary.get(baseline, {}).get(metric, {})
+                lines.append(
+                    "| "
+                    + " | ".join(
+                        [
+                            labels[baseline],
+                            metric,
+                            _format_optional_ms(payload.get("baseline_p95")),
+                            _format_optional_ms(payload.get("raw_uds_p95")),
+                            _format_optional_ms(payload.get("delta_ms")),
+                            _format_optional_value(payload.get("status")),
+                        ]
+                    )
+                    + " |"
+                )
 
     pairwise_deltas = comparison.get("pairwise_p95_deltas_ms", {}).get("time_to_first_interim_ms", {})
     if pairwise_deltas:
