@@ -345,6 +345,43 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "p95": 27.0,
         "p99": 32.0,
     }
+    assert comparison["raw_uds_p95_comparison_summary"]["tcp_ws"]["time_to_first_interim_ms"] == {
+        "baseline_p95": 18.0,
+        "raw_uds_p95": 12.5,
+        "delta_ms": 5.5,
+        "status": "improved",
+    }
+    assert comparison["raw_uds_p95_comparison_summary"]["uds_ws"]["time_to_final_after_finalize_ms"] == {
+        "baseline_p95": 24.0,
+        "raw_uds_p95": 27.0,
+        "delta_ms": -3.0,
+        "status": "regressed",
+    }
+    assert comparison["raw_uds_p95_comparison_summary"]["uds_ws"]["protocol_errors"] == {
+        "baseline_p95": 0.0,
+        "raw_uds_p95": 0.0,
+        "delta_ms": 0.0,
+        "status": "matched",
+    }
+
+
+def test_compare_artifacts_marks_missing_raw_uds_summary_metrics(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+
+    comparison = compare_module.compare_artifacts([tcp])
+
+    assert comparison["raw_uds_p95_comparison_summary"]["tcp_ws"]["time_to_first_interim_ms"] == {
+        "baseline_p95": 18.0,
+        "raw_uds_p95": None,
+        "delta_ms": None,
+        "status": "missing",
+    }
+    assert comparison["raw_uds_p95_comparison_summary"]["uds_ws"]["time_to_first_interim_ms"] == {
+        "baseline_p95": None,
+        "raw_uds_p95": None,
+        "delta_ms": None,
+        "status": "missing",
+    }
 
 
 def test_compare_artifacts_reports_lowest_cpu_transport_when_available(tmp_path: Path) -> None:
