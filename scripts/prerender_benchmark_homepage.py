@@ -919,7 +919,7 @@ def render_sitemap(manifest: dict[str, Any], base_url: str) -> str:
         if current_lastmod is None or (lastmod is not None and lastmod > current_lastmod):
             detail_lastmods[detail_path] = lastmod
 
-    urls = [("", generated_lastmod), ("benchmark-results/manifest.json", generated_lastmod)]
+    urls = [("", generated_lastmod), ("benchmark-results/manifest.json", generated_lastmod), ("llms.txt", generated_lastmod)]
     urls.extend((path, artifact_lastmods[path]) for path in sorted(artifact_lastmods))
     urls.extend((path, detail_lastmods[path]) for path in sorted(detail_lastmods))
     url_entries = "\n".join(

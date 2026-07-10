@@ -1078,6 +1078,7 @@ def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
     assert sitemap.startswith('<?xml version="1.0" encoding="UTF-8"?>')
     assert "https://example.test/asr-latency/</loc>" in sitemap
     assert "https://example.test/asr-latency/benchmark-results/manifest.json" in sitemap
+    assert "https://example.test/asr-latency/llms.txt" in sitemap
     assert sitemap.count("demo-2026-06-14.html") == 1
     assert "legacy-2026-06-10.html" in sitemap
     assert "not-json" not in sitemap
