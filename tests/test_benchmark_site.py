@@ -383,14 +383,16 @@ def test_transport_coverage_summary_counts_paths_and_transports() -> None:
         {"contract": {"transport": "v1-stt-stream", "path": "/v1/stt/stream"}, "streaming": {"live_metrics_comparable": True}},
         {"contract": {"transport": "tcp_ws", "path": "/v1/stt/stream"}, "streaming": {"live_metrics_comparable": True}},
         {"contract": {"path": "/ws/stream"}, "streaming": {"transport": "direct", "live_metrics_comparable": False}},
+        {"contract": {"transport": "raw_uds", "path": "raw_uds"}, "streaming": {"live_metrics_comparable": True}},
         {"contract": {}, "streaming": {}},
     ]
 
     assert build_transport_coverage_summary(entries) == {
-        "artifact_count": 4,
-        "by_transport": {"direct": 1, "tcp_ws": 1, "unknown": 1, "v1-stt-stream": 1},
-        "by_path": {"/v1/stt/stream": 2, "/ws/stream": 1, "unknown": 1},
+        "artifact_count": 5,
+        "by_transport": {"direct": 1, "raw_uds": 1, "tcp_ws": 1, "unknown": 1, "v1-stt-stream": 1},
+        "by_path": {"/v1/stt/stream": 2, "/ws/stream": 1, "raw_uds": 1, "unknown": 1},
         "comparable_local_stt_artifact_count": 2,
+        "raw_uds_artifact_count": 1,
     }
 
 
@@ -403,6 +405,7 @@ def test_manifest_summarizes_transport_coverage() -> None:
     assert coverage["by_path"]["/ws/stream"] == 4
     assert coverage["by_path"]["unknown"] == 11
     assert coverage["comparable_local_stt_artifact_count"] == 8
+    assert coverage["raw_uds_artifact_count"] == 0
 
 
 def test_manifest_summarizes_sample_coverage_readiness() -> None:
