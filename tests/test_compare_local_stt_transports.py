@@ -296,6 +296,16 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "asr_queue_delay_p95_ms": 4.5,
         "protocol_errors": 0.0,
     }
+    assert comparison["pairwise_p95_deltas_ms"]["time_to_first_interim_ms"] == {
+        "tcp_ws": {"tcp_ws": None, "uds_ws": 2.0, "raw_uds": 5.5},
+        "uds_ws": {"tcp_ws": -2.0, "uds_ws": None, "raw_uds": 3.5},
+        "raw_uds": {"tcp_ws": -5.5, "uds_ws": -3.5, "raw_uds": None},
+    }
+    assert comparison["pairwise_p95_deltas_ms"]["time_to_final_after_finalize_ms"] == {
+        "tcp_ws": {"tcp_ws": None, "uds_ws": 7.0, "raw_uds": 4.0},
+        "uds_ws": {"tcp_ws": -7.0, "uds_ws": None, "raw_uds": -3.0},
+        "raw_uds": {"tcp_ws": -4.0, "uds_ws": 3.0, "raw_uds": None},
+    }
     assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 3.5
     assert comparison["raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms"] == -3.0
     assert comparison["raw_uds_should_remain_experimental"] is True
@@ -629,6 +639,9 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| tcp_ws | 18.0 ms | 25.0 ms | 0.0 | 12.5% | 3 |" in markdown
     assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
     assert "Transport targets:" in markdown
+    assert "First-interim p95 deltas:" in markdown
+    assert "| TCP WebSocket | baseline | missing | 5.0 ms |" in markdown
+    assert "| Raw UDS | -5.0 ms | missing | baseline |" in markdown
     assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing | missing |" in markdown
     assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
     assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | start,audio,transcript,finalize,cancel,close |" in markdown
