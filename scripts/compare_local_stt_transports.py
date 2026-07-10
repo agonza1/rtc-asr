@@ -740,6 +740,14 @@ def _format_optional_ms(value: float | None) -> str:
     return f"{value:.1f} ms"
 
 
+def _format_optional_metric_value(metric: str, value: float | None) -> str:
+    if metric == "protocol_errors":
+        if value is None:
+            return "missing"
+        return f"{value:g}"
+    return _format_optional_ms(value)
+
+
 def _format_optional_value(value: Any) -> str:
     if value is None or value == "":
         return "missing"
@@ -889,9 +897,9 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                         [
                             labels[baseline],
                             metric,
-                            _format_optional_ms(payload.get("baseline_p95")),
-                            _format_optional_ms(payload.get("raw_uds_p95")),
-                            _format_optional_ms(payload.get("delta_ms")),
+                            _format_optional_metric_value(metric, payload.get("baseline_p95")),
+                            _format_optional_metric_value(metric, payload.get("raw_uds_p95")),
+                            _format_optional_metric_value(metric, payload.get("delta_ms")),
                             _format_optional_value(payload.get("status")),
                         ]
                     )
