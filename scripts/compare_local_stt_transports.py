@@ -17,9 +17,10 @@ KEY_METRICS = (
     "protocol_errors",
 )
 METRIC_ALIASES = {
-    # Issue #88 names this acceptance metric without the historical audio_/ms
-    # suffix; accept both artifact spellings while keeping the comparison schema stable.
+    # Issue #88 names these acceptance metrics without the historical audio_/ms
+    # suffixes; accept both artifact spellings while keeping the comparison schema stable.
     "audio_send_queue_depth_p95_ms": ("send_queue_depth_p95",),
+    "asr_queue_delay_p95_ms": ("asr_queue_delay_p95",),
 }
 
 PERCENTILES = ("p50", "p95", "p99")
