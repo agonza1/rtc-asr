@@ -34,6 +34,9 @@ BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
 LOCAL_STT_TRANSPORT_ARTIFACTS ?=
 LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.json
 LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.md
+LOCAL_STT_TRANSPORT_COMPARE_FLAGS ?=
+LOCAL_STT_TRANSPORT_MIN_RUNS ?=
+LOCAL_STT_RAW_UDS_MIN_WIN_MS ?= 5.0
 BENCHMARK_RESULT_DATE ?= $(shell date -u +%Y-%m-%d)
 BENCHMARK_SAMPLE_COUNT ?= 10
 BENCHMARK_REST_RUNS ?= 5
@@ -482,7 +485,7 @@ benchmark-pipecat-e2e: venv
 
 benchmark-local-stt-transport-compare:
 	@test -n "$(LOCAL_STT_TRANSPORT_ARTIFACTS)" || (echo "Set LOCAL_STT_TRANSPORT_ARTIFACTS to tcp_ws, uds_ws, and raw_uds benchmark JSON artifacts." >&2; exit 2)
-	@python3 scripts/compare_local_stt_transports.py --output $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT) --markdown-output $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN) $(LOCAL_STT_TRANSPORT_ARTIFACTS)
+	@python3 scripts/compare_local_stt_transports.py --output $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT) --markdown-output $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN) --raw-uds-min-win-ms $(LOCAL_STT_RAW_UDS_MIN_WIN_MS) $(if $(LOCAL_STT_TRANSPORT_MIN_RUNS),--min-runs $(LOCAL_STT_TRANSPORT_MIN_RUNS),) $(LOCAL_STT_TRANSPORT_COMPARE_FLAGS) $(LOCAL_STT_TRANSPORT_ARTIFACTS)
 	@echo "Wrote $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT) and $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN)"
 
 benchmark-parakeet-mlx: mlx-venv
