@@ -55,6 +55,11 @@ def write_artifact(
                                 "PONG": 6,
                             },
                             "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+                            "error_handling": [
+                                "bad_frame_type",
+                                "malformed_json_control",
+                                "oversized_payload",
+                            ],
                         }
                         if transport == "raw_uds"
                         else {}
@@ -374,6 +379,49 @@ def test_compare_artifacts_accepts_raw_uds_lifecycle_from_benchmark_contract(tmp
         "finalize",
         "cancel",
         "close",
+    ]
+
+
+def test_compare_artifacts_requires_raw_uds_error_handling_coverage(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["error_handling"] = ["bad_frame_type"]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_error_handling_gaps"] == [
+        "raw_uds missing protocol-error handling coverage: malformed_json_control,oversized_payload"
+    ]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_error_handling_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "error_handling:raw_uds missing protocol-error handling coverage: malformed_json_control,oversized_payload"
+    ]
+    assert comparison["recommendation"] == (
+        "Re-run raw UDS benchmarks with protocol-error handling coverage before recommending raw UDS."
+    )
+
+
+def test_compare_artifacts_accepts_raw_uds_error_handling_from_benchmark_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("error_handling")
+    raw_payload["target_contract"] = {
+        "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"]
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_error_handling_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["error_handling"] == [
+        "bad_frame_type",
+        "malformed_json_control",
+        "oversized_payload",
     ]
 
 
