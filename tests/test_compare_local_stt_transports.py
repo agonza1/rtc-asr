@@ -973,7 +973,7 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
 
     assert "# Local STT v1 Transport Comparison" in markdown
     assert "| tcp_ws | 18.0 ms | 25.0 ms | 0.0 | 12.5% | 3 |" in markdown
-    assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
+    assert "| uds_ws | missing | missing | missing | missing | missing | missing | missing | missing |" in markdown
     assert "Transport targets:" in markdown
     assert "P95 metric leaders:" in markdown
     assert "| time_to_first_interim_ms | raw_uds |" in markdown
@@ -982,9 +982,9 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| TCP WebSocket | protocol_errors | 0 | 0 | 0 | matched |" in markdown
     assert "| TCP WebSocket | baseline | missing | 5.0 ms |" in markdown
     assert "| Raw UDS | -5.0 ms | missing | baseline |" in markdown
-    assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing | missing |" in markdown
-    assert "| uds_ws | missing | missing | missing | missing | missing |" in markdown
-    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close |" in markdown
+    assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing | missing | missing | missing |" in markdown
+    assert "| uds_ws | missing | missing | missing | missing | missing | missing | missing | missing |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload | True |" in markdown
     assert "Benchmark inputs:" in markdown
     assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
@@ -1009,7 +1009,7 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     assert "Raw UDS recommendation gate: passed" in markdown
     assert "P95 metric leaders:" in markdown
     assert "| time_to_first_interim_ms | raw_uds |" in markdown
-    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload | True |" in markdown
     assert "Minimum required win: 5 ms" in markdown
 
 

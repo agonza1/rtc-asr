@@ -880,14 +880,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
         [
             "",
             "Transport targets:",
-            "| Transport | URL | UDS path | Raw frame format | Header bytes | Frame types | Lifecycle |",
-            "| --- | --- | --- | --- | ---: | --- | --- |",
+            "| Transport | URL | UDS path | Raw frame format | Header bytes | Frame types | Lifecycle | Error handling | Shared runtime |",
+            "| --- | --- | --- | --- | ---: | --- | --- | --- | --- |",
         ]
     )
     for transport in comparison["required_transports"]:
         payload = comparison["transports"].get(transport)
         if payload is None:
-            lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing |")
+            lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing | missing | missing |")
             continue
         lines.append(
             "| "
@@ -900,6 +900,8 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                     _format_optional_value(payload.get("frame_header_bytes")),
                     _format_optional_value(payload.get("frame_types")),
                     _format_optional_value(payload.get("lifecycle")),
+                    _format_optional_value(payload.get("error_handling")),
+                    _format_optional_value(payload.get("shared_stream_runtime")),
                 ]
             )
             + " |"
