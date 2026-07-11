@@ -471,6 +471,59 @@ def test_raw_uds_server_shares_local_stt_v1_stream_runtime(tmp_path: Path) -> No
         }
     ]
 
+
+def test_raw_uds_cancel_resets_stream_without_transcribing(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    transcriber = FakeTranscriber()
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+    chunk = b"c" * HOT_PATH_BYTES_PER_FRAME
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient(str(raw_socket_path))
+        ready = await client.start(client_stream_id="cancel-turn", partial_interval_ms=100_000)
+        assert ready["metadata"]["client_stream_id"] == "cancel-turn"
+
+        await client.send_audio(chunk)
+        await client.cancel()
+        canceled = await client.recv_event()
+        assert canceled is not None
+        assert canceled.type == "warning"
+        assert canceled.raw is not None
+        assert canceled.raw["code"] == "stream_canceled"
+        assert canceled.raw["metadata"]["client_stream_id"] == "cancel-turn"
+        assert canceled.raw["metadata"]["chunks_received"] == 1
+        assert canceled.raw["metadata"]["buffered_bytes"] == 0
+
+        second_ready = await client.start(client_stream_id="second-turn", partial_interval_ms=HOT_PATH_FRAME_MS)
+        assert second_ready["metadata"]["stream_id"] == 2
+        assert second_ready["metadata"]["client_stream_id"] == "second-turn"
+
+        await client.send_audio(chunk)
+        await client.finalize()
+        while True:
+            event = await client.recv_event()
+            assert event is not None
+            if event.type == "final":
+                assert event.raw is not None
+                assert event.raw["metadata"]["client_stream_id"] == "second-turn"
+                break
+
+        closed = await client.close()
+        assert closed == {"type": "closed", "reason": "client_close", "metadata": {}}
+
+    with TestClient(create_app(config=config, transcriber=transcriber)):
+        asyncio.run(scenario())
+
+    assert transcriber.calls == [
+        {
+            "audio_size": len(chunk),
+            "language": "en",
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "prefix": chunk[:4],
+        }
+    ]
+
+
 def test_ready_returns_503_when_preload_is_degraded() -> None:
     transcriber = FailingPreloadTranscriber(ASRUnavailableError("backend unavailable"))
     config = AppConfig(asr_preload_model=True, asr_fail_fast=False)
