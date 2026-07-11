@@ -335,6 +335,15 @@ def raw_uds_error_handling_gaps(transports: dict[str, dict[str, Any]]) -> list[s
     return []
 
 
+def raw_uds_runtime_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
+    raw_uds = transports.get("raw_uds")
+    if raw_uds is None:
+        return []
+    if raw_uds.get("shared_stream_runtime") is True:
+        return []
+    return ["raw_uds missing shared stream runtime evidence"]
+
+
 def parse_frame_type_code(value: Any) -> int | None:
     if isinstance(value, int):
         return value
@@ -495,6 +504,7 @@ def recommendation_text(
     frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     error_handling_gaps: list[str],
+    runtime_gaps: list[str],
     input_gaps: list[str],
 ) -> str:
     if missing:
@@ -515,6 +525,8 @@ def recommendation_text(
         return "Re-run raw UDS benchmarks with full Local STT v1 lifecycle coverage before recommending raw UDS."
     if error_handling_gaps:
         return "Re-run raw UDS benchmarks with protocol-error handling coverage before recommending raw UDS."
+    if runtime_gaps:
+        return "Re-run raw UDS benchmarks with shared stream runtime evidence before recommending raw UDS."
     if input_gaps:
         return "Re-run transport benchmarks with matching audio and pacing settings before recommending raw UDS."
     if not all_present_transports_protocol_error_free:
@@ -537,6 +549,7 @@ def blocking_gap_reasons(
     frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     error_handling_gaps: list[str],
+    runtime_gaps: list[str],
     input_gaps: list[str],
     transports: dict[str, dict[str, Any]],
 ) -> list[str]:
@@ -551,6 +564,7 @@ def blocking_gap_reasons(
     reasons.extend(frame_type_gaps)
     reasons.extend(lifecycle_gaps)
     reasons.extend(error_handling_gaps)
+    reasons.extend(runtime_gaps)
     reasons.extend(input_gaps)
     for transport, payload in sorted(transports.items()):
         if not payload["protocol_error_free"]:
@@ -573,6 +587,7 @@ def raw_uds_recommendation_gate(
     frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     error_handling_gaps: list[str],
+    runtime_gaps: list[str],
     input_gaps: list[str],
     all_present_transports_protocol_error_free: bool,
     raw_vs_uds_delta_ms: float | None,
@@ -589,6 +604,7 @@ def raw_uds_recommendation_gate(
     blockers.extend(f"frame_type:{gap}" for gap in frame_type_gaps)
     blockers.extend(f"lifecycle:{gap}" for gap in lifecycle_gaps)
     blockers.extend(f"error_handling:{gap}" for gap in error_handling_gaps)
+    blockers.extend(f"runtime:{gap}" for gap in runtime_gaps)
     blockers.extend(f"benchmark_input:{gap}" for gap in input_gaps)
     if not all_present_transports_protocol_error_free:
         blockers.append("protocol_errors")
@@ -628,6 +644,9 @@ def compare_artifacts(
         target_frame_types = artifact["target"].get("frame_types") or target_contract.get("frame_types")
         target_frame_type_codes = artifact["target"].get("frame_type_codes") or target_contract.get("frame_type_codes")
         target_error_handling = artifact["target"].get("error_handling") or target_contract.get("error_handling")
+        shared_stream_runtime = artifact["target"].get("shared_stream_runtime")
+        if shared_stream_runtime is None:
+            shared_stream_runtime = target_contract.get("shared_stream_runtime")
         metrics = {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS}
         metrics_p95 = {metric: metrics[metric]["p95"] for metric in KEY_METRICS}
         missing_metrics = missing_required_metrics(metrics)
@@ -642,6 +661,7 @@ def compare_artifacts(
             "frame_type_codes": target_frame_type_codes,
             "lifecycle": target_lifecycle,
             "error_handling": target_error_handling,
+            "shared_stream_runtime": shared_stream_runtime,
             "audio": artifact.get("audio") if isinstance(artifact.get("audio"), dict) else {},
             "settings": artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {},
             "runs": artifact.get("runs"),
@@ -680,6 +700,7 @@ def compare_artifacts(
     frame_type_gaps = raw_uds_frame_type_gaps(by_transport)
     lifecycle_gaps = raw_uds_lifecycle_gaps(by_transport)
     error_handling_gaps = raw_uds_error_handling_gaps(by_transport)
+    runtime_gaps = raw_uds_runtime_gaps(by_transport)
     input_gaps = benchmark_input_gaps(by_transport)
 
     all_present_transports_protocol_error_free = all(
@@ -695,6 +716,7 @@ def compare_artifacts(
         frame_type_gaps=frame_type_gaps,
         lifecycle_gaps=lifecycle_gaps,
         error_handling_gaps=error_handling_gaps,
+        runtime_gaps=runtime_gaps,
         input_gaps=input_gaps,
         all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
         raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
@@ -722,6 +744,7 @@ def compare_artifacts(
         "raw_uds_frame_type_gaps": frame_type_gaps,
         "raw_uds_lifecycle_gaps": lifecycle_gaps,
         "raw_uds_error_handling_gaps": error_handling_gaps,
+        "raw_uds_runtime_gaps": runtime_gaps,
         "benchmark_input_gaps": input_gaps,
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_recommendation_gate": recommendation_gate,
@@ -743,6 +766,7 @@ def compare_artifacts(
             frame_type_gaps=frame_type_gaps,
             lifecycle_gaps=lifecycle_gaps,
             error_handling_gaps=error_handling_gaps,
+            runtime_gaps=runtime_gaps,
             input_gaps=input_gaps,
             transports=by_transport,
         ),
@@ -760,6 +784,7 @@ def compare_artifacts(
             frame_type_gaps=frame_type_gaps,
             lifecycle_gaps=lifecycle_gaps,
             error_handling_gaps=error_handling_gaps,
+            runtime_gaps=runtime_gaps,
             input_gaps=input_gaps,
         ),
     }
@@ -778,6 +803,7 @@ def comparison_has_blocking_gaps(
         or comparison.get("raw_uds_frame_type_gaps")
         or comparison.get("raw_uds_lifecycle_gaps")
         or comparison.get("raw_uds_error_handling_gaps")
+        or comparison.get("raw_uds_runtime_gaps")
         or comparison.get("benchmark_input_gaps")
         or not comparison["all_present_transports_protocol_error_free"]
         or (require_raw_uds_recommendation and comparison["raw_uds_should_remain_experimental"])

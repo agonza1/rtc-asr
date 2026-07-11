@@ -60,6 +60,7 @@ def write_artifact(
                                 "malformed_json_control",
                                 "oversized_payload",
                             ],
+                            "shared_stream_runtime": True,
                         }
                         if transport == "raw_uds"
                         else {}
@@ -397,6 +398,42 @@ def test_compare_artifacts_accepts_raw_uds_lifecycle_from_benchmark_contract(tmp
         "cancel",
         "close",
     ]
+
+
+def test_compare_artifacts_requires_raw_uds_shared_runtime_evidence(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("shared_stream_runtime")
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_runtime_gaps"] == ["raw_uds missing shared stream runtime evidence"]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_runtime_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "runtime:raw_uds missing shared stream runtime evidence"
+    ]
+    assert comparison["recommendation"] == (
+        "Re-run raw UDS benchmarks with shared stream runtime evidence before recommending raw UDS."
+    )
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
+
+
+def test_compare_artifacts_accepts_raw_uds_shared_runtime_from_benchmark_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("shared_stream_runtime")
+    raw_payload["target_contract"] = {"shared_stream_runtime": True}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_runtime_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["shared_stream_runtime"] is True
 
 
 def test_compare_artifacts_requires_raw_uds_error_handling_coverage(tmp_path: Path) -> None:
