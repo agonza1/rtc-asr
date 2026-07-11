@@ -16,6 +16,11 @@ KEY_METRICS = (
     "asr_queue_delay_p95_ms",
     "protocol_errors",
 )
+METRIC_ALIASES = {
+    # Issue #88 names this acceptance metric without the historical audio_/ms
+    # suffix; accept both artifact spellings while keeping the comparison schema stable.
+    "audio_send_queue_depth_p95_ms": ("send_queue_depth_p95",),
+}
 
 PERCENTILES = ("p50", "p95", "p99")
 REQUIRED_PERCENTILES_BY_METRIC = {
@@ -103,6 +108,10 @@ def artifact_provenance(path: Path) -> dict[str, Any]:
 
 def _percentile(summary: dict[str, Any], metric: str, percentile: str) -> float | None:
     bucket = summary.get(metric)
+    for alias in METRIC_ALIASES.get(metric, ()):
+        if isinstance(bucket, dict):
+            break
+        bucket = summary.get(alias)
     if not isinstance(bucket, dict):
         return None
     value = bucket.get(percentile)
