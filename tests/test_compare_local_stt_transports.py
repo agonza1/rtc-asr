@@ -978,6 +978,11 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "P95 metric leaders:" in markdown
     assert "| time_to_first_interim_ms | raw_uds |" in markdown
     assert "| time_to_final_after_finalize_ms | raw_uds |" in markdown
+    assert "CPU utilization coverage:" in markdown
+    assert "- Complete: False" in markdown
+    assert "- Available transports: raw_uds,tcp_ws" in markdown
+    assert "- Missing CPU samples: missing" in markdown
+    assert "- Missing required transports: uds_ws" in markdown
     assert "First-interim p95 deltas:" in markdown
     assert "| TCP WebSocket | protocol_errors | 0 | 0 | 0 | matched |" in markdown
     assert "| TCP WebSocket | baseline | missing | 5.0 ms |" in markdown
@@ -1009,6 +1014,11 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     assert "Raw UDS recommendation gate: passed" in markdown
     assert "P95 metric leaders:" in markdown
     assert "| time_to_first_interim_ms | raw_uds |" in markdown
+    assert "CPU utilization coverage:" in markdown
+    assert "- Complete: True" in markdown
+    assert "- Available transports: raw_uds,tcp_ws,uds_ws" in markdown
+    assert "- Missing CPU samples: missing" in markdown
+    assert "- Missing required transports: missing" in markdown
     assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload | True |" in markdown
     assert "Minimum required win: 5 ms" in markdown
 

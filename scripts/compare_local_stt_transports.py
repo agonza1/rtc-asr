@@ -958,6 +958,21 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
         for metric in KEY_METRICS:
             lines.append(f"| {metric} | {_format_optional_value(metric_leaders.get(metric))} |")
 
+    cpu_coverage = comparison.get("cpu_utilization_coverage", {})
+    if cpu_coverage:
+        available = cpu_coverage.get("available_transports", [])
+        missing = cpu_coverage.get("missing_transports", [])
+        lines.extend(
+            [
+                "",
+                "CPU utilization coverage:",
+                f"- Complete: {_format_optional_value(cpu_coverage.get('complete'))}",
+                f"- Available transports: {_format_optional_value(available)}",
+                f"- Missing CPU samples: {_format_optional_value(missing)}",
+                f"- Missing required transports: {_format_optional_value(comparison.get('missing_transports', []))}",
+            ]
+        )
+
     raw_uds_summary = comparison.get("raw_uds_p95_comparison_summary", {})
     if raw_uds_summary:
         labels = {"tcp_ws": "TCP WebSocket", "uds_ws": "UDS WebSocket"}
