@@ -516,7 +516,10 @@ class RawUdsConnectionAdapter:
         header = await self._reader.readexactly(RAW_UDS_HEADER_BYTES)
         payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
         if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
-            raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
+            raise LocalSTTProtocolError(
+                f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+                code="raw_uds_payload_too_large",
+            )
         frame = decode_raw_uds_frame(header + await self._reader.readexactly(payload_length))
         return json.dumps(parse_raw_uds_server_frame(frame))
 

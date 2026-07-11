@@ -20,6 +20,7 @@ from pipecat_local_stt.pipecat_compat import (
 )
 from pipecat_local_stt.protocol import (
     LocalSTTProtocolError,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
     RawUdsFrameType,
     decode_raw_uds_frame,
     encode_raw_uds_frame,
@@ -318,6 +319,18 @@ def test_raw_uds_adapter_rejects_client_frame_types_from_server() -> None:
         asyncio.run(connection.recv())
 
     assert excinfo.value.code == "raw_uds_invalid_server_frame_type"
+
+
+def test_raw_uds_adapter_reports_oversized_payload_with_protocol_code() -> None:
+    writer = FakeRawUdsWriter()
+    header = bytes([RawUdsFrameType.JSON_EVENT]) + (RAW_UDS_MAX_PAYLOAD_BYTES + 1).to_bytes(4, "little")
+    reader = FakeRawUdsReader(header)
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    with pytest.raises(LocalSTTProtocolError, match="payload exceeds") as excinfo:
+        asyncio.run(connection.recv())
+
+    assert excinfo.value.code == "raw_uds_payload_too_large"
 
 
 def test_raw_uds_adapter_decodes_error_frame_without_json_type() -> None:
