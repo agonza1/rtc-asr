@@ -38,6 +38,7 @@ measurement_technique = prerender_module.measurement_technique
 evidence_role = prerender_module.evidence_role
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
 detail_variable_measured = prerender_module.detail_variable_measured
+rss_delta_mb = prerender_module.rss_delta_mb
 render_sitemap = prerender_module.render_sitemap
 render_robots = prerender_module.render_robots
 render_llms = prerender_module.render_llms
@@ -510,6 +511,7 @@ def test_telemetry_coverage_text_summarizes_missing_optional_signals() -> None:
 def test_detail_variable_measured_includes_recorded_low_power_signals() -> None:
     variables = detail_variable_measured({
         "process_rss_mb": 180.0,
+        "peak_rss_mb": 240.0,
         "cpu_utilization_percent": 42.0,
         "package_power_watts": 7.4,
         "thermal_duration_minutes": 5.0,
@@ -517,10 +519,13 @@ def test_detail_variable_measured_includes_recorded_low_power_signals() -> None:
 
     assert "ASR TTFB / first visible partial latency" in variables
     assert "process RSS memory" in variables
+    assert "peak RSS memory" in variables
+    assert "peak-to-process RSS delta" in variables
+    assert rss_delta_mb({"process_rss_mb": 180.0, "peak_rss_mb": 240.0}) == 60.0
+    assert rss_delta_mb({"process_rss_mb": 180.0}) is None
     assert "CPU utilization" in variables
     assert "package power" in variables
     assert "thermal observation duration" in variables
-    assert "peak RSS memory" not in variables
 
 
 def test_detail_structured_data_lists_low_power_measurements_when_recorded() -> None:
@@ -1435,6 +1440,7 @@ def test_render_detail_page_surfaces_system_and_efficiency_signals() -> None:
     assert 'System RAM 32768.0 MB' in memory_alias_html
     assert 'Peak RSS 512.5 MB' in memory_alias_html
     assert 'Process RSS 180.2 MB' in memory_alias_html
+    assert 'RSS delta 332.2 MB' in memory_alias_html
 
     rss_alias_html = render_detail_page(
         entry,

@@ -637,7 +637,17 @@ def detail_variable_measured(system_signals: dict[str, Any]) -> list[str]:
         ("thermal observation duration", system_signals.get("thermal_duration_minutes")),
     ]
     variables.extend(label for label, value in optional_variables if value not in (None, ""))
+    if rss_delta_mb(system_signals) is not None:
+        variables.append("peak-to-process RSS delta")
     return variables
+
+
+def rss_delta_mb(system_signals: dict[str, Any]) -> float | None:
+    process_rss = system_signals.get("process_rss_mb")
+    peak_rss = system_signals.get("peak_rss_mb")
+    if process_rss is None or peak_rss is None:
+        return None
+    return float(peak_rss) - float(process_rss)
 
 
 def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] | None, site_base_url: str | None = None) -> str:
@@ -747,6 +757,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
             f"Accelerator {format_system_text(system_signals.get('accelerator'))}",
             f"System RAM {format_mb(system_signals.get('memory_total_mb'))}",
             f"Process RSS {format_mb(system_signals.get('process_rss_mb'))}",
+            f"RSS delta {format_mb(rss_delta_mb(system_signals))}",
             f"Metrics PID {format_count(system_signals.get('process_metrics_pid'))}",
             f"CPU {format_percent(system_signals.get('cpu_utilization_percent') / 100) if system_signals.get('cpu_utilization_percent') is not None else 'n/a'}",
             f"Power {format_watts(system_signals.get('package_power_watts'))}",
