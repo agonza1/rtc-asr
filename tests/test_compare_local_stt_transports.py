@@ -169,7 +169,7 @@ def test_compare_artifacts_requires_transport_target_fields(tmp_path: Path) -> N
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
-def test_compare_artifacts_accepts_issue_88_send_queue_metric_alias(tmp_path: Path) -> None:
+def test_compare_artifacts_accepts_issue_88_queue_metric_aliases(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
@@ -177,13 +177,16 @@ def test_compare_artifacts_accepts_issue_88_send_queue_metric_alias(tmp_path: Pa
     for path in (tcp, uds, raw):
         payload = json.loads(path.read_text(encoding="utf8"))
         payload["summary"]["send_queue_depth_p95"] = payload["summary"].pop("audio_send_queue_depth_p95_ms")
+        payload["summary"]["asr_queue_delay_p95"] = payload["summary"].pop("asr_queue_delay_p95_ms")
         path.write_text(json.dumps(payload), encoding="utf8")
 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["missing_p95_metrics_by_transport"] == {}
     assert comparison["transports"]["raw_uds"]["metrics_p95"]["audio_send_queue_depth_p95_ms"] == 2.0
+    assert comparison["transports"]["raw_uds"]["metrics_p95"]["asr_queue_delay_p95_ms"] == 5.0
     assert comparison["transports"]["tcp_ws"]["metrics"]["audio_send_queue_depth_p95_ms"]["p50"] == 1.0
+    assert comparison["transports"]["tcp_ws"]["metrics"]["asr_queue_delay_p95_ms"]["p50"] == 4.0
 
 
 def test_compare_artifacts_requires_raw_uds_frame_contract(tmp_path: Path) -> None:
