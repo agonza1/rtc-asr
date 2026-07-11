@@ -320,6 +320,26 @@ def test_raw_uds_adapter_rejects_client_frame_types_from_server() -> None:
     assert excinfo.value.code == "raw_uds_invalid_server_frame_type"
 
 
+def test_raw_uds_adapter_decodes_error_frame_without_json_type() -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(
+        encode_raw_uds_json_frame(RawUdsFrameType.ERROR, {"message": "bad control frame"})
+    )
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    event = asyncio.run(connection.recv())
+
+    assert json.loads(event) == {"type": "error", "message": "bad control frame"}
+
+
+def test_service_counts_raw_uds_error_frame_without_crashing() -> None:
+    service = LocalStreamingSTTService()
+
+    asyncio.run(service._handle_server_payload({"type": "error", "message": "bad control frame"}))
+
+    assert service.metrics.local_stt_protocol_errors_total == 1
+
+
 def test_service_ignores_server_heartbeat_events() -> None:
     service = LocalStreamingSTTService()
 
