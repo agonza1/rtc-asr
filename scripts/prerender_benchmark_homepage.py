@@ -1107,6 +1107,13 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Published live contract</div><div class="headline-value">{live_comparable_count} comparable artifacts</div><p>{len(primary)} lanes are eligible for primary ranking after validation and publication filters; the rest stay discoverable as supporting evidence.</p></article>'
     )
+    transport_coverage = summary.get("transport_coverage") or {}
+    if transport_coverage:
+        raw_uds_count = transport_coverage.get("raw_uds_artifact_count", 0)
+        comparable_count = transport_coverage.get("comparable_local_stt_artifact_count", 0)
+        summary_cards.append(
+            f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Transport coverage</div><div class="headline-value">{raw_uds_count} raw UDS artifacts</div><p>{comparable_count} Local STT artifacts are comparable today; raw UDS stays experimental until checked-in evidence beats UDS websocket by at least 5 ms p95.</p></article>'
+        )
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest ASR TTFB / first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
     )
