@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import builtins
 from pathlib import Path
+import threading
 from types import ModuleType, SimpleNamespace
 import sys
 
@@ -316,7 +317,10 @@ def test_parakeet_nemo_adapter_transcribe_uses_nemo_model(monkeypatch: pytest.Mo
 
     fake_models = ModuleType("nemo.collections.asr.models")
     fake_models.ASRModel = FakeASRModel
+    fake_soundfile = ModuleType("soundfile")
+    fake_soundfile.write = lambda path, samples, sample_rate: calls.update({"sample_rate": sample_rate})
 
+    monkeypatch.setitem(sys.modules, "soundfile", fake_soundfile)
     monkeypatch.setitem(sys.modules, "nemo", ModuleType("nemo"))
     monkeypatch.setitem(sys.modules, "nemo.collections", ModuleType("nemo.collections"))
     monkeypatch.setitem(sys.modules, "nemo.collections.asr", ModuleType("nemo.collections.asr"))
@@ -416,12 +420,21 @@ def test_parakeet_mlx_adapter_transcribe_uses_mlx_model(monkeypatch: pytest.Monk
         def transcribe(self, path: str, *, dtype: object) -> FakeAlignedResult:
             calls["path"] = path
             calls["dtype"] = dtype
+            calls["transcribe_thread"] = threading.current_thread().name
             return FakeAlignedResult()
 
     fake_parakeet_mlx = ModuleType("parakeet_mlx")
-    fake_parakeet_mlx.from_pretrained = lambda model_name, *, dtype: calls.update({"model_name": model_name, "load_dtype": dtype}) or FakeModel()
+
+    def fake_from_pretrained(model_name: str, *, dtype: object) -> FakeModel:
+        calls.update({"model_name": model_name, "load_dtype": dtype, "load_thread": threading.current_thread().name})
+        return FakeModel()
+
+    fake_parakeet_mlx.from_pretrained = fake_from_pretrained
     fake_mx = ModuleType("mlx.core")
     fake_mx.bfloat16 = object()
+    fake_soundfile = ModuleType("soundfile")
+    fake_soundfile.write = lambda path, samples, sample_rate: calls.update({"sample_rate": sample_rate})
+    monkeypatch.setitem(sys.modules, "soundfile", fake_soundfile)
     monkeypatch.setitem(sys.modules, "parakeet_mlx", fake_parakeet_mlx)
     monkeypatch.setitem(sys.modules, "mlx", ModuleType("mlx"))
     monkeypatch.setitem(sys.modules, "mlx.core", fake_mx)
@@ -436,6 +449,7 @@ def test_parakeet_mlx_adapter_transcribe_uses_mlx_model(monkeypatch: pytest.Monk
         audio_processor=AudioProcessor(),
     )
 
+    adapter.preload()
     result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
 
     assert result == {
@@ -448,6 +462,7 @@ def test_parakeet_mlx_adapter_transcribe_uses_mlx_model(monkeypatch: pytest.Monk
     assert calls["model_name"] == "mlx-community/parakeet-tdt_ctc-110m"
     assert calls["load_dtype"] is fake_mx.bfloat16
     assert calls["dtype"] is fake_mx.bfloat16
+    assert calls["load_thread"] == calls["transcribe_thread"]
     assert str(calls["path"]).endswith(".wav")
 
 
@@ -461,12 +476,20 @@ def test_voxtral_mlx_adapter_transcribe_uses_mlx_audio(monkeypatch: pytest.Monke
         def generate(self, path: str, *, transcription_delay_ms: int) -> FakeAlignedResult:
             calls["path"] = path
             calls["transcription_delay_ms"] = transcription_delay_ms
+            calls["generate_thread"] = threading.current_thread().name
             return FakeAlignedResult()
 
     fake_mlx_audio = ModuleType("mlx_audio")
     fake_stt = ModuleType("mlx_audio.stt")
     fake_utils = ModuleType("mlx_audio.stt.utils")
-    fake_utils.load = lambda model_name: calls.update({"model_name": model_name}) or FakeModel()
+    def fake_load(model_name: str) -> FakeModel:
+        calls.update({"model_name": model_name, "load_thread": threading.current_thread().name})
+        return FakeModel()
+
+    fake_utils.load = fake_load
+    fake_soundfile = ModuleType("soundfile")
+    fake_soundfile.write = lambda path, samples, sample_rate: calls.update({"sample_rate": sample_rate})
+    monkeypatch.setitem(sys.modules, "soundfile", fake_soundfile)
     monkeypatch.setitem(sys.modules, "mlx_audio", fake_mlx_audio)
     monkeypatch.setitem(sys.modules, "mlx_audio.stt", fake_stt)
     monkeypatch.setitem(sys.modules, "mlx_audio.stt.utils", fake_utils)
@@ -481,6 +504,7 @@ def test_voxtral_mlx_adapter_transcribe_uses_mlx_audio(monkeypatch: pytest.Monke
         audio_processor=AudioProcessor(),
     )
 
+    adapter.preload()
     result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
 
     assert result == {
@@ -492,6 +516,7 @@ def test_voxtral_mlx_adapter_transcribe_uses_mlx_audio(monkeypatch: pytest.Monke
     }
     assert calls["model_name"] == "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
     assert calls["transcription_delay_ms"] == 480
+    assert calls["load_thread"] == calls["generate_thread"]
     assert str(calls["path"]).endswith(".wav")
 
 

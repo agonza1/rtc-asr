@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from importlib import metadata
 import tempfile
@@ -356,18 +357,23 @@ class ParakeetMLXAdapter:
     backend_name: str = field(init=False, default="parakeet-mlx")
     model_name: str = field(init=False)
     _model: Any | None = field(init=False, default=None, repr=False)
+    _executor: ThreadPoolExecutor = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.model_name = self.config.asr_parakeet_model
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rtc-asr-parakeet-mlx")
 
     def is_loaded(self) -> bool:
         return self._model is not None
 
     def preload(self) -> None:
-        self._load_model()
+        self._run_on_worker(self._load_model)
 
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
         decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
+        return self._run_on_worker(lambda: self._transcribe_decoded(decoded_audio, language=language))
+
+    def _transcribe_decoded(self, decoded_audio: Any, *, language: str | None) -> dict[str, Any]:
         model = self._load_model()
         try:
             import soundfile as sf
@@ -391,6 +397,9 @@ class ParakeetMLXAdapter:
             "backend": self.backend_name,
             "model": self.model_name,
         }
+
+    def _run_on_worker(self, callback: Any) -> Any:
+        return self._executor.submit(callback).result()
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -527,18 +536,23 @@ class VoxtralMLXAdapter:
     backend_name: str = field(init=False, default="voxtral-mlx")
     model_name: str = field(init=False)
     _model: Any | None = field(init=False, default=None, repr=False)
+    _executor: ThreadPoolExecutor = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.model_name = self.config.asr_voxtral_mlx_model
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rtc-asr-voxtral-mlx")
 
     def is_loaded(self) -> bool:
         return self._model is not None
 
     def preload(self) -> None:
-        self._load_model()
+        self._run_on_worker(self._load_model)
 
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
         decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
+        return self._run_on_worker(lambda: self._transcribe_decoded(decoded_audio, language=language))
+
+    def _transcribe_decoded(self, decoded_audio: Any, *, language: str | None) -> dict[str, Any]:
         model = self._load_model()
         try:
             import soundfile as sf
@@ -561,6 +575,9 @@ class VoxtralMLXAdapter:
             "backend": self.backend_name,
             "model": self.model_name,
         }
+
+    def _run_on_worker(self, callback: Any) -> Any:
+        return self._executor.submit(callback).result()
 
     def describe(self) -> dict[str, Any]:
         return {
