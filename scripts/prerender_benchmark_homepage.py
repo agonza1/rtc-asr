@@ -956,6 +956,7 @@ def render_robots(base_url: str) -> str:
 def render_llms(manifest: dict[str, Any], base_url: str) -> str:
     summary = manifest.get("summary", {})
     primary = primary_entries(published_tracks(manifest))
+    artifact_entries = sort_entries(published_tracks(manifest))
     lines = [
         "# Edge ASR Latency Benchmarks for WebRTC Voice AI",
         "",
@@ -980,6 +981,21 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
             f"- {label}: {entry.get('runtime') or 'unknown runtime'}; "
             f"TTFB / first partial {first_partial}; audio-end finalization {final_latency}; "
             f"details {sitemap_url(base_url, detail_path)}"
+        )
+    lines.extend(["", "## Raw Artifact URLs"])
+    if not artifact_entries:
+        lines.append("- No raw artifact URLs are published yet.")
+    for entry in artifact_entries[:8]:
+        artifact_path = entry.get("artifact_path")
+        if not artifact_path:
+            continue
+        label = entry.get("label") or entry.get("slug") or "unknown"
+        artifact_size = format_bytes(entry.get("artifact_size_bytes"))
+        artifact_hash = entry.get("artifact_sha256")
+        hash_label = f"SHA-256 {artifact_hash[:12]}" if artifact_hash else "SHA-256 n/a"
+        lines.append(
+            f"- {label}: raw JSON {sitemap_url(base_url, artifact_path)}; "
+            f"{artifact_size}; {hash_label}"
         )
     lines.extend([
         "",
