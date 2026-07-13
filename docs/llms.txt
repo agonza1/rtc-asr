@@ -17,6 +17,15 @@ Use the manifest for machine-readable benchmark metadata and the detail pages fo
 - Parakeet 0.6B Compose: cpu / float32; TTFB / first partial 953.7 ms; audio-end finalization 2214.0 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-compose-2026-06-20.html
 - Qwen Compose: cpu / float16; TTFB / first partial 680.1 ms; audio-end finalization 5802.5 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-compose-2026-06-21.html
 
+## Raw Artifact URLs
+- Parakeet 110M NeMo MLX: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/parakeet-mlx-110m-service-2026-06-21.json; 67.9 KB; SHA-256 066625d43d56
+- Faster-Whisper Base: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/faster-whisper-base.en-int8-2026-06-20.json; 54.9 KB; SHA-256 e49ba5696bbe
+- Parakeet 110M NeMo: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/parakeet-nemo-110m-compose-2026-06-21.json; 62.6 KB; SHA-256 eac8db232c8a
+- Qwen MPS: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/qwen-mps-2026-06-21.json; 58.2 KB; SHA-256 347d3e11a8cf
+- Faster-Whisper Small: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/faster-whisper-small.en-int8-2026-06-20.json; 51.1 KB; SHA-256 cb4b68e44c70
+- Parakeet 0.6B Compose: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/parakeet-compose-2026-06-20.json; 53.0 KB; SHA-256 9f234fd1780e
+- Qwen Compose: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/qwen-compose-2026-06-21.json; 54.3 KB; SHA-256 99d6fa7d7433
+
 ## Coverage
 - Published current artifacts: 8
 - Raw artifact files: 23

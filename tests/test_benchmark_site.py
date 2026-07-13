@@ -721,6 +721,8 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
                 "runtime": "cpu / int8",
                 "status": "validated",
                 "artifact_path": "benchmark-results/demo-2026-06-14.json",
+                "artifact_sha256": "abcdef1234567890",
+                "artifact_size_bytes": 1536,
                 "streaming": {
                     "live_metrics_comparable": True,
                     "first_partial_end_to_end_mean_ms": 123.4,
@@ -738,6 +740,8 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
     assert "Manifest JSON: https://example.test/asr-latency/benchmark-results/manifest.json" in llms
     assert "Demo ASR: cpu / int8; TTFB / first partial 123.4 ms" in llms
     assert "details https://example.test/asr-latency/benchmark-results/pages/demo-2026-06-14.html" in llms
+    assert "## Raw Artifact URLs" in llms
+    assert "Demo ASR: raw JSON https://example.test/asr-latency/benchmark-results/demo-2026-06-14.json; 1.5 KB; SHA-256 abcdef123456" in llms
     assert "Published current artifacts: 1" in llms
 
 
