@@ -8,6 +8,7 @@ from pathlib import Path
 
 EXAMPLE_DIR = Path("examples") / "pipecat_local_stt_bot"
 BOT_PATH = EXAMPLE_DIR / "bot.py"
+CAPTURE_PATH = EXAMPLE_DIR / "capture_console_transcription.py"
 
 
 def load_bot_module() -> object:
@@ -45,6 +46,11 @@ def test_pipecat_local_stt_bot_example_documents_sidecar_contract() -> None:
     assert "Connection failures" in readme
     assert "Wrong sample rates" in readme
     assert "Missing interim transcripts" in readme
+    assert "30 Second Console Capture" in readme
+    assert "capture_console_transcription.py" in readme
+    assert "console-transcription-30s.log" in readme
+    assert "without terminal control characters" in readme
+    assert "public test audio, not private microphone input" in readme
 
 
 def test_pipecat_local_stt_bot_example_compose_uses_sidecar_service_discovery() -> None:
@@ -67,6 +73,7 @@ def test_pipecat_local_stt_bot_example_compose_uses_sidecar_service_discovery() 
 
 def test_pipecat_local_stt_bot_example_is_syntax_valid() -> None:
     py_compile.compile(str(EXAMPLE_DIR / "bot.py"), doraise=True)
+    py_compile.compile(str(CAPTURE_PATH), doraise=True)
     bot_source = (EXAMPLE_DIR / "bot.py").read_text(encoding="utf-8")
 
     assert "LocalStreamingSTTService" in bot_source
@@ -117,9 +124,9 @@ def test_pipecat_local_stt_bot_example_applies_tuning_to_rtc_asr_service() -> No
     stt = module.build_stt(
         module.BotSettings(
             service="rtc-asr",
-            sample_rate=8000,
-            channels=2,
-            frame_ms=40,
+            sample_rate=16000,
+            channels=1,
+            frame_ms=20,
             partial_interval_ms=250,
             partial_window_seconds=1.5,
             max_buffer_seconds=6.0,
@@ -128,9 +135,9 @@ def test_pipecat_local_stt_bot_example_applies_tuning_to_rtc_asr_service() -> No
     )
 
     assert stt.config.language == "es"
-    assert stt.config.sample_rate == 8000
-    assert stt.config.channels == 2
-    assert stt.config.frame_ms == 40
+    assert stt.config.sample_rate == 16000
+    assert stt.config.channels == 1
+    assert stt.config.frame_ms == 20
     assert stt.config.partial_interval_ms == 250
     assert stt.config.partial_window_seconds == 1.5
     assert stt.config.max_buffer_seconds == 6.0
@@ -145,3 +152,88 @@ def test_pipecat_local_stt_bot_example_rejects_unknown_service() -> None:
         assert "LOCAL_STT_SERVICE" in str(exc)
     else:
         raise AssertionError("Unknown LOCAL_STT_SERVICE should fail fast")
+
+
+def load_capture_module() -> object:
+    spec = importlib.util.spec_from_file_location("pipecat_local_stt_capture_example", CAPTURE_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("pipecat_local_stt_capture_example", module)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_pipecat_local_stt_capture_repeats_fixture_to_requested_duration() -> None:
+    module = load_capture_module()
+
+    audio = module.load_demo_audio(Path("tests/fixtures/smoke.wav"), duration_seconds=30)
+
+    assert audio.sample_rate == 16000
+    assert audio.frame_ms == 20
+    assert len(audio.frames) == 1500
+    assert audio.duration_seconds == 30
+
+
+def test_pipecat_local_stt_capture_formats_readable_sanitized_events() -> None:
+    module = load_capture_module()
+    from src.rtc_client import TranscriptEvent
+
+    event = TranscriptEvent(
+        type="partial",
+        text="hello\x1b[31m\nworld",
+        stream_id=None,
+        is_final=False,
+        chunks_received=1,
+        buffered_bytes=640,
+        remaining_buffer_bytes=0,
+        revision=2,
+        audio_received_ms=600,
+    )
+
+    line = module.format_event_line(event, elapsed_seconds=0.8)
+
+    assert "partial" in line
+    assert "rev=2" in line
+    assert "audio=600ms" in line
+    assert "hello world" in line
+    assert "[31m" not in line
+    assert "\x1b" not in line
+    assert "\n" not in line
+
+
+def test_pipecat_local_stt_capture_defaults_to_demo_artifact_path() -> None:
+    module = load_capture_module()
+
+    args = module.parse_args([])
+
+    assert args.duration_seconds == 30.0
+    assert args.output.as_posix().endswith("artifacts/pipecat_local_stt_bot/console-transcription-30s.log")
+    assert args.max_buffer_seconds == 30.0
+    assert args.input_wav.as_posix().endswith("tests/fixtures/smoke.wav")
+
+
+def test_pipecat_local_stt_capture_allows_explicit_buffer_override() -> None:
+    module = load_capture_module()
+
+    args = module.parse_args(["--duration-seconds", "30", "--max-buffer-seconds", "12"])
+
+    assert args.max_buffer_seconds == 12.0
+
+
+def test_pipecat_local_stt_capture_drops_partial_tail_frame() -> None:
+    module = load_capture_module()
+
+    frames = module.split_pcm_frames(b"0" * 1290, sample_rate=16000, frame_ms=20)
+
+    assert len(frames) == 2
+    assert all(len(frame) == 640 for frame in frames)
+
+
+def test_pipecat_local_stt_capture_redacts_url_details_from_logs() -> None:
+    module = load_capture_module()
+
+    redacted = module.redact_url_for_log("ws://demo:secret@127.0.0.1:8080/v1/stt/stream?token=abc")
+
+    assert redacted == "ws://demo:***@127.0.0.1:8080/v1/stt/stream?<redacted>"
+    assert "secret" not in redacted
+    assert "token=abc" not in redacted

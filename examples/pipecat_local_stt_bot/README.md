@@ -36,6 +36,38 @@ ASR_BACKEND=faster-whisper ASR_MODEL_SIZE=base.en ASR_DEVICE=cpu ASR_COMPUTE_TYP
 RTC_ASR_WS_URL=ws://127.0.0.1:8080/v1/stt/stream python examples/pipecat_local_stt_bot/bot.py
 ```
 
+## 30 Second Console Capture
+
+Use `capture_console_transcription.py` when QA or demo production needs a short terminal artifact that shows Local STT transcript events appearing while the Pipecat local STT path is running. The helper streams a local mono PCM16 WAV over the same Local STT v1 websocket contract used by the bot, prints timestamped partial/final transcript events, and writes a clean text log without terminal control characters.
+
+Start `rtc-asr` first:
+
+```bash
+ASR_BACKEND=faster-whisper ASR_MODEL_SIZE=base.en ASR_DEVICE=cpu ASR_COMPUTE_TYPE=int8 ASR_PRELOAD_MODEL=true uvicorn src.main:app --host 0.0.0.0 --port 8080
+```
+
+Then capture about 30 seconds of console transcription output from the repo root:
+
+```bash
+RTC_ASR_WS_URL=ws://127.0.0.1:8080/v1/stt/stream python examples/pipecat_local_stt_bot/capture_console_transcription.py \
+  --duration-seconds 30 \
+  --input-wav tests/fixtures/smoke.wav \
+  --output artifacts/pipecat_local_stt_bot/console-transcription-30s.log
+```
+
+The default fixture is public test audio, not private microphone input. Because it is intentionally short, the helper repeats it to reach the requested capture length; pass another local 16 kHz mono PCM16 WAV with `--input-wav` for a more natural demo. Keep realtime pacing enabled for screen recording so the terminal output lands over roughly the requested duration.
+
+Expected log shape:
+
+The capture helper defaults `--max-buffer-seconds` to the requested duration, with a 10-second floor, so the documented 30-second run does not hit the sidecar's shorter service default before finalization.
+
+```text
+# pipecat_local_stt_bot console transcription capture: source=tests/fixtures/smoke.wav, target_duration=30.0s, url=ws://127.0.0.1:8080/v1/stt/stream
+[14:02:11 +000.8s] partial rev=1 audio=600ms | hello
+[14:02:40 +031.2s] final   rev=8 audio=30000ms | hello hello hello
+# wrote clean console log to artifacts/pipecat_local_stt_bot/console-transcription-30s.log
+```
+
 ## Defaults
 
 - `language=en` (set `LOCAL_STT_LANGUAGE=` to omit a language hint and let the sidecar auto-detect when supported)
