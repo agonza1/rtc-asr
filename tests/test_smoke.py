@@ -31,6 +31,8 @@ from src.protocols.local_stt_v1 import (
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
     PROTOCOL_VERSION,
+    decode_raw_uds_frame,
+    parse_raw_uds_server_frame,
     parse_server_message,
 )
 from src.rtc_client import AsyncRawUdsLocalSttClient
@@ -522,6 +524,40 @@ def test_raw_uds_cancel_resets_stream_without_transcribing(tmp_path: Path) -> No
             "prefix": chunk[:4],
         }
     ]
+
+
+def test_raw_uds_protocol_error_does_not_stop_listener(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+
+    async def read_server_frame(reader: asyncio.StreamReader) -> dict[str, object]:
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+        return parse_raw_uds_server_frame(frame).model_dump(exclude_none=True)
+
+    async def send_bad_frame_then_valid_client() -> dict[str, object]:
+        reader, writer = await asyncio.open_unix_connection(str(raw_socket_path))
+        writer.write(b"\xff\x00\x00\x00\x00")
+        await writer.drain()
+        error = await read_server_frame(reader)
+        writer.close()
+        await writer.wait_closed()
+
+        client = AsyncRawUdsLocalSttClient(str(raw_socket_path))
+        ready = await client.start(client_stream_id="after-bad-frame")
+        await client.close()
+        assert ready["metadata"]["client_stream_id"] == "after-bad-frame"
+        return error
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as http_client:
+        error = asyncio.run(send_bad_frame_then_valid_client())
+        health = http_client.get("/health")
+
+    assert error["type"] == "error"
+    assert error["code"] == "raw_uds_unsupported_frame_type"
+    assert health.status_code == 200
+    assert health.json()["ready"] is True
 
 
 def test_ready_returns_503_when_preload_is_degraded() -> None:
