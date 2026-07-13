@@ -59,6 +59,8 @@ The default fixture is public test audio, not private microphone input. Because 
 
 Expected log shape:
 
+The capture helper defaults `--max-buffer-seconds` to the requested duration, with a 10-second floor, so the documented 30-second run does not hit the sidecar's shorter service default before finalization.
+
 ```text
 # pipecat_local_stt_bot console transcription capture: source=tests/fixtures/smoke.wav, target_duration=30.0s, url=ws://127.0.0.1:8080/v1/stt/stream
 [14:02:11 +000.8s] partial rev=1 audio=600ms | hello

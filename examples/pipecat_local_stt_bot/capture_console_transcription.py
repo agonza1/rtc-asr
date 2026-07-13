@@ -49,7 +49,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--language", default=os.getenv("LOCAL_STT_LANGUAGE", "en"))
     parser.add_argument("--partial-interval-ms", type=int, default=100)
     parser.add_argument("--partial-window-seconds", type=float, default=1.0)
-    parser.add_argument("--max-buffer-seconds", type=float, default=10.0)
+    parser.add_argument("--max-buffer-seconds", type=float, default=None)
     parser.add_argument("--receive-timeout-seconds", type=float, default=8.0)
     parser.add_argument(
         "--no-realtime-pace",
@@ -63,6 +63,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--partial-interval-ms must be greater than 0")
     if args.receive_timeout_seconds <= 0:
         parser.error("--receive-timeout-seconds must be greater than 0")
+    if args.max_buffer_seconds is not None and args.max_buffer_seconds <= 0:
+        parser.error("--max-buffer-seconds must be greater than 0")
+    if args.max_buffer_seconds is None:
+        args.max_buffer_seconds = max(10.0, args.duration_seconds)
     return args
 
 
@@ -93,11 +97,8 @@ def split_pcm_frames(pcm: bytes, *, sample_rate: int, frame_ms: int) -> list[byt
     bytes_per_frame = sample_rate * frame_ms * 2 // 1000
     if bytes_per_frame <= 0 or sample_rate * frame_ms * 2 % 1000 != 0:
         raise ValueError("sample_rate and frame_ms must produce whole PCM16 frames")
-    return [
-        pcm[index : index + bytes_per_frame]
-        for index in range(0, len(pcm), bytes_per_frame)
-        if pcm[index : index + bytes_per_frame]
-    ]
+    full_frame_bytes = len(pcm) - (len(pcm) % bytes_per_frame)
+    return [pcm[index : index + bytes_per_frame] for index in range(0, full_frame_bytes, bytes_per_frame)]
 
 
 def sanitize_console_text(value: str) -> str:

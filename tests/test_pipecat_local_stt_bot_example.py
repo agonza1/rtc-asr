@@ -208,7 +208,25 @@ def test_pipecat_local_stt_capture_defaults_to_demo_artifact_path() -> None:
 
     assert args.duration_seconds == 30.0
     assert args.output.as_posix().endswith("artifacts/pipecat_local_stt_bot/console-transcription-30s.log")
+    assert args.max_buffer_seconds == 30.0
     assert args.input_wav.as_posix().endswith("tests/fixtures/smoke.wav")
+
+
+def test_pipecat_local_stt_capture_allows_explicit_buffer_override() -> None:
+    module = load_capture_module()
+
+    args = module.parse_args(["--duration-seconds", "30", "--max-buffer-seconds", "12"])
+
+    assert args.max_buffer_seconds == 12.0
+
+
+def test_pipecat_local_stt_capture_drops_partial_tail_frame() -> None:
+    module = load_capture_module()
+
+    frames = module.split_pcm_frames(b"0" * 1290, sample_rate=16000, frame_ms=20)
+
+    assert len(frames) == 2
+    assert all(len(frame) == 640 for frame in frames)
 
 
 def test_pipecat_local_stt_capture_redacts_url_details_from_logs() -> None:
