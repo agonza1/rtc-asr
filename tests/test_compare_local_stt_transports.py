@@ -1117,11 +1117,15 @@ def test_compare_artifacts_preserves_diagnostic_code_counts(tmp_path: Path) -> N
             "raw_uds_invalid_json": 2,
             "raw_uds_payload_too_large": 1,
         },
+        "protocol_error_total": 3,
         "warning_codes": {"late_partial": 3},
+        "warning_total": 3,
     }
     assert comparison["transports"]["tcp_ws"]["diagnostics"] == {
         "protocol_error_codes": {},
+        "protocol_error_total": 0,
         "warning_codes": {},
+        "warning_total": 0,
     }
 
 
@@ -1248,7 +1252,7 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "Transport diagnostics:" in markdown
-    assert "| raw_uds | raw_uds_invalid_json=2 | late_partial=1 |" in markdown
+    assert "| raw_uds | 2 | raw_uds_invalid_json=2 | 1 | late_partial=1 |" in markdown
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
     assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown

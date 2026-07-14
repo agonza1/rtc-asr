@@ -201,6 +201,10 @@ def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[s
     return dict(sorted(counts.items()))
 
 
+def diagnostic_code_total(counts: dict[str, int]) -> int:
+    return sum(count for count in counts.values() if count > 0)
+
+
 def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: str) -> str | None:
     candidates: list[tuple[float, str]] = []
     for transport, payload in transports.items():
@@ -784,6 +788,8 @@ def compare_artifacts(
         if not isinstance(summary, dict):
             raise ValueError(f"{path} is missing summary")
         target_contract = normalized_target_contract(artifact)
+        protocol_error_codes = extract_diagnostic_code_counts(artifact, "protocol_error_codes")
+        warning_codes = extract_diagnostic_code_counts(artifact, "warning_codes")
         target_lifecycle = artifact["target"].get("lifecycle") or target_contract.get("lifecycle")
         target_frame_types = artifact["target"].get("frame_types") or target_contract.get("frame_types")
         target_frame_type_codes = artifact["target"].get("frame_type_codes") or target_contract.get("frame_type_codes")
@@ -818,8 +824,10 @@ def compare_artifacts(
             "protocol_error_free": protocol_error_free(metrics),
             "cpu_utilization_percent": extract_cpu_utilization_percent(artifact),
             "diagnostics": {
-                "protocol_error_codes": extract_diagnostic_code_counts(artifact, "protocol_error_codes"),
-                "warning_codes": extract_diagnostic_code_counts(artifact, "warning_codes"),
+                "protocol_error_codes": protocol_error_codes,
+                "protocol_error_total": diagnostic_code_total(protocol_error_codes),
+                "warning_codes": warning_codes,
+                "warning_total": diagnostic_code_total(warning_codes),
             },
         }
 
@@ -1111,14 +1119,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
             [
                 "",
                 "Transport diagnostics:",
-                "| Transport | Protocol error codes | Warning codes |",
-                "| --- | --- | --- |",
+                "| Transport | Protocol error total | Protocol error codes | Warning total | Warning codes |",
+                "| --- | ---: | --- | ---: | --- |",
             ]
         )
         for transport in comparison["required_transports"]:
             payload = comparison["transports"].get(transport)
             if payload is None:
-                lines.append(f"| {transport} | missing | missing |")
+                lines.append(f"| {transport} | missing | missing | missing | missing |")
                 continue
             diagnostics = payload.get("diagnostics") or {}
             protocol_error_codes = [
@@ -1134,7 +1142,9 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                 + " | ".join(
                     [
                         transport,
+                        _format_optional_value(diagnostics.get("protocol_error_total")),
                         _format_optional_value(protocol_error_codes),
+                        _format_optional_value(diagnostics.get("warning_total")),
                         _format_optional_value(warning_codes),
                     ]
                 )
