@@ -784,6 +784,12 @@ Published Jul 14, 2026, 07:12 PM UTC . 8 visible ASR lanes . 9 current artifact-
       function formatPercent(value) {
         return value == null ? "n/a" : `${(value * 100).toFixed(1)}%`;
       }
+      function formatCount(value) {
+        return value == null ? "n/a" : String(value);
+      }
+      function formatList(values) {
+        return values && values.length ? values.join(", ") : "none recorded";
+      }
       function formatMb(value) {
         return value == null ? "n/a" : `${Number(value).toFixed(1)} MB`;
       }
@@ -1171,6 +1177,16 @@ Published Jul 14, 2026, 07:12 PM UTC . 8 visible ASR lanes . 9 current artifact-
       function artifactHashLabel(entry) {
         return entry.artifact_sha256 ? `SHA-256 ${entry.artifact_sha256.slice(0, 12)}` : "SHA-256 n/a";
       }
+      function warningBadgeHtml(entry) {
+        const warnings = entry.warnings || {};
+        const received = warnings.received_total;
+        const codes = warnings.codes || [];
+        if ((received == null || received === 0) && !codes.length) return "";
+
+        const codeText = formatList(codes);
+        const label = received == null ? `Warnings recorded: ${codeText}` : `Warnings ${formatCount(received)} (${codeText})`;
+        return `<div class="tiny">${label}</div>`;
+      }
       function renderComparison(entries) {
         const target = document.getElementById("comparison-wrap");
         if (!entries.length) {
@@ -1228,7 +1244,7 @@ Published Jul 14, 2026, 07:12 PM UTC . 8 visible ASR lanes . 9 current artifact-
                 <div class="tiny">Target ${entry.target_sample_count ?? "n/a"}</div>
                 <div class="tiny">Measured ${formatDate(entry.measured_at)}</div>
               </td>
-              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">${artifactHashLabel(entry)}</div></td>
+              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">${artifactHashLabel(entry)}</div>${warningBadgeHtml(entry)}</td>
             </tr>
           `;
         }).join("");
@@ -1242,7 +1258,7 @@ Published Jul 14, 2026, 07:12 PM UTC . 8 visible ASR lanes . 9 current artifact-
               </td>
               <td data-label="Why it is secondary">${secondaryReason(entry)}</td>
               <td data-label="Visible live metrics"><strong>TTFB / first partial ${formatMs(firstVisiblePartial(entry))}</strong><div class="tiny">Finalization ${formatMs(entry.streaming.final_mean_ms)}</div></td>
-              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Measured ${formatDate(entry.measured_at)}</div><div class="tiny">${artifactHashLabel(entry)}</div></td>
+              <td data-label="Details"><a href="${entry.artifact_path.replace("benchmark-results/", "benchmark-results/pages/").replace(/\.json$/, ".html")}">Open detail page</a><div class="tiny">Measured ${formatDate(entry.measured_at)}</div><div class="tiny">${artifactHashLabel(entry)}</div>${warningBadgeHtml(entry)}</td>
             </tr>
           `;
         }).join("");

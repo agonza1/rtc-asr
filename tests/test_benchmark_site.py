@@ -1662,6 +1662,8 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Open detail page" in homepage
     assert "Artifact size" in homepage
     assert "SHA-256" in homepage
+    assert "function warningBadgeHtml(entry)" in homepage
+    assert "${warningBadgeHtml(entry)}</td>" in homepage
     assert 'function formatHostSummary(entry)' in homepage
     assert 'Host profile' in homepage
     assert 'Efficiency signals' in homepage
