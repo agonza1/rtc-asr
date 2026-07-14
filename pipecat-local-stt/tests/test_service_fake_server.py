@@ -333,6 +333,36 @@ def test_raw_uds_adapter_reports_oversized_payload_with_protocol_code() -> None:
     assert excinfo.value.code == "raw_uds_payload_too_large"
 
 
+def test_raw_uds_adapter_maps_truncated_header_to_protocol_error() -> None:
+    async def recv_truncated_header() -> None:
+        writer = FakeRawUdsWriter()
+        reader = asyncio.StreamReader()
+        reader.feed_data(b"\x03\x02")
+        reader.feed_eof()
+        connection = RawUdsConnectionAdapter(reader, writer)
+        await connection.recv()
+
+    with pytest.raises(LocalSTTProtocolError, match="buffered frame bytes") as excinfo:
+        asyncio.run(recv_truncated_header())
+
+    assert excinfo.value.code == "raw_uds_incomplete_frame"
+
+
+def test_raw_uds_adapter_maps_truncated_payload_to_protocol_error() -> None:
+    async def recv_truncated_payload() -> None:
+        writer = FakeRawUdsWriter()
+        reader = asyncio.StreamReader()
+        reader.feed_data(bytes([RawUdsFrameType.JSON_EVENT]) + (6).to_bytes(4, "little") + b'{"ty')
+        reader.feed_eof()
+        connection = RawUdsConnectionAdapter(reader, writer)
+        await connection.recv()
+
+    with pytest.raises(LocalSTTProtocolError, match="buffered frame bytes") as excinfo:
+        asyncio.run(recv_truncated_payload())
+
+    assert excinfo.value.code == "raw_uds_incomplete_frame"
+
+
 def test_raw_uds_adapter_decodes_error_frame_without_json_type() -> None:
     writer = FakeRawUdsWriter()
     reader = FakeRawUdsReader(
