@@ -257,6 +257,8 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
             "frame_types": list(frame_type_codes),
             "frame_type_codes": frame_type_codes,
             "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+            "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+            "shared_stream_runtime": True,
         }
     if transport == "uds_ws":
         return {
@@ -293,6 +295,8 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                 "frame_types": list(frame_type_codes),
                 "frame_type_codes": frame_type_codes,
                 "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+                "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+                "shared_stream_runtime": True,
             }
         )
     return target
