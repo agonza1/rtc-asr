@@ -749,6 +749,10 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
     assert "details https://example.test/asr-latency/benchmark-results/pages/demo-2026-06-14.html" in llms
     assert "## Raw Artifact URLs" in llms
     assert "Demo ASR: raw JSON https://example.test/asr-latency/benchmark-results/demo-2026-06-14.json; 1.5 KB; SHA-256 abcdef123456" in llms
+    assert "## Selection Notes" in llms
+    assert "Primary comparisons use artifact-backed tracks with comparable live streaming metrics." in llms
+    assert "Rank live turn-taking first by TTFB / first partial, partial cadence, and audio-end finalization before REST throughput context." in llms
+    assert "Blocked or registry-only lanes are documented in the manifest but omitted from the public comparison flow until publishable artifacts exist." in llms
     assert "Current comparable tracks: 1" in llms
     assert "Validated tracks: 1" in llms
     assert "Tracked lanes: 1" in llms

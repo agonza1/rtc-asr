@@ -26,6 +26,11 @@ Use the manifest for machine-readable benchmark metadata and the detail pages fo
 - Parakeet 0.6B Compose: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/parakeet-compose-2026-06-20.json; 53.0 KB; SHA-256 9f234fd1780e
 - Qwen Compose: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/qwen-compose-2026-06-21.json; 54.3 KB; SHA-256 99d6fa7d7433
 
+## Selection Notes
+- Primary comparisons use artifact-backed tracks with comparable live streaming metrics.
+- Rank live turn-taking first by TTFB / first partial, partial cadence, and audio-end finalization before REST throughput context.
+- Blocked or registry-only lanes are documented in the manifest but omitted from the public comparison flow until publishable artifacts exist.
+
 ## Coverage
 - Current comparable tracks: 7
 - Validated tracks: 7

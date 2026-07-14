@@ -999,6 +999,13 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
         )
     lines.extend([
         "",
+        "## Selection Notes",
+        "- Primary comparisons use artifact-backed tracks with comparable live streaming metrics.",
+        "- Rank live turn-taking first by TTFB / first partial, partial cadence, and audio-end finalization before REST throughput context.",
+        "- Blocked or registry-only lanes are documented in the manifest but omitted from the public comparison flow until publishable artifacts exist.",
+    ])
+    lines.extend([
+        "",
         "## Coverage",
         f"- Current comparable tracks: {summary.get('live_comparable_count', len(primary))}",
         f"- Validated tracks: {summary.get('validated_count', 0)}",
