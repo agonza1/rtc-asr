@@ -34,6 +34,7 @@ render_detail_page = prerender_module.render_detail_page
 render_homepage = prerender_module.render_homepage
 render_row = prerender_module.render_row
 render_secondary_row = prerender_module.render_secondary_row
+citation_text = prerender_module.citation_text
 measurement_technique = prerender_module.measurement_technique
 evidence_role = prerender_module.evidence_role
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
@@ -1221,6 +1222,29 @@ def test_detail_page_surfaces_evidence_role() -> None:
     assert "Evidence role" in render_detail_page(primary_entry, None)
     assert "Primary comparable evidence" in render_detail_page(primary_entry, None)
     assert "Historical supporting evidence" in render_detail_page(legacy_entry, None)
+
+
+def test_detail_page_surfaces_citable_artifact_reference() -> None:
+    entry = {
+        "label": "Demo artifact",
+        "artifact_path": "benchmark-results/demo-artifact-2026-06-14.json",
+        "artifact_sha256": "abc123",
+        "measured_at": "2026-06-14T00:00:00Z",
+        "rest": {},
+        "streaming": {},
+        "contract": {},
+        "derived": {},
+    }
+
+    detail_html = render_detail_page(entry, None)
+
+    assert citation_text(entry) == (
+        "Demo artifact, 2026-06-14T00:00:00Z, "
+        "rtc-asr benchmark artifact demo-artifact-2026-06-14.json, SHA-256 abc123."
+    )
+    assert "Citation" in detail_html
+    assert "rtc-asr benchmark artifact demo-artifact-2026-06-14.json, SHA-256 abc123." in detail_html
+    assert '"citation": "Demo artifact, 2026-06-14T00:00:00Z, rtc-asr benchmark artifact demo-artifact-2026-06-14.json, SHA-256 abc123."' in detail_html
 
 
 def test_detail_page_measurement_technique_matches_streaming_contract() -> None:
