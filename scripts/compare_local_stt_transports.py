@@ -81,6 +81,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Require each transport artifact to record at least this many benchmark runs",
     )
     parser.add_argument(
+        "--require-cpu-utilization",
+        action="store_true",
+        help="Exit non-zero unless every required transport artifact includes CPU utilization evidence",
+    )
+    parser.add_argument(
         "--raw-uds-min-win-ms",
         type=float,
         default=DEFAULT_RAW_UDS_MIN_WIN_MS,
@@ -243,6 +248,15 @@ def cpu_utilization_coverage(transports: dict[str, dict[str, Any]]) -> dict[str,
         "required_transports": list(REQUIRED_TRANSPORTS),
         "complete": not missing and all(transport in transports for transport in REQUIRED_TRANSPORTS),
     }
+
+
+def cpu_utilization_gaps(
+    transports: dict[str, dict[str, Any]], *, required: bool = False
+) -> list[str]:
+    if not required:
+        return []
+    missing = missing_cpu_utilization_transports(transports)
+    return [f"{transport} missing CPU utilization" for transport in missing]
 
 
 def run_count_coverage(transports: dict[str, dict[str, Any]]) -> dict[str, Any]:
@@ -553,6 +567,7 @@ def recommendation_text(
     all_present_transports_protocol_error_free: bool,
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
+    cpu_gaps: list[str],
     target_gaps: list[str],
     frame_contract_gaps: list[str],
     frame_type_gaps: list[str],
@@ -569,6 +584,8 @@ def recommendation_text(
         return "Re-run transport benchmarks with the full required metric set before recommending raw UDS."
     if run_gaps:
         return "Re-run transport benchmarks with enough repeated runs before recommending raw UDS."
+    if cpu_gaps:
+        return "Re-run transport benchmarks with CPU utilization evidence before recommending raw UDS."
     if target_gaps:
         return "Re-run transport benchmarks with explicit endpoint targets before recommending raw UDS."
     if frame_contract_gaps:
@@ -598,6 +615,7 @@ def blocking_gap_reasons(
     unexpected: list[str],
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
+    cpu_gaps: list[str],
     target_gaps: list[str],
     frame_contract_gaps: list[str],
     frame_type_gaps: list[str],
@@ -613,6 +631,7 @@ def blocking_gap_reasons(
     for transport, metric_gaps in sorted(missing_metrics.items()):
         reasons.extend(f"{transport} missing metric percentile: {metric_gap}" for metric_gap in metric_gaps)
     reasons.extend(run_gaps)
+    reasons.extend(cpu_gaps)
     reasons.extend(target_gaps)
     reasons.extend(frame_contract_gaps)
     reasons.extend(frame_type_gaps)
@@ -636,6 +655,7 @@ def raw_uds_recommendation_gate(
     unexpected: list[str],
     missing_metrics: dict[str, list[str]],
     run_gaps: list[str],
+    cpu_gaps: list[str],
     target_gaps: list[str],
     frame_contract_gaps: list[str],
     frame_type_gaps: list[str],
@@ -653,6 +673,7 @@ def raw_uds_recommendation_gate(
     for transport, metric_gaps in sorted(missing_metrics.items()):
         blockers.extend(f"missing_metric:{transport}:{metric_gap}" for metric_gap in metric_gaps)
     blockers.extend(f"run_count:{gap}" for gap in run_gaps)
+    blockers.extend(f"cpu_utilization:{gap}" for gap in cpu_gaps)
     blockers.extend(f"target:{gap}" for gap in target_gaps)
     blockers.extend(f"frame_contract:{gap}" for gap in frame_contract_gaps)
     blockers.extend(f"frame_type:{gap}" for gap in frame_type_gaps)
@@ -678,6 +699,7 @@ def compare_artifacts(
     paths: list[Path],
     *,
     min_runs: int | None = None,
+    require_cpu_utilization: bool = False,
     raw_uds_min_win_ms: float = DEFAULT_RAW_UDS_MIN_WIN_MS,
 ) -> dict[str, Any]:
     if min_runs is not None and min_runs <= 0:
@@ -747,6 +769,7 @@ def compare_artifacts(
     lowest_cpu_transport = lowest_cpu_utilization_transport(by_transport)
     missing_cpu_utilization = missing_cpu_utilization_transports(by_transport)
     cpu_coverage = cpu_utilization_coverage(by_transport)
+    cpu_gaps = cpu_utilization_gaps(by_transport, required=require_cpu_utilization)
     run_coverage = run_count_coverage(by_transport)
     run_gaps = run_count_gaps(by_transport, min_runs)
     target_gaps = target_field_gaps(by_transport)
@@ -765,6 +788,7 @@ def compare_artifacts(
         unexpected=unexpected,
         missing_metrics=missing_metrics_by_transport,
         run_gaps=run_gaps,
+        cpu_gaps=cpu_gaps,
         target_gaps=target_gaps,
         frame_contract_gaps=frame_contract_gaps,
         frame_type_gaps=frame_type_gaps,
@@ -790,6 +814,7 @@ def compare_artifacts(
         "lowest_cpu_utilization_percent_transport": lowest_cpu_transport,
         "missing_cpu_utilization_transports": missing_cpu_utilization,
         "cpu_utilization_coverage": cpu_coverage,
+        "cpu_utilization_gaps": cpu_gaps,
         "run_count_coverage": run_coverage,
         "minimum_required_runs": min_runs,
         "run_count_gaps": run_gaps,
@@ -815,6 +840,7 @@ def compare_artifacts(
             unexpected=unexpected,
             missing_metrics=missing_metrics_by_transport,
             run_gaps=run_gaps,
+            cpu_gaps=cpu_gaps,
             target_gaps=target_gaps,
             frame_contract_gaps=frame_contract_gaps,
             frame_type_gaps=frame_type_gaps,
@@ -833,6 +859,7 @@ def compare_artifacts(
             all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
             missing_metrics=missing_metrics_by_transport,
             run_gaps=run_gaps,
+            cpu_gaps=cpu_gaps,
             target_gaps=target_gaps,
             frame_contract_gaps=frame_contract_gaps,
             frame_type_gaps=frame_type_gaps,
@@ -852,6 +879,7 @@ def comparison_has_blocking_gaps(
         or comparison["unexpected_transports"]
         or comparison["missing_p95_metrics_by_transport"]
         or comparison.get("run_count_gaps")
+        or comparison.get("cpu_utilization_gaps")
         or comparison.get("target_field_gaps")
         or comparison.get("raw_uds_frame_contract_gaps")
         or comparison.get("raw_uds_frame_type_gaps")
@@ -1107,6 +1135,7 @@ def main(argv: list[str] | None = None) -> int:
     comparison = compare_artifacts(
         args.artifacts,
         min_runs=args.min_runs,
+        require_cpu_utilization=args.require_cpu_utilization,
         raw_uds_min_win_ms=args.raw_uds_min_win_ms,
     )
     encoded = json.dumps(comparison, indent=2, sort_keys=True) + "\n"

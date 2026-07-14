@@ -776,6 +776,37 @@ def test_compare_artifacts_rejects_invalid_raw_uds_recommendation_threshold(tmp_
         raise AssertionError("expected raw_uds_min_win_ms validation failure")
 
 
+def test_compare_artifacts_can_require_cpu_utilization_evidence(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0, cpu_utilization_percent=None)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw], require_cpu_utilization=True)
+
+    assert comparison["cpu_utilization_gaps"] == ["raw_uds missing CPU utilization"]
+    assert comparison["blocking_gaps"] == comparison["cpu_utilization_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "cpu_utilization:raw_uds missing CPU utilization"
+    ]
+    assert comparison["raw_uds_should_remain_experimental"] is True
+    assert comparison["recommendation"] == (
+        "Re-run transport benchmarks with CPU utilization evidence before recommending raw UDS."
+    )
+
+
+def test_compare_artifacts_keeps_cpu_utilization_evidence_optional_by_default(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0, cpu_utilization_percent=None)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_cpu_utilization_transports"] == ["raw_uds"]
+    assert comparison["cpu_utilization_gaps"] == []
+    assert comparison["blocking_gaps"] == []
+    assert comparison["raw_uds_recommendation_gate"]["passed"] is True
+
+
 def test_compare_artifacts_requires_complete_benchmark_inputs(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
