@@ -397,11 +397,20 @@ def raw_uds_frame_type_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
 def normalized_audio_inputs(artifact: dict[str, Any]) -> dict[str, Any]:
     audio = artifact.get("audio") if isinstance(artifact.get("audio"), dict) else {}
     settings = artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {}
+    benchmark = artifact.get("benchmark") if isinstance(artifact.get("benchmark"), dict) else {}
+    integration = artifact.get("integration") if isinstance(artifact.get("integration"), dict) else {}
+    streaming = artifact.get("streaming") if isinstance(artifact.get("streaming"), dict) else {}
     source = first_defined(audio.get("source"), audio.get("path"))
     duration_ms = first_defined(audio.get("duration_ms"), audio.get("duration_s"))
     if duration_ms is not None and audio.get("duration_ms") is None:
         duration_ms = round(float(duration_ms) * 1000, 3)
-    frame_ms = first_defined(audio.get("frame_ms"), settings.get("source_frame_ms"))
+    frame_ms = first_defined(
+        audio.get("frame_ms"),
+        settings.get("source_frame_ms"),
+        benchmark.get("source_frame_ms"),
+        integration.get("source_frame_ms"),
+        streaming.get("source_frame_ms"),
+    )
     return {
         "source": source,
         "sample_rate": audio.get("sample_rate"),
@@ -414,12 +423,27 @@ def normalized_audio_inputs(artifact: dict[str, Any]) -> dict[str, Any]:
 
 def normalized_benchmark_settings(artifact: dict[str, Any]) -> dict[str, Any]:
     settings = artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {}
+    benchmark = artifact.get("benchmark") if isinstance(artifact.get("benchmark"), dict) else {}
+    integration = artifact.get("integration") if isinstance(artifact.get("integration"), dict) else {}
+    streaming = artifact.get("streaming") if isinstance(artifact.get("streaming"), dict) else {}
     return {
         "partial_interval_ms": first_defined(
             settings.get("partial_interval_ms"),
             settings.get("requested_partial_interval_ms"),
+            benchmark.get("partial_interval_ms"),
+            benchmark.get("requested_partial_interval_ms"),
+            integration.get("partial_interval_ms"),
+            integration.get("requested_partial_interval_ms"),
+            streaming.get("partial_interval_ms"),
+            streaming.get("requested_partial_interval_ms"),
         ),
-        "realtime_pace": first_defined(settings.get("realtime_pace"), settings.get("simulate_realtime")),
+        "realtime_pace": first_defined(
+            settings.get("realtime_pace"),
+            settings.get("simulate_realtime"),
+            benchmark.get("simulate_realtime"),
+            integration.get("simulate_realtime"),
+            streaming.get("simulate_realtime"),
+        ),
     }
 
 

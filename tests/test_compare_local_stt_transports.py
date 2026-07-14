@@ -835,6 +835,49 @@ def test_compare_artifacts_accepts_benchmark_input_aliases_from_stream_artifacts
     }
 
 
+
+def test_compare_artifacts_accepts_stream_artifact_benchmark_sections(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    for path in (tcp, uds, raw):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["audio"] = {
+            "path": "/tmp/rtc_asr_bench.aiff",
+            "duration_s": 1.0,
+            "sample_rate": 16000,
+            "channels": 1,
+            "format": "pcm_s16le",
+        }
+        payload.pop("settings")
+        payload["benchmark"] = {
+            "source_frame_ms": 20,
+            "requested_partial_interval_ms": 100,
+            "simulate_realtime": True,
+        }
+        payload["integration"] = {
+            "source_frame_ms": 20,
+            "requested_partial_interval_ms": 100,
+            "simulate_realtime": True,
+        }
+        payload["streaming"] = {
+            "source_frame_ms": 20,
+            "requested_partial_interval_ms": 100,
+            "simulate_realtime": True,
+        }
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["audio"]["frame_ms"] == 20
+    assert comparison["transports"]["raw_uds"]["settings"] == {
+        "partial_interval_ms": 100,
+        "realtime_pace": True,
+    }
+
+
 def test_compare_artifacts_requires_matching_benchmark_inputs(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
