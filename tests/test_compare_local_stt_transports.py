@@ -336,6 +336,65 @@ def test_compare_artifacts_accepts_raw_uds_frame_type_codes_from_benchmark_contr
         "PONG": 6,
     }
 
+
+def test_compare_artifacts_accepts_raw_uds_contract_aliases(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    for field in (
+        "frame_format",
+        "frame_header_bytes",
+        "frame_types",
+        "frame_type_codes",
+        "lifecycle",
+        "error_handling",
+        "shared_stream_runtime",
+    ):
+        raw_payload["target"].pop(field)
+    raw_payload["contract"] = {
+        "frame_format": "uint8_type_uint32_len_le",
+        "frame_header_bytes": 5,
+        "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
+        "frame_type_codes": {
+            "JSON_CONTROL": 1,
+            "AUDIO_PCM16": 2,
+            "JSON_EVENT": 3,
+            "ERROR": 4,
+            "PING": 5,
+            "PONG": 6,
+        },
+        "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+        "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+        "shared_stream_runtime": True,
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_contract_gaps"] == []
+    assert comparison["raw_uds_frame_type_gaps"] == []
+    assert comparison["raw_uds_lifecycle_gaps"] == []
+    assert comparison["raw_uds_error_handling_gaps"] == []
+    assert comparison["raw_uds_runtime_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["shared_stream_runtime"] is True
+
+
+def test_compare_artifacts_accepts_nested_raw_uds_target_contract_alias(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("frame_format")
+    raw_payload["target"]["contract"] = {"frame_format": "uint8_type_uint32_len_le"}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_contract_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["frame_format"] == "uint8_type_uint32_len_le"
+
+
 def test_compare_artifacts_requires_raw_uds_lifecycle_coverage(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
@@ -1189,4 +1248,3 @@ def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_pat
     assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| uds_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
-
