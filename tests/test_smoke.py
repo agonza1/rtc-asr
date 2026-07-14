@@ -34,6 +34,7 @@ from src.protocols.local_stt_v1 import (
     decode_raw_uds_frame,
     parse_raw_uds_server_frame,
     parse_server_message,
+    RawUdsFrameType,
 )
 from src.rtc_client import AsyncRawUdsLocalSttClient
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
@@ -599,6 +600,35 @@ def test_raw_uds_rejects_unknown_frame_type_before_waiting_for_payload(tmp_path:
 
     assert error["type"] == "error"
     assert error["code"] == "raw_uds_unsupported_frame_type"
+    assert health.status_code == 200
+    assert health.json()["ready"] is True
+
+
+def test_raw_uds_rejects_oversized_payload_before_waiting_for_body(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+
+    async def read_server_frame(reader: asyncio.StreamReader) -> dict[str, object]:
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+        return parse_raw_uds_server_frame(frame).model_dump(exclude_none=True)
+
+    async def send_oversized_header_without_payload() -> dict[str, object]:
+        reader, writer = await asyncio.open_unix_connection(str(raw_socket_path))
+        writer.write(bytes([RawUdsFrameType.JSON_CONTROL]) + (RAW_UDS_MAX_PAYLOAD_BYTES + 1).to_bytes(4, "little"))
+        await writer.drain()
+        error = await asyncio.wait_for(read_server_frame(reader), timeout=0.5)
+        writer.close()
+        await writer.wait_closed()
+        return error
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as http_client:
+        error = asyncio.run(send_oversized_header_without_payload())
+        health = http_client.get("/health")
+
+    assert error["type"] == "error"
+    assert error["code"] == "raw_uds_payload_too_large"
     assert health.status_code == 200
     assert health.json()["ready"] is True
 
