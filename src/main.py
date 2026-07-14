@@ -38,6 +38,7 @@ from .protocols import (
     FinalizeMessage,
     LocalSttProtocolError,
     ReadyMessage,
+    RawUdsFrameType,
     StartMessage,
     TranscriptMessage,
     WarningMessage,
@@ -51,6 +52,7 @@ from .protocols import (
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+RAW_UDS_FRAME_TYPE_VALUES = {int(frame_type) for frame_type in RawUdsFrameType}
 
 
 class TranscribeRequest(BaseModel):
@@ -951,6 +953,12 @@ async def _send_queued_raw_uds_events(writer: asyncio.StreamWriter, runtime: Str
 async def _receive_raw_uds_event(reader: asyncio.StreamReader) -> tuple[object, str]:
     try:
         header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        frame_type = header[0]
+        if frame_type not in RAW_UDS_FRAME_TYPE_VALUES:
+            raise LocalSttProtocolError(
+                f"Unsupported Raw UDS frame type: {frame_type}",
+                code="raw_uds_unsupported_frame_type",
+            )
         payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
         if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
             raise LocalSttProtocolError(
