@@ -60,12 +60,12 @@ def load_tracks() -> dict[str, object]:
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
-    assert manifest["summary"]["asr_count"] == 8
-    assert manifest["summary"]["tracked_count"] == 8
-    assert manifest["summary"]["validated_count"] == 7
+    assert manifest["summary"]["asr_count"] == 9
+    assert manifest["summary"]["tracked_count"] == 9
+    assert manifest["summary"]["validated_count"] == 8
     assert manifest["summary"]["legacy_count"] == 0
     assert manifest["summary"]["blocked_count"] == 1
-    assert manifest["summary"]["live_comparable_count"] == 7
+    assert manifest["summary"]["live_comparable_count"] == 8
 
     tracks = {entry["slug"]: entry for entry in manifest["tracks"]}
     assert tracks["parakeet-mlx-service-110m"]["artifact_path"].endswith("parakeet-mlx-110m-service-2026-06-21.json")
@@ -76,6 +76,8 @@ def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     assert tracks["qwen-compose"]["artifact_path"].endswith("qwen-compose-2026-06-21.json")
     assert tracks["qwen-compose"]["runtime"] == "cpu / float16"
     assert tracks["qwen-compose"]["target_sample_count"] == 10
+    assert tracks["voxtral-mlx-4bit-service"]["artifact_path"].endswith("voxtral-mlx-4bit-service-2026-07-06.json")
+    assert tracks["voxtral-mlx-4bit-service"]["runtime"] == "apple-silicon / int8"
     assert tracks["pipecat-e2e-faster-whisper-base"]["artifact_path"].endswith("faster-whisper-base.en-int8-pipecat-e2e-2026-06-19.json")
     assert tracks["pipecat-e2e-faster-whisper-base"]["status"] == "blocked"
     assert tracks["qwen-mps"]["official_wer_reference"] == "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
@@ -269,7 +271,7 @@ def test_manifest_exposes_derived_asr_scores() -> None:
     assert summary["lane_count"] >= 3
     assert summary["published_artifact_count"] == summary["asr_count"]
     assert summary["artifact_total_size_bytes"] >= summary["published_artifact_total_size_bytes"] > 0
-    assert summary["stale_artifact_count"] == 15
+    assert summary["stale_artifact_count"] == 14
     assert summary["stale_artifact_total_size_bytes"] > 0
     assert summary["ranges"]["overall_score"] is not None
     assert summary["highlights"]["best_overall"] is not None
