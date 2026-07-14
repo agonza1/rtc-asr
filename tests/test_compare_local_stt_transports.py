@@ -38,6 +38,7 @@ def write_artifact(
                         {
                             "frame_format": "uint8_type_uint32_len_le",
                             "frame_header_bytes": 5,
+                            "per_frame_overhead_bytes": 5,
                             "frame_types": [
                                 "JSON_CONTROL",
                                 "AUDIO_PCM16",
@@ -196,6 +197,7 @@ def test_compare_artifacts_requires_raw_uds_frame_contract(tmp_path: Path) -> No
     raw_payload = json.loads(raw.read_text(encoding="utf8"))
     raw_payload["target"].pop("frame_format")
     raw_payload["target"]["frame_header_bytes"] = 4
+    raw_payload["target"].pop("per_frame_overhead_bytes")
     raw.write_text(json.dumps(raw_payload), encoding="utf8")
 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
@@ -203,11 +205,13 @@ def test_compare_artifacts_requires_raw_uds_frame_contract(tmp_path: Path) -> No
     assert comparison["raw_uds_frame_contract_gaps"] == [
         "raw_uds missing target.frame_format=uint8_type_uint32_len_le",
         "raw_uds missing target.frame_header_bytes=5",
+        "raw_uds missing target.per_frame_overhead_bytes=5",
     ]
     assert comparison["blocking_gaps"] == comparison["raw_uds_frame_contract_gaps"]
     assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
         "frame_contract:raw_uds missing target.frame_format=uint8_type_uint32_len_le",
         "frame_contract:raw_uds missing target.frame_header_bytes=5",
+        "frame_contract:raw_uds missing target.per_frame_overhead_bytes=5",
     ]
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
@@ -220,9 +224,11 @@ def test_compare_artifacts_accepts_raw_uds_frame_contract_from_benchmark_contrac
     raw_payload = json.loads(raw.read_text(encoding="utf8"))
     raw_payload["target"].pop("frame_format")
     raw_payload["target"].pop("frame_header_bytes")
+    raw_payload["target"].pop("per_frame_overhead_bytes")
     raw_payload["target_contract"] = {
         "frame_format": "uint8_type_uint32_len_le",
         "frame_header_bytes": 5,
+        "per_frame_overhead_bytes": 5,
     }
     raw.write_text(json.dumps(raw_payload), encoding="utf8")
 
@@ -231,6 +237,7 @@ def test_compare_artifacts_accepts_raw_uds_frame_contract_from_benchmark_contrac
     assert comparison["raw_uds_frame_contract_gaps"] == []
     assert comparison["transports"]["raw_uds"]["frame_format"] == "uint8_type_uint32_len_le"
     assert comparison["transports"]["raw_uds"]["frame_header_bytes"] == 5
+    assert comparison["transports"]["raw_uds"]["per_frame_overhead_bytes"] == 5
 
 
 def test_compare_artifacts_requires_raw_uds_frame_type_coverage(tmp_path: Path) -> None:
@@ -345,6 +352,7 @@ def test_compare_artifacts_accepts_raw_uds_contract_aliases(tmp_path: Path) -> N
     for field in (
         "frame_format",
         "frame_header_bytes",
+        "per_frame_overhead_bytes",
         "frame_types",
         "frame_type_codes",
         "lifecycle",
@@ -355,6 +363,7 @@ def test_compare_artifacts_accepts_raw_uds_contract_aliases(tmp_path: Path) -> N
     raw_payload["contract"] = {
         "frame_format": "uint8_type_uint32_len_le",
         "frame_header_bytes": 5,
+        "per_frame_overhead_bytes": 5,
         "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
         "frame_type_codes": {
             "JSON_CONTROL": 1,
