@@ -1190,6 +1190,12 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(1)}"><div class="section-kicker">Published live contract</div><div class="headline-value">{live_comparable_count} comparable artifacts</div><p>{len(primary)} lanes are eligible for primary ranking after validation and publication filters; the rest stay discoverable as supporting evidence.</p></article>'
     )
+    published_artifact_bytes = summary.get("published_artifact_total_size_bytes")
+    if published_artifact_bytes:
+        published_artifact_count = summary.get("published_artifact_count", len(entries))
+        summary_cards.append(
+            f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Current artifact footprint</div><div class="headline-value">{format_bytes(published_artifact_bytes)}</div><p>Current public ranking artifacts: {published_artifact_count}; historical files are counted separately in archive hygiene.</p></article>'
+        )
     transport_coverage = summary.get("transport_coverage") or {}
     if transport_coverage:
         raw_uds_count = transport_coverage.get("raw_uds_artifact_count", 0)
