@@ -133,6 +133,21 @@
       "status_detail": "Validated paced /v1/stt/stream Compose CPU artifact refreshed on 2026-06-21 using float16.",
       "run_command": "make benchmark-compose-qwen",
       "official_wer_reference": "2.11 / 4.55 LibriSpeech clean / other (Qwen/Qwen3-ASR-0.6B)"
+    },
+    {
+      "slug": "voxtral-mlx-4bit-service",
+      "label": "Voxtral Mini 4B MLX",
+      "backend": "voxtral-mlx",
+      "model": "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit",
+      "device": "apple-silicon",
+      "compute": "int8",
+      "lane": "Local Python Apple Silicon MLX Service",
+      "status": "validated",
+      "target_sample_count": 10,
+      "artifact": "voxtral-mlx-4bit-service-2026-07-06.json",
+      "status_detail": "Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-07-06. This lane is published for latency visibility, but its first-partial and finalization timings are slower than the smaller ASR-focused lanes.",
+      "run_command": "make benchmark-voxtral-mlx-service",
+      "official_wer_reference": "No upstream LibriSpeech WER reference recorded for this MLX 4-bit rtc-asr artifact."
     }
   ],
   "low_latency_matrix": {
