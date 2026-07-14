@@ -951,6 +951,18 @@ def test_parse_args_requires_uds_path_for_uds_ws(tmp_path: Path) -> None:
         raise AssertionError("expected missing uds path to be rejected")
 
 
+def test_parse_args_requires_uds_path_for_raw_uds(tmp_path: Path) -> None:
+    raw_path = tmp_path / "clip.pcm"
+    raw_path.write_bytes(b"a" * 640)
+
+    try:
+        benchmark_module.parse_args(["--transport", "raw_uds", "--input-raw-pcm", str(raw_path)])
+    except Exception as exc:
+        assert "--uds-path is required" in str(exc)
+    else:
+        raise AssertionError("expected missing raw UDS path to be rejected")
+
+
 def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> None:
     raw_path = tmp_path / "clip.pcm"
     raw_path.write_bytes(b"a" * 640)

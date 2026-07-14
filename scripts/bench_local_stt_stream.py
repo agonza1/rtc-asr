@@ -147,7 +147,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Local STT transport to benchmark. raw_uds uses the experimental length-prefixed Unix socket framing.",
     )
     parser.add_argument("--url", default="ws://localhost:8080/v1/stt/stream")
-    parser.add_argument("--uds-path", type=Path, help="Unix socket path for --transport uds_ws")
+    parser.add_argument("--uds-path", type=Path, help="Unix socket path for --transport uds_ws or raw_uds")
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--input-wav", type=Path)
     source.add_argument("--input-raw-pcm", type=Path)
