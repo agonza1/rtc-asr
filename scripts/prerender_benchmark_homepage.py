@@ -642,6 +642,15 @@ def detail_variable_measured(system_signals: dict[str, Any]) -> list[str]:
     return variables
 
 
+def citation_text(entry: dict[str, Any]) -> str:
+    label = entry.get("label") or "rtc-asr benchmark artifact"
+    artifact_name = Path(entry.get("artifact_path") or "").name or "unknown artifact"
+    measured_at = entry.get("measured_at") or "unknown measurement date"
+    artifact_sha256 = entry.get("artifact_sha256")
+    sha_suffix = f", SHA-256 {artifact_sha256}" if artifact_sha256 else ""
+    return f"{label}, {measured_at}, rtc-asr benchmark artifact {artifact_name}{sha_suffix}."
+
+
 def rss_delta_mb(system_signals: dict[str, Any]) -> float | None:
     process_rss = system_signals.get("process_rss_mb")
     peak_rss = system_signals.get("peak_rss_mb")
@@ -672,6 +681,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     artifact_sha256 = entry.get("artifact_sha256")
     artifact_size_bytes = entry.get("artifact_size_bytes")
     artifact_name = Path(entry.get("artifact_path") or "").name
+    citation = citation_text(entry)
     sample_coverage = format_sample_coverage(entry.get("sample_count"), entry.get("target_sample_count"))
     manifest_artifact_path = entry.get("artifact_path") or "n/a"
     description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
@@ -710,6 +720,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         },
         "datePublished": measured_at,
         "dateModified": article_modified_at,
+        "citation": citation,
         "measurementTechnique": technique,
         "keywords": keywords,
         "variableMeasured": detail_variable_measured(system_signals),
@@ -841,6 +852,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Warnings</span><div class="value">{format_count(warnings.get("received_total"))}</div><p>Rate {format_ratio(warnings.get("rate_per_sample"))} per sample · Codes: {html.escape(format_list(warnings.get("codes") or []))}</p></article>
         <article class="card"><span class="label">Reproduction command</span><div class="value"><code>{html.escape(run_command or 'No checked-in run command')}</code></div><p>Use the recorded invocation when you need to refresh or compare this lane.</p></article>
         <article class="card"><span class="label">Artifact integrity</span><div class="value"><code>{html.escape(artifact_sha256[:12] if artifact_sha256 else 'n/a')}</code></div><p>SHA-256 {html.escape(artifact_sha256 or 'not available')}</p><p>Size {format_bytes(artifact_size_bytes)}</p></article>
+        <article class="card"><span class="label">Citation</span><div class="value">{html.escape(entry.get("label") or artifact_name or "Benchmark artifact")}</div><p>{html.escape(citation)}</p></article>
         <article class="card"><span class="label">Artifact provenance</span><div class="value"><code>{html.escape(artifact_name or 'n/a')}</code></div><p>Manifest path <code>{html.escape(manifest_artifact_path)}</code></p><p>Artifact modified {html.escape(format_date(artifact_modified_at)) if artifact_modified_at else 'Not recorded'}</p><p>Generated detail page {html.escape(Path(detail_page_path(entry)).name)}</p></article>
         <article class="card"><span class="label">System profile</span><div class="value">{html.escape(entry.get("device") or entry.get("runtime") or "unknown")}</div><p>{system_summary}</p></article>
         <article class="card"><span class="label">Efficiency signals</span><div class="value">Peak RSS {format_mb(system_signals.get("peak_rss_mb"))}</div><p>{efficiency_summary}</p><p>{thermal_note}</p></article>
