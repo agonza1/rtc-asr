@@ -1104,6 +1104,21 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
             ]
         )
 
+    run_coverage = comparison.get("run_count_coverage", {})
+    if run_coverage:
+        run_counts = run_coverage.get("run_counts", {})
+        lines.extend(
+            [
+                "",
+                "Run count coverage:",
+                f"- Complete: {_format_optional_value(run_coverage.get('complete'))}",
+                f"- Minimum observed runs: {_format_optional_value(run_coverage.get('min_runs'))}",
+                f"- Required minimum runs: {_format_optional_value(comparison.get('minimum_required_runs'))}",
+                f"- Missing run counts: {_format_optional_value(run_coverage.get('missing_transports', []))}",
+                f"- Recorded runs: {_format_optional_value([f'{transport}={count}' for transport, count in sorted(run_counts.items())])}",
+            ]
+        )
+
     raw_uds_summary = comparison.get("raw_uds_p95_comparison_summary", {})
     if raw_uds_summary:
         labels = {"tcp_ws": "TCP WebSocket", "uds_ws": "UDS WebSocket"}
