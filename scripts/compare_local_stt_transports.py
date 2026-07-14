@@ -185,6 +185,22 @@ def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
     return None if value is None else float(value)
 
 
+def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[str, int]:
+    diagnostics = artifact.get("diagnostics") if isinstance(artifact.get("diagnostics"), dict) else {}
+    values = diagnostics.get(key)
+    if not isinstance(values, dict):
+        return {}
+    counts: dict[str, int] = {}
+    for code, count in values.items():
+        if not isinstance(code, str):
+            continue
+        try:
+            counts[code] = int(count)
+        except (TypeError, ValueError):
+            continue
+    return dict(sorted(counts.items()))
+
+
 def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: str) -> str | None:
     candidates: list[tuple[float, str]] = []
     for transport, payload in transports.items():
@@ -801,6 +817,10 @@ def compare_artifacts(
             "missing_p95_metrics": missing_metrics,
             "protocol_error_free": protocol_error_free(metrics),
             "cpu_utilization_percent": extract_cpu_utilization_percent(artifact),
+            "diagnostics": {
+                "protocol_error_codes": extract_diagnostic_code_counts(artifact, "protocol_error_codes"),
+                "warning_codes": extract_diagnostic_code_counts(artifact, "warning_codes"),
+            },
         }
 
     missing = [transport for transport in REQUIRED_TRANSPORTS if transport not in by_transport]
@@ -1076,6 +1096,46 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                         _format_optional_value(audio.get("duration_ms")),
                         _format_optional_value(settings.get("partial_interval_ms")),
                         _format_optional_value(settings.get("realtime_pace")),
+                    ]
+                )
+                + " |"
+            )
+
+    has_diagnostics = any(
+        payload.get("diagnostics", {}).get("protocol_error_codes")
+        or payload.get("diagnostics", {}).get("warning_codes")
+        for payload in comparison["transports"].values()
+    )
+    if has_diagnostics:
+        lines.extend(
+            [
+                "",
+                "Transport diagnostics:",
+                "| Transport | Protocol error codes | Warning codes |",
+                "| --- | --- | --- |",
+            ]
+        )
+        for transport in comparison["required_transports"]:
+            payload = comparison["transports"].get(transport)
+            if payload is None:
+                lines.append(f"| {transport} | missing | missing |")
+                continue
+            diagnostics = payload.get("diagnostics") or {}
+            protocol_error_codes = [
+                f"{code}={count}"
+                for code, count in sorted((diagnostics.get("protocol_error_codes") or {}).items())
+            ]
+            warning_codes = [
+                f"{code}={count}"
+                for code, count in sorted((diagnostics.get("warning_codes") or {}).items())
+            ]
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        transport,
+                        _format_optional_value(protocol_error_codes),
+                        _format_optional_value(warning_codes),
                     ]
                 )
                 + " |"

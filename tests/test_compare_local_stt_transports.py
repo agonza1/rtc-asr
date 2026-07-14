@@ -1099,6 +1099,32 @@ def test_compare_artifacts_flags_protocol_error_tail_percentiles(tmp_path: Path)
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
+def test_compare_artifacts_preserves_diagnostic_code_counts(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["diagnostics"] = {
+        "protocol_error_codes": {"raw_uds_invalid_json": 2, "raw_uds_payload_too_large": "1"},
+        "warning_codes": {"late_partial": 3},
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["transports"]["raw_uds"]["diagnostics"] == {
+        "protocol_error_codes": {
+            "raw_uds_invalid_json": 2,
+            "raw_uds_payload_too_large": 1,
+        },
+        "warning_codes": {"late_partial": 3},
+    }
+    assert comparison["transports"]["tcp_ws"]["diagnostics"] == {
+        "protocol_error_codes": {},
+        "warning_codes": {},
+    }
+
+
 def test_compare_artifacts_reports_missing_required_p95_metrics(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
@@ -1183,6 +1209,12 @@ def test_main_raw_uds_recommendation_gate_passes_at_five_ms_win(tmp_path: Path) 
 def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["diagnostics"] = {
+        "protocol_error_codes": {"raw_uds_invalid_json": 2},
+        "warning_codes": {"late_partial": 1},
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
 
     comparison = compare_module.compare_artifacts([tcp, raw])
     markdown = compare_module.format_markdown_summary(comparison)
@@ -1215,6 +1247,8 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "Benchmark inputs:" in markdown
     assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
+    assert "Transport diagnostics:" in markdown
+    assert "| raw_uds | raw_uds_invalid_json=2 | late_partial=1 |" in markdown
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
     assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown
