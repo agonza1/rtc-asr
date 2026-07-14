@@ -17,6 +17,20 @@ Use the manifest for machine-readable benchmark metadata and the detail pages fo
 - Parakeet 0.6B Compose: cpu / float32; TTFB / first partial 953.7 ms; audio-end finalization 2214.0 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-compose-2026-06-20.html
 - Qwen Compose: cpu / float16; TTFB / first partial 680.1 ms; audio-end finalization 5802.5 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-compose-2026-06-21.html
 
+## Artifact Detail Pages
+- Parakeet 110M NeMo MLX: Primary comparable evidence; status validated; measured Jun 21, 2026, 12:13 AM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html
+- Faster-Whisper Base: Primary comparable evidence; status validated; measured Jun 20, 2026, 10:51 PM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-2026-06-20.html
+- Parakeet 110M NeMo: Primary comparable evidence; status validated; measured Jun 21, 2026, 01:26 PM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-21.html
+- Qwen MPS: Primary comparable evidence; status validated; measured Jun 21, 2026, 02:11 PM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-21.html
+- Faster-Whisper Small: Primary comparable evidence; status validated; measured Jun 20, 2026, 10:54 PM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-small.en-int8-2026-06-20.html
+- Parakeet 0.6B Compose: Primary comparable evidence; status validated; measured Jun 20, 2026, 11:03 PM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-compose-2026-06-20.html
+- Qwen Compose: Primary comparable evidence; status validated; measured Jun 21, 2026, 01:55 PM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-compose-2026-06-21.html
+- Pipecat E2E Faster-Whisper Base: Historical supporting evidence; status legacy; measured Jun 17, 2026, 05:11 PM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-pipecat-e2e-2026-06-17.html
+- Parakeet 110M NeMo: Historical supporting evidence; status legacy; measured Jun 10, 2026, 03:11 AM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-nemo-110m-compose-2026-06-09.html
+- Faster-Whisper Base: Historical supporting evidence; status legacy; measured Jun 10, 2026, 02:16 AM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-2026-06-10.html
+- Qwen MPS: Historical supporting evidence; status legacy; measured Jun 10, 2026, 05:19 PM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/qwen-mps-2026-06-10.html
+- Faster-Whisper Small: Historical supporting evidence; status legacy; measured Jun 10, 2026, 02:23 AM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-small.en-int8-2026-06-10.html
+
 ## Raw Artifact URLs
 - Parakeet 110M NeMo MLX: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/parakeet-mlx-110m-service-2026-06-21.json; 67.9 KB; SHA-256 066625d43d56
 - Faster-Whisper Base: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/faster-whisper-base.en-int8-2026-06-20.json; 54.9 KB; SHA-256 e49ba5696bbe

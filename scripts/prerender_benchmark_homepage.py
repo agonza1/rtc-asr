@@ -1001,6 +1001,7 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
     summary = manifest.get("summary", {})
     primary = primary_entries(published_tracks(manifest))
     artifact_entries = sort_entries(published_tracks(manifest))
+    detail_entries = sort_entries([entry for entry in manifest.get("artifacts", []) if detail_page_path(entry) != "#"])
     lines = [
         "# Edge ASR Latency Benchmarks for WebRTC Voice AI",
         "",
@@ -1025,6 +1026,17 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
             f"- {label}: {entry.get('runtime') or 'unknown runtime'}; "
             f"TTFB / first partial {first_partial}; audio-end finalization {final_latency}; "
             f"details {sitemap_url(base_url, detail_path)}"
+        )
+    lines.extend(["", "## Artifact Detail Pages"])
+    if not detail_entries:
+        lines.append("- No artifact detail pages are published yet.")
+    for entry in detail_entries[:12]:
+        label = entry.get("label") or entry.get("slug") or Path(entry.get("artifact_path") or "").stem or "unknown"
+        status = entry.get("status") or "unknown status"
+        measured_at = format_date(entry.get("measured_at"))
+        lines.append(
+            f"- {label}: {evidence_role(entry)}; status {status}; "
+            f"measured {measured_at}; details {sitemap_url(base_url, detail_page_path(entry))}"
         )
     lines.extend(["", "## Raw Artifact URLs"])
     if not artifact_entries:
