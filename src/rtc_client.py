@@ -506,10 +506,12 @@ class AsyncRawUdsLocalSttClient:
                 raise RuntimeError(f"Expected closed event, got: {closed_event}")
 
         writer = self._writer
-        writer.close()
-        await writer.wait_closed()
-        self._reader = None
-        self._writer = None
+        try:
+            writer.close()
+            await writer.wait_closed()
+        finally:
+            self._reader = None
+            self._writer = None
         return closed_event
 
     async def _send_client_message(self, payload: dict[str, Any]) -> None:
