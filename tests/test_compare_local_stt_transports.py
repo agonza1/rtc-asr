@@ -955,6 +955,42 @@ def test_compare_artifacts_requires_matching_audio_format(tmp_path: Path) -> Non
     ]
 
 
+def test_compare_artifacts_requires_matching_service_identity_when_recorded(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    for path, model in [(tcp, "base.en"), (uds, "base.en"), (raw, "small.en")]:
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["backend"] = {"name": "faster-whisper", "model": model}
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == [
+        "benchmark service identity mismatch for model: raw_uds='small.en', tcp_ws='base.en', uds_ws='base.en'"
+    ]
+    assert comparison["blocking_gaps"] == comparison["benchmark_input_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "benchmark_input:benchmark service identity mismatch for model: raw_uds='small.en', tcp_ws='base.en', uds_ws='base.en'"
+    ]
+    assert comparison["transports"]["raw_uds"]["service"] == {
+        "backend": "faster-whisper",
+        "model": "small.en",
+    }
+
+
+def test_compare_artifacts_allows_unrecorded_service_identity(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["service"] == {"backend": None, "model": None}
+
+
 def test_compare_artifacts_flags_protocol_errors_in_present_transport(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
