@@ -461,6 +461,28 @@ def normalized_benchmark_settings(artifact: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def normalized_service_identity(artifact: dict[str, Any]) -> dict[str, Any]:
+    backend = artifact.get("backend") if isinstance(artifact.get("backend"), dict) else {}
+    service = artifact.get("service") if isinstance(artifact.get("service"), dict) else {}
+    target = artifact.get("target") if isinstance(artifact.get("target"), dict) else {}
+    return {
+        "backend": first_defined(
+            backend.get("backend"),
+            backend.get("name"),
+            service.get("backend"),
+            target.get("backend"),
+        ),
+        "model": first_defined(
+            backend.get("model"),
+            backend.get("model_name"),
+            service.get("model"),
+            service.get("model_name"),
+            target.get("model"),
+            target.get("model_name"),
+        ),
+    }
+
+
 def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     comparable_fields = (
         ("audio", "source"),
@@ -489,6 +511,21 @@ def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
         if len(set(values.values())) > 1:
             rendered = ", ".join(f"{transport}={value!r}" for transport, value in values.items())
             gaps.append(f"benchmark input mismatch for {field}: {rendered}")
+
+    for field in ("backend", "model"):
+        values = {
+            transport: payload.get("service", {}).get(field)
+            for transport, payload in sorted(transports.items())
+        }
+        if not any(value not in (None, "") for value in values.values()):
+            continue
+        missing = [transport for transport, value in values.items() if value is None or value == ""]
+        if missing:
+            gaps.append(f"benchmark service identity missing for {field}: {','.join(missing)}")
+            continue
+        if len(set(values.values())) > 1:
+            rendered = ", ".join(f"{transport}={value!r}" for transport, value in values.items())
+            gaps.append(f"benchmark service identity mismatch for {field}: {rendered}")
     return gaps
 
 
@@ -740,6 +777,7 @@ def compare_artifacts(
             "shared_stream_runtime": shared_stream_runtime,
             "audio": normalized_audio_inputs(artifact),
             "settings": normalized_benchmark_settings(artifact),
+            "service": normalized_service_identity(artifact),
             "runs": artifact.get("runs"),
             "metrics": metrics,
             "metrics_p95": metrics_p95,
