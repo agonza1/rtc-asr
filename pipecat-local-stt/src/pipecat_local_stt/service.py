@@ -513,14 +513,27 @@ class RawUdsConnectionAdapter:
         await self._writer.drain()
 
     async def recv(self) -> str:
-        header = await self._reader.readexactly(RAW_UDS_HEADER_BYTES)
+        try:
+            header = await self._reader.readexactly(RAW_UDS_HEADER_BYTES)
+        except asyncio.IncompleteReadError as exc:
+            raise LocalSTTProtocolError(
+                f"Raw UDS stream ended with {len(exc.partial)} buffered frame bytes",
+                code="raw_uds_incomplete_frame",
+            ) from exc
         payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
         if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
             raise LocalSTTProtocolError(
                 f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
                 code="raw_uds_payload_too_large",
             )
-        frame = decode_raw_uds_frame(header + await self._reader.readexactly(payload_length))
+        try:
+            payload = await self._reader.readexactly(payload_length)
+        except asyncio.IncompleteReadError as exc:
+            raise LocalSTTProtocolError(
+                f"Raw UDS stream ended with {RAW_UDS_HEADER_BYTES + len(exc.partial)} buffered frame bytes",
+                code="raw_uds_incomplete_frame",
+            ) from exc
+        frame = decode_raw_uds_frame(header + payload)
         return json.dumps(parse_raw_uds_server_frame(frame))
 
     async def close(self, code: int = 1000) -> None:
