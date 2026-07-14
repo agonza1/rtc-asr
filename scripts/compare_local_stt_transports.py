@@ -38,6 +38,7 @@ REQUIRED_TARGET_FIELDS_BY_TRANSPORT = {
 }
 RAW_UDS_FRAME_FORMAT = "uint8_type_uint32_len_le"
 RAW_UDS_FRAME_HEADER_BYTES = 5
+RAW_UDS_PER_FRAME_OVERHEAD_BYTES = RAW_UDS_FRAME_HEADER_BYTES
 RAW_UDS_REQUIRED_FRAME_TYPES = (
     "JSON_CONTROL",
     "AUDIO_PCM16",
@@ -323,6 +324,8 @@ def raw_uds_frame_contract_gaps(transports: dict[str, dict[str, Any]]) -> list[s
         gaps.append(f"raw_uds missing target.frame_format={RAW_UDS_FRAME_FORMAT}")
     if raw_uds.get("frame_header_bytes") != RAW_UDS_FRAME_HEADER_BYTES:
         gaps.append(f"raw_uds missing target.frame_header_bytes={RAW_UDS_FRAME_HEADER_BYTES}")
+    if raw_uds.get("per_frame_overhead_bytes") != RAW_UDS_PER_FRAME_OVERHEAD_BYTES:
+        gaps.append(f"raw_uds missing target.per_frame_overhead_bytes={RAW_UDS_PER_FRAME_OVERHEAD_BYTES}")
     return gaps
 
 
@@ -782,6 +785,8 @@ def compare_artifacts(
             "uds_path": artifact["target"].get("uds_path"),
             "frame_format": artifact["target"].get("frame_format") or target_contract.get("frame_format"),
             "frame_header_bytes": artifact["target"].get("frame_header_bytes") or target_contract.get("frame_header_bytes"),
+            "per_frame_overhead_bytes": artifact["target"].get("per_frame_overhead_bytes")
+            or target_contract.get("per_frame_overhead_bytes"),
             "frame_types": target_frame_types,
             "frame_type_codes": target_frame_type_codes,
             "lifecycle": target_lifecycle,
