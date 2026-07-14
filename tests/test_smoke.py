@@ -74,6 +74,8 @@ DEFAULT_PROTOCOLS = [
                 "uds_path": AppConfig().local_stt_raw_uds_path,
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                "frame_format": "uint8_type_uint32_len_le",
+                "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                 "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "benchmark_metrics": [
                     "time_to_first_interim_ms",
@@ -83,6 +85,7 @@ DEFAULT_PROTOCOLS = [
                     "protocol_errors",
                     "cpu_utilization",
                 ],
+                "latency_win_threshold_ms": 5.0,
                 "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
                 "frame_types": {
                     "json_control": 1,
@@ -410,6 +413,9 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["enable_env"] == "LOCAL_STT_RAW_UDS_ENABLED"
     assert raw_uds["path_env"] == "LOCAL_STT_RAW_UDS_PATH"
     assert raw_uds["uds_path"] == str(raw_socket_path)
+    assert raw_uds["frame_format"] == "uint8_type_uint32_len_le"
+    assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
+    assert raw_uds["latency_win_threshold_ms"] == 5.0
 
 
 def test_health_reports_enabled_raw_uds_server_path(tmp_path: Path) -> None:

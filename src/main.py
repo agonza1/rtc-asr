@@ -152,6 +152,8 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     ),
                     "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                    "frame_format": "uint8_type_uint32_len_le",
+                    "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                     "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                     "benchmark_metrics": [
                         "time_to_first_interim_ms",
@@ -161,6 +163,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "protocol_errors",
                         "cpu_utilization",
                     ],
+                    "latency_win_threshold_ms": 5.0,
                     "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
                     "frame_types": {
                         "json_control": 1,
