@@ -651,6 +651,36 @@ def citation_text(entry: dict[str, Any]) -> str:
     return f"{label}, {measured_at}, rtc-asr benchmark artifact {artifact_name}{sha_suffix}."
 
 
+def detail_decision_summary(entry: dict[str, Any]) -> str:
+    streaming = entry.get("streaming", {})
+    status = entry.get("status")
+    label = entry.get("label") or "This artifact"
+    ttfb = format_ms(streaming.get("first_partial_end_to_end_mean_ms"))
+    final = format_ms(streaming.get("final_mean_ms"))
+    backlog = format_ms(partial_backlog_mean(entry))
+    transport = entry.get("contract", {}).get("transport") or entry.get("contract", {}).get("path") or "unknown transport"
+
+    if status == "blocked":
+        return (
+            f"{label} is tracked but blocked for primary ranking; use it only to understand the current gap "
+            f"for {transport}."
+        )
+    if status == "legacy":
+        return (
+            f"{label} is historical supporting evidence with {ttfb} first partial latency, {backlog} partial backlog, "
+            f"and {final} audio-end finalization."
+        )
+    if streaming.get("live_metrics_comparable") is True:
+        return (
+            f"{label} is comparable live evidence: {ttfb} first partial latency, {backlog} partial backlog, "
+            f"and {final} audio-end finalization on {transport}."
+        )
+    return (
+        f"{label} is publishable supporting evidence, but its live metrics are not directly comparable with the "
+        "primary Local STT ranking contract."
+    )
+
+
 def rss_delta_mb(system_signals: dict[str, Any]) -> float | None:
     process_rss = system_signals.get("process_rss_mb")
     peak_rss = system_signals.get("peak_rss_mb")
@@ -687,6 +717,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     description = entry.get("status_detail") or "Checked-in rtc-asr benchmark artifact."
     technique = measurement_technique(entry)
     role = evidence_role(entry)
+    decision_summary = detail_decision_summary(entry)
     detail_href = Path(detail_page_path(entry)).name
     detail_url = absolute_site_url(site_base_url, f"benchmark-results/pages/{detail_href}")
     artifact_url = absolute_site_url(site_base_url, f"benchmark-results/{artifact_name}") if site_base_url and artifact_name else artifact_href
@@ -709,7 +740,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "@context": "https://schema.org",
         "@type": "Dataset",
         "name": f"rtc-asr benchmark artifact: {entry.get('label') or artifact_name or 'unknown'}",
-        "description": description,
+        "description": decision_summary,
         "identifier": artifact_sha256 or manifest_artifact_path,
         "url": detail_url,
         "mainEntityOfPage": {
@@ -835,6 +866,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <h1>{title}</h1>
       <p>{html.escape(entry.get("status_detail") or "Checked-in benchmark artifact.")}</p>
       <div class="actions">
+        <div class="card"><span class="label">Decision summary</span><div class="value">{html.escape(entry.get("status") or "unknown")}</div><p>{html.escape(decision_summary)}</p></div>
         <div class="card"><span class="label">Lane</span><div class="value">{html.escape(entry.get("lane") or "unknown")}</div><p>{html.escape(entry.get("backend") or "unknown")} · {html.escape(entry.get("model") or "unknown")}</p></div>
         <div class="card"><span class="label">Runtime</span><div class="value">{html.escape(entry.get("runtime") or "unknown")}</div><p>Status: {html.escape(entry.get("status") or "unknown")} · Sample coverage: {html.escape(sample_coverage)}</p></div>
         <div class="card"><span class="label">Evidence role</span><div class="value">{html.escape(role)}</div><p>{html.escape(description)}</p></div>
