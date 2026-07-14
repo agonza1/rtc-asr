@@ -148,6 +148,18 @@ def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
     return current
 
 
+def normalized_target_contract(artifact: dict[str, Any]) -> dict[str, Any]:
+    target = artifact.get("target") if isinstance(artifact.get("target"), dict) else {}
+    for candidate in (
+        artifact.get("target_contract"),
+        artifact.get("contract"),
+        target.get("contract"),
+    ):
+        if isinstance(candidate, dict):
+            return candidate
+    return {}
+
+
 def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
     environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
     metrics = artifact.get("metrics") if isinstance(artifact.get("metrics"), dict) else {}
@@ -752,7 +764,7 @@ def compare_artifacts(
         summary = artifact.get("summary")
         if not isinstance(summary, dict):
             raise ValueError(f"{path} is missing summary")
-        target_contract = artifact.get("target_contract") if isinstance(artifact.get("target_contract"), dict) else {}
+        target_contract = normalized_target_contract(artifact)
         target_lifecycle = artifact["target"].get("lifecycle") or target_contract.get("lifecycle")
         target_frame_types = artifact["target"].get("frame_types") or target_contract.get("frame_types")
         target_frame_type_codes = artifact["target"].get("frame_type_codes") or target_contract.get("frame_type_codes")
