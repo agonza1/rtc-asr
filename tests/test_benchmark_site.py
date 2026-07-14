@@ -29,6 +29,7 @@ prerender_module = importlib.util.module_from_spec(PRERENDER_SPEC)
 sys.modules.setdefault("rtc_asr_prerender_benchmark_homepage", prerender_module)
 PRERENDER_SPEC.loader.exec_module(prerender_module)
 detail_page_path = prerender_module.detail_page_path
+detail_decision_summary = prerender_module.detail_decision_summary
 format_sample_coverage = prerender_module.format_sample_coverage
 render_detail_page = prerender_module.render_detail_page
 render_homepage = prerender_module.render_homepage
@@ -1245,6 +1246,33 @@ def test_detail_page_surfaces_citable_artifact_reference() -> None:
     assert "Citation" in detail_html
     assert "rtc-asr benchmark artifact demo-artifact-2026-06-14.json, SHA-256 abc123." in detail_html
     assert '"citation": "Demo artifact, 2026-06-14T00:00:00Z, rtc-asr benchmark artifact demo-artifact-2026-06-14.json, SHA-256 abc123."' in detail_html
+
+
+def test_detail_page_surfaces_decision_summary() -> None:
+    entry = {
+        "label": "Qwen MPS",
+        "status": "validated",
+        "artifact_path": "benchmark-results/qwen-mps-2026-06-21.json",
+        "rest": {},
+        "streaming": {
+            "live_metrics_comparable": True,
+            "first_partial_end_to_end_mean_ms": 123.4,
+            "partial_gap_mean_ms": 45.6,
+            "final_mean_ms": 234.5,
+        },
+        "contract": {"transport": "v1-stt-stream"},
+        "derived": {},
+    }
+
+    detail_html = render_detail_page(entry, None)
+
+    assert detail_decision_summary(entry) == (
+        "Qwen MPS is comparable live evidence: 123.4 ms first partial latency, "
+        "45.6 ms partial backlog, and 234.5 ms audio-end finalization on v1-stt-stream."
+    )
+    assert "Decision summary" in detail_html
+    assert detail_decision_summary(entry) in detail_html
+    assert '"description": "Qwen MPS is comparable live evidence:' in detail_html
 
 
 def test_detail_page_measurement_technique_matches_streaming_contract() -> None:
