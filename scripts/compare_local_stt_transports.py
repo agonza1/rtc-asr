@@ -394,6 +394,35 @@ def raw_uds_frame_type_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     return gaps
 
 
+def normalized_audio_inputs(artifact: dict[str, Any]) -> dict[str, Any]:
+    audio = artifact.get("audio") if isinstance(artifact.get("audio"), dict) else {}
+    settings = artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {}
+    source = first_defined(audio.get("source"), audio.get("path"))
+    duration_ms = first_defined(audio.get("duration_ms"), audio.get("duration_s"))
+    if duration_ms is not None and audio.get("duration_ms") is None:
+        duration_ms = round(float(duration_ms) * 1000, 3)
+    frame_ms = first_defined(audio.get("frame_ms"), settings.get("source_frame_ms"))
+    return {
+        "source": source,
+        "sample_rate": audio.get("sample_rate"),
+        "channels": audio.get("channels"),
+        "format": audio.get("format"),
+        "frame_ms": frame_ms,
+        "duration_ms": duration_ms,
+    }
+
+
+def normalized_benchmark_settings(artifact: dict[str, Any]) -> dict[str, Any]:
+    settings = artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {}
+    return {
+        "partial_interval_ms": first_defined(
+            settings.get("partial_interval_ms"),
+            settings.get("requested_partial_interval_ms"),
+        ),
+        "realtime_pace": first_defined(settings.get("realtime_pace"), settings.get("simulate_realtime")),
+    }
+
+
 def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     comparable_fields = (
         ("audio", "source"),
@@ -663,8 +692,8 @@ def compare_artifacts(
             "lifecycle": target_lifecycle,
             "error_handling": target_error_handling,
             "shared_stream_runtime": shared_stream_runtime,
-            "audio": artifact.get("audio") if isinstance(artifact.get("audio"), dict) else {},
-            "settings": artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {},
+            "audio": normalized_audio_inputs(artifact),
+            "settings": normalized_benchmark_settings(artifact),
             "runs": artifact.get("runs"),
             "metrics": metrics,
             "metrics_p95": metrics_p95,
