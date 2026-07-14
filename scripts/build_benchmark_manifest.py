@@ -507,13 +507,17 @@ def summarize_warnings(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         total = None
 
+    reported_sample_count = len(samples)
+    if total is not None and reported_sample_count == 0:
+        reported_sample_count = sample_count(payload)
+
     rate_per_sample = None
-    if total is not None and samples:
-        rate_per_sample = total / len(samples)
+    if total is not None and reported_sample_count:
+        rate_per_sample = total / reported_sample_count
 
     return {
         "received_total": total,
-        "sample_count": len(samples),
+        "sample_count": reported_sample_count,
         "rate_per_sample": rate_per_sample,
         "codes": warning_codes,
     }
