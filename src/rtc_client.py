@@ -48,8 +48,8 @@ class LocalSTTConfig:
     def __post_init__(self) -> None:
         if self.transport in {"tcp_ws", "uds_ws"} and not self.url.strip():
             raise ValueError("url is required for Local STT websocket transports")
-        if self.transport == "raw_uds" and not (self.uds_path and self.uds_path.strip()):
-            raise ValueError("uds_path is required when transport='raw_uds'")
+        if self.transport in {"uds_ws", "raw_uds"} and not (self.uds_path and self.uds_path.strip()):
+            raise ValueError(f"uds_path is required when transport='{self.transport}'")
 
     @classmethod
     def from_env(cls) -> "LocalSTTConfig":
@@ -72,6 +72,12 @@ def build_async_local_stt_client(
 ) -> "AsyncLocalSttClient | AsyncRawUdsLocalSttClient":
     if config.transport == "raw_uds":
         return AsyncRawUdsLocalSttClient(config.uds_path or "", connect_fn=raw_uds_connect_fn)
+    if config.transport == "uds_ws":
+        uds_path = config.uds_path or ""
+        return AsyncLocalSttClient(
+            config.url,
+            connect_fn=connect_fn or (lambda ws_url: _default_unix_websocket_connect(uds_path, ws_url)),
+        )
 
     return AsyncLocalSttClient(config.url, connect_fn=connect_fn)
 
@@ -564,6 +570,15 @@ async def _default_connect(ws_url: str) -> WebSocketConnection:
     import websockets
 
     return await websockets.connect(ws_url, max_size=2**23)
+
+
+async def _default_unix_websocket_connect(uds_path: str, ws_url: str) -> WebSocketConnection:
+    import websockets
+
+    unix_connect = getattr(websockets, "unix_connect", None)
+    if unix_connect is None:
+        raise RuntimeError("uds_ws transport requires websockets.unix_connect")
+    return await unix_connect(uds_path, uri=ws_url, max_size=2**23)
 
 
 async def _default_raw_uds_connect(uds_path: str) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
