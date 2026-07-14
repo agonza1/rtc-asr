@@ -516,6 +516,39 @@ def test_async_raw_uds_client_rejects_invalid_ping_without_connecting() -> None:
     asyncio.run(scenario())
 
 
+def test_async_raw_uds_client_clears_connection_after_close_wait_failure() -> None:
+    class NoopReader:
+        pass
+
+    class FailingCloseWriter:
+        def __init__(self) -> None:
+            self.closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+        async def wait_closed(self) -> None:
+            raise RuntimeError("socket close failed")
+
+    writer = FailingCloseWriter()
+
+    async def connect_fn(_path: str):
+        return NoopReader(), writer
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=connect_fn)
+        await client.connect()
+
+        with pytest.raises(RuntimeError, match="socket close failed"):
+            await client.close(graceful=False)
+
+        assert writer.closed is True
+        assert client._reader is None
+        assert client._writer is None
+
+    asyncio.run(scenario())
+
+
 def test_async_raw_uds_client_rejects_oversized_payload_before_body_read() -> None:
     class OversizedPayloadReader:
         def __init__(self) -> None:
