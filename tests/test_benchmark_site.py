@@ -45,6 +45,7 @@ render_sitemap = prerender_module.render_sitemap
 render_robots = prerender_module.render_robots
 render_llms = prerender_module.render_llms
 summarize_detail_page_drift = prerender_module.summarize_detail_page_drift
+warning_badge_text = prerender_module.warning_badge_text
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -1661,6 +1662,8 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert "Open detail page" in homepage
     assert "Artifact size" in homepage
     assert "SHA-256" in homepage
+    assert "function warningBadgeHtml(entry)" in homepage
+    assert "${warningBadgeHtml(entry)}</td>" in homepage
     assert 'function formatHostSummary(entry)' in homepage
     assert 'Host profile' in homepage
     assert 'Efficiency signals' in homepage
@@ -1996,6 +1999,44 @@ def test_warning_summary_counts_codes_without_numeric_totals() -> None:
         "rate_per_sample": None,
         "codes": ["late_partial", "stream_jitter"],
     }
+
+
+def test_homepage_rows_surface_warning_badges_near_artifact_links() -> None:
+    entry = {
+        "label": "warning lane",
+        "backend": "demo",
+        "model": "demo-v1",
+        "lane": "local",
+        "runtime": "cpu / int8",
+        "status": "validated",
+        "artifact_path": "benchmark-results/demo-warnings-2026-06-20.json",
+        "artifact_sha256": "1234567890abcdef",
+        "artifact_size_bytes": 1024,
+        "sample_count": 2,
+        "target_sample_count": 2,
+        "streaming": {
+            "first_partial_end_to_end_mean_ms": 100.0,
+            "partial_gap_mean_ms": 25.0,
+            "final_mean_ms": 75.0,
+        },
+        "rest": {"mean_ms": 50.0},
+        "derived": {"overall_score": 80.0, "confidence_score": 90.0},
+        "warnings": {"received_total": 3, "codes": ["partial_dropped", "stream_jitter"]},
+    }
+
+    assert warning_badge_text(entry) == "Warnings 3 (partial_dropped, stream_jitter)"
+    row = render_row(entry, 100.0, 25.0, 75.0, "vs fastest", 100.0)
+    secondary_row = render_secondary_row(entry)
+
+    assert "Warnings 3 (partial_dropped, stream_jitter)" in row
+    assert "Warnings 3 (partial_dropped, stream_jitter)" in secondary_row
+
+
+def test_warning_badge_text_handles_code_only_artifacts() -> None:
+    assert warning_badge_text({"warnings": {"received_total": None, "codes": ["late_partial"]}}) == (
+        "Warnings recorded: late_partial"
+    )
+    assert warning_badge_text({"warnings": {"received_total": 0, "codes": []}}) is None
 
 
 def test_warning_summary_reports_cross_artifact_rate_per_sample() -> None:
