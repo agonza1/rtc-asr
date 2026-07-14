@@ -35,6 +35,17 @@ def encode_raw_uds_frame(frame_type: RawUdsFrameType, payload: bytes) -> bytes:
     return bytes([int(frame_type)]) + len(payload).to_bytes(4, "little") + payload
 
 
+def validate_raw_uds_audio_payload(payload: bytes) -> bytes:
+    if not payload:
+        raise LocalSTTProtocolError("Raw UDS audio frames must not be empty", code="invalid_audio_chunk")
+    if len(payload) % 2 != 0:
+        raise LocalSTTProtocolError(
+            "Raw UDS PCM16 audio frames must contain an even number of bytes",
+            code="invalid_audio_chunk",
+        )
+    return payload
+
+
 def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, Any]) -> bytes:
     return encode_raw_uds_frame(frame_type, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
 

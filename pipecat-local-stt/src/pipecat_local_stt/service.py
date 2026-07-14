@@ -39,6 +39,7 @@ from .protocol import (
     parse_raw_uds_server_frame,
     encode_raw_uds_json_frame,
     parse_server_message,
+    validate_raw_uds_audio_payload,
     parse_transcript_event,
 )
 
@@ -504,7 +505,7 @@ class RawUdsConnectionAdapter:
 
     async def send(self, data: str | bytes) -> None:
         if isinstance(data, bytes):
-            frame = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, data)
+            frame = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, validate_raw_uds_audio_payload(data))
         else:
             payload = json.loads(data)
             frame_type = RawUdsFrameType.PING if payload.get("type") == "ping" else RawUdsFrameType.JSON_CONTROL
