@@ -876,6 +876,8 @@ def test_render_homepage_surfaces_raw_uds_transport_coverage() -> None:
         "summary": {
             "validated_count": 1,
             "tracked_count": 1,
+            "published_artifact_count": 1,
+            "published_artifact_total_size_bytes": 4096,
             "transport_coverage": {
                 "comparable_local_stt_artifact_count": 3,
                 "raw_uds_artifact_count": 1,
@@ -908,6 +910,9 @@ def test_render_homepage_surfaces_raw_uds_transport_coverage() -> None:
 
     html = render_homepage(manifest, homepage)
 
+    assert "Current artifact footprint" in html
+    assert "4.0 KB" in html
+    assert "Current public ranking artifacts: 1" in html
     assert "Transport coverage" in html
     assert "1 raw UDS artifacts" in html
     assert "3 Local STT artifacts are comparable today" in html
