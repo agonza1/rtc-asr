@@ -522,6 +522,18 @@ class RawUdsConnectionAdapter:
                 f"Raw UDS stream ended with {len(exc.partial)} buffered frame bytes",
                 code="raw_uds_incomplete_frame",
             ) from exc
+        try:
+            frame_type = RawUdsFrameType(header[0])
+        except ValueError as exc:
+            raise LocalSTTProtocolError(
+                f"Unsupported Raw UDS frame type: {header[0]}",
+                code="raw_uds_invalid_server_frame_type",
+            ) from exc
+        if frame_type in {RawUdsFrameType.JSON_CONTROL, RawUdsFrameType.AUDIO_PCM16}:
+            raise LocalSTTProtocolError(
+                f"Raw UDS frame type {frame_type.name} is not a server frame",
+                code="raw_uds_invalid_server_frame_type",
+            )
         payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
         if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
             raise LocalSTTProtocolError(
