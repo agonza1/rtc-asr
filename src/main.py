@@ -155,6 +155,12 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     "frame_format": "uint8_type_uint32_len_le",
                     "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                     "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+                    "error_handling": [
+                        "bad_frame_type",
+                        "malformed_json_control",
+                        "oversized_payload",
+                    ],
+                    "shared_stream_runtime": True,
                     "benchmark_metrics": [
                         "time_to_first_interim_ms",
                         "time_to_final_after_finalize_ms",
