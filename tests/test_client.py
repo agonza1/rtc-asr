@@ -340,7 +340,36 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
     assert raw_client.uds_path == "/tmp/stt.raw.sock"
 
 
-def test_local_stt_config_requires_raw_uds_path() -> None:
+def test_uds_ws_client_opens_unix_websocket(monkeypatch) -> None:
+    calls: list[tuple[str, str, int]] = []
+    websocket = object()
+
+    async def fake_unix_connect(uds_path: str, *, uri: str, max_size: int):
+        calls.append((uds_path, uri, max_size))
+        return websocket
+
+    monkeypatch.setitem(sys.modules, "websockets", type("FakeWebsockets", (), {"unix_connect": fake_unix_connect}))
+    client = build_async_local_stt_client(
+        LocalSTTConfig(transport="uds_ws", url="ws://example.test/v1/stt/stream", uds_path="/tmp/stt.sock")
+    )
+
+    assert asyncio.run(client.connect()) is websocket
+    assert calls == [("/tmp/stt.sock", "ws://example.test/v1/stt/stream", 2**23)]
+
+
+def test_uds_ws_client_reports_missing_unix_connect(monkeypatch) -> None:
+    monkeypatch.setitem(sys.modules, "websockets", type("FakeWebsockets", (), {}))
+    client = build_async_local_stt_client(
+        LocalSTTConfig(transport="uds_ws", url="ws://example.test/v1/stt/stream", uds_path="/tmp/stt.sock")
+    )
+
+    with pytest.raises(RuntimeError, match="uds_ws transport requires websockets.unix_connect"):
+        asyncio.run(client.connect())
+
+
+def test_local_stt_config_requires_socket_transport_path() -> None:
+    with pytest.raises(ValueError, match="uds_path is required"):
+        LocalSTTConfig(transport="uds_ws")
     with pytest.raises(ValueError, match="uds_path is required"):
         LocalSTTConfig(transport="raw_uds")
 
