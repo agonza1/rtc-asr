@@ -796,6 +796,8 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
             "PONG": 6,
         },
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+        "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+        "shared_stream_runtime": True,
     }
 
 
@@ -894,6 +896,8 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
             "PONG": 6,
         },
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+        "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+        "shared_stream_runtime": True,
     }
     assert payload["target_contract"]["control_channel"] == "unix_stream"
     assert payload["target_contract"]["audio_framing"] == "length_prefixed_pcm16"
