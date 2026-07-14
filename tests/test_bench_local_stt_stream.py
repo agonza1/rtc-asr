@@ -798,6 +798,9 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
         "shared_stream_runtime": True,
+        "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+        "latency_win_threshold_ms": 5.0,
+        "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
     }
 
 
@@ -898,6 +901,9 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
         "shared_stream_runtime": True,
+        "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+        "latency_win_threshold_ms": 5.0,
+        "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
     }
     assert payload["target_contract"]["control_channel"] == "unix_stream"
     assert payload["target_contract"]["audio_framing"] == "length_prefixed_pcm16"
