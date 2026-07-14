@@ -713,7 +713,14 @@ def test_render_robots_points_crawlers_to_benchmark_sitemap() -> None:
 
 def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
     manifest = {
-        "summary": {"published_artifact_count": 1, "artifact_file_count": 2, "stale_artifact_count": 1},
+        "summary": {
+            "live_comparable_count": 1,
+            "validated_count": 1,
+            "tracked_count": 1,
+            "published_artifact_count": 1,
+            "artifact_file_count": 2,
+            "stale_artifact_count": 1,
+        },
         "tracks": [
             {
                 "label": "Demo ASR",
@@ -742,6 +749,9 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
     assert "details https://example.test/asr-latency/benchmark-results/pages/demo-2026-06-14.html" in llms
     assert "## Raw Artifact URLs" in llms
     assert "Demo ASR: raw JSON https://example.test/asr-latency/benchmark-results/demo-2026-06-14.json; 1.5 KB; SHA-256 abcdef123456" in llms
+    assert "Current comparable tracks: 1" in llms
+    assert "Validated tracks: 1" in llms
+    assert "Tracked lanes: 1" in llms
     assert "Published current artifacts: 1" in llms
 
 

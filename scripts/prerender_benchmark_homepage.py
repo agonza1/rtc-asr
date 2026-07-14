@@ -1000,6 +1000,9 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
     lines.extend([
         "",
         "## Coverage",
+        f"- Current comparable tracks: {summary.get('live_comparable_count', len(primary))}",
+        f"- Validated tracks: {summary.get('validated_count', 0)}",
+        f"- Tracked lanes: {summary.get('tracked_count', len(manifest.get('tracks', [])))}",
         f"- Published current artifacts: {summary.get('published_artifact_count', len(published_tracks(manifest)))}",
         f"- Raw artifact files: {summary.get('artifact_file_count', 0)}",
         f"- Historical artifacts linked from detail pages: {summary.get('stale_artifact_count', 0)}",
