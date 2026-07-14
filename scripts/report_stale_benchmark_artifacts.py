@@ -79,11 +79,9 @@ def stale_artifacts(
             reference = reference.replace(tzinfo=UTC)
         cutoff = reference.astimezone(UTC) - timedelta(days=older_than_days)
 
-    current_paths = {
-        track["artifact_path"]
-        for track in manifest.get("tracks", [])
-        if track.get("artifact_path")
-    }
+    tracks = [track for track in manifest.get("tracks", []) if track.get("artifact_path")]
+    current_paths = {track["artifact_path"] for track in tracks}
+    current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
         artifact_path = artifact.get("artifact_path")
@@ -101,6 +99,7 @@ def stale_artifacts(
                 "slug": artifact.get("slug"),
                 "label": artifact.get("label"),
                 "measured_at": measured_at,
+                "current_artifact_path": current_path_by_slug.get(artifact.get("slug")),
                 "artifact_size_bytes": artifact.get("artifact_size_bytes"),
                 "artifact_size": format_bytes(artifact.get("artifact_size_bytes")),
             }
@@ -135,15 +134,18 @@ def render_text(stale: list[dict[str, Any]]) -> str:
             bytes=summary["total_size_bytes"],
         )
     ]
-    lines.extend(
-        "- {artifact_path} [{slug}] measured {measured_at} ({artifact_size})".format(
-            artifact_path=entry["artifact_path"],
-            slug=entry.get("slug") or "untracked",
-            measured_at=entry.get("measured_at") or "unknown",
-            artifact_size=entry.get("artifact_size") or format_bytes(entry.get("artifact_size_bytes")),
+    for entry in stale:
+        current_artifact_path = entry.get("current_artifact_path")
+        current_suffix = f"; current: {current_artifact_path}" if current_artifact_path else ""
+        lines.append(
+            "- {artifact_path} [{slug}] measured {measured_at} ({artifact_size}){current_suffix}".format(
+                artifact_path=entry["artifact_path"],
+                slug=entry.get("slug") or "untracked",
+                measured_at=entry.get("measured_at") or "unknown",
+                artifact_size=entry.get("artifact_size") or format_bytes(entry.get("artifact_size_bytes")),
+                current_suffix=current_suffix,
+            )
         )
-        for entry in stale
-    )
     return "\n".join(lines)
 
 

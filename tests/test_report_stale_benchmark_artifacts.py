@@ -20,7 +20,7 @@ stale_summary = report_module.stale_summary
 
 def test_stale_artifacts_excludes_current_track_artifact() -> None:
     manifest = {
-        "tracks": [{"artifact_path": "benchmark-results/current.json"}],
+        "tracks": [{"artifact_path": "benchmark-results/current.json", "slug": "demo"}],
         "artifacts": [
             {
                 "artifact_path": "benchmark-results/current.json",
@@ -51,6 +51,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "slug": "demo",
             "label": "Demo",
             "measured_at": "2026-06-10T00:00:00Z",
+            "current_artifact_path": "benchmark-results/current.json",
             "artifact_size_bytes": 75,
             "artifact_size": "75 B",
         }
@@ -134,9 +135,13 @@ def test_render_text_summarizes_stale_artifacts() -> None:
                 "slug": "demo",
                 "measured_at": "2026-06-10T00:00:00Z",
                 "artifact_size_bytes": 75,
+                "current_artifact_path": "benchmark-results/current.json",
             }
         ]
     )
 
     assert "Found 1 stale benchmark artifacts (75 B, 75 bytes):" in rendered
-    assert "benchmark-results/older.json [demo] measured 2026-06-10T00:00:00Z (75 B)" in rendered
+    assert (
+        "benchmark-results/older.json [demo] measured 2026-06-10T00:00:00Z (75 B); "
+        "current: benchmark-results/current.json"
+    ) in rendered
