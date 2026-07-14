@@ -259,6 +259,9 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
             "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
             "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
             "shared_stream_runtime": True,
+            "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+            "latency_win_threshold_ms": 5.0,
+            "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
         }
     if transport == "uds_ws":
         return {
@@ -297,6 +300,9 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                 "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
                 "shared_stream_runtime": True,
+                "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+                "latency_win_threshold_ms": 5.0,
+                "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
             }
         )
     return target
