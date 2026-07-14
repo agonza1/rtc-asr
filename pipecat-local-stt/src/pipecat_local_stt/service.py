@@ -508,7 +508,8 @@ class RawUdsConnectionAdapter:
             frame = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, validate_raw_uds_audio_payload(data))
         else:
             payload = json.loads(data)
-            frame_type = RawUdsFrameType.PING if payload.get("type") == "ping" else RawUdsFrameType.JSON_CONTROL
+            heartbeat_frame_types = {"ping": RawUdsFrameType.PING, "pong": RawUdsFrameType.PONG}
+            frame_type = heartbeat_frame_types.get(payload.get("type"), RawUdsFrameType.JSON_CONTROL)
             frame = encode_raw_uds_json_frame(frame_type, payload)
         self._writer.write(frame)
         await self._writer.drain()

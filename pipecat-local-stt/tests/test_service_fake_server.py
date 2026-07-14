@@ -290,6 +290,18 @@ def test_raw_uds_adapter_encodes_ping_as_ping_frame() -> None:
     assert json.loads(ping_frame.payload.decode("utf-8")) == {"type": "ping", "ping_id": "p1"}
 
 
+def test_raw_uds_adapter_encodes_pong_as_pong_frame() -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(b"")
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    asyncio.run(connection.send(json.dumps({"type": "pong", "ping_id": "p1"})))
+
+    pong_frame = decode_raw_uds_frame(writer.writes[0])
+    assert pong_frame.frame_type == RawUdsFrameType.PONG
+    assert json.loads(pong_frame.payload.decode("utf-8")) == {"type": "pong", "ping_id": "p1"}
+
+
 def test_raw_uds_adapter_rejects_invalid_audio_payload_before_write() -> None:
     writer = FakeRawUdsWriter()
     reader = FakeRawUdsReader(b"")
