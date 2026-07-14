@@ -27,6 +27,9 @@ Use the manifest for machine-readable benchmark metadata and the detail pages fo
 - Qwen Compose: raw JSON https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/qwen-compose-2026-06-21.json; 54.3 KB; SHA-256 99d6fa7d7433
 
 ## Coverage
+- Current comparable tracks: 7
+- Validated tracks: 7
+- Tracked lanes: 8
 - Published current artifacts: 8
 - Raw artifact files: 23
 - Historical artifacts linked from detail pages: 15
