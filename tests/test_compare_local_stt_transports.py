@@ -1385,6 +1385,39 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
         "required_first_interim_p95_win_ms": 5.0,
         "observed_first_interim_p95_win_ms": 5.0,
         "observed_final_after_finalize_p95_delta_ms": 0.0,
+        "required_metric_snapshot": {
+            "raw_uds": {
+                "asr_queue_delay_p95_ms": 5.0,
+                "audio_send_queue_depth_p95_ms": 2.0,
+                "cpu_utilization_percent": 12.5,
+                "protocol_errors_p95": 0.0,
+                "time_to_final_after_finalize_ms_p95": 25.0,
+                "time_to_first_interim_ms_p95": 13.0,
+            },
+            "tcp_ws": {
+                "asr_queue_delay_p95_ms": 5.0,
+                "audio_send_queue_depth_p95_ms": 2.0,
+                "cpu_utilization_percent": 12.5,
+                "protocol_errors_p95": 0.0,
+                "time_to_final_after_finalize_ms_p95": 25.0,
+                "time_to_first_interim_ms_p95": 18.0,
+            },
+            "uds_ws": {
+                "asr_queue_delay_p95_ms": 5.0,
+                "audio_send_queue_depth_p95_ms": 2.0,
+                "cpu_utilization_percent": 12.5,
+                "protocol_errors_p95": 0.0,
+                "time_to_final_after_finalize_ms_p95": 25.0,
+                "time_to_first_interim_ms_p95": 18.0,
+            },
+        },
+        "raw_uds_vs_uds_ws_p95_deltas_ms": {
+            "asr_queue_delay_p95_ms": 0.0,
+            "audio_send_queue_depth_p95_ms": 0.0,
+            "protocol_errors": 0.0,
+            "time_to_final_after_finalize_ms": 0.0,
+            "time_to_first_interim_ms": 5.0,
+        },
         "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms"],
     }
 
