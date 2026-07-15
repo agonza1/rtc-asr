@@ -631,7 +631,11 @@ def pairwise_p95_delta_matrix(transports: dict[str, dict[str, Any]]) -> dict[str
     }
 
 
-def protocol_error_free(metrics: dict[str, dict[str, float | None]]) -> bool:
+def protocol_error_free(
+    metrics: dict[str, dict[str, float | None]], *, diagnostic_protocol_error_total: int = 0
+) -> bool:
+    if diagnostic_protocol_error_total > 0:
+        return False
     protocol_errors = metrics.get("protocol_errors", {})
     return all(protocol_errors.get(percentile) == 0.0 for percentile in PERCENTILES)
 
@@ -734,6 +738,17 @@ def blocking_gap_reasons(
     reasons.extend(input_gaps)
     for transport, payload in sorted(transports.items()):
         if not payload["protocol_error_free"]:
+            diagnostic_total = payload.get("diagnostics", {}).get("protocol_error_total", 0)
+            if diagnostic_total:
+                codes = payload.get("diagnostics", {}).get("protocol_error_codes", {})
+                recorded_codes = ", ".join(
+                    f"{code}={count}" for code, count in sorted(codes.items())
+                )
+                reasons.append(
+                    f"{transport} diagnostic protocol_error_codes total must be zero; "
+                    f"got total={diagnostic_total} ({recorded_codes})"
+                )
+                continue
             protocol_errors = payload.get("metrics", {}).get("protocol_errors", {})
             recorded = ", ".join(
                 f"{percentile}={protocol_errors.get(percentile)}" for percentile in PERCENTILES
@@ -866,7 +881,10 @@ def compare_artifacts(
             "metrics": metrics,
             "metrics_p95": metrics_p95,
             "missing_p95_metrics": missing_metrics,
-            "protocol_error_free": protocol_error_free(metrics),
+            "protocol_error_free": protocol_error_free(
+                metrics,
+                diagnostic_protocol_error_total=diagnostic_code_total(protocol_error_codes),
+            ),
             "cpu_utilization_percent": extract_cpu_utilization_percent(artifact),
             "diagnostics": {
                 "protocol_error_codes": protocol_error_codes,
