@@ -71,6 +71,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("artifacts", nargs="+", type=Path, help="Benchmark JSON artifacts from bench_local_stt_stream.py")
     parser.add_argument("--output", type=Path, help="Optional JSON comparison output path")
     parser.add_argument("--markdown-output", type=Path, help="Optional Markdown summary output path")
+    parser.add_argument("--decision-output", type=Path, help="Optional compact raw UDS decision JSON output path")
     parser.add_argument(
         "--require-raw-uds-recommendation",
         action="store_true",
@@ -1313,6 +1314,24 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
+    gate = comparison["raw_uds_recommendation_gate"]
+    decision = comparison["raw_uds_decision_summary"]
+    return {
+        "kind": "local-stt-v1-raw-uds-decision",
+        "status": decision["status"],
+        "reason": decision["reason"],
+        "gate_passed": gate["passed"],
+        "gate_blockers": gate["blockers"],
+        "required_first_interim_p95_win_ms": decision["required_first_interim_p95_win_ms"],
+        "observed_first_interim_p95_win_ms": decision["observed_first_interim_p95_win_ms"],
+        "observed_final_after_finalize_p95_delta_ms": decision[
+            "observed_final_after_finalize_p95_delta_ms"
+        ],
+        "raw_uds_leading_p95_metrics": decision["raw_uds_leading_p95_metrics"],
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     comparison = compare_artifacts(
@@ -1328,6 +1347,11 @@ def main(argv: list[str] | None = None) -> int:
         print(encoded, end="")
     if args.markdown_output is not None:
         args.markdown_output.write_text(format_markdown_summary(comparison), encoding="utf8")
+    if args.decision_output is not None:
+        args.decision_output.write_text(
+            json.dumps(raw_uds_decision_output(comparison), indent=2, sort_keys=True) + "\n",
+            encoding="utf8",
+        )
     return 1 if comparison_has_blocking_gaps(
         comparison,
         require_raw_uds_recommendation=args.require_raw_uds_recommendation,

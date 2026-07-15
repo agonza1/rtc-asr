@@ -1317,6 +1317,34 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     assert "Minimum required win: 5 ms" in markdown
 
 
+def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+    decision_path = tmp_path / "decision.json"
+
+    assert compare_module.main(["--decision-output", str(decision_path), str(tcp), str(uds), str(raw)]) == 0
+
+    decision = json.loads(decision_path.read_text(encoding="utf8"))
+    assert decision == {
+        "kind": "local-stt-v1-raw-uds-decision",
+        "status": "recommended",
+        "reason": "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype.",
+        "gate_passed": True,
+        "gate_blockers": [],
+        "required_first_interim_p95_win_ms": 5.0,
+        "observed_first_interim_p95_win_ms": 5.0,
+        "observed_final_after_finalize_p95_delta_ms": 0.0,
+        "raw_uds_leading_p95_metrics": [
+            "time_to_first_interim_ms",
+            "time_to_final_after_finalize_ms",
+            "audio_send_queue_depth_p95_ms",
+            "asr_queue_delay_p95_ms",
+            "protocol_errors",
+        ],
+    }
+
+
 def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
