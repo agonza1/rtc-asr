@@ -1291,11 +1291,17 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
             f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Sample coverage</div><div class="headline-value">{complete_count} complete targets</div><p>{targeted_count} artifacts declare a sample target; {sample_coverage.get("partial_artifact_count", 0)} are below target and {sample_coverage.get("missing_sample_count_artifact_count", 0)} are missing sample-count metadata.</p></article>'
         )
     warning_summary = summary.get("warnings") or {}
-    if warning_summary:
+    has_warning_telemetry = (
+        (warning_summary.get("artifacts_with_warnings_count") or 0) > 0
+        or (warning_summary.get("received_total") or 0) > 0
+        or warning_summary.get("rate_per_sample") is not None
+        or bool(warning_summary.get("codes"))
+    )
+    if has_warning_telemetry:
         warned_count = warning_summary.get("artifacts_with_warnings_count", 0)
         warning_codes = warning_summary.get("codes") or []
         summary_cards.append(
-            f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Warning telemetry</div><div class="headline-value">{warned_count} flagged artifacts</div><p>{format_count(warning_summary.get("received_total"))} warnings recorded across checked-in artifacts. Codes: {html.escape(format_list(warning_codes))}.</p></article>'
+            f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Warning telemetry</div><div class="headline-value">{warned_count} flagged artifacts</div><p>{format_count(warning_summary.get("received_total"))} warnings recorded across checked-in artifacts; rate {format_ratio(warning_summary.get("rate_per_sample"))} per sample. Codes: {html.escape(format_list(warning_codes))}.</p></article>'
         )
     stale_artifact_count = summary.get("stale_artifact_count", 0)
     if stale_artifact_count:
