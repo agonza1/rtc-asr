@@ -1835,8 +1835,21 @@ def test_detail_page_drift_summary_reports_each_drift_type() -> None:
         [Path("missing-a.html"), Path("missing-b.html")],
         [Path("stale.html")],
         [Path("old.html")],
-    ) == "2 missing, 1 stale, 1 orphaned"
+    ) == "2 missing [missing-a.html, missing-b.html], 1 stale [stale.html], 1 orphaned [old.html]"
     assert summarize_detail_page_drift([], [], []) == "no detail page drift"
+
+
+def test_detail_page_drift_summary_limits_path_samples() -> None:
+    assert summarize_detail_page_drift(
+        [
+            Path("missing-a.html"),
+            Path("missing-b.html"),
+            Path("missing-c.html"),
+            Path("missing-d.html"),
+        ],
+        [],
+        [],
+    ) == "4 missing [missing-a.html, missing-b.html, missing-c.html, +1 more]"
 
 
 def test_prerender_check_fails_for_orphaned_detail_pages(tmp_path: Path) -> None:
@@ -1867,7 +1880,7 @@ def test_prerender_check_fails_for_orphaned_detail_pages(tmp_path: Path) -> None
 
     assert result.returncode == 1
     assert f"Benchmark detail pages are stale: {detail_dir} (" in result.stderr
-    assert "1 orphaned" in result.stderr
+    assert "1 orphaned [orphaned-artifact.html]" in result.stderr
 
 
 def test_makefile_benchmark_site_uses_configurable_public_base_url() -> None:

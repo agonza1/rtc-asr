@@ -1147,14 +1147,21 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
     return "\n".join(lines)
 
 
+def summarize_path_samples(paths: list[Path], *, limit: int = 3) -> str:
+    samples = [path.name for path in paths[:limit]]
+    if len(paths) > limit:
+        samples.append(f"+{len(paths) - limit} more")
+    return ", ".join(samples)
+
+
 def summarize_detail_page_drift(missing: list[Path], stale: list[Path], orphaned: list[Path]) -> str:
     counts = []
     if missing:
-        counts.append(f"{len(missing)} missing")
+        counts.append(f"{len(missing)} missing [{summarize_path_samples(missing)}]")
     if stale:
-        counts.append(f"{len(stale)} stale")
+        counts.append(f"{len(stale)} stale [{summarize_path_samples(stale)}]")
     if orphaned:
-        counts.append(f"{len(orphaned)} orphaned")
+        counts.append(f"{len(orphaned)} orphaned [{summarize_path_samples(orphaned)}]")
     return ", ".join(counts) if counts else "no detail page drift"
 
 
