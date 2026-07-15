@@ -633,7 +633,7 @@ def evidence_role(entry: dict[str, Any]) -> str:
     return "Supporting benchmark evidence"
 
 
-def detail_variable_measured(system_signals: dict[str, Any]) -> list[str]:
+def detail_variable_measured(system_signals: dict[str, Any], warnings: dict[str, Any] | None = None) -> list[str]:
     variables = [
         "ASR TTFB / first visible partial latency",
         "partial backlog latency",
@@ -652,6 +652,11 @@ def detail_variable_measured(system_signals: dict[str, Any]) -> list[str]:
     variables.extend(label for label, value in optional_variables if value not in (None, ""))
     if rss_delta_mb(system_signals) is not None:
         variables.append("peak-to-process RSS delta")
+    warning_metrics = warnings or {}
+    if warning_metrics.get("received_total") not in (None, 0) or warning_metrics.get("codes"):
+        variables.append("stream warning telemetry")
+    if warning_metrics.get("rate_per_sample") is not None:
+        variables.append("stream warnings per sample")
     return variables
 
 
@@ -767,7 +772,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "citation": citation,
         "measurementTechnique": technique,
         "keywords": keywords,
-        "variableMeasured": detail_variable_measured(system_signals),
+        "variableMeasured": detail_variable_measured(system_signals, warnings),
         "isPartOf": {
             "@type": "Dataset",
             "name": "rtc-asr benchmark results",
