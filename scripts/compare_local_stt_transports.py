@@ -1333,6 +1333,21 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
 def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
     gate = comparison["raw_uds_recommendation_gate"]
     decision = comparison["raw_uds_decision_summary"]
+    required_metric_snapshot = {
+        transport: {
+            "time_to_first_interim_ms_p95": payload.get("metrics_p95", {}).get("time_to_first_interim_ms"),
+            "time_to_final_after_finalize_ms_p95": payload.get("metrics_p95", {}).get(
+                "time_to_final_after_finalize_ms"
+            ),
+            "audio_send_queue_depth_p95_ms": payload.get("metrics_p95", {}).get(
+                "audio_send_queue_depth_p95_ms"
+            ),
+            "asr_queue_delay_p95_ms": payload.get("metrics_p95", {}).get("asr_queue_delay_p95_ms"),
+            "protocol_errors_p95": payload.get("metrics_p95", {}).get("protocol_errors"),
+            "cpu_utilization_percent": payload.get("cpu_utilization_percent"),
+        }
+        for transport, payload in sorted(comparison.get("transports", {}).items())
+    }
     return {
         "kind": "local-stt-v1-raw-uds-decision",
         "status": decision["status"],
@@ -1344,6 +1359,8 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         "observed_final_after_finalize_p95_delta_ms": decision[
             "observed_final_after_finalize_p95_delta_ms"
         ],
+        "required_metric_snapshot": required_metric_snapshot,
+        "raw_uds_vs_uds_ws_p95_deltas_ms": comparison["raw_uds_vs_uds_ws_p95_deltas_ms"],
         "raw_uds_leading_p95_metrics": decision["raw_uds_leading_p95_metrics"],
     }
 
