@@ -17,6 +17,7 @@ render_text = report_module.render_text
 stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
 detail_page_path = report_module.detail_page_path
+limit_artifacts = report_module.limit_artifacts
 
 
 def test_stale_artifacts_excludes_current_track_artifact() -> None:
@@ -157,3 +158,35 @@ def test_render_text_summarizes_stale_artifacts() -> None:
         "benchmark-results/older.json [demo] measured 2026-06-10T00:00:00Z (75 B); "
         "current: benchmark-results/current.json; detail: benchmark-results/pages/older.html"
     ) in rendered
+
+
+def test_limit_artifacts_keeps_largest_entries_and_text_mentions_omissions() -> None:
+    stale = [
+        {"artifact_path": "benchmark-results/large.json", "artifact_size_bytes": 90},
+        {"artifact_path": "benchmark-results/small.json", "artifact_size_bytes": 10},
+    ]
+
+    limited = limit_artifacts(stale, 1)
+    rendered = render_text(limited, total_count=len(stale))
+
+    assert limited == [stale[0]]
+    assert "Found 1 stale benchmark artifacts (90 B, 90 bytes):" in rendered
+    assert "... 1 more stale artifacts omitted by --limit." in rendered
+
+
+def test_render_text_reports_zero_limit_omits_all_matches() -> None:
+    rendered = render_text([], total_count=2)
+
+    assert (
+        rendered
+        == "Found 2 stale benchmark artifacts, but 0 are shown because --limit omitted all matches."
+    )
+
+
+def test_limit_artifacts_rejects_negative_limits() -> None:
+    try:
+        limit_artifacts([], -1)
+    except ValueError as error:
+        assert str(error) == "limit must be non-negative"
+    else:
+        raise AssertionError("negative limits should fail")
