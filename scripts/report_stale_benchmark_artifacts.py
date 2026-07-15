@@ -149,6 +149,11 @@ def limit_artifacts(stale: list[dict[str, Any]], limit: int | None) -> list[dict
 
 def render_text(stale: list[dict[str, Any]], *, total_count: int | None = None) -> str:
     if not stale:
+        if total_count:
+            return (
+                f"Found {total_count} stale benchmark artifacts, but 0 are shown "
+                "because --limit omitted all matches."
+            )
         return "No stale benchmark artifacts found."
     summary = stale_summary(stale)
     total_count = total_count if total_count is not None else summary["count"]

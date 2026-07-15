@@ -174,6 +174,15 @@ def test_limit_artifacts_keeps_largest_entries_and_text_mentions_omissions() -> 
     assert "... 1 more stale artifacts omitted by --limit." in rendered
 
 
+def test_render_text_reports_zero_limit_omits_all_matches() -> None:
+    rendered = render_text([], total_count=2)
+
+    assert (
+        rendered
+        == "Found 2 stale benchmark artifacts, but 0 are shown because --limit omitted all matches."
+    )
+
+
 def test_limit_artifacts_rejects_negative_limits() -> None:
     try:
         limit_artifacts([], -1)
