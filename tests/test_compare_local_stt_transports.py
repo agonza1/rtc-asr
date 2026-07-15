@@ -1395,6 +1395,9 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
     raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["diagnostics"] = {"warning_codes": {"late_partial": 1}}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
     decision_path = tmp_path / "decision.json"
 
     assert compare_module.main(["--decision-output", str(decision_path), str(tcp), str(uds), str(raw)]) == 0
@@ -1409,6 +1412,26 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
         "required_first_interim_p95_win_ms": 5.0,
         "observed_first_interim_p95_win_ms": 5.0,
         "observed_final_after_finalize_p95_delta_ms": 0.0,
+        "required_diagnostic_snapshot": {
+            "raw_uds": {
+                "protocol_error_codes": {},
+                "protocol_error_total": 0,
+                "warning_codes": {"late_partial": 1},
+                "warning_total": 1,
+            },
+            "tcp_ws": {
+                "protocol_error_codes": {},
+                "protocol_error_total": 0,
+                "warning_codes": {},
+                "warning_total": 0,
+            },
+            "uds_ws": {
+                "protocol_error_codes": {},
+                "protocol_error_total": 0,
+                "warning_codes": {},
+                "warning_total": 0,
+            },
+        },
         "required_metric_snapshot": {
             "raw_uds": {
                 "asr_queue_delay_p95_ms": 5.0,

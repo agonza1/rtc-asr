@@ -1367,6 +1367,15 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         }
         for transport, payload in sorted(comparison.get("transports", {}).items())
     }
+    required_diagnostic_snapshot = {
+        transport: {
+            "protocol_error_total": payload.get("diagnostics", {}).get("protocol_error_total"),
+            "protocol_error_codes": payload.get("diagnostics", {}).get("protocol_error_codes", {}),
+            "warning_total": payload.get("diagnostics", {}).get("warning_total"),
+            "warning_codes": payload.get("diagnostics", {}).get("warning_codes", {}),
+        }
+        for transport, payload in sorted(comparison.get("transports", {}).items())
+    }
     return {
         "kind": "local-stt-v1-raw-uds-decision",
         "status": decision["status"],
@@ -1379,6 +1388,7 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
             "observed_final_after_finalize_p95_delta_ms"
         ],
         "required_metric_snapshot": required_metric_snapshot,
+        "required_diagnostic_snapshot": required_diagnostic_snapshot,
         "raw_uds_vs_uds_ws_p95_deltas_ms": comparison["raw_uds_vs_uds_ws_p95_deltas_ms"],
         "raw_uds_leading_p95_metrics": decision["raw_uds_leading_p95_metrics"],
     }
