@@ -1390,6 +1390,15 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         }
         for transport, payload in sorted(comparison.get("transports", {}).items())
     }
+    required_benchmark_input_snapshot = {
+        transport: {
+            "audio": payload.get("audio") or {},
+            "settings": payload.get("settings") or {},
+            "service": payload.get("service") or {},
+            "runs": payload.get("runs"),
+        }
+        for transport, payload in sorted(comparison.get("transports", {}).items())
+    }
     required_diagnostic_snapshot = {
         transport: {
             "protocol_error_total": payload.get("diagnostics", {}).get("protocol_error_total"),
@@ -1412,6 +1421,7 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         ],
         "required_artifact_snapshot": required_artifact_snapshot,
         "required_target_snapshot": required_target_snapshot,
+        "required_benchmark_input_snapshot": required_benchmark_input_snapshot,
         "required_metric_snapshot": required_metric_snapshot,
         "required_diagnostic_snapshot": required_diagnostic_snapshot,
         "raw_uds_vs_uds_ws_p95_deltas_ms": comparison["raw_uds_vs_uds_ws_p95_deltas_ms"],

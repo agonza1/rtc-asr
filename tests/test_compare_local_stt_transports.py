@@ -1494,6 +1494,47 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "warning_total": 0,
             },
         },
+        "required_benchmark_input_snapshot": {
+            "raw_uds": {
+                "audio": {
+                    "channels": 1,
+                    "duration_ms": 1000,
+                    "format": "pcm_s16le",
+                    "frame_ms": 20,
+                    "sample_rate": 16000,
+                    "source": "sample.raw",
+                },
+                "runs": 3,
+                "service": {"backend": None, "model": None},
+                "settings": {"partial_interval_ms": 100, "realtime_pace": True},
+            },
+            "tcp_ws": {
+                "audio": {
+                    "channels": 1,
+                    "duration_ms": 1000,
+                    "format": "pcm_s16le",
+                    "frame_ms": 20,
+                    "sample_rate": 16000,
+                    "source": "sample.raw",
+                },
+                "runs": 3,
+                "service": {"backend": None, "model": None},
+                "settings": {"partial_interval_ms": 100, "realtime_pace": True},
+            },
+            "uds_ws": {
+                "audio": {
+                    "channels": 1,
+                    "duration_ms": 1000,
+                    "format": "pcm_s16le",
+                    "frame_ms": 20,
+                    "sample_rate": 16000,
+                    "source": "sample.raw",
+                },
+                "runs": 3,
+                "service": {"backend": None, "model": None},
+                "settings": {"partial_interval_ms": 100, "realtime_pace": True},
+            },
+        },
         "required_metric_snapshot": {
             "raw_uds": {
                 "asr_queue_delay_p95_ms": 5.0,
