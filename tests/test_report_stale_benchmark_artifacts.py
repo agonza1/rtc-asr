@@ -123,6 +123,41 @@ def test_stale_artifacts_can_filter_by_age() -> None:
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/old.json"]
 
 
+def test_stale_artifacts_can_filter_by_minimum_size() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/tiny.json",
+                "status": "legacy",
+                "artifact_size_bytes": 99,
+            },
+            {
+                "artifact_path": "benchmark-results/large.json",
+                "status": "legacy",
+                "artifact_size_bytes": 100,
+            },
+            {
+                "artifact_path": "benchmark-results/missing-size.json",
+                "status": "legacy",
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, min_size_bytes=100)
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/large.json"]
+
+
+def test_stale_artifacts_rejects_negative_minimum_size() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, min_size_bytes=-1)
+    except ValueError as error:
+        assert str(error) == "min_size_bytes must be non-negative"
+    else:
+        raise AssertionError("negative minimum sizes should fail")
+
+
 def test_format_bytes_uses_binary_units() -> None:
     assert format_bytes(0) == "0 B"
     assert format_bytes(75) == "75 B"

@@ -54,6 +54,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Only print the largest N stale artifacts after filtering",
     )
+    parser.add_argument(
+        "--min-size-bytes",
+        type=int,
+        default=None,
+        help="Only include stale artifacts at least this many bytes large",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     return parser.parse_args()
 
@@ -83,8 +89,12 @@ def stale_artifacts(
     manifest: dict[str, Any],
     *,
     older_than_days: int | None = None,
+    min_size_bytes: int | None = None,
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
+    if min_size_bytes is not None and min_size_bytes < 0:
+        raise ValueError("min_size_bytes must be non-negative")
+
     cutoff = None
     if older_than_days is not None:
         if older_than_days < 0:
@@ -108,6 +118,9 @@ def stale_artifacts(
         measured_timestamp = parse_timestamp(measured_at)
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
             continue
+        artifact_size_bytes = artifact.get("artifact_size_bytes")
+        if min_size_bytes is not None and (artifact_size_bytes or 0) < min_size_bytes:
+            continue
         stale.append(
             {
                 "artifact_path": artifact_path,
@@ -116,8 +129,8 @@ def stale_artifacts(
                 "measured_at": measured_at,
                 "current_artifact_path": current_path_by_slug.get(artifact.get("slug")),
                 "detail_page_path": detail_page_path(artifact_path),
-                "artifact_size_bytes": artifact.get("artifact_size_bytes"),
-                "artifact_size": format_bytes(artifact.get("artifact_size_bytes")),
+                "artifact_size_bytes": artifact_size_bytes,
+                "artifact_size": format_bytes(artifact_size_bytes),
             }
         )
     return sorted(
@@ -187,7 +200,11 @@ def render_text(stale: list[dict[str, Any]], *, total_count: int | None = None) 
 def main() -> None:
     args = parse_args()
     manifest = build_manifest(args.results_dir, args.tracks)
-    stale = stale_artifacts(manifest, older_than_days=args.older_than_days)
+    stale = stale_artifacts(
+        manifest,
+        older_than_days=args.older_than_days,
+        min_size_bytes=args.min_size_bytes,
+    )
     limited_stale = limit_artifacts(stale, args.limit)
     if args.json:
         summary = stale_summary(limited_stale)
