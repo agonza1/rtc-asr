@@ -1352,6 +1352,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
 def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
     gate = comparison["raw_uds_recommendation_gate"]
     decision = comparison["raw_uds_decision_summary"]
+    required_artifact_snapshot = {
+        transport: {
+            "artifact": payload.get("artifact"),
+            "artifact_sha256": payload.get("artifact_sha256"),
+            "artifact_size_bytes": payload.get("artifact_size_bytes"),
+        }
+        for transport, payload in sorted(comparison.get("transports", {}).items())
+    }
     required_target_snapshot = {
         transport: {
             "url": payload.get("url"),
@@ -1402,6 +1410,7 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         "observed_final_after_finalize_p95_delta_ms": decision[
             "observed_final_after_finalize_p95_delta_ms"
         ],
+        "required_artifact_snapshot": required_artifact_snapshot,
         "required_target_snapshot": required_target_snapshot,
         "required_metric_snapshot": required_metric_snapshot,
         "required_diagnostic_snapshot": required_diagnostic_snapshot,
