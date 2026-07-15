@@ -1040,6 +1040,23 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
             f"TTFB / first partial {first_partial}; audio-end finalization {final_latency}; "
             f"details {sitemap_url(base_url, detail_path)}"
         )
+    if primary:
+        recommended = sort_entries(primary)[0]
+        label = recommended.get("label") or recommended.get("slug") or "unknown"
+        detail_path = detail_page_path(recommended)
+        lines.extend(
+            [
+                "",
+                "## Current Recommendation",
+                (
+                    f"- {label}: {recommended.get('status_detail') or 'Top comparable live ASR lane by current benchmark ordering.'} "
+                    f"Evidence: {format_ms(first_visible_partial(recommended))} TTFB / first partial, "
+                    f"{format_ms(partial_backlog_mean(recommended))} partial cadence, "
+                    f"{format_ms(recommended.get('streaming', {}).get('final_mean_ms'))} audio-end finalization; "
+                    f"details {sitemap_url(base_url, detail_path)}"
+                ),
+            ]
+        )
     lines.extend(["", "## Artifact Detail Pages"])
     if not detail_entries:
         lines.append("- No artifact detail pages are published yet.")
