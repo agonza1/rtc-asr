@@ -616,6 +616,18 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "raw_uds_min_win_ms": 5.0,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": 3.5,
     }
+    assert comparison["raw_uds_decision_summary"] == {
+        "status": "experimental",
+        "reason": "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 5 ms.",
+        "primary_metric": "time_to_first_interim_ms",
+        "comparison_baseline": "uds_ws",
+        "observed_first_interim_p95_win_ms": 3.5,
+        "required_first_interim_p95_win_ms": 5.0,
+        "observed_final_after_finalize_p95_delta_ms": -3.0,
+        "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms", "protocol_errors"],
+        "gate_passed": False,
+        "gate_blocker_count": 1,
+    }
     assert comparison["all_present_transports_protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is True
     assert comparison["recommendation"] == "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 5 ms."
@@ -807,6 +819,24 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
         "blockers": [],
         "raw_uds_min_win_ms": 5.0,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": 5.0,
+    }
+    assert comparison["raw_uds_decision_summary"] == {
+        "status": "recommended",
+        "reason": "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype.",
+        "primary_metric": "time_to_first_interim_ms",
+        "comparison_baseline": "uds_ws",
+        "observed_first_interim_p95_win_ms": 5.0,
+        "required_first_interim_p95_win_ms": 5.0,
+        "observed_final_after_finalize_p95_delta_ms": 0.0,
+        "raw_uds_leading_p95_metrics": [
+            "time_to_first_interim_ms",
+            "time_to_final_after_finalize_ms",
+            "audio_send_queue_depth_p95_ms",
+            "asr_queue_delay_p95_ms",
+            "protocol_errors",
+        ],
+        "gate_passed": True,
+        "gate_blocker_count": 0,
     }
     assert comparison["all_present_transports_protocol_error_free"] is True
     assert comparison["recommendation"] == "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
