@@ -1352,6 +1352,21 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
 def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
     gate = comparison["raw_uds_recommendation_gate"]
     decision = comparison["raw_uds_decision_summary"]
+    required_target_snapshot = {
+        transport: {
+            "url": payload.get("url"),
+            "uds_path": payload.get("uds_path"),
+            "frame_format": payload.get("frame_format"),
+            "frame_header_bytes": payload.get("frame_header_bytes"),
+            "per_frame_overhead_bytes": payload.get("per_frame_overhead_bytes"),
+            "frame_types": payload.get("frame_types"),
+            "frame_type_codes": payload.get("frame_type_codes"),
+            "lifecycle": payload.get("lifecycle"),
+            "error_handling": payload.get("error_handling"),
+            "shared_stream_runtime": payload.get("shared_stream_runtime"),
+        }
+        for transport, payload in sorted(comparison.get("transports", {}).items())
+    }
     required_metric_snapshot = {
         transport: {
             "time_to_first_interim_ms_p95": payload.get("metrics_p95", {}).get("time_to_first_interim_ms"),
@@ -1387,6 +1402,7 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         "observed_final_after_finalize_p95_delta_ms": decision[
             "observed_final_after_finalize_p95_delta_ms"
         ],
+        "required_target_snapshot": required_target_snapshot,
         "required_metric_snapshot": required_metric_snapshot,
         "required_diagnostic_snapshot": required_diagnostic_snapshot,
         "raw_uds_vs_uds_ws_p95_deltas_ms": comparison["raw_uds_vs_uds_ws_p95_deltas_ms"],
