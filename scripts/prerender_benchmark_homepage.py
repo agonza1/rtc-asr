@@ -1031,6 +1031,14 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
         f"- Manifest JSON: {sitemap_url(base_url, 'benchmark-results/manifest.json')}",
         f"- Sitemap: {sitemap_url(base_url, 'sitemap.xml')}",
         "",
+        "## Publication Summary",
+        f"- Current comparable tracks: {format_count(summary.get('live_comparable_count'))}",
+        f"- Validated tracks: {format_count(summary.get('validated_count'))}",
+        f"- Tracked lanes: {format_count(summary.get('tracked_count'))}",
+        f"- Published current artifacts: {format_count(summary.get('published_artifact_count'))}",
+        f"- Historical supporting artifacts: {format_count(summary.get('stale_artifact_count'))}",
+        f"- Latest measurement: {format_date(summary.get('latest_measured_at'))}",
+        "",
         "## Current Comparable Tracks",
     ]
     if not primary:
