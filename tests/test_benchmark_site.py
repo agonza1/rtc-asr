@@ -514,13 +514,16 @@ def test_telemetry_coverage_text_summarizes_missing_optional_signals() -> None:
 
 
 def test_detail_variable_measured_includes_recorded_low_power_signals() -> None:
-    variables = detail_variable_measured({
-        "process_rss_mb": 180.0,
-        "peak_rss_mb": 240.0,
-        "cpu_utilization_percent": 42.0,
-        "package_power_watts": 7.4,
-        "thermal_duration_minutes": 5.0,
-    })
+    variables = detail_variable_measured(
+        {
+            "process_rss_mb": 180.0,
+            "peak_rss_mb": 240.0,
+            "cpu_utilization_percent": 42.0,
+            "package_power_watts": 7.4,
+            "thermal_duration_minutes": 5.0,
+        },
+        {"received_total": 2, "codes": ["late_partial"], "rate_per_sample": 0.5},
+    )
 
     assert "ASR TTFB / first visible partial latency" in variables
     assert "process RSS memory" in variables
@@ -531,6 +534,8 @@ def test_detail_variable_measured_includes_recorded_low_power_signals() -> None:
     assert "CPU utilization" in variables
     assert "package power" in variables
     assert "thermal observation duration" in variables
+    assert "stream warning telemetry" in variables
+    assert "stream warnings per sample" in variables
 
 
 def test_detail_structured_data_lists_low_power_measurements_when_recorded() -> None:
