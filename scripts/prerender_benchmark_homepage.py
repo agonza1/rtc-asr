@@ -1058,6 +1058,12 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
         recommended = sort_entries(primary)[0]
         label = recommended.get("label") or recommended.get("slug") or "unknown"
         detail_path = detail_page_path(recommended)
+        derived = recommended.get("derived", {})
+        score_note = ""
+        if derived.get("overall_score") is not None:
+            score_note = f" Score: {derived['overall_score']:.1f} / 100."
+            if derived.get("confidence_score") is not None:
+                score_note = f" Score: {derived['overall_score']:.1f} / 100; confidence {derived['confidence_score']:.1f} / 100."
         lines.extend(
             [
                 "",
@@ -1067,7 +1073,7 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
                     f"Evidence: {format_ms(first_visible_partial(recommended))} TTFB / first partial, "
                     f"{format_ms(partial_backlog_mean(recommended))} partial cadence, "
                     f"{format_ms(recommended.get('streaming', {}).get('final_mean_ms'))} audio-end finalization; "
-                    f"details {sitemap_url(base_url, detail_path)}"
+                    f"details {sitemap_url(base_url, detail_path)}.{score_note}"
                 ),
             ]
         )
