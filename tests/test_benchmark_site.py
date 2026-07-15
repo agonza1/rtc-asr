@@ -732,6 +732,7 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
                 "slug": "demo-asr",
                 "runtime": "cpu / int8",
                 "status": "validated",
+                "status_detail": "Best current comparable live lane.",
                 "artifact_path": "benchmark-results/demo-2026-06-14.json",
                 "artifact_sha256": "abcdef1234567890",
                 "artifact_size_bytes": 1536,
@@ -772,6 +773,12 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
     assert "Manifest JSON: https://example.test/asr-latency/benchmark-results/manifest.json" in llms
     assert "Demo ASR: cpu / int8; TTFB / first partial 123.4 ms" in llms
     assert "details https://example.test/asr-latency/benchmark-results/pages/demo-2026-06-14.html" in llms
+    assert "## Current Recommendation" in llms
+    assert (
+        "Demo ASR: Best current comparable live lane. Evidence: 123.4 ms TTFB / first partial, "
+        "45.6 ms partial cadence, 789.0 ms audio-end finalization; details "
+        "https://example.test/asr-latency/benchmark-results/pages/demo-2026-06-14.html"
+    ) in llms
     assert "## Artifact Detail Pages" in llms
     assert "Demo ASR: Primary comparable evidence; status validated; measured Jun 14, 2026" in llms
     assert "Demo ASR legacy: Historical supporting evidence; status legacy; measured Jun 13, 2026" in llms
