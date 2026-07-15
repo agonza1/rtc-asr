@@ -71,6 +71,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("artifacts", nargs="+", type=Path, help="Benchmark JSON artifacts from bench_local_stt_stream.py")
     parser.add_argument("--output", type=Path, help="Optional JSON comparison output path")
     parser.add_argument("--markdown-output", type=Path, help="Optional Markdown summary output path")
+    parser.add_argument("--decision-output", type=Path, help="Optional compact raw UDS decision JSON output path")
     parser.add_argument(
         "--require-raw-uds-recommendation",
         action="store_true",
@@ -218,6 +219,24 @@ def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: s
 
 def p95_metric_leaders(transports: dict[str, dict[str, Any]]) -> dict[str, str | None]:
     return {metric: fastest_transport_by_metric(transports, metric) for metric in KEY_METRICS}
+
+
+def raw_uds_distinct_p95_leaders(transports: dict[str, dict[str, Any]]) -> list[str]:
+    raw_uds_metrics = transports.get("raw_uds", {}).get("metrics_p95", {})
+    leaders: list[str] = []
+    for metric in KEY_METRICS:
+        raw_value = raw_uds_metrics.get(metric)
+        if raw_value is None:
+            continue
+        raw_value = float(raw_value)
+        baseline_values = [
+            float(payload.get("metrics_p95", {})[metric])
+            for transport, payload in transports.items()
+            if transport != "raw_uds" and metric in payload.get("metrics_p95", {})
+        ]
+        if baseline_values and all(raw_value < value for value in baseline_values):
+            leaders.append(metric)
+    return leaders
 
 
 def classify_p95_delta(delta_ms: float | None) -> str:
@@ -767,6 +786,30 @@ def raw_uds_recommendation_gate(
     }
 
 
+def raw_uds_decision_summary(
+    *,
+    recommendation: str,
+    recommendation_gate: dict[str, Any],
+    raw_uds_leading_metrics: list[str],
+    raw_vs_uds_delta_ms: float | None,
+    raw_vs_uds_final_after_finalize_delta_ms: float | None,
+    raw_uds_min_win_ms: float,
+    raw_uds_experimental: bool,
+) -> dict[str, Any]:
+    return {
+        "status": "experimental" if raw_uds_experimental else "recommended",
+        "reason": recommendation,
+        "primary_metric": "time_to_first_interim_ms",
+        "comparison_baseline": "uds_ws",
+        "observed_first_interim_p95_win_ms": raw_vs_uds_delta_ms,
+        "required_first_interim_p95_win_ms": raw_uds_min_win_ms,
+        "observed_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
+        "raw_uds_leading_p95_metrics": raw_uds_leading_metrics,
+        "gate_passed": bool(recommendation_gate.get("passed")),
+        "gate_blocker_count": len(recommendation_gate.get("blockers") or []),
+    }
+
+
 def compare_artifacts(
     paths: list[Path],
     *,
@@ -849,6 +892,7 @@ def compare_artifacts(
         by_transport, "time_to_final_after_finalize_ms"
     )
     metric_leaders = p95_metric_leaders(by_transport)
+    raw_uds_leading_metrics = raw_uds_distinct_p95_leaders(by_transport)
     lowest_cpu_transport = lowest_cpu_utilization_transport(by_transport)
     missing_cpu_utilization = missing_cpu_utilization_transports(by_transport)
     cpu_coverage = cpu_utilization_coverage(by_transport)
@@ -885,6 +929,25 @@ def compare_artifacts(
     )
     raw_uds_experimental = bool(raw_uds_latency_experimental or not recommendation_gate["passed"])
 
+    recommendation = recommendation_text(
+        missing=missing,
+        unexpected=unexpected,
+        raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
+        raw_uds_min_win_ms=raw_uds_min_win_ms,
+        raw_uds_experimental=raw_uds_experimental,
+        all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
+        missing_metrics=missing_metrics_by_transport,
+        run_gaps=run_gaps,
+        cpu_gaps=cpu_gaps,
+        target_gaps=target_gaps,
+        frame_contract_gaps=frame_contract_gaps,
+        frame_type_gaps=frame_type_gaps,
+        lifecycle_gaps=lifecycle_gaps,
+        error_handling_gaps=error_handling_gaps,
+        runtime_gaps=runtime_gaps,
+        input_gaps=input_gaps,
+    )
+
     return {
         "kind": "local-stt-v1-transport-comparison",
         "required_transports": list(REQUIRED_TRANSPORTS),
@@ -916,6 +979,15 @@ def compare_artifacts(
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_should_remain_experimental": raw_uds_experimental,
+        "raw_uds_decision_summary": raw_uds_decision_summary(
+            recommendation=recommendation,
+            recommendation_gate=recommendation_gate,
+            raw_uds_leading_metrics=raw_uds_leading_metrics,
+            raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
+            raw_vs_uds_final_after_finalize_delta_ms=raw_vs_uds_final_after_finalize_delta_ms,
+            raw_uds_min_win_ms=raw_uds_min_win_ms,
+            raw_uds_experimental=raw_uds_experimental,
+        ),
         "all_present_transports_protocol_error_free": all_present_transports_protocol_error_free,
         "missing_p95_metrics_by_transport": missing_metrics_by_transport,
         "blocking_gaps": blocking_gap_reasons(
@@ -933,24 +1005,7 @@ def compare_artifacts(
             input_gaps=input_gaps,
             transports=by_transport,
         ),
-        "recommendation": recommendation_text(
-            missing=missing,
-            unexpected=unexpected,
-            raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
-            raw_uds_min_win_ms=raw_uds_min_win_ms,
-            raw_uds_experimental=raw_uds_experimental,
-            all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
-            missing_metrics=missing_metrics_by_transport,
-            run_gaps=run_gaps,
-            cpu_gaps=cpu_gaps,
-            target_gaps=target_gaps,
-            frame_contract_gaps=frame_contract_gaps,
-            frame_type_gaps=frame_type_gaps,
-            lifecycle_gaps=lifecycle_gaps,
-            error_handling_gaps=error_handling_gaps,
-            runtime_gaps=runtime_gaps,
-            input_gaps=input_gaps,
-        ),
+        "recommendation": recommendation,
     }
 
 
@@ -1255,12 +1310,15 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
         lines.extend(f"- {blocker}" for blocker in blockers)
 
     gate = comparison["raw_uds_recommendation_gate"]
+    decision = comparison.get("raw_uds_decision_summary", {})
     lines.extend(
         [
             "",
             f"Raw UDS recommendation gate: {'passed' if gate['passed'] else 'blocked'}",
             f"Raw UDS first-interim p95 win over UDS WebSocket: {_format_optional_ms(gate['raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms'])}",
             f"Minimum required win: {gate['raw_uds_min_win_ms']:g} ms",
+            f"Raw UDS decision status: {_format_optional_value(decision.get('status'))}",
+            f"Raw UDS leading p95 metrics: {_format_optional_value(decision.get('raw_uds_leading_p95_metrics'))}",
         ]
     )
     if gate["blockers"]:
@@ -1268,6 +1326,24 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
         lines.extend(f"- {blocker}" for blocker in gate["blockers"])
     lines.append("")
     return "\n".join(lines)
+
+
+def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
+    gate = comparison["raw_uds_recommendation_gate"]
+    decision = comparison["raw_uds_decision_summary"]
+    return {
+        "kind": "local-stt-v1-raw-uds-decision",
+        "status": decision["status"],
+        "reason": decision["reason"],
+        "gate_passed": gate["passed"],
+        "gate_blockers": gate["blockers"],
+        "required_first_interim_p95_win_ms": decision["required_first_interim_p95_win_ms"],
+        "observed_first_interim_p95_win_ms": decision["observed_first_interim_p95_win_ms"],
+        "observed_final_after_finalize_p95_delta_ms": decision[
+            "observed_final_after_finalize_p95_delta_ms"
+        ],
+        "raw_uds_leading_p95_metrics": decision["raw_uds_leading_p95_metrics"],
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1285,6 +1361,11 @@ def main(argv: list[str] | None = None) -> int:
         print(encoded, end="")
     if args.markdown_output is not None:
         args.markdown_output.write_text(format_markdown_summary(comparison), encoding="utf8")
+    if args.decision_output is not None:
+        args.decision_output.write_text(
+            json.dumps(raw_uds_decision_output(comparison), indent=2, sort_keys=True) + "\n",
+            encoding="utf8",
+        )
     return 1 if comparison_has_blocking_gaps(
         comparison,
         require_raw_uds_recommendation=args.require_raw_uds_recommendation,
