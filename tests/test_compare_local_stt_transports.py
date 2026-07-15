@@ -1412,6 +1412,23 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
         "required_first_interim_p95_win_ms": 5.0,
         "observed_first_interim_p95_win_ms": 5.0,
         "observed_final_after_finalize_p95_delta_ms": 0.0,
+        "required_artifact_snapshot": {
+            "raw_uds": {
+                "artifact": str(raw),
+                "artifact_sha256": hashlib.sha256(raw.read_bytes()).hexdigest(),
+                "artifact_size_bytes": raw.stat().st_size,
+            },
+            "tcp_ws": {
+                "artifact": str(tcp),
+                "artifact_sha256": hashlib.sha256(tcp.read_bytes()).hexdigest(),
+                "artifact_size_bytes": tcp.stat().st_size,
+            },
+            "uds_ws": {
+                "artifact": str(uds),
+                "artifact_sha256": hashlib.sha256(uds.read_bytes()).hexdigest(),
+                "artifact_size_bytes": uds.stat().st_size,
+            },
+        },
         "required_target_snapshot": {
             "raw_uds": {
                 "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
