@@ -614,6 +614,42 @@ def test_async_raw_uds_client_rejects_oversized_payload_before_body_read() -> No
     assert reader.reads == [RAW_UDS_HEADER_BYTES]
 
 
+def test_async_raw_uds_client_rejects_unknown_server_frame_type_before_body_read() -> None:
+    class UnknownFrameReader:
+        def __init__(self) -> None:
+            self.reads: list[int] = []
+
+        async def readexactly(self, size: int) -> bytes:
+            self.reads.append(size)
+            if size == RAW_UDS_HEADER_BYTES:
+                return b"\xff" + (4).to_bytes(4, "little")
+            raise AssertionError("client attempted to read an unknown Raw UDS frame body")
+
+    class NoopWriter:
+        def close(self) -> None:
+            pass
+
+        async def wait_closed(self) -> None:
+            pass
+
+    reader = UnknownFrameReader()
+
+    async def connect_fn(_path: str):
+        return reader, NoopWriter()
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.sock", connect_fn=connect_fn)
+        with pytest.raises(LocalSttProtocolError) as excinfo:
+            await client.recv_event()
+
+        assert excinfo.value.as_event().code == "raw_uds_invalid_server_frame_type"
+        assert "Unsupported Raw UDS frame type: 255" in excinfo.value.message
+
+    asyncio.run(scenario())
+
+    assert reader.reads == [RAW_UDS_HEADER_BYTES]
+
+
 def test_async_raw_uds_client_maps_truncated_server_frames_to_protocol_errors() -> None:
     class TruncatedFrameReader:
         def __init__(self) -> None:
@@ -646,19 +682,16 @@ def test_async_raw_uds_client_maps_truncated_server_frames_to_protocol_errors() 
     asyncio.run(scenario())
 
 
-def test_async_raw_uds_client_rejects_inbound_client_frame_types() -> None:
+def test_async_raw_uds_client_rejects_inbound_client_frame_types_before_body_read() -> None:
     class ClientFrameReader:
         def __init__(self) -> None:
-            self._payload = encode_raw_uds_json_frame(
-                RawUdsFrameType.JSON_CONTROL,
-                {"type": "ping", "ping_id": "wrong-direction"},
-            )
-            self._offset = 0
+            self.reads: list[int] = []
 
         async def readexactly(self, size: int) -> bytes:
-            chunk = self._payload[self._offset : self._offset + size]
-            self._offset += size
-            return chunk
+            self.reads.append(size)
+            if size == RAW_UDS_HEADER_BYTES:
+                return bytes([RawUdsFrameType.JSON_CONTROL]) + (4).to_bytes(4, "little")
+            raise AssertionError("client attempted to read an inbound client frame body")
 
     class NoopWriter:
         def close(self) -> None:
@@ -667,8 +700,10 @@ def test_async_raw_uds_client_rejects_inbound_client_frame_types() -> None:
         async def wait_closed(self) -> None:
             pass
 
+    reader = ClientFrameReader()
+
     async def connect_fn(_path: str):
-        return ClientFrameReader(), NoopWriter()
+        return reader, NoopWriter()
 
     async def scenario() -> None:
         client = AsyncRawUdsLocalSttClient("/tmp/stt.sock", connect_fn=connect_fn)
@@ -678,6 +713,8 @@ def test_async_raw_uds_client_rejects_inbound_client_frame_types() -> None:
         assert excinfo.value.as_event().code == "raw_uds_invalid_server_frame_type"
 
     asyncio.run(scenario())
+
+    assert reader.reads == [RAW_UDS_HEADER_BYTES]
 
 
 def test_async_asr_client_invokes_on_sent_callback_before_waiting_for_response() -> None:
