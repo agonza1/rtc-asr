@@ -190,6 +190,48 @@ def test_compare_artifacts_accepts_issue_88_queue_metric_aliases(tmp_path: Path)
     assert comparison["transports"]["tcp_ws"]["metrics"]["asr_queue_delay_p95_ms"]["p50"] == 4.0
 
 
+def test_compare_artifacts_accepts_scalar_protocol_error_counts(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    for path in (tcp, uds, raw):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["summary"]["protocol_errors"] = 0
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_p95_metrics_by_transport"] == {}
+    assert comparison["all_present_transports_protocol_error_free"] is True
+    assert comparison["transports"]["raw_uds"]["metrics"]["protocol_errors"] == {
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+    }
+    assert comparison["transports"]["raw_uds"]["metrics_p95"]["protocol_errors"] == 0.0
+
+
+def test_compare_artifacts_blocks_nonzero_scalar_protocol_errors(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["summary"]["protocol_errors"] = 1
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["all_present_transports_protocol_error_free"] is False
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == ["protocol_errors"]
+    assert comparison["blocking_gaps"] == [
+        "raw_uds protocol_errors must be zero at p50/p95/p99; got p50=1.0, p95=1.0, p99=1.0"
+    ]
+    assert comparison["recommendation"] == (
+        "Keep raw UDS experimental until all present transport benchmarks are protocol-error free."
+    )
+
+
 def test_compare_artifacts_requires_raw_uds_frame_contract(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
