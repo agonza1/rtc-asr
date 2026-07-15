@@ -1689,6 +1689,8 @@ def test_homepage_shell_keeps_operator_sections_and_manifest_hook() -> None:
     assert 'function formatHostSummary(entry)' in homepage
     assert 'Host profile' in homepage
     assert 'Efficiency signals' in homepage
+    assert 'Warning telemetry' not in homepage
+    assert 'rate n/a per sample' not in homepage
 
 
 def test_manifest_artifacts_are_checked_in_or_explicitly_missing() -> None:
