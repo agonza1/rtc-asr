@@ -803,6 +803,44 @@ def raw_uds_recommendation_gate(
     }
 
 
+def raw_uds_decision_next_action(gate_blockers: list[str]) -> str:
+    if not gate_blockers:
+        return "Proceed with the next raw UDS adapter prototype."
+
+    blocker = gate_blockers[0]
+    if blocker.startswith("missing_transport:"):
+        transport = blocker.split(":", 1)[1]
+        return f"Run the missing {transport} benchmark before deciding on raw UDS."
+    if blocker.startswith("missing_metric:"):
+        _, transport, metric = blocker.split(":", 2)
+        return f"Re-run {transport} with required metric coverage for {metric}."
+    if blocker.startswith("run_count:"):
+        return "Re-run transport benchmarks with enough repeated runs."
+    if blocker.startswith("cpu_utilization:"):
+        return "Re-run transport benchmarks with CPU utilization evidence."
+    if blocker.startswith("target:"):
+        return "Re-run transport benchmarks with explicit endpoint targets."
+    if blocker.startswith("frame_contract:"):
+        return "Re-run raw UDS with the required length-prefixed frame contract."
+    if blocker.startswith("frame_type:"):
+        return "Re-run raw UDS with complete frame type coverage."
+    if blocker.startswith("lifecycle:"):
+        return "Re-run raw UDS with full Local STT v1 lifecycle coverage."
+    if blocker.startswith("error_handling:"):
+        return "Re-run raw UDS with protocol-error handling coverage."
+    if blocker.startswith("runtime:"):
+        return "Re-run raw UDS with shared stream runtime evidence."
+    if blocker.startswith("benchmark_input:"):
+        return "Re-run transport benchmarks with matching audio and pacing settings."
+    if blocker == "protocol_errors":
+        return "Fix protocol errors before comparing raw UDS latency."
+    if blocker == "missing_raw_uds_latency_delta":
+        return "Capture raw UDS and UDS websocket first-interim P95 metrics."
+    if blocker == "insufficient_raw_uds_latency_win":
+        return "Keep raw UDS experimental unless a future benchmark clears the latency gate."
+    return "Review the gate blockers before deciding on raw UDS."
+
+
 def raw_uds_decision_summary(
     *,
     recommendation: str,
@@ -813,9 +851,11 @@ def raw_uds_decision_summary(
     raw_uds_min_win_ms: float,
     raw_uds_experimental: bool,
 ) -> dict[str, Any]:
+    gate_blockers = list(recommendation_gate.get("blockers") or [])
     return {
         "status": "experimental" if raw_uds_experimental else "recommended",
         "reason": recommendation,
+        "next_action": raw_uds_decision_next_action(gate_blockers),
         "primary_metric": "time_to_first_interim_ms",
         "comparison_baseline": "uds_ws",
         "observed_first_interim_p95_win_ms": raw_vs_uds_delta_ms,
@@ -823,8 +863,8 @@ def raw_uds_decision_summary(
         "observed_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_leading_p95_metrics": raw_uds_leading_metrics,
         "gate_passed": bool(recommendation_gate.get("passed")),
-        "gate_blockers": list(recommendation_gate.get("blockers") or []),
-        "gate_blocker_count": len(recommendation_gate.get("blockers") or []),
+        "gate_blockers": gate_blockers,
+        "gate_blocker_count": len(gate_blockers),
     }
 
 
