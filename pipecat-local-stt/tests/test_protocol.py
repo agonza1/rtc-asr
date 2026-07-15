@@ -88,3 +88,15 @@ def test_rtc_asr_wrapper_accepts_optional_raw_uds_transport() -> None:
     assert service.config.transport == "raw_uds"
     assert service.config.url == "ws://localhost/v1/stt/stream"
     assert service.config.uds_path == "/run/rtc-asr/stt.raw.sock"
+
+
+def test_package_exports_raw_uds_codec_contract() -> None:
+    import pipecat_local_stt as package
+
+    encoded = package.encode_raw_uds_json_frame(package.RawUdsFrameType.JSON_CONTROL, {"type": "close"})
+    decoded = package.decode_raw_uds_frame(encoded)
+
+    assert package.RAW_UDS_HEADER_BYTES == 5
+    assert package.RAW_UDS_MAX_PAYLOAD_BYTES >= 8 * 1024 * 1024
+    assert decoded.frame_type == package.RawUdsFrameType.JSON_CONTROL
+    assert decoded.payload == b'{"type":"close"}'
