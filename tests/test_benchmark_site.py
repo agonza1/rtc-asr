@@ -725,6 +725,13 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
             "published_artifact_count": 1,
             "artifact_file_count": 2,
             "stale_artifact_count": 1,
+            "warnings": {
+                "received_total": 2,
+                "artifacts_with_warnings_count": 1,
+                "sample_count": 4,
+                "rate_per_sample": 0.5,
+                "codes": ["late_partial"],
+            },
         },
         "tracks": [
             {
@@ -743,6 +750,7 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
                     "final_mean_ms": 789.0,
                 },
                 "contract": {"path": "/v1/stt/stream"},
+                "warnings": {"received_total": 2, "codes": ["late_partial"]},
             }
         ],
         "artifacts": [
@@ -788,6 +796,8 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
     assert "Primary comparisons use artifact-backed tracks with comparable live streaming metrics." in llms
     assert "Rank live turn-taking first by TTFB / first partial, partial cadence, and audio-end finalization before REST throughput context." in llms
     assert "Use confidence score, sample coverage, artifact hash, and measurement notes as tie-breakers before recommending a model lane." in llms
+    assert "Warning telemetry: 2 warnings across 1 artifacts; rate 0.500 per sample; codes late_partial." in llms
+    assert "Demo ASR: Warnings 2 (late_partial)" in llms
     assert "Blocked or registry-only lanes are documented in the manifest but omitted from the public comparison flow until publishable artifacts exist." in llms
     assert "Current comparable tracks: 1" in llms
     assert "Validated tracks: 1" in llms

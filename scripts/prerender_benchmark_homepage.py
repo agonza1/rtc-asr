@@ -1089,8 +1089,30 @@ def render_llms(manifest: dict[str, Any], base_url: str) -> str:
         "- Primary comparisons use artifact-backed tracks with comparable live streaming metrics.",
         "- Rank live turn-taking first by TTFB / first partial, partial cadence, and audio-end finalization before REST throughput context.",
         "- Use confidence score, sample coverage, artifact hash, and measurement notes as tie-breakers before recommending a model lane.",
-        "- Blocked or registry-only lanes are documented in the manifest but omitted from the public comparison flow until publishable artifacts exist.",
     ])
+    warning_summary = summary.get("warnings") or {}
+    has_warning_telemetry = (
+        (warning_summary.get("artifacts_with_warnings_count") or 0) > 0
+        or (warning_summary.get("received_total") or 0) > 0
+        or bool(warning_summary.get("codes"))
+    )
+    if has_warning_telemetry:
+        warning_codes = format_list(warning_summary.get("codes") or [])
+        lines.append(
+            "- Warning telemetry: "
+            f"{format_count(warning_summary.get('received_total'))} warnings across "
+            f"{format_count(warning_summary.get('artifacts_with_warnings_count'))} artifacts; "
+            f"rate {format_ratio(warning_summary.get('rate_per_sample'))} per sample; "
+            f"codes {warning_codes}."
+        )
+        for entry in artifact_entries[:8]:
+            warning_label = warning_badge_text(entry)
+            if warning_label:
+                label = entry.get("label") or entry.get("slug") or "unknown"
+                lines.append(f"- {label}: {warning_label}")
+    lines.append(
+        "- Blocked or registry-only lanes are documented in the manifest but omitted from the public comparison flow until publishable artifacts exist."
+    )
     lines.extend([
         "",
         "## Coverage",
