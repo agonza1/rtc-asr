@@ -121,6 +121,8 @@ def _percentile(summary: dict[str, Any], metric: str, percentile: str) -> float 
             break
         bucket = summary.get(alias)
     if not isinstance(bucket, dict):
+        if metric == "protocol_errors" and bucket is not None:
+            return float(bucket)
         return None
     value = bucket.get(percentile)
     if value is None:
