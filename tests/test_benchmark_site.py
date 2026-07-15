@@ -755,6 +755,7 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
                     "partial_gap_mean_ms": 45.6,
                     "final_mean_ms": 789.0,
                 },
+                "derived": {"overall_score": 91.2, "confidence_score": 84.5},
                 "contract": {"path": "/v1/stt/stream"},
                 "warnings": {"received_total": 2, "codes": ["late_partial"]},
             }
@@ -791,7 +792,8 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
     assert (
         "Demo ASR: Best current comparable live lane. Evidence: 123.4 ms TTFB / first partial, "
         "45.6 ms partial cadence, 789.0 ms audio-end finalization; details "
-        "https://example.test/asr-latency/benchmark-results/pages/demo-2026-06-14.html"
+        "https://example.test/asr-latency/benchmark-results/pages/demo-2026-06-14.html. "
+        "Score: 91.2 / 100; confidence 84.5 / 100."
     ) in llms
     assert "## Artifact Detail Pages" in llms
     assert "Demo ASR: Primary comparable evidence; status validated; measured Jun 14, 2026" in llms

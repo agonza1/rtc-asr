@@ -27,7 +27,7 @@ Use the manifest for machine-readable benchmark metadata and the detail pages fo
 - Voxtral Mini 4B MLX: apple-silicon / int8; TTFB / first partial 3308.9 ms; audio-end finalization 8897.1 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/voxtral-mlx-4bit-service-2026-07-06.html
 
 ## Current Recommendation
-- Parakeet 110M NeMo MLX: Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-06-21. Evidence: 250.7 ms TTFB / first partial, 101.8 ms partial cadence, 251.8 ms audio-end finalization; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html
+- Parakeet 110M NeMo MLX: Validated paced /v1/stt/stream local Apple Silicon MLX service artifact refreshed on 2026-06-21. Evidence: 250.7 ms TTFB / first partial, 101.8 ms partial cadence, 251.8 ms audio-end finalization; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html. Score: 91.5 / 100; confidence 100.0 / 100.
 
 ## Artifact Detail Pages
 - Parakeet 110M NeMo MLX: Primary comparable evidence; status validated; measured Jun 21, 2026, 12:13 AM UTC; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html
