@@ -730,6 +730,7 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
             "published_artifact_count": 1,
             "artifact_file_count": 2,
             "stale_artifact_count": 1,
+            "latest_measured_at": "2026-06-14T00:00:00Z",
             "warnings": {
                 "received_total": 2,
                 "artifacts_with_warnings_count": 1,
@@ -808,6 +809,8 @@ def test_render_llms_points_agents_to_manifest_and_detail_pages() -> None:
     assert "Validated tracks: 1" in llms
     assert "Tracked lanes: 1" in llms
     assert "Published current artifacts: 1" in llms
+    assert "Historical supporting artifacts: 1" in llms
+    assert "Latest measurement: Jun 14, 2026" in llms
 
 
 def test_render_homepage_omits_unpublished_registry_gap_copy() -> None:

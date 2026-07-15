@@ -8,6 +8,14 @@ Use the manifest for machine-readable benchmark metadata and the detail pages fo
 - Manifest JSON: https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/manifest.json
 - Sitemap: https://benchmarks.webrtc.ventures/asr-latency/sitemap.xml
 
+## Publication Summary
+- Current comparable tracks: 8
+- Validated tracks: 8
+- Tracked lanes: 9
+- Published current artifacts: 9
+- Historical supporting artifacts: 14
+- Latest measurement: Jul 06, 2026, 02:46 PM UTC
+
 ## Current Comparable Tracks
 - Parakeet 110M NeMo MLX: apple-silicon / auto; TTFB / first partial 250.7 ms; audio-end finalization 251.8 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/parakeet-mlx-110m-service-2026-06-21.html
 - Faster-Whisper Base: cpu / int8; TTFB / first partial 676.5 ms; audio-end finalization 768.8 ms; details https://benchmarks.webrtc.ventures/asr-latency/benchmark-results/pages/faster-whisper-base.en-int8-2026-06-20.html
