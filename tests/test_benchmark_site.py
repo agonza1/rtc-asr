@@ -1461,7 +1461,15 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
         'artifact_modified_at': '2026-06-15T12:30:00Z',
         'status_detail': 'Demo artifact.',
         'rest': {'mean_ms': 42.0, 'p95_ms': 55.0, 'rtf_mean': 0.2},
-        'streaming': {'partial_mean_ms': 21.0, 'partial_gap_mean_ms': 5.0, 'late_partial_ratio': 0.03, 'final_mean_ms': 30.0},
+        'streaming': {
+            'partial_mean_ms': 21.0,
+            'partial_gap_mean_ms': 5.0,
+            'partial_transcript_churn_word_mean': 0.125,
+            'partial_transcript_churn_char_mean': 0.08,
+            'late_partial_events': 2,
+            'late_partial_ratio': 0.03,
+            'final_mean_ms': 30.0,
+        },
         'contract': {'path': '/v1/stt/stream', 'transport': 'v1-stt-stream', 'chunk_ms': 250, 'partial_window_seconds': 2.0, 'partial_interval_chunks': 1, 'sample_rate': 16000, 'binary_frames': False},
         'derived': {'overall_score': 88.0, 'confidence_score': 91.0},
         'official_wer_reference': '3.1 / 7.2 Demo clean / other',
@@ -1525,6 +1533,10 @@ def test_render_detail_page_surfaces_optional_efficiency_metrics() -> None:
     assert 'Sample coverage: 3 / 5 target (60.0%)' in detail_html
     assert 'Sample rate 16000 Hz' in detail_html
     assert 'Transport contract' in detail_html
+    assert 'Transcript stability' in detail_html
+    assert 'Mean word churn across interim transcripts' in detail_html
+    assert 'Character churn 0.080' in detail_html
+    assert 'Late partial events 2' in detail_html
     assert 'v1-stt-stream' in detail_html
     assert 'UDS path n/a' in detail_html
     assert 'Frame format n/a' in detail_html
