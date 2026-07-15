@@ -668,6 +668,7 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "observed_final_after_finalize_p95_delta_ms": -3.0,
         "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms"],
         "gate_passed": False,
+        "gate_blockers": ["insufficient_raw_uds_latency_win"],
         "gate_blocker_count": 1,
     }
     assert comparison["all_present_transports_protocol_error_free"] is True
@@ -872,6 +873,7 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
         "observed_final_after_finalize_p95_delta_ms": 0.0,
         "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms"],
         "gate_passed": True,
+        "gate_blockers": [],
         "gate_blocker_count": 0,
     }
     assert comparison["all_present_transports_protocol_error_free"] is True
