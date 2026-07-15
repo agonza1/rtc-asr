@@ -823,6 +823,7 @@ def raw_uds_decision_summary(
         "observed_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
         "raw_uds_leading_p95_metrics": raw_uds_leading_metrics,
         "gate_passed": bool(recommendation_gate.get("passed")),
+        "gate_blockers": list(recommendation_gate.get("blockers") or []),
         "gate_blocker_count": len(recommendation_gate.get("blockers") or []),
     }
 
