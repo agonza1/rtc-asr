@@ -4,7 +4,7 @@
 
 The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, `parakeet-nemo`, and experimental `voxtral` backends behind the same API surface.
 
-<img width="1798" height="875" alt="high-level-flow-diagram" src="https://github.com/user-attachments/assets/92bd3aff-2a7a-469e-b7ec-4da7f3640996" />
+![rtc-asr local ASR architecture](https://github.com/user-attachments/assets/92bd3aff-2a7a-469e-b7ec-4da7f3640996)
 
 
 ## What It Ships Today
