@@ -35,6 +35,7 @@ BENCHMARK_SITE_BASE_URL ?= https://benchmarks.webrtc.ventures/asr-latency/
 LOCAL_STT_TRANSPORT_ARTIFACTS ?=
 LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.json
 LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.md
+LOCAL_STT_RAW_UDS_DECISION_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-raw-uds-decision.json
 LOCAL_STT_TRANSPORT_COMPARE_FLAGS ?=
 LOCAL_STT_TRANSPORT_MIN_RUNS ?=
 LOCAL_STT_RAW_UDS_MIN_WIN_MS ?= 5.0
@@ -101,7 +102,7 @@ help:
 	@echo "  make benchmark-qwen-mps-legacy - Run qwen-asr over legacy /ws/stream on Apple Silicon MPS"
 	@echo "  make benchmark-qwen-mps-low-latency-sweep - Run qwen-asr low-latency sweep on Apple Silicon MPS"
 	@echo "  make benchmark-pipecat-e2e - Run a Pipecat-style end-to-end streaming benchmark against a local backend"
-	@echo "  make benchmark-local-stt-transport-compare - Compare tcp_ws, uds_ws, and raw_uds Local STT artifacts"
+	@echo "  make benchmark-local-stt-transport-compare - Compare tcp_ws, uds_ws, and raw_uds Local STT artifacts and write the Raw UDS decision record"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr over /v1/stt/stream"
 	@echo "  make benchmark-compose-qwen-legacy - Start compose, wait for readiness, and benchmark qwen-asr over legacy /ws/stream"
@@ -486,8 +487,8 @@ benchmark-pipecat-e2e: venv
 
 benchmark-local-stt-transport-compare:
 	@test -n "$(LOCAL_STT_TRANSPORT_ARTIFACTS)" || (echo "Set LOCAL_STT_TRANSPORT_ARTIFACTS to tcp_ws, uds_ws, and raw_uds benchmark JSON artifacts." >&2; exit 2)
-	@python3 scripts/compare_local_stt_transports.py --output $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT) --markdown-output $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN) --raw-uds-min-win-ms $(LOCAL_STT_RAW_UDS_MIN_WIN_MS) $(if $(LOCAL_STT_TRANSPORT_MIN_RUNS),--min-runs $(LOCAL_STT_TRANSPORT_MIN_RUNS),) $(LOCAL_STT_TRANSPORT_COMPARE_FLAGS) $(LOCAL_STT_TRANSPORT_ARTIFACTS)
-	@echo "Wrote $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT) and $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN)"
+	@python3 scripts/compare_local_stt_transports.py --output $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT) --markdown-output $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN) --decision-output $(LOCAL_STT_RAW_UDS_DECISION_OUTPUT) --raw-uds-min-win-ms $(LOCAL_STT_RAW_UDS_MIN_WIN_MS) $(if $(LOCAL_STT_TRANSPORT_MIN_RUNS),--min-runs $(LOCAL_STT_TRANSPORT_MIN_RUNS),) $(LOCAL_STT_TRANSPORT_COMPARE_FLAGS) $(LOCAL_STT_TRANSPORT_ARTIFACTS)
+	@echo "Wrote $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT), $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN), and $(LOCAL_STT_RAW_UDS_DECISION_OUTPUT)"
 
 benchmark-parakeet-mlx: mlx-venv
 	@echo "Benchmarking $(PARAKEET_MLX_MODEL) with parakeet-mlx on Apple Silicon..."

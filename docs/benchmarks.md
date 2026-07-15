@@ -183,3 +183,11 @@ Rebuild the homepage manifest after artifact or track changes:
 ```bash
 make benchmark-site
 ```
+
+Compare the Local STT transport artifacts for the Raw UDS experiment with:
+
+```bash
+LOCAL_STT_TRANSPORT_ARTIFACTS="tcp-ws.json uds-ws.json raw-uds.json" make benchmark-local-stt-transport-compare
+```
+
+That writes the full comparison JSON, the Markdown summary, and `docs/benchmark-results/local-stt-raw-uds-decision.json` for the compact recommendation gate record.
