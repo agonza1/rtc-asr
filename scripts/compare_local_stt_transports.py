@@ -221,6 +221,24 @@ def p95_metric_leaders(transports: dict[str, dict[str, Any]]) -> dict[str, str |
     return {metric: fastest_transport_by_metric(transports, metric) for metric in KEY_METRICS}
 
 
+def raw_uds_distinct_p95_leaders(transports: dict[str, dict[str, Any]]) -> list[str]:
+    raw_uds_metrics = transports.get("raw_uds", {}).get("metrics_p95", {})
+    leaders: list[str] = []
+    for metric in KEY_METRICS:
+        raw_value = raw_uds_metrics.get(metric)
+        if raw_value is None:
+            continue
+        raw_value = float(raw_value)
+        baseline_values = [
+            float(payload.get("metrics_p95", {})[metric])
+            for transport, payload in transports.items()
+            if transport != "raw_uds" and metric in payload.get("metrics_p95", {})
+        ]
+        if baseline_values and all(raw_value < value for value in baseline_values):
+            leaders.append(metric)
+    return leaders
+
+
 def classify_p95_delta(delta_ms: float | None) -> str:
     if delta_ms is None:
         return "missing"
@@ -772,17 +790,12 @@ def raw_uds_decision_summary(
     *,
     recommendation: str,
     recommendation_gate: dict[str, Any],
-    metric_leaders: dict[str, str | None],
+    raw_uds_leading_metrics: list[str],
     raw_vs_uds_delta_ms: float | None,
     raw_vs_uds_final_after_finalize_delta_ms: float | None,
     raw_uds_min_win_ms: float,
     raw_uds_experimental: bool,
 ) -> dict[str, Any]:
-    raw_uds_leading_metrics = [
-        metric
-        for metric in KEY_METRICS
-        if metric_leaders.get(metric) == "raw_uds"
-    ]
     return {
         "status": "experimental" if raw_uds_experimental else "recommended",
         "reason": recommendation,
@@ -879,6 +892,7 @@ def compare_artifacts(
         by_transport, "time_to_final_after_finalize_ms"
     )
     metric_leaders = p95_metric_leaders(by_transport)
+    raw_uds_leading_metrics = raw_uds_distinct_p95_leaders(by_transport)
     lowest_cpu_transport = lowest_cpu_utilization_transport(by_transport)
     missing_cpu_utilization = missing_cpu_utilization_transports(by_transport)
     cpu_coverage = cpu_utilization_coverage(by_transport)
@@ -968,7 +982,7 @@ def compare_artifacts(
         "raw_uds_decision_summary": raw_uds_decision_summary(
             recommendation=recommendation,
             recommendation_gate=recommendation_gate,
-            metric_leaders=metric_leaders,
+            raw_uds_leading_metrics=raw_uds_leading_metrics,
             raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
             raw_vs_uds_final_after_finalize_delta_ms=raw_vs_uds_final_after_finalize_delta_ms,
             raw_uds_min_win_ms=raw_uds_min_win_ms,

@@ -624,7 +624,7 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "observed_first_interim_p95_win_ms": 3.5,
         "required_first_interim_p95_win_ms": 5.0,
         "observed_final_after_finalize_p95_delta_ms": -3.0,
-        "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms", "protocol_errors"],
+        "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms"],
         "gate_passed": False,
         "gate_blocker_count": 1,
     }
@@ -828,13 +828,7 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
         "observed_first_interim_p95_win_ms": 5.0,
         "required_first_interim_p95_win_ms": 5.0,
         "observed_final_after_finalize_p95_delta_ms": 0.0,
-        "raw_uds_leading_p95_metrics": [
-            "time_to_first_interim_ms",
-            "time_to_final_after_finalize_ms",
-            "audio_send_queue_depth_p95_ms",
-            "asr_queue_delay_p95_ms",
-            "protocol_errors",
-        ],
+        "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms"],
         "gate_passed": True,
         "gate_blocker_count": 0,
     }
@@ -861,6 +855,20 @@ def test_compare_artifacts_can_raise_raw_uds_recommendation_threshold(tmp_path: 
     assert comparison["recommendation"] == (
         "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 7.5 ms."
     )
+
+
+def test_raw_uds_decision_summary_excludes_tied_p95_metrics(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, final_after_finalize_p95=25.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0, final_after_finalize_p95=25.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0, final_after_finalize_p95=25.0)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["p95_metric_leaders"]["protocol_errors"] == "raw_uds"
+    assert comparison["raw_uds_vs_uds_ws_p95_deltas_ms"]["protocol_errors"] == 0.0
+    assert comparison["raw_uds_decision_summary"]["raw_uds_leading_p95_metrics"] == [
+        "time_to_first_interim_ms"
+    ]
 
 
 def test_compare_artifacts_rejects_invalid_raw_uds_recommendation_threshold(tmp_path: Path) -> None:
@@ -1335,13 +1343,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
         "required_first_interim_p95_win_ms": 5.0,
         "observed_first_interim_p95_win_ms": 5.0,
         "observed_final_after_finalize_p95_delta_ms": 0.0,
-        "raw_uds_leading_p95_metrics": [
-            "time_to_first_interim_ms",
-            "time_to_final_after_finalize_ms",
-            "audio_send_queue_depth_p95_ms",
-            "asr_queue_delay_p95_ms",
-            "protocol_errors",
-        ],
+        "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms"],
     }
 
 
