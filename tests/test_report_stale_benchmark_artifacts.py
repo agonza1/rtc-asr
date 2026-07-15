@@ -16,6 +16,7 @@ format_bytes = report_module.format_bytes
 render_text = report_module.render_text
 stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
+detail_page_path = report_module.detail_page_path
 
 
 def test_stale_artifacts_excludes_current_track_artifact() -> None:
@@ -52,6 +53,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "label": "Demo",
             "measured_at": "2026-06-10T00:00:00Z",
             "current_artifact_path": "benchmark-results/current.json",
+            "detail_page_path": "benchmark-results/pages/older.html",
             "artifact_size_bytes": 75,
             "artifact_size": "75 B",
         }
@@ -127,6 +129,15 @@ def test_format_bytes_uses_binary_units() -> None:
     assert format_bytes(2 * 1024 * 1024) == "2.0 MiB"
 
 
+def test_detail_page_path_matches_prerendered_artifact_page() -> None:
+    assert (
+        detail_page_path("benchmark-results/faster-whisper-base.en-int8-2026-06-20.json")
+        == "benchmark-results/pages/faster-whisper-base.en-int8-2026-06-20.html"
+    )
+    assert detail_page_path("benchmark-results/readme.txt") is None
+    assert detail_page_path(None) is None
+
+
 def test_render_text_summarizes_stale_artifacts() -> None:
     rendered = render_text(
         [
@@ -136,6 +147,7 @@ def test_render_text_summarizes_stale_artifacts() -> None:
                 "measured_at": "2026-06-10T00:00:00Z",
                 "artifact_size_bytes": 75,
                 "current_artifact_path": "benchmark-results/current.json",
+                "detail_page_path": "benchmark-results/pages/older.html",
             }
         ]
     )
@@ -143,5 +155,5 @@ def test_render_text_summarizes_stale_artifacts() -> None:
     assert "Found 1 stale benchmark artifacts (75 B, 75 bytes):" in rendered
     assert (
         "benchmark-results/older.json [demo] measured 2026-06-10T00:00:00Z (75 B); "
-        "current: benchmark-results/current.json"
+        "current: benchmark-results/current.json; detail: benchmark-results/pages/older.html"
     ) in rendered

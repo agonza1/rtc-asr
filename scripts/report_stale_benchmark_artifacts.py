@@ -64,6 +64,15 @@ def parse_timestamp(value: Any) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
+def detail_page_path(artifact_path: str | None) -> str | None:
+    if not artifact_path:
+        return None
+    artifact_name = Path(artifact_path).name
+    if not artifact_name.endswith(".json"):
+        return None
+    return f"benchmark-results/pages/{Path(artifact_name).stem}.html"
+
+
 def stale_artifacts(
     manifest: dict[str, Any],
     *,
@@ -100,6 +109,7 @@ def stale_artifacts(
                 "label": artifact.get("label"),
                 "measured_at": measured_at,
                 "current_artifact_path": current_path_by_slug.get(artifact.get("slug")),
+                "detail_page_path": detail_page_path(artifact_path),
                 "artifact_size_bytes": artifact.get("artifact_size_bytes"),
                 "artifact_size": format_bytes(artifact.get("artifact_size_bytes")),
             }
@@ -137,13 +147,16 @@ def render_text(stale: list[dict[str, Any]]) -> str:
     for entry in stale:
         current_artifact_path = entry.get("current_artifact_path")
         current_suffix = f"; current: {current_artifact_path}" if current_artifact_path else ""
+        detail_page_path = entry.get("detail_page_path")
+        detail_suffix = f"; detail: {detail_page_path}" if detail_page_path else ""
         lines.append(
-            "- {artifact_path} [{slug}] measured {measured_at} ({artifact_size}){current_suffix}".format(
+            "- {artifact_path} [{slug}] measured {measured_at} ({artifact_size}){current_suffix}{detail_suffix}".format(
                 artifact_path=entry["artifact_path"],
                 slug=entry.get("slug") or "untracked",
                 measured_at=entry.get("measured_at") or "unknown",
                 artifact_size=entry.get("artifact_size") or format_bytes(entry.get("artifact_size_bytes")),
                 current_suffix=current_suffix,
+                detail_suffix=detail_suffix,
             )
         )
     return "\n".join(lines)
