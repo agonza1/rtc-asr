@@ -48,6 +48,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Only include stale artifacts measured before this many days ago",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Only print the largest N stale artifacts after filtering",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     return parser.parse_args()
 
@@ -133,10 +139,19 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def render_text(stale: list[dict[str, Any]]) -> str:
+def limit_artifacts(stale: list[dict[str, Any]], limit: int | None) -> list[dict[str, Any]]:
+    if limit is None:
+        return stale
+    if limit < 0:
+        raise ValueError("limit must be non-negative")
+    return stale[:limit]
+
+
+def render_text(stale: list[dict[str, Any]], *, total_count: int | None = None) -> str:
     if not stale:
         return "No stale benchmark artifacts found."
     summary = stale_summary(stale)
+    total_count = total_count if total_count is not None else summary["count"]
     lines = [
         "Found {count} stale benchmark artifacts ({size}, {bytes} bytes):".format(
             count=summary["count"],
@@ -159,6 +174,8 @@ def render_text(stale: list[dict[str, Any]]) -> str:
                 detail_suffix=detail_suffix,
             )
         )
+    if total_count > summary["count"]:
+        lines.append(f"... {total_count - summary['count']} more stale artifacts omitted by --limit.")
     return "\n".join(lines)
 
 
@@ -166,10 +183,13 @@ def main() -> None:
     args = parse_args()
     manifest = build_manifest(args.results_dir, args.tracks)
     stale = stale_artifacts(manifest, older_than_days=args.older_than_days)
+    limited_stale = limit_artifacts(stale, args.limit)
     if args.json:
-        print(json.dumps(stale_summary(stale), indent=2))
+        summary = stale_summary(limited_stale)
+        summary["total_matching_count"] = len(stale)
+        print(json.dumps(summary, indent=2))
     else:
-        print(render_text(stale))
+        print(render_text(limited_stale, total_count=len(stale)))
 
 
 if __name__ == "__main__":
