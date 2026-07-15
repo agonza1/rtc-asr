@@ -575,6 +575,40 @@ def test_raw_uds_protocol_error_does_not_stop_listener(tmp_path: Path) -> None:
     assert health.json()["ready"] is True
 
 
+def test_raw_uds_malformed_json_control_does_not_stop_listener(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+
+    async def read_server_frame(reader: asyncio.StreamReader) -> dict[str, object]:
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+        return parse_raw_uds_server_frame(frame).model_dump(exclude_none=True)
+
+    async def send_malformed_control_then_valid_client() -> dict[str, object]:
+        reader, writer = await asyncio.open_unix_connection(str(raw_socket_path))
+        writer.write(bytes([RawUdsFrameType.JSON_CONTROL]) + (1).to_bytes(4, "little") + b"{")
+        await writer.drain()
+        error = await read_server_frame(reader)
+        writer.close()
+        await writer.wait_closed()
+
+        client = AsyncRawUdsLocalSttClient(str(raw_socket_path))
+        ready = await client.start(client_stream_id="after-malformed-json")
+        await client.close()
+        assert ready["metadata"]["client_stream_id"] == "after-malformed-json"
+        return error
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as http_client:
+        error = asyncio.run(send_malformed_control_then_valid_client())
+        health = http_client.get("/health")
+
+    assert error["type"] == "error"
+    assert error["code"] == "raw_uds_invalid_json"
+    assert health.status_code == 200
+    assert health.json()["ready"] is True
+
+
 def test_raw_uds_rejects_unknown_frame_type_before_waiting_for_payload(tmp_path: Path) -> None:
     raw_socket_path = tmp_path / "stt.raw.sock"
     config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
