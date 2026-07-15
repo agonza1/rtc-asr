@@ -31,6 +31,7 @@ VOXTRAL_MLX_MODEL ?= mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit
 VOXTRAL_MLX_SERVICE_ARTIFACT_SLUG ?= voxtral-mlx-4bit-service
 VOXTRAL_MLX_TRANSCRIPTION_DELAY_MS ?= 480
 BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
+BENCHMARK_SITE_BASE_URL ?= https://benchmarks.webrtc.ventures/asr-latency/
 LOCAL_STT_TRANSPORT_ARTIFACTS ?=
 LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.json
 LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.md
@@ -116,7 +117,7 @@ help:
 	@echo "  make benchmark-parakeet-mlx-service-110m - Run the warmed 110M MLX service benchmark through the /v1/stt/stream harness"
 	@echo "  make benchmark-voxtral-mlx-service - Run the warmed Voxtral Mini 4B realtime 4-bit MLX service benchmark"
 	@echo "  make lint           - Run linter"
-	@echo "  make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale"
+	@echo "  make benchmark-site-check - Fail when benchmark manifest, homepage, detail pages, sitemap, robots.txt, or llms.txt are stale"
 	@echo "  make benchmark-artifact-report - List legacy benchmark artifacts that are no longer current"
 	@echo "  make docs           - Build documentation snapshot"
 	@echo "  make start          - Start docker compose stack, including the browser Pipecat demo"
@@ -525,12 +526,12 @@ lint: venv
 benchmark-site:
 	@echo "Building benchmark site manifest..."
 	@python3 scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json
-	@python3 scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html
+	@python3 scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --site-base-url $(BENCHMARK_SITE_BASE_URL)
 	@echo "  ✓ Benchmark site manifest built"
 
 benchmark-site-check:
 	@python3 scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check
-	@python3 scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --check
+	@python3 scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --site-base-url $(BENCHMARK_SITE_BASE_URL) --check
 	@echo "  ✓ Benchmark site manifest is up to date"
 
 benchmark-artifact-report:

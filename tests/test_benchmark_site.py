@@ -1853,6 +1853,14 @@ def test_prerender_check_fails_for_orphaned_detail_pages(tmp_path: Path) -> None
     assert "1 orphaned" in result.stderr
 
 
+def test_makefile_benchmark_site_uses_configurable_public_base_url() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "BENCHMARK_SITE_BASE_URL ?= https://benchmarks.webrtc.ventures/asr-latency/" in makefile
+    assert "--site-base-url $(BENCHMARK_SITE_BASE_URL)" in makefile
+    assert "detail pages, sitemap, robots.txt, or llms.txt are stale" in makefile
+
+
 
 def test_homepage_keeps_operator_sections_without_duplicate_matrix() -> None:
     html = Path("docs/index.html").read_text(encoding="utf-8")
