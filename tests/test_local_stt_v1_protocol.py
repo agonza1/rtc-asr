@@ -275,7 +275,7 @@ def test_non_object_messages_map_to_protocol_error(payload: object) -> None:
         (
             "aGVsbG8=",
             "audio_must_be_binary",
-            "Audio frames must be sent as binary PCM16 websocket messages; Local STT v1 never base64-wraps audio",
+            "Audio frames must be sent as binary PCM16 transport payloads; Local STT v1 never base64-wraps audio",
         ),
         (b"", "invalid_audio_chunk", "Audio frames must not be empty"),
         (b"\x01", "invalid_audio_chunk", "PCM16 audio frames must contain an even number of bytes"),
