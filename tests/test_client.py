@@ -22,6 +22,7 @@ from src.rtc_client import (
     AsyncLocalSttClient,
     AsyncRawUdsLocalSttClient,
     LocalSTTConfig,
+    _default_raw_uds_connect,
     build_async_local_stt_client,
 )
 
@@ -770,6 +771,17 @@ def test_async_raw_uds_client_rejects_inbound_client_frame_types_before_body_rea
     asyncio.run(scenario())
 
     assert reader.reads == [RAW_UDS_HEADER_BYTES]
+
+
+def test_default_raw_uds_connect_rejects_existing_non_socket_path(tmp_path) -> None:
+    path = tmp_path / "stt.raw.sock"
+    path.write_text("not a socket", encoding="utf-8")
+
+    async def scenario() -> None:
+        with pytest.raises(RuntimeError, match="not a socket"):
+            await _default_raw_uds_connect(str(path))
+
+    asyncio.run(scenario())
 
 
 def test_async_asr_client_invokes_on_sent_callback_before_waiting_for_response() -> None:

@@ -5,6 +5,7 @@ import base64
 import json
 import math
 import os
+import stat
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Literal, Protocol
 
@@ -595,6 +596,8 @@ async def _default_unix_websocket_connect(uds_path: str, ws_url: str) -> WebSock
 
 
 async def _default_raw_uds_connect(uds_path: str) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+    if os.path.exists(uds_path) and not stat.S_ISSOCK(os.stat(uds_path).st_mode):
+        raise RuntimeError(f"raw_uds transport path exists but is not a socket: {uds_path}")
     return await asyncio.open_unix_connection(uds_path)
 
 
