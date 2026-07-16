@@ -152,6 +152,14 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         if config is not None
                         else AppConfig().local_stt_raw_uds_path
                     ),
+                    "plugin_config": {
+                        "transport": "raw_uds",
+                        "uds_path": (
+                            config.local_stt_raw_uds_path
+                            if config is not None
+                            else AppConfig().local_stt_raw_uds_path
+                        ),
+                    },
                     "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                     "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,

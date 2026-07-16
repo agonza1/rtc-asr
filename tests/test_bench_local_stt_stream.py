@@ -782,6 +782,7 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
     assert contract == {
         "control_channel": "unix_stream",
         "audio_framing": "length_prefixed_pcm16",
+        "plugin_config": {"transport": "raw_uds", "uds_path": "<LOCAL_STT_RAW_UDS_PATH>"},
         "frame_format": "uint8_type_uint32_len_le",
         "frame_header_bytes": RAW_UDS_HEADER_BYTES,
         "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
@@ -888,6 +889,7 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
         "url": "ws://ignored/v1/stt/stream",
         "uds_path": "/tmp/stt.raw.sock",
         "frame_format": "uint8_type_uint32_len_le",
+        "plugin_config": {"transport": "raw_uds", "uds_path": "/tmp/stt.raw.sock"},
         "frame_header_bytes": RAW_UDS_HEADER_BYTES,
         "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
         "frame_type_codes": {
@@ -907,6 +909,10 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
     }
     assert payload["target_contract"]["control_channel"] == "unix_stream"
     assert payload["target_contract"]["audio_framing"] == "length_prefixed_pcm16"
+    assert payload["target_contract"]["plugin_config"] == {
+        "transport": "raw_uds",
+        "uds_path": "<LOCAL_STT_RAW_UDS_PATH>",
+    }
     assert payload["target_contract"]["frame_format"] == "uint8_type_uint32_len_le"
     assert payload["target_contract"]["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
     assert payload["target_contract"]["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES

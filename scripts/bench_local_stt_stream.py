@@ -250,6 +250,7 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
         return {
             "control_channel": "unix_stream",
             "audio_framing": "length_prefixed_pcm16",
+            "plugin_config": {"transport": "raw_uds", "uds_path": "<LOCAL_STT_RAW_UDS_PATH>"},
             "frame_format": "uint8_type_uint32_len_le",
             "frame_header_bytes": RAW_UDS_HEADER_BYTES,
             "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
@@ -294,6 +295,7 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
         target.update(
             {
                 "frame_format": "uint8_type_uint32_len_le",
+                "plugin_config": {"transport": "raw_uds", "uds_path": uds_path},
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                 "frame_types": list(frame_type_codes),
                 "frame_type_codes": frame_type_codes,
