@@ -39,6 +39,7 @@ def write_artifact(
                             "frame_format": "uint8_type_uint32_len_le",
                             "frame_header_bytes": 5,
                             "per_frame_overhead_bytes": 5,
+                            "max_payload_bytes": 8388608,
                             "frame_types": [
                                 "JSON_CONTROL",
                                 "AUDIO_PCM16",
@@ -243,6 +244,7 @@ def test_compare_artifacts_requires_raw_uds_frame_contract(tmp_path: Path) -> No
     raw_payload["target"].pop("frame_format")
     raw_payload["target"]["frame_header_bytes"] = 4
     raw_payload["target"].pop("per_frame_overhead_bytes")
+    raw_payload["target"].pop("max_payload_bytes")
     raw.write_text(json.dumps(raw_payload), encoding="utf8")
 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
@@ -251,12 +253,14 @@ def test_compare_artifacts_requires_raw_uds_frame_contract(tmp_path: Path) -> No
         "raw_uds missing target.frame_format=uint8_type_uint32_len_le",
         "raw_uds missing target.frame_header_bytes=5",
         "raw_uds missing target.per_frame_overhead_bytes=5",
+        "raw_uds missing target.max_payload_bytes=8388608",
     ]
     assert comparison["blocking_gaps"] == comparison["raw_uds_frame_contract_gaps"]
     assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
         "frame_contract:raw_uds missing target.frame_format=uint8_type_uint32_len_le",
         "frame_contract:raw_uds missing target.frame_header_bytes=5",
         "frame_contract:raw_uds missing target.per_frame_overhead_bytes=5",
+        "frame_contract:raw_uds missing target.max_payload_bytes=8388608",
     ]
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
@@ -270,10 +274,12 @@ def test_compare_artifacts_accepts_raw_uds_frame_contract_from_benchmark_contrac
     raw_payload["target"].pop("frame_format")
     raw_payload["target"].pop("frame_header_bytes")
     raw_payload["target"].pop("per_frame_overhead_bytes")
+    raw_payload["target"].pop("max_payload_bytes")
     raw_payload["target_contract"] = {
         "frame_format": "uint8_type_uint32_len_le",
         "frame_header_bytes": 5,
         "per_frame_overhead_bytes": 5,
+        "max_payload_bytes": 8388608,
     }
     raw.write_text(json.dumps(raw_payload), encoding="utf8")
 
@@ -283,6 +289,7 @@ def test_compare_artifacts_accepts_raw_uds_frame_contract_from_benchmark_contrac
     assert comparison["transports"]["raw_uds"]["frame_format"] == "uint8_type_uint32_len_le"
     assert comparison["transports"]["raw_uds"]["frame_header_bytes"] == 5
     assert comparison["transports"]["raw_uds"]["per_frame_overhead_bytes"] == 5
+    assert comparison["transports"]["raw_uds"]["max_payload_bytes"] == 8388608
 
 
 def test_compare_artifacts_requires_raw_uds_frame_type_coverage(tmp_path: Path) -> None:
@@ -398,6 +405,7 @@ def test_compare_artifacts_accepts_raw_uds_contract_aliases(tmp_path: Path) -> N
         "frame_format",
         "frame_header_bytes",
         "per_frame_overhead_bytes",
+        "max_payload_bytes",
         "frame_types",
         "frame_type_codes",
         "lifecycle",
@@ -409,6 +417,7 @@ def test_compare_artifacts_accepts_raw_uds_contract_aliases(tmp_path: Path) -> N
         "frame_format": "uint8_type_uint32_len_le",
         "frame_header_bytes": 5,
         "per_frame_overhead_bytes": 5,
+        "max_payload_bytes": 8388608,
         "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
         "frame_type_codes": {
             "JSON_CONTROL": 1,
@@ -431,6 +440,7 @@ def test_compare_artifacts_accepts_raw_uds_contract_aliases(tmp_path: Path) -> N
     assert comparison["raw_uds_lifecycle_gaps"] == []
     assert comparison["raw_uds_error_handling_gaps"] == []
     assert comparison["raw_uds_runtime_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["max_payload_bytes"] == 8388608
     assert comparison["transports"]["raw_uds"]["shared_stream_runtime"] is True
 
 
@@ -1356,7 +1366,7 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| Raw UDS | -5.0 ms | missing | baseline |" in markdown
     assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing | missing | missing | missing |" in markdown
     assert "| uds_ws | missing | missing | missing | missing | missing | missing | missing | missing |" in markdown
-    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload | True |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | 8388608 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload | True |" in markdown
     assert "Benchmark inputs:" in markdown
     assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
@@ -1392,7 +1402,7 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     assert "- Complete: True" in markdown
     assert "- Minimum observed runs: 3" in markdown
     assert "- Recorded runs: raw_uds=3,tcp_ws=3,uds_ws=3" in markdown
-    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload | True |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | 8388608 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload | True |" in markdown
     assert "Minimum required win: 5 ms" in markdown
 
 
@@ -1443,6 +1453,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
                 "frame_format": "uint8_type_uint32_len_le",
                 "frame_header_bytes": 5,
+                "max_payload_bytes": 8388608,
                 "frame_type_codes": {
                     "AUDIO_PCM16": 2,
                     "ERROR": 4,
@@ -1462,6 +1473,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "error_handling": None,
                 "frame_format": None,
                 "frame_header_bytes": None,
+                "max_payload_bytes": None,
                 "frame_type_codes": None,
                 "frame_types": None,
                 "lifecycle": None,
@@ -1474,6 +1486,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "error_handling": None,
                 "frame_format": None,
                 "frame_header_bytes": None,
+                "max_payload_bytes": None,
                 "frame_type_codes": None,
                 "frame_types": None,
                 "lifecycle": None,
