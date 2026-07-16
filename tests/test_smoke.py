@@ -74,9 +74,11 @@ DEFAULT_PROTOCOLS = [
                 "path_env": "LOCAL_STT_RAW_UDS_PATH",
                 "uds_path": AppConfig().local_stt_raw_uds_path,
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+                "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "frame_format": "uint8_type_uint32_len_le",
                 "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+                "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "error_handling": [
                     "bad_frame_type",
@@ -101,6 +103,14 @@ DEFAULT_PROTOCOLS = [
                     "error": 4,
                     "ping": 5,
                     "pong": 6,
+                },
+                "frame_type_codes": {
+                    "JSON_CONTROL": 1,
+                    "AUDIO_PCM16": 2,
+                    "JSON_EVENT": 3,
+                    "ERROR": 4,
+                    "PING": 5,
+                    "PONG": 6,
                 },
                 "notes": "Raw UDS framing is available as a tested codec for latency experiments; enable LOCAL_STT_RAW_UDS_ENABLED=true to serve it.",
             }
@@ -421,8 +431,19 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["path_env"] == "LOCAL_STT_RAW_UDS_PATH"
     assert raw_uds["uds_path"] == str(raw_socket_path)
     assert raw_uds["frame_format"] == "uint8_type_uint32_len_le"
+    assert raw_uds["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
+    assert raw_uds["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
     assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
+    assert raw_uds["lifecycle"] == ["start", "audio", "transcript", "finalize", "cancel", "close"]
     assert raw_uds["error_handling"] == ["bad_frame_type", "malformed_json_control", "oversized_payload"]
+    assert raw_uds["frame_type_codes"] == {
+        "JSON_CONTROL": 1,
+        "AUDIO_PCM16": 2,
+        "JSON_EVENT": 3,
+        "ERROR": 4,
+        "PING": 5,
+        "PONG": 6,
+    }
     assert raw_uds["shared_stream_runtime"] is True
     assert raw_uds["latency_win_threshold_ms"] == 5.0
 

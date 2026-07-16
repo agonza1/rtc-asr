@@ -153,9 +153,11 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         else AppConfig().local_stt_raw_uds_path
                     ),
                     "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+                    "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                     "frame_format": "uint8_type_uint32_len_le",
                     "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+                    "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                     "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                     "error_handling": [
                         "bad_frame_type",
@@ -180,6 +182,14 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "error": 4,
                         "ping": 5,
                         "pong": 6,
+                    },
+                    "frame_type_codes": {
+                        "JSON_CONTROL": 1,
+                        "AUDIO_PCM16": 2,
+                        "JSON_EVENT": 3,
+                        "ERROR": 4,
+                        "PING": 5,
+                        "PONG": 6,
                     },
                     "notes": (
                         "Raw UDS framing is served on the configured Unix socket when LOCAL_STT_RAW_UDS_ENABLED=true; keep it experimental until benchmarked against UDS websocket."
