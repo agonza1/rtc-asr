@@ -120,6 +120,9 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
         "raw_uds_min_win_ms": 5.0,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": None,
     }
+    assert comparison["raw_uds_decision_summary"]["next_action"] == (
+        "Run the missing uds_ws benchmark before deciding on raw UDS."
+    )
     assert comparison["all_present_transports_protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is True
     assert comparison["recommendation"] == "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
@@ -661,6 +664,7 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
     assert comparison["raw_uds_decision_summary"] == {
         "status": "experimental",
         "reason": "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 5 ms.",
+        "next_action": "Keep raw UDS experimental unless a future benchmark clears the latency gate.",
         "primary_metric": "time_to_first_interim_ms",
         "comparison_baseline": "uds_ws",
         "observed_first_interim_p95_win_ms": 3.5,
@@ -866,6 +870,7 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
     assert comparison["raw_uds_decision_summary"] == {
         "status": "recommended",
         "reason": "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype.",
+        "next_action": "Proceed with the next raw UDS adapter prototype.",
         "primary_metric": "time_to_first_interim_ms",
         "comparison_baseline": "uds_ws",
         "observed_first_interim_p95_win_ms": 5.0,
