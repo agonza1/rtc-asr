@@ -315,7 +315,7 @@ def build_ready_message(
 def validate_audio_chunk(chunk: Any) -> bytes:
     if isinstance(chunk, str):
         raise LocalSttProtocolError(
-            "Audio frames must be sent as binary PCM16 websocket messages; Local STT v1 never base64-wraps audio",
+            "Audio frames must be sent as binary PCM16 transport payloads; Local STT v1 never base64-wraps audio",
             code="audio_must_be_binary",
         )
     if not isinstance(chunk, (bytes, bytearray, memoryview)):
