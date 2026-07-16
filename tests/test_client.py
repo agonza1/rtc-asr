@@ -578,6 +578,61 @@ def test_async_raw_uds_client_clears_connection_after_close_wait_failure() -> No
     asyncio.run(scenario())
 
 
+def test_async_raw_uds_client_clears_connection_after_bad_close_ack() -> None:
+    class ErrorAckReader:
+        def __init__(self) -> None:
+            self.frame = encode_raw_uds_json_frame(
+                RawUdsFrameType.ERROR,
+                {
+                    "type": "error",
+                    "code": "close_failed",
+                    "message": "close failed",
+                    "metadata": {},
+                },
+            )
+            self.offset = 0
+
+        async def readexactly(self, size: int) -> bytes:
+            chunk = self.frame[self.offset : self.offset + size]
+            self.offset += size
+            return chunk
+
+    class ClosingWriter:
+        def __init__(self) -> None:
+            self.closed = False
+            self.sent: list[bytes] = []
+
+        def write(self, data: bytes) -> None:
+            self.sent.append(data)
+
+        async def drain(self) -> None:
+            pass
+
+        def close(self) -> None:
+            self.closed = True
+
+        async def wait_closed(self) -> None:
+            pass
+
+    writer = ClosingWriter()
+
+    async def connect_fn(_path: str):
+        return ErrorAckReader(), writer
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=connect_fn)
+        await client.connect()
+
+        with pytest.raises(RuntimeError, match="Expected closed event"):
+            await client.close()
+
+        assert writer.closed is True
+        assert client._reader is None
+        assert client._writer is None
+
+    asyncio.run(scenario())
+
+
 def test_async_raw_uds_client_rejects_oversized_payload_before_body_read() -> None:
     class OversizedPayloadReader:
         def __init__(self) -> None:

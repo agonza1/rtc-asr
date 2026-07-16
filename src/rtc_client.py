@@ -504,21 +504,22 @@ class AsyncRawUdsLocalSttClient:
         if self._writer is None:
             return None
 
-        closed_event: dict[str, Any] | None = None
-        if graceful:
-            await self._send_client_message({"type": "close"})
-            closed_event = await self._recv_json(allow_error=True)
-            if closed_event.get("type") != "closed":
-                raise RuntimeError(f"Expected closed event, got: {closed_event}")
-
         writer = self._writer
+        closed_event: dict[str, Any] | None = None
         try:
-            writer.close()
-            await writer.wait_closed()
+            if graceful:
+                await self._send_client_message({"type": "close"})
+                closed_event = await self._recv_json(allow_error=True)
+                if closed_event.get("type") != "closed":
+                    raise RuntimeError(f"Expected closed event, got: {closed_event}")
+            return closed_event
         finally:
-            self._reader = None
-            self._writer = None
-        return closed_event
+            writer.close()
+            try:
+                await writer.wait_closed()
+            finally:
+                self._reader = None
+                self._writer = None
 
     async def _send_client_message(self, payload: dict[str, Any]) -> None:
         await self._send_bytes(encode_raw_uds_client_message(payload))
