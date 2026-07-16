@@ -1453,6 +1453,7 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
             "lifecycle": payload.get("lifecycle"),
             "error_handling": payload.get("error_handling"),
             "shared_stream_runtime": payload.get("shared_stream_runtime"),
+            "plugin_config": payload.get("plugin_config"),
         }
         for transport, payload in sorted(comparison.get("transports", {}).items())
     }
