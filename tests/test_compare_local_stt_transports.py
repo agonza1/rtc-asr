@@ -63,6 +63,7 @@ def write_artifact(
                                 "oversized_payload",
                             ],
                             "shared_stream_runtime": True,
+                            "plugin_config": {"transport": "raw_uds", "uds_path": "/tmp/stt.sock"},
                         }
                         if transport == "raw_uds"
                         else {}
@@ -560,6 +561,64 @@ def test_compare_artifacts_accepts_raw_uds_shared_runtime_from_benchmark_contrac
 
     assert comparison["raw_uds_runtime_gaps"] == []
     assert comparison["transports"]["raw_uds"]["shared_stream_runtime"] is True
+
+
+def test_compare_artifacts_requires_raw_uds_plugin_config_metadata(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("plugin_config")
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_plugin_config_gaps"] == ["raw_uds missing target.plugin_config"]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_plugin_config_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "plugin_config:raw_uds missing target.plugin_config"
+    ]
+    assert comparison["recommendation"] == (
+        "Re-run raw UDS benchmarks with plugin config target metadata before recommending raw UDS."
+    )
+
+
+def test_compare_artifacts_requires_raw_uds_plugin_config_to_match_target(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["plugin_config"] = {"transport": "websocket", "uds_path": "/tmp/other.sock"}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_plugin_config_gaps"] == [
+        "raw_uds missing target.plugin_config.transport=raw_uds",
+        "raw_uds target.plugin_config.uds_path must match target.uds_path",
+    ]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "plugin_config:raw_uds missing target.plugin_config.transport=raw_uds",
+        "plugin_config:raw_uds target.plugin_config.uds_path must match target.uds_path",
+    ]
+
+
+def test_compare_artifacts_accepts_raw_uds_plugin_config_from_benchmark_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("plugin_config")
+    raw_payload["target_contract"] = {"plugin_config": {"transport": "raw_uds", "uds_path": "/tmp/stt.sock"}}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_plugin_config_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["plugin_config"] == {
+        "transport": "raw_uds",
+        "uds_path": "/tmp/stt.sock",
+    }
 
 
 def test_compare_artifacts_requires_raw_uds_error_handling_coverage(tmp_path: Path) -> None:
