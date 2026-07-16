@@ -1452,6 +1452,7 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         "kind": "local-stt-v1-raw-uds-decision",
         "status": decision["status"],
         "reason": decision["reason"],
+        "next_action": decision["next_action"],
         "gate_passed": gate["passed"],
         "gate_blockers": gate["blockers"],
         "required_first_interim_p95_win_ms": decision["required_first_interim_p95_win_ms"],

@@ -1412,6 +1412,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
         "kind": "local-stt-v1-raw-uds-decision",
         "status": "recommended",
         "reason": "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype.",
+        "next_action": "Proceed with the next raw UDS adapter prototype.",
         "gate_passed": True,
         "gate_blockers": [],
         "required_first_interim_p95_win_ms": 5.0,
