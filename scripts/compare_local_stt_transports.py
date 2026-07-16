@@ -1453,8 +1453,11 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         "status": decision["status"],
         "reason": decision["reason"],
         "next_action": decision["next_action"],
+        "primary_metric": decision["primary_metric"],
+        "comparison_baseline": decision["comparison_baseline"],
         "gate_passed": gate["passed"],
         "gate_blockers": gate["blockers"],
+        "gate_blocker_count": decision["gate_blocker_count"],
         "required_first_interim_p95_win_ms": decision["required_first_interim_p95_win_ms"],
         "observed_first_interim_p95_win_ms": decision["observed_first_interim_p95_win_ms"],
         "observed_final_after_finalize_p95_delta_ms": decision[
