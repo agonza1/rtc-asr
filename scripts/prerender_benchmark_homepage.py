@@ -699,6 +699,27 @@ def detail_decision_summary(entry: dict[str, Any]) -> str:
     )
 
 
+def detail_readiness_note(entry: dict[str, Any]) -> str:
+    status = entry.get("status")
+    label = entry.get("label") or "This artifact"
+    warnings = entry.get("warnings") or {}
+    sample_count = entry.get("sample_count")
+    target_sample_count = entry.get("target_sample_count")
+    warning_total = warnings.get("received_total")
+
+    if status == "blocked":
+        return f"{label} is not ready for default selection until the blocked benchmark lane publishes a usable artifact."
+    if warning_total not in (None, 0) or warnings.get("codes"):
+        return f"{label} needs warning review before promotion because the artifact recorded stream warning telemetry."
+    if target_sample_count and (sample_count is None or float(sample_count) < float(target_sample_count)):
+        return f"{label} is useful evidence, but it should be refreshed to meet the {format_count(target_sample_count)} sample target before default selection."
+    if status == "legacy":
+        return f"{label} should stay as historical context; prefer a current Local STT v1 artifact for new comparisons."
+    if status == "validated":
+        return f"{label} is ready for comparison as checked-in validated benchmark evidence."
+    return f"{label} is supporting evidence; confirm status, sample coverage, and warning telemetry before using it as a default."
+
+
 def rss_delta_mb(system_signals: dict[str, Any]) -> float | None:
     process_rss = system_signals.get("process_rss_mb")
     peak_rss = system_signals.get("peak_rss_mb")
@@ -736,6 +757,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     technique = measurement_technique(entry)
     role = evidence_role(entry)
     decision_summary = detail_decision_summary(entry)
+    readiness_note = detail_readiness_note(entry)
     detail_href = Path(detail_page_path(entry)).name
     detail_url = absolute_site_url(site_base_url, f"benchmark-results/pages/{detail_href}")
     artifact_url = absolute_site_url(site_base_url, f"benchmark-results/{artifact_name}") if site_base_url and artifact_name else artifact_href
@@ -771,6 +793,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         "dateModified": article_modified_at,
         "citation": citation,
         "measurementTechnique": technique,
+        "conditionsOfAccess": readiness_note,
         "keywords": keywords,
         "variableMeasured": detail_variable_measured(system_signals, warnings),
         "isPartOf": {
@@ -885,6 +908,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
       <p>{html.escape(entry.get("status_detail") or "Checked-in benchmark artifact.")}</p>
       <div class="actions">
         <div class="card"><span class="label">Decision summary</span><div class="value">{html.escape(entry.get("status") or "unknown")}</div><p>{html.escape(decision_summary)}</p></div>
+        <div class="card"><span class="label">Readiness note</span><div class="value">{html.escape(entry.get("status") or "unknown")}</div><p>{html.escape(readiness_note)}</p></div>
         <div class="card"><span class="label">Lane</span><div class="value">{html.escape(entry.get("lane") or "unknown")}</div><p>{html.escape(entry.get("backend") or "unknown")} · {html.escape(entry.get("model") or "unknown")}</p></div>
         <div class="card"><span class="label">Runtime</span><div class="value">{html.escape(entry.get("runtime") or "unknown")}</div><p>Status: {html.escape(entry.get("status") or "unknown")} · Sample coverage: {html.escape(sample_coverage)}</p></div>
         <div class="card"><span class="label">Evidence role</span><div class="value">{html.escape(role)}</div><p>{html.escape(description)}</p></div>

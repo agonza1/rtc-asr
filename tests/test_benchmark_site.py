@@ -46,6 +46,7 @@ render_robots = prerender_module.render_robots
 render_llms = prerender_module.render_llms
 summarize_detail_page_drift = prerender_module.summarize_detail_page_drift
 warning_badge_text = prerender_module.warning_badge_text
+detail_readiness_note = prerender_module.detail_readiness_note
 
 RESULTS_DIR = Path("docs") / "benchmark-results"
 TRACKS_PATH = RESULTS_DIR / "tracks.json"
@@ -1331,6 +1332,46 @@ def test_detail_page_surfaces_decision_summary() -> None:
     assert "Decision summary" in detail_html
     assert detail_decision_summary(entry) in detail_html
     assert '"description": "Qwen MPS is comparable live evidence:' in detail_html
+
+
+def test_detail_page_surfaces_readiness_note() -> None:
+    validated_entry = {
+        "label": "Qwen MPS",
+        "status": "validated",
+        "artifact_path": "benchmark-results/qwen-mps-2026-06-21.json",
+        "sample_count": 10,
+        "target_sample_count": 10,
+        "rest": {},
+        "streaming": {},
+        "contract": {},
+        "derived": {},
+    }
+    warned_entry = {
+        **validated_entry,
+        "warnings": {"received_total": 2, "codes": ["late_partial"]},
+    }
+    short_entry = {
+        **validated_entry,
+        "sample_count": 4,
+        "target_sample_count": 10,
+    }
+    blocked_entry = {
+        **validated_entry,
+        "status": "blocked",
+    }
+
+    assert detail_readiness_note(validated_entry) == (
+        "Qwen MPS is ready for comparison as checked-in validated benchmark evidence."
+    )
+    assert "warning review before promotion" in detail_readiness_note(warned_entry)
+    assert "meet the 10 sample target" in detail_readiness_note(short_entry)
+    assert "not ready for default selection" in detail_readiness_note(blocked_entry)
+
+    detail_html = render_detail_page(validated_entry, None)
+
+    assert "Readiness note" in detail_html
+    assert detail_readiness_note(validated_entry) in detail_html
+    assert '"conditionsOfAccess": "Qwen MPS is ready for comparison' in detail_html
 
 
 def test_detail_page_measurement_technique_matches_streaming_contract() -> None:
