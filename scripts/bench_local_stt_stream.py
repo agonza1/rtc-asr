@@ -297,6 +297,8 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                 "frame_format": "uint8_type_uint32_len_le",
                 "plugin_config": {"transport": "raw_uds", "uds_path": uds_path},
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+                "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
+                "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "frame_types": list(frame_type_codes),
                 "frame_type_codes": frame_type_codes,
                 "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
