@@ -891,6 +891,8 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
         "frame_format": "uint8_type_uint32_len_le",
         "plugin_config": {"transport": "raw_uds", "uds_path": "/tmp/stt.raw.sock"},
         "frame_header_bytes": RAW_UDS_HEADER_BYTES,
+        "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
+        "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
         "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
         "frame_type_codes": {
             "JSON_CONTROL": 1,
