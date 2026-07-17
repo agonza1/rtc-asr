@@ -23,6 +23,8 @@ services:
       ASR_VAD_FILTER: ${ASR_VAD_FILTER:-true}
       LOCAL_STT_SOCKET_MODE: ${LOCAL_STT_SOCKET_MODE:-tcp}
       LOCAL_STT_UDS_PATH: ${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}
+      LOCAL_STT_RAW_UDS_ENABLED: ${LOCAL_STT_RAW_UDS_ENABLED:-false}
+      LOCAL_STT_RAW_UDS_PATH: ${LOCAL_STT_RAW_UDS_PATH:-/run/rtc-asr/stt.raw.sock}
       ASR_PRELOAD_MODEL: ${ASR_PRELOAD_MODEL:-false}
       ASR_QWEN_MODEL: ${ASR_QWEN_MODEL:-Qwen/Qwen3-ASR-0.6B}
       ASR_QWEN_DTYPE: ${ASR_QWEN_DTYPE:-auto}
@@ -64,6 +66,7 @@ services:
       RTC_ASR_MAX_BUFFER_SECONDS: ${RTC_ASR_MAX_BUFFER_SECONDS:-5}
       LOCAL_STT_TRANSPORT: ${LOCAL_STT_TRANSPORT:-tcp_ws}
       LOCAL_STT_UDS_PATH: ${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}
+      LOCAL_STT_RAW_UDS_PATH: ${LOCAL_STT_RAW_UDS_PATH:-/run/rtc-asr/stt.raw.sock}
     command: ["uvicorn", "examples.browser_pipecat_demo.service.app:app", "--host", "0.0.0.0", "--port", "8090"]
     ports:
       - "${PIPECAT_DEMO_PORT:-8090}:8090"

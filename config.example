@@ -13,6 +13,9 @@ LOCAL_STT_TARGET_SAMPLE_RATE=16000
 # TCP websocket remains the default. Use uds only for colocated sidecar benchmarks/deployments.
 LOCAL_STT_SOCKET_MODE=tcp
 LOCAL_STT_UDS_PATH=/run/rtc-asr/stt.sock
+# Experimental raw UDS framing remains opt-in until benchmarked against UDS websocket.
+LOCAL_STT_RAW_UDS_ENABLED=false
+LOCAL_STT_RAW_UDS_PATH=/run/rtc-asr/stt.raw.sock
 
 # ASR Backend Settings
 ASR_BACKEND=faster-whisper

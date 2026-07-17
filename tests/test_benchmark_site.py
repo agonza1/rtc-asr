@@ -1215,6 +1215,8 @@ def test_container_files_keep_uds_runtime_path_writable_and_healthchecked() -> N
     assert '--unix-socket "${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}"' in dockerfile_text
     assert "LOCAL_STT_SOCKET_MODE: ${LOCAL_STT_SOCKET_MODE:-tcp}" in compose_text
     assert "LOCAL_STT_UDS_PATH: ${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}" in compose_text
+    assert "LOCAL_STT_RAW_UDS_ENABLED: ${LOCAL_STT_RAW_UDS_ENABLED:-false}" in compose_text
+    assert "LOCAL_STT_RAW_UDS_PATH: ${LOCAL_STT_RAW_UDS_PATH:-/run/rtc-asr/stt.raw.sock}" in compose_text
     assert "LOCAL_STT_TRANSPORT: ${LOCAL_STT_TRANSPORT:-tcp_ws}" in compose_text
     assert compose_text.count("rtc_asr_socket:/run/rtc-asr") == 2
     assert "--unix-socket" in compose_text
