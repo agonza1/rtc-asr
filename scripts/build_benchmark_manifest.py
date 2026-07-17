@@ -276,7 +276,24 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     )
     if final_event_timeout_seconds is not None:
         contract["final_event_timeout_seconds"] = final_event_timeout_seconds
+    experimental_transports = extract_experimental_transports(payload)
+    if experimental_transports:
+        contract["experimental_transports"] = experimental_transports
     return contract
+
+
+def extract_experimental_transports(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    service = payload.get("service")
+    if not isinstance(service, dict):
+        return []
+    transports: list[dict[str, Any]] = []
+    for protocol in service.get("protocols") or []:
+        if not isinstance(protocol, dict):
+            continue
+        for transport in protocol.get("experimental_transports") or []:
+            if isinstance(transport, dict) and transport.get("transport"):
+                transports.append(dict(transport))
+    return transports
 
 
 def target_path(url: Any) -> str | None:
@@ -1041,6 +1058,7 @@ def build_transport_coverage_summary(entries: list[dict[str, Any]]) -> dict[str,
     by_path: dict[str, int] = {}
     comparable_local_stt_entries = 0
     raw_uds_entries = 0
+    raw_uds_catalog_entries = 0
     for entry in entries:
         contract = entry.get("contract") or {}
         streaming = entry.get("streaming") or {}
@@ -1052,6 +1070,11 @@ def build_transport_coverage_summary(entries: list[dict[str, Any]]) -> dict[str,
             comparable_local_stt_entries += 1
         if transport == "raw_uds" or path == "raw_uds":
             raw_uds_entries += 1
+        if any(
+            isinstance(candidate, dict) and candidate.get("transport") == "raw_uds"
+            for candidate in contract.get("experimental_transports") or []
+        ):
+            raw_uds_catalog_entries += 1
 
     return {
         "artifact_count": len(entries),
@@ -1059,6 +1082,7 @@ def build_transport_coverage_summary(entries: list[dict[str, Any]]) -> dict[str,
         "by_path": dict(sorted(by_path.items())),
         "comparable_local_stt_artifact_count": comparable_local_stt_entries,
         "raw_uds_artifact_count": raw_uds_entries,
+        "raw_uds_catalog_artifact_count": raw_uds_catalog_entries,
     }
 
 
