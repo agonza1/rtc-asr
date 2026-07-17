@@ -2,10 +2,35 @@
 
 `rtc-asr` is a lightweight FastAPI service for benchmarking and serving ASR over REST or WebSocket. This can be used for real time and on demand caption generation or transcription. It is optimized for warmed, local or on-device inference paths, especially low-power and average CPU, Apple Silicon, and small accelerator setups. The core contract stays stable while you swap ASR backends underneath it, which makes it useful as a thin speech layer in RTC stacks, voice agents, and local benchmarking.
 
+An open-source project from [WebRTC.ventures](https://webrtc.ventures/).
+
 The service currently supports `faster-whisper`, `qwen-asr`, `parakeet`, `parakeet-mlx`, `parakeet-nemo`, and experimental `voxtral` backends behind the same API surface.
 
 ![rtc-asr local ASR architecture](https://github.com/user-attachments/assets/92bd3aff-2a7a-469e-b7ec-4da7f3640996)
 
+
+## WebRTC.ventures voice-agent reliability projects
+
+This project is part of the [WebRTC.ventures](https://webrtc.ventures/) open-source voice-agent reliability initiative. The projects remain independently usable and integrate through explicit adapters and evidence contracts:
+
+- [ConversationAgentEvals](https://github.com/agonza1/ConversationAgentEvals) orchestrates tests, normalizes evidence, and reports regressions.
+- [Agentic Contact Center](https://github.com/agonza1/agentic-contact-center) is the reference voice-agent target and demonstration.
+- [rtc-asr](https://github.com/agonza1/rtc-asr) provides optional local streaming speech-to-text and reproducible ASR benchmarks.
+- [ASSERT](https://github.com/responsibleai/ASSERT) remains the upstream evaluation engine.
+
+```mermaid
+flowchart LR
+  CAE["ConversationAgentEvals<br/>Test orchestration + evidence"]
+  ACC["Agentic Contact Center<br/>Reference target"]
+  ASR["rtc-asr<br/>Optional local STT"]
+  ASSERT["ASSERT<br/>Evaluation engine"]
+
+  CAE -->|"test scenarios"| ACC
+  ACC -->|"proof bundle"| CAE
+  ACC -->|"audio"| ASR
+  ASR -->|"transcripts"| ACC
+  CAE -->|"canonical evaluation"| ASSERT
+```
 
 ## What It Ships Today
 
@@ -276,3 +301,7 @@ Reference docs:
 - [Browser Pipecat Demo](./examples/browser_pipecat_demo/README.md)
 - [LiveKit Integration](./docs/livekit-integration.md)
 - [Troubleshooting](./docs/troubleshooting.md)
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
