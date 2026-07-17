@@ -65,6 +65,7 @@ RAW_UDS_REQUIRED_ERROR_HANDLING = (
     "malformed_json_control",
     "oversized_payload",
     "incomplete_frame",
+    "frame_length_mismatch",
 )
 RAW_UDS_REQUIRED_START_CONTROL_PAYLOAD = {
     "type": "start",

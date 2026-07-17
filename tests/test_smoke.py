@@ -89,12 +89,14 @@ DEFAULT_PROTOCOLS = [
                     "malformed_json_control",
                     "oversized_payload",
                     "incomplete_frame",
+                    "frame_length_mismatch",
                 ],
                 "error_codes": [
                     "raw_uds_unsupported_frame_type",
                     "raw_uds_malformed_json_control",
                     "raw_uds_payload_too_large",
                     "raw_uds_incomplete_frame",
+                    "raw_uds_frame_length_mismatch",
                 ],
                 "shared_stream_runtime": True,
                 "benchmark_metrics": [
@@ -461,12 +463,14 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
         "malformed_json_control",
         "oversized_payload",
         "incomplete_frame",
+        "frame_length_mismatch",
     ]
     assert raw_uds["error_codes"] == [
         "raw_uds_unsupported_frame_type",
         "raw_uds_malformed_json_control",
         "raw_uds_payload_too_large",
         "raw_uds_incomplete_frame",
+        "raw_uds_frame_length_mismatch",
     ]
     assert raw_uds["frame_type_codes"] == {
         "JSON_CONTROL": 1,
