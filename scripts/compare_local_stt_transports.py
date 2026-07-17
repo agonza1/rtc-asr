@@ -990,7 +990,12 @@ def compare_artifacts(
         target_contract = normalized_target_contract(artifact)
         protocol_error_codes = extract_diagnostic_code_counts(artifact, "protocol_error_codes")
         warning_codes = extract_diagnostic_code_counts(artifact, "warning_codes")
-        target_lifecycle = artifact["target"].get("lifecycle") or target_contract.get("lifecycle")
+        target_semantic_lifecycle = artifact["target"].get("semantic_lifecycle") or target_contract.get("semantic_lifecycle")
+        target_lifecycle = (
+            artifact["target"].get("lifecycle")
+            or target_contract.get("lifecycle")
+            or target_semantic_lifecycle
+        )
         target_frame_types = artifact["target"].get("frame_types") or target_contract.get("frame_types")
         target_frame_type_codes = artifact["target"].get("frame_type_codes") or target_contract.get("frame_type_codes")
         target_error_handling = artifact["target"].get("error_handling") or target_contract.get("error_handling")
@@ -1018,6 +1023,7 @@ def compare_artifacts(
             "frame_types": target_frame_types,
             "frame_type_codes": target_frame_type_codes,
             "lifecycle": target_lifecycle,
+            "semantic_lifecycle": target_semantic_lifecycle,
             "error_handling": target_error_handling,
             "shared_stream_runtime": shared_stream_runtime,
             "plugin_config": target_plugin_config,
@@ -1530,12 +1536,16 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
             "frame_types": payload.get("frame_types"),
             "frame_type_codes": payload.get("frame_type_codes"),
             "lifecycle": payload.get("lifecycle"),
+            "semantic_lifecycle": payload.get("semantic_lifecycle"),
             "error_handling": payload.get("error_handling"),
             "shared_stream_runtime": payload.get("shared_stream_runtime"),
             "plugin_config": payload.get("plugin_config"),
         }
         for transport, payload in sorted(comparison.get("transports", {}).items())
     }
+    for target in required_target_snapshot.values():
+        if target.get("semantic_lifecycle") is None:
+            target.pop("semantic_lifecycle", None)
     required_metric_snapshot = {
         transport: {
             "time_to_first_interim_ms_p95": payload.get("metrics_p95", {}).get("time_to_first_interim_ms"),
