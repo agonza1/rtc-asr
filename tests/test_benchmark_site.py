@@ -20,6 +20,7 @@ build_transport_coverage_summary = manifest_module.build_transport_coverage_summ
 build_warning_summary = manifest_module.build_warning_summary
 comparable_manifest = manifest_module.comparable_manifest
 extract_system_signals = manifest_module.extract_system_signals
+extract_experimental_transports = manifest_module.extract_experimental_transports
 render_manifest = manifest_module.render_manifest
 
 PRERENDER_MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prerender_benchmark_homepage.py"
@@ -391,16 +392,47 @@ def test_transport_coverage_summary_counts_paths_and_transports() -> None:
         {"contract": {"transport": "tcp_ws", "path": "/v1/stt/stream"}, "streaming": {"live_metrics_comparable": True}},
         {"contract": {"path": "/ws/stream"}, "streaming": {"transport": "direct", "live_metrics_comparable": False}},
         {"contract": {"transport": "raw_uds", "path": "raw_uds"}, "streaming": {"live_metrics_comparable": True}},
+        {"contract": {"experimental_transports": [{"transport": "raw_uds", "status": "codec_only"}]}, "streaming": {}},
         {"contract": {}, "streaming": {}},
     ]
 
     assert build_transport_coverage_summary(entries) == {
-        "artifact_count": 5,
-        "by_transport": {"direct": 1, "raw_uds": 1, "tcp_ws": 1, "unknown": 1, "v1-stt-stream": 1},
-        "by_path": {"/v1/stt/stream": 2, "/ws/stream": 1, "raw_uds": 1, "unknown": 1},
+        "artifact_count": 6,
+        "by_transport": {"direct": 1, "raw_uds": 1, "tcp_ws": 1, "unknown": 2, "v1-stt-stream": 1},
+        "by_path": {"/v1/stt/stream": 2, "/ws/stream": 1, "raw_uds": 1, "unknown": 2},
         "comparable_local_stt_artifact_count": 2,
         "raw_uds_artifact_count": 1,
+        "raw_uds_catalog_artifact_count": 1,
     }
+
+
+def test_extract_experimental_transports_from_service_protocol_catalog() -> None:
+    transports = extract_experimental_transports(
+        {
+            "service": {
+                "protocols": [
+                    {
+                        "id": "local-stt.v1",
+                        "experimental_transports": [
+                            {
+                                "transport": "raw_uds",
+                                "status": "codec_only",
+                                "frame_header_bytes": 5,
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+    )
+
+    assert transports == [
+        {
+            "transport": "raw_uds",
+            "status": "codec_only",
+            "frame_header_bytes": 5,
+        }
+    ]
 
 
 def test_manifest_summarizes_transport_coverage() -> None:
@@ -413,6 +445,7 @@ def test_manifest_summarizes_transport_coverage() -> None:
     assert coverage["by_path"]["unknown"] == 11
     assert coverage["comparable_local_stt_artifact_count"] == 8
     assert coverage["raw_uds_artifact_count"] == 0
+    assert coverage["raw_uds_catalog_artifact_count"] == 1
 
 
 def test_manifest_summarizes_sample_coverage_readiness() -> None:

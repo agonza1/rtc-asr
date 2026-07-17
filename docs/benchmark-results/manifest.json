@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-14T19:12:08Z",
+  "generated_at": "2026-07-17T05:42:14Z",
   "summary": {
     "asr_count": 9,
     "tracked_count": 9,
@@ -69,7 +69,8 @@
         "unknown": 11
       },
       "comparable_local_stt_artifact_count": 8,
-      "raw_uds_artifact_count": 0
+      "raw_uds_artifact_count": 0,
+      "raw_uds_catalog_artifact_count": 1
     },
     "warnings": {
       "artifact_count": 23,
@@ -924,7 +925,24 @@
         "partial_interval_ms": 100,
         "simulate_realtime": true,
         "partial_event_timeout_seconds": 0.1,
-        "final_event_timeout_seconds": 10.0
+        "final_event_timeout_seconds": 10.0,
+        "experimental_transports": [
+          {
+            "transport": "raw_uds",
+            "status": "codec_only",
+            "frame_header_bytes": 5,
+            "max_payload_bytes": 8388608,
+            "frame_types": {
+              "json_control": 1,
+              "audio_pcm16": 2,
+              "json_event": 3,
+              "error": 4,
+              "ping": 5,
+              "pong": 6
+            },
+            "notes": "Raw UDS framing is available as a tested codec for latency experiments; it is not a served transport yet."
+          }
+        ]
       },
       "rest": {
         "mean_ms": 7342.6,
@@ -1111,7 +1129,24 @@
         "partial_interval_ms": 100,
         "simulate_realtime": true,
         "partial_event_timeout_seconds": 0.1,
-        "final_event_timeout_seconds": 10.0
+        "final_event_timeout_seconds": 10.0,
+        "experimental_transports": [
+          {
+            "transport": "raw_uds",
+            "status": "codec_only",
+            "frame_header_bytes": 5,
+            "max_payload_bytes": 8388608,
+            "frame_types": {
+              "json_control": 1,
+              "audio_pcm16": 2,
+              "json_event": 3,
+              "error": 4,
+              "ping": 5,
+              "pong": 6
+            },
+            "notes": "Raw UDS framing is available as a tested codec for latency experiments; it is not a served transport yet."
+          }
+        ]
       },
       "rest": {
         "mean_ms": 7342.6,
@@ -4077,7 +4112,24 @@
         "partial_interval_ms": 100,
         "simulate_realtime": true,
         "partial_event_timeout_seconds": 0.1,
-        "final_event_timeout_seconds": 10.0
+        "final_event_timeout_seconds": 10.0,
+        "experimental_transports": [
+          {
+            "transport": "raw_uds",
+            "status": "codec_only",
+            "frame_header_bytes": 5,
+            "max_payload_bytes": 8388608,
+            "frame_types": {
+              "json_control": 1,
+              "audio_pcm16": 2,
+              "json_event": 3,
+              "error": 4,
+              "ping": 5,
+              "pong": 6
+            },
+            "notes": "Raw UDS framing is available as a tested codec for latency experiments; it is not a served transport yet."
+          }
+        ]
       },
       "rest": {
         "mean_ms": 7342.6,
