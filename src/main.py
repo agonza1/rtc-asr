@@ -182,6 +182,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "bad_frame_type",
                         "malformed_json_control",
                         "oversized_payload",
+                        "incomplete_frame",
                     ],
                     "error_codes": [
                         "raw_uds_unsupported_frame_type",

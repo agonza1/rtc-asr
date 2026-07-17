@@ -88,6 +88,7 @@ DEFAULT_PROTOCOLS = [
                     "bad_frame_type",
                     "malformed_json_control",
                     "oversized_payload",
+                    "incomplete_frame",
                 ],
                 "error_codes": [
                     "raw_uds_unsupported_frame_type",
@@ -454,7 +455,12 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
     assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
     assert raw_uds["lifecycle"] == ["start", "audio", "transcript", "finalize", "cancel", "close"]
-    assert raw_uds["error_handling"] == ["bad_frame_type", "malformed_json_control", "oversized_payload"]
+    assert raw_uds["error_handling"] == [
+        "bad_frame_type",
+        "malformed_json_control",
+        "oversized_payload",
+        "incomplete_frame",
+    ]
     assert raw_uds["frame_type_codes"] == {
         "JSON_CONTROL": 1,
         "AUDIO_PCM16": 2,
