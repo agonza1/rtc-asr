@@ -1215,6 +1215,7 @@ def comparison_has_blocking_gaps(
         or comparison.get("raw_uds_error_handling_gaps")
         or comparison.get("raw_uds_runtime_gaps")
         or comparison.get("raw_uds_plugin_config_gaps")
+        or comparison.get("raw_uds_start_payload_gaps")
         or comparison.get("benchmark_input_gaps")
         or not comparison["all_present_transports_protocol_error_free"]
         or (require_raw_uds_recommendation and comparison["raw_uds_should_remain_experimental"])
