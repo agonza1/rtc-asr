@@ -807,6 +807,11 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
             "partial_interval_ms": 100,
         },
         "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+        "error_codes": [
+            "raw_uds_unsupported_frame_type",
+            "raw_uds_malformed_json_control",
+            "raw_uds_payload_too_large",
+        ],
         "shared_stream_runtime": True,
         "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
         "latency_win_threshold_ms": 5.0,
@@ -922,6 +927,11 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
             "partial_interval_ms": 100,
         },
         "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+        "error_codes": [
+            "raw_uds_unsupported_frame_type",
+            "raw_uds_malformed_json_control",
+            "raw_uds_payload_too_large",
+        ],
         "shared_stream_runtime": True,
         "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
         "latency_win_threshold_ms": 5.0,

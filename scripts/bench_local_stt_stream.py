@@ -268,6 +268,11 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
                 "partial_interval_ms": 100,
             },
             "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+            "error_codes": [
+                "raw_uds_unsupported_frame_type",
+                "raw_uds_malformed_json_control",
+                "raw_uds_payload_too_large",
+            ],
             "shared_stream_runtime": True,
             "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
             "latency_win_threshold_ms": 5.0,
@@ -321,6 +326,11 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                     "partial_interval_ms": 100,
                 },
                 "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
+                "error_codes": [
+                    "raw_uds_unsupported_frame_type",
+                    "raw_uds_malformed_json_control",
+                    "raw_uds_payload_too_large",
+                ],
                 "shared_stream_runtime": True,
                 "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                 "latency_win_threshold_ms": 5.0,

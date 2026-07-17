@@ -89,6 +89,11 @@ DEFAULT_PROTOCOLS = [
                     "malformed_json_control",
                     "oversized_payload",
                 ],
+                "error_codes": [
+                    "raw_uds_unsupported_frame_type",
+                    "raw_uds_malformed_json_control",
+                    "raw_uds_payload_too_large",
+                ],
                 "shared_stream_runtime": True,
                 "benchmark_metrics": [
                     "time_to_first_interim_ms",
