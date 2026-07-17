@@ -751,6 +751,26 @@ def test_compare_artifacts_accepts_raw_uds_plugin_config_from_benchmark_contract
     }
 
 
+def test_compare_artifacts_accepts_raw_uds_plugin_config_socket_placeholders(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("plugin_config")
+    raw_payload["target_contract"] = {
+        "plugin_config": {"transport": "raw_uds", "uds_path": "<LOCAL_STT_RAW_UDS_PATH>"}
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_plugin_config_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["plugin_config"] == {
+        "transport": "raw_uds",
+        "uds_path": "<LOCAL_STT_RAW_UDS_PATH>",
+    }
+
+
 def test_compare_artifacts_requires_raw_uds_error_handling_coverage(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)

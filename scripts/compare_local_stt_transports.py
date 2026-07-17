@@ -450,7 +450,13 @@ def raw_uds_plugin_config_gaps(transports: dict[str, dict[str, Any]]) -> list[st
     gaps: list[str] = []
     if plugin_config.get("transport") != "raw_uds":
         gaps.append("raw_uds missing target.plugin_config.transport=raw_uds")
-    if raw_uds.get("uds_path") and plugin_config.get("uds_path") != raw_uds.get("uds_path"):
+    plugin_uds_path = plugin_config.get("uds_path")
+    if raw_uds.get("uds_path") and plugin_uds_path not in {
+        raw_uds.get("uds_path"),
+        "<LOCAL_STT_RAW_UDS_PATH>",
+        "<uds_path>",
+        "<socket>",
+    }:
         gaps.append("raw_uds target.plugin_config.uds_path must match target.uds_path")
     return gaps
 
