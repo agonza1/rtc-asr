@@ -414,6 +414,8 @@ class AsyncRawUdsLocalSttClient:
     async def connect(self) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
         if self._reader is not None and self._writer is not None:
             return self._reader, self._writer
+        if not self.uds_path.strip():
+            raise ValueError("uds_path is required for raw_uds transport")
         connect_fn = self._connect_fn or _default_raw_uds_connect
         self._reader, self._writer = await connect_fn(self.uds_path)
         return self._reader, self._writer

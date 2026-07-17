@@ -375,6 +375,18 @@ def test_local_stt_config_requires_socket_transport_path() -> None:
         LocalSTTConfig(transport="raw_uds")
 
 
+def test_async_raw_uds_client_rejects_blank_socket_path_without_connecting() -> None:
+    async def fail_connect(_path: str):
+        raise AssertionError("blank raw UDS path should not reach the connector")
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("  ", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match="uds_path is required for raw_uds transport"):
+            await client.connect()
+
+    asyncio.run(scenario())
+
+
 def test_local_stt_config_from_env_selects_raw_uds(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_STT_TRANSPORT", "raw_uds")
     monkeypatch.setenv("LOCAL_STT_URL", "ws://example.test/ignored")
