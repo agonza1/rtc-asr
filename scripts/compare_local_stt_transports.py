@@ -189,9 +189,18 @@ def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
     return None if value is None else float(value)
 
 
+DIAGNOSTIC_CODE_ALIASES = {
+    "protocol_error_codes": ("protocol_errors_by_code", "protocol_error_counts"),
+    "warning_codes": ("warnings_by_code", "warning_counts"),
+}
+
+
 def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[str, int]:
     diagnostics = artifact.get("diagnostics") if isinstance(artifact.get("diagnostics"), dict) else {}
-    values = diagnostics.get(key)
+    values = first_defined(
+        diagnostics.get(key),
+        *(diagnostics.get(alias) for alias in DIAGNOSTIC_CODE_ALIASES.get(key, ())),
+    )
     if not isinstance(values, dict):
         return {}
     counts: dict[str, int] = {}
