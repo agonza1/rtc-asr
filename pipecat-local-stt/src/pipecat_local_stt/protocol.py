@@ -29,6 +29,51 @@ class RawUdsFrame:
     payload: bytes
 
 
+@dataclass(slots=True)
+class RawUdsFrameDecoder:
+    """Incrementally decode length-prefixed Raw UDS frames from socket chunks."""
+
+    _buffer: bytearray = field(default_factory=bytearray)
+
+    def feed(self, data: bytes | bytearray | memoryview) -> list[RawUdsFrame]:
+        chunk = bytes(data)
+        if not chunk:
+            return []
+        self._buffer.extend(chunk)
+
+        frames: list[RawUdsFrame] = []
+        while len(self._buffer) >= RAW_UDS_HEADER_BYTES:
+            frame_type = _parse_raw_uds_frame_type(self._buffer[0])
+            payload_len = int.from_bytes(self._buffer[1:RAW_UDS_HEADER_BYTES], "little")
+            if payload_len > RAW_UDS_MAX_PAYLOAD_BYTES:
+                self._buffer.clear()
+                raise LocalSTTProtocolError(
+                    f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+                    code="raw_uds_payload_too_large",
+                )
+            frame_len = RAW_UDS_HEADER_BYTES + payload_len
+            if len(self._buffer) < frame_len:
+                break
+            payload = bytes(self._buffer[RAW_UDS_HEADER_BYTES:frame_len])
+            del self._buffer[:frame_len]
+            frames.append(RawUdsFrame(frame_type=frame_type, payload=payload))
+        return frames
+
+    @property
+    def buffered_bytes(self) -> int:
+        return len(self._buffer)
+
+    def finish(self) -> None:
+        if not self._buffer:
+            return
+        buffered = len(self._buffer)
+        self._buffer.clear()
+        raise LocalSTTProtocolError(
+            f"Raw UDS stream ended with {buffered} buffered frame bytes",
+            code="raw_uds_incomplete_frame",
+        )
+
+
 def encode_raw_uds_frame(frame_type: RawUdsFrameType, payload: bytes) -> bytes:
     if len(payload) > RAW_UDS_MAX_PAYLOAD_BYTES:
         raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
@@ -53,10 +98,7 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, An
 def decode_raw_uds_frame(data: bytes) -> RawUdsFrame:
     if len(data) < RAW_UDS_HEADER_BYTES:
         raise LocalSTTProtocolError("Raw UDS frame is missing its header")
-    try:
-        frame_type = RawUdsFrameType(data[0])
-    except ValueError as exc:
-        raise LocalSTTProtocolError(f"Unsupported Raw UDS frame type: {data[0]}") from exc
+    frame_type = _parse_raw_uds_frame_type(data[0])
     payload_len = int.from_bytes(data[1:RAW_UDS_HEADER_BYTES], "little")
     if payload_len > RAW_UDS_MAX_PAYLOAD_BYTES:
         raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
@@ -95,6 +137,16 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> dict[str, Any]:
         f"Raw UDS frame type {frame.frame_type.name} is not a server frame",
         code="raw_uds_invalid_server_frame_type",
     )
+
+
+def _parse_raw_uds_frame_type(frame_type: RawUdsFrameType | int) -> RawUdsFrameType:
+    try:
+        return frame_type if isinstance(frame_type, RawUdsFrameType) else RawUdsFrameType(int(frame_type))
+    except (TypeError, ValueError) as exc:
+        raise LocalSTTProtocolError(
+            f"Unsupported Raw UDS frame type: {frame_type}",
+            code="raw_uds_unsupported_frame_type",
+        ) from exc
 
 
 @dataclass(slots=True)
