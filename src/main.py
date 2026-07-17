@@ -25,8 +25,10 @@ from .config import AppConfig
 from .model_loader import ASRUnavailableError, Transcriber, build_transcriber
 from .protocols import (
     HOT_PATH_BYTES_PER_FRAME,
+    HOT_PATH_CHANNELS,
     HOT_PATH_FRAME_MS,
     HOT_PATH_PCM_FORMAT,
+    HOT_PATH_SAMPLE_RATE,
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
     PROTOCOL_VERSION,
@@ -167,6 +169,15 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                     "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                     "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+                    "start_control_payload": {
+                        "type": "start",
+                        "protocol": "local-stt-v1",
+                        "sample_rate": HOT_PATH_SAMPLE_RATE,
+                        "channels": HOT_PATH_CHANNELS,
+                        "format": HOT_PATH_PCM_FORMAT,
+                        "frame_ms": HOT_PATH_FRAME_MS,
+                        "partial_interval_ms": 100,
+                    },
                     "error_handling": [
                         "bad_frame_type",
                         "malformed_json_control",

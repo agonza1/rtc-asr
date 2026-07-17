@@ -116,6 +116,15 @@ DEFAULT_PROTOCOLS = [
                     "PING": 5,
                     "PONG": 6,
                 },
+                "start_control_payload": {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                    "partial_interval_ms": 100,
+                },
                 "notes": "Raw UDS framing is available as a tested codec for latency experiments; enable LOCAL_STT_RAW_UDS_ENABLED=true to serve it.",
             }
         ],
@@ -448,6 +457,15 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
         "ERROR": 4,
         "PING": 5,
         "PONG": 6,
+    }
+    assert raw_uds["start_control_payload"] == {
+        "type": "start",
+        "protocol": "local-stt-v1",
+        "sample_rate": HOT_PATH_SAMPLE_RATE,
+        "channels": HOT_PATH_CHANNELS,
+        "format": HOT_PATH_PCM_FORMAT,
+        "frame_ms": HOT_PATH_FRAME_MS,
+        "partial_interval_ms": 100,
     }
     assert raw_uds["shared_stream_runtime"] is True
     assert raw_uds["latency_win_threshold_ms"] == 5.0

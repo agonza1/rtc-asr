@@ -797,6 +797,15 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
             "PONG": 6,
         },
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+        "start_control_payload": {
+            "type": "start",
+            "protocol": "local-stt-v1",
+            "sample_rate": 16000,
+            "channels": 1,
+            "format": "pcm_s16le",
+            "frame_ms": 20,
+            "partial_interval_ms": 100,
+        },
         "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
         "shared_stream_runtime": True,
         "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
@@ -903,6 +912,15 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
             "PONG": 6,
         },
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+        "start_control_payload": {
+            "type": "start",
+            "protocol": "local-stt-v1",
+            "sample_rate": 16000,
+            "channels": 1,
+            "format": "pcm_s16le",
+            "frame_ms": 20,
+            "partial_interval_ms": 100,
+        },
         "error_handling": ["bad_frame_type", "malformed_json_control", "oversized_payload"],
         "shared_stream_runtime": True,
         "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
@@ -918,6 +936,15 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
     assert payload["target_contract"]["frame_format"] == "uint8_type_uint32_len_le"
     assert payload["target_contract"]["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
     assert payload["target_contract"]["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
+    assert payload["target_contract"]["start_control_payload"] == {
+        "type": "start",
+        "protocol": "local-stt-v1",
+        "sample_rate": 16000,
+        "channels": 1,
+        "format": "pcm_s16le",
+        "frame_ms": 20,
+        "partial_interval_ms": 100,
+    }
 
 
 def test_run_benchmark_requires_uds_path_for_uds_ws_even_with_injected_client() -> None:
