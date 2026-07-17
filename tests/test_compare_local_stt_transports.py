@@ -1285,6 +1285,28 @@ def test_compare_artifacts_preserves_diagnostic_code_counts(tmp_path: Path) -> N
     }
 
 
+def test_compare_artifacts_accepts_diagnostic_code_aliases(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["diagnostics"] = {
+        "protocol_errors_by_code": {"raw_uds_invalid_json": 2},
+        "warnings_by_code": {"late_partial": "1"},
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["transports"]["raw_uds"]["diagnostics"] == {
+        "protocol_error_codes": {"raw_uds_invalid_json": 2},
+        "protocol_error_total": 2,
+        "warning_codes": {"late_partial": 1},
+        "warning_total": 1,
+    }
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == ["protocol_errors"]
+
+
 def test_compare_artifacts_blocks_diagnostic_protocol_error_codes(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
