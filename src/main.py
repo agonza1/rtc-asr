@@ -991,26 +991,33 @@ async def _send_queued_raw_uds_events(writer: asyncio.StreamWriter, runtime: Str
 async def _receive_raw_uds_event(reader: asyncio.StreamReader) -> tuple[object, str]:
     try:
         header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
-        frame_type = header[0]
-        if frame_type not in RAW_UDS_FRAME_TYPE_VALUES:
-            raise LocalSttProtocolError(
-                f"Unsupported Raw UDS frame type: {frame_type}",
-                code="raw_uds_unsupported_frame_type",
-            )
-        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
-        if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
-            raise LocalSttProtocolError(
-                f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
-                code="raw_uds_payload_too_large",
-            )
-        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
     except asyncio.IncompleteReadError as exc:
         if not exc.partial:
             raise RawUdsClientDisconnected() from exc
         raise LocalSttProtocolError(
-            "Raw UDS stream ended while reading frame payload",
+            f"Raw UDS stream ended while reading frame header; received {len(exc.partial)} of {RAW_UDS_HEADER_BYTES} bytes",
             code="raw_uds_incomplete_frame",
         ) from exc
+    frame_type = header[0]
+    if frame_type not in RAW_UDS_FRAME_TYPE_VALUES:
+        raise LocalSttProtocolError(
+            f"Unsupported Raw UDS frame type: {frame_type}",
+            code="raw_uds_unsupported_frame_type",
+        )
+    payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+    if payload_length > RAW_UDS_MAX_PAYLOAD_BYTES:
+        raise LocalSttProtocolError(
+            f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+            code="raw_uds_payload_too_large",
+        )
+    try:
+        frame_payload = await reader.readexactly(payload_length)
+    except asyncio.IncompleteReadError as exc:
+        raise LocalSttProtocolError(
+            f"Raw UDS stream ended while reading frame payload; received {len(exc.partial)} of {payload_length} bytes",
+            code="raw_uds_incomplete_frame",
+        ) from exc
+    frame = decode_raw_uds_frame(header + frame_payload)
 
     payload = parse_raw_uds_client_frame(frame)
     if isinstance(payload, bytes):

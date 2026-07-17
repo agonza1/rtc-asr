@@ -16,6 +16,7 @@ from src.config import AppConfig
 from src.main import (
     StreamSession,
     _prepare_uds_socket,
+    _receive_raw_uds_event,
     _receive_stream_event,
     _seconds_to_buffer_bytes,
     create_app,
@@ -31,6 +32,7 @@ from src.protocols.local_stt_v1 import (
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
     PROTOCOL_VERSION,
+    LocalSttProtocolError,
     decode_raw_uds_frame,
     parse_raw_uds_server_frame,
     parse_server_message,
@@ -732,6 +734,41 @@ def test_raw_uds_rejects_oversized_payload_before_waiting_for_body(tmp_path: Pat
     assert error["code"] == "raw_uds_payload_too_large"
     assert health.status_code == 200
     assert health.json()["ready"] is True
+
+
+def test_raw_uds_receive_reports_incomplete_header_and_payload() -> None:
+    class PartialRawUdsReader:
+        def __init__(self, chunks: list[bytes | BaseException]) -> None:
+            self.chunks = chunks
+
+        async def readexactly(self, _size: int) -> bytes:
+            chunk = self.chunks.pop(0)
+            if isinstance(chunk, BaseException):
+                raise chunk
+            return chunk
+
+    async def scenario() -> None:
+        header_reader = PartialRawUdsReader(
+            [asyncio.IncompleteReadError(partial=b"\x01\x04", expected=RAW_UDS_HEADER_BYTES)]
+        )
+        with pytest.raises(LocalSttProtocolError) as header_exc:
+            await _receive_raw_uds_event(header_reader)  # type: ignore[arg-type]
+
+        payload_reader = PartialRawUdsReader(
+            [
+                bytes([RawUdsFrameType.JSON_CONTROL]) + (4).to_bytes(4, "little"),
+                asyncio.IncompleteReadError(partial=b"{", expected=4),
+            ]
+        )
+        with pytest.raises(LocalSttProtocolError) as payload_exc:
+            await _receive_raw_uds_event(payload_reader)  # type: ignore[arg-type]
+
+        assert header_exc.value.as_event().code == "raw_uds_incomplete_frame"
+        assert "reading frame header; received 2 of 5 bytes" in header_exc.value.message
+        assert payload_exc.value.as_event().code == "raw_uds_incomplete_frame"
+        assert "reading frame payload; received 1 of 4 bytes" in payload_exc.value.message
+
+    asyncio.run(scenario())
 
 
 def test_ready_returns_503_when_preload_is_degraded() -> None:
