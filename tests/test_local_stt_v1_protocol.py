@@ -519,6 +519,17 @@ def test_raw_uds_client_ping_frame_accepts_empty_payload() -> None:
     assert message.ping_id is None
 
 
+def test_raw_uds_client_ping_frame_classifies_malformed_payload_as_control_error() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.PING, b"{"))
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_raw_uds_client_frame(frame)
+
+    error = excinfo.value.as_event()
+    assert error.code == "raw_uds_malformed_json_control"
+    assert error.metadata == {"original_code": "raw_uds_invalid_json"}
+
+
 def test_raw_uds_frame_decoder_rejects_length_mismatch() -> None:
     encoded = b"\x01\x04\x00\x00\x00{}"
 

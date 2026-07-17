@@ -446,7 +446,16 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
                 metadata={"original_code": exc.code, **exc.metadata},
             ) from exc
     if frame.frame_type == RawUdsFrameType.PING:
-        payload = {} if not frame.payload else decode_raw_uds_json_payload(frame)
+        try:
+            payload = {} if not frame.payload else decode_raw_uds_json_payload(frame)
+        except LocalSttProtocolError as exc:
+            raise LocalSttProtocolError(
+                exc.message,
+                code="raw_uds_malformed_json_control",
+                fatal=exc.fatal,
+                retryable=exc.retryable,
+                metadata={"original_code": exc.code, **exc.metadata},
+            ) from exc
         payload.setdefault("type", "ping")
         return parse_client_message(payload)
     raise LocalSttProtocolError(
