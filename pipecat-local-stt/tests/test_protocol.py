@@ -3,7 +3,14 @@ from __future__ import annotations
 import pytest
 
 from pipecat_local_stt import LocalSTTConfig, RtcAsrSTTService
-from pipecat_local_stt.protocol import build_start_message, parse_transcript_event
+from pipecat_local_stt.protocol import (
+    LocalSTTProtocolError,
+    RawUdsFrame,
+    RawUdsFrameType,
+    build_start_message,
+    decode_raw_uds_json_payload,
+    parse_transcript_event,
+)
 
 
 def test_build_start_message_uses_required_flat_local_stt_v1_shape() -> None:
@@ -100,3 +107,13 @@ def test_package_exports_raw_uds_codec_contract() -> None:
     assert package.RAW_UDS_MAX_PAYLOAD_BYTES >= 8 * 1024 * 1024
     assert decoded.frame_type == package.RawUdsFrameType.JSON_CONTROL
     assert decoded.payload == b'{"type":"close"}'
+
+
+@pytest.mark.parametrize("payload", [b"{", b'["not-object"]', b"\xff"])
+def test_raw_uds_json_payload_errors_are_protocol_errors(payload: bytes) -> None:
+    frame = RawUdsFrame(frame_type=RawUdsFrameType.JSON_EVENT, payload=payload)
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        decode_raw_uds_json_payload(frame)
+
+    assert excinfo.value.code == "raw_uds_invalid_json"
