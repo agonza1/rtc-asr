@@ -226,7 +226,7 @@ ClientMessage: TypeAlias = Annotated[
     Field(discriminator="type"),
 ]
 ServerMessage: TypeAlias = Annotated[
-    ReadyMessage | TranscriptMessage | WarningMessage | ErrorMessage | PongMessage | ClosedMessage,
+    ReadyMessage | TranscriptMessage | WarningMessage | ErrorMessage | PingMessage | PongMessage | ClosedMessage,
     Field(discriminator="type"),
 ]
 
@@ -393,7 +393,10 @@ def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
     normalized = _normalize_raw_uds_control_payload(dict(payload))
     message = parse_client_message(normalized)
     frame_type = RawUdsFrameType.PING if isinstance(message, PingMessage) else RawUdsFrameType.JSON_CONTROL
-    return encode_raw_uds_json_frame(frame_type, message.model_dump(exclude_none=True))
+    message_payload = message.model_dump(exclude_none=True)
+    if message_payload.get("metadata") == {}:
+        message_payload.pop("metadata")
+    return encode_raw_uds_json_frame(frame_type, message_payload)
 
 
 def encode_raw_uds_audio_frame(payload: bytes | bytearray | memoryview) -> bytes:
@@ -465,11 +468,13 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
 
 
 def parse_raw_uds_server_frame(frame: RawUdsFrame) -> ServerMessage:
-    if frame.frame_type in {RawUdsFrameType.JSON_EVENT, RawUdsFrameType.ERROR, RawUdsFrameType.PONG}:
-        if frame.frame_type == RawUdsFrameType.PONG and not frame.payload:
+    if frame.frame_type in {RawUdsFrameType.JSON_EVENT, RawUdsFrameType.ERROR, RawUdsFrameType.PING, RawUdsFrameType.PONG}:
+        if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
             payload = {}
         else:
             payload = decode_raw_uds_json_payload(frame)
+        if frame.frame_type == RawUdsFrameType.PING:
+            payload.setdefault("type", "ping")
         if frame.frame_type == RawUdsFrameType.PONG:
             payload.setdefault("type", "pong")
         return parse_server_message(payload)
@@ -509,6 +514,8 @@ def encode_raw_uds_server_message(payload: dict[str, Any]) -> bytes:
     frame_type = RawUdsFrameType.JSON_EVENT
     if isinstance(message, ErrorMessage):
         frame_type = RawUdsFrameType.ERROR
+    elif isinstance(message, PingMessage):
+        frame_type = RawUdsFrameType.PING
     elif isinstance(message, PongMessage):
         frame_type = RawUdsFrameType.PONG
     return encode_raw_uds_json_frame(frame_type, message.model_dump())

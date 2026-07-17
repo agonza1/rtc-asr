@@ -394,6 +394,20 @@ def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
     assert audio.payload == b"\x00\x01"
 
 
+def test_raw_uds_server_helpers_support_server_initiated_ping_frames() -> None:
+    encoded = encode_raw_uds_server_message({"type": "ping", "ping_id": "server-1"})
+    frame = decode_raw_uds_frame(encoded)
+
+    assert frame.frame_type == RawUdsFrameType.PING
+    assert parse_raw_uds_server_frame(frame).model_dump(exclude_none=True) == {
+        "type": "ping",
+        "ping_id": "server-1",
+    }
+    assert parse_raw_uds_server_frame(decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.PING, b""))).model_dump(
+        exclude_none=True
+    ) == {"type": "ping"}
+
+
 def test_raw_uds_client_encoder_accepts_issue_88_flat_start_payload() -> None:
     encoded = encode_raw_uds_client_message(
         {
