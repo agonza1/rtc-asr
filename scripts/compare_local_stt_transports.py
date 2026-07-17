@@ -64,6 +64,7 @@ RAW_UDS_REQUIRED_ERROR_HANDLING = (
     "bad_frame_type",
     "malformed_json_control",
     "oversized_payload",
+    "incomplete_frame",
 )
 
 
