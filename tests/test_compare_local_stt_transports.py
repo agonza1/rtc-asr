@@ -698,6 +698,7 @@ def test_compare_artifacts_requires_raw_uds_start_control_payload_metadata(tmp_p
     assert comparison["raw_uds_decision_summary"]["next_action"] == (
         "Re-run raw UDS with the documented Local STT v1 start payload."
     )
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
 def test_compare_artifacts_requires_raw_uds_start_control_payload_values(tmp_path: Path) -> None:
