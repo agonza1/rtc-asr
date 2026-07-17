@@ -65,6 +65,15 @@ def write_artifact(
                             ],
                             "shared_stream_runtime": True,
                             "plugin_config": {"transport": "raw_uds", "uds_path": "/tmp/stt.sock"},
+                            "start_control_payload": {
+                                "type": "start",
+                                "protocol": "local-stt-v1",
+                                "sample_rate": 16000,
+                                "channels": 1,
+                                "format": "pcm_s16le",
+                                "frame_ms": 20,
+                                "partial_interval_ms": 100,
+                            },
                         }
                         if transport == "raw_uds"
                         else {}
@@ -627,6 +636,62 @@ def test_compare_artifacts_requires_raw_uds_plugin_config_to_match_target(tmp_pa
         "plugin_config:raw_uds missing target.plugin_config.transport=raw_uds",
         "plugin_config:raw_uds target.plugin_config.uds_path must match target.uds_path",
     ]
+
+
+def test_compare_artifacts_requires_raw_uds_start_control_payload_metadata(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("start_control_payload")
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_start_payload_gaps"] == ["raw_uds missing target.start_control_payload"]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_start_payload_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "start_payload:raw_uds missing target.start_control_payload"
+    ]
+    assert comparison["recommendation"] == (
+        "Re-run raw UDS benchmarks with the documented Local STT v1 start payload before recommending raw UDS."
+    )
+    assert comparison["raw_uds_decision_summary"]["next_action"] == (
+        "Re-run raw UDS with the documented Local STT v1 start payload."
+    )
+
+
+def test_compare_artifacts_requires_raw_uds_start_control_payload_values(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["start_control_payload"]["sample_rate"] = 8000
+    raw_payload["target"]["start_control_payload"]["format"] = "mulaw"
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_start_payload_gaps"] == [
+        "raw_uds target.start_control_payload.sample_rate must be 16000",
+        "raw_uds target.start_control_payload.format must be 'pcm_s16le'",
+    ]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_start_payload_gaps"]
+
+
+def test_compare_artifacts_accepts_raw_uds_start_control_payload_from_benchmark_contract(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    start_control_payload = raw_payload["target"].pop("start_control_payload")
+    raw_payload["target_contract"] = {"start_control_payload": start_control_payload}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_start_payload_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["start_control_payload"] == start_control_payload
 
 
 def test_compare_artifacts_accepts_raw_uds_plugin_config_from_benchmark_contract(tmp_path: Path) -> None:
