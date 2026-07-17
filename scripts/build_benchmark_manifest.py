@@ -233,6 +233,22 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
     )
     if frame_header_bytes is not None:
         contract["frame_header_bytes"] = frame_header_bytes
+    per_frame_overhead_bytes = first_defined(
+        target.get("per_frame_overhead_bytes"),
+        benchmark.get("per_frame_overhead_bytes"),
+        streaming.get("per_frame_overhead_bytes"),
+        5 if transport == "raw_uds" else None,
+    )
+    if per_frame_overhead_bytes is not None:
+        contract["per_frame_overhead_bytes"] = per_frame_overhead_bytes
+    max_payload_bytes = first_defined(
+        target.get("max_payload_bytes"),
+        benchmark.get("max_payload_bytes"),
+        streaming.get("max_payload_bytes"),
+        8 * 1024 * 1024 if transport == "raw_uds" else None,
+    )
+    if max_payload_bytes is not None:
+        contract["max_payload_bytes"] = max_payload_bytes
     max_buffer_seconds = benchmark.get("max_buffer_seconds", streaming.get("max_buffer_seconds"))
     if max_buffer_seconds is not None:
         contract["max_buffer_seconds"] = max_buffer_seconds
