@@ -648,7 +648,8 @@ def test_raw_uds_malformed_json_control_does_not_stop_listener(tmp_path: Path) -
         health = http_client.get("/health")
 
     assert error["type"] == "error"
-    assert error["code"] == "raw_uds_invalid_json"
+    assert error["code"] == "raw_uds_malformed_json_control"
+    assert error["metadata"] == {"original_code": "raw_uds_invalid_json"}
     assert health.status_code == 200
     assert health.json()["ready"] is True
 

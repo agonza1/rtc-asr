@@ -425,7 +425,16 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
     if frame.frame_type == RawUdsFrameType.AUDIO_PCM16:
         return validate_audio_chunk(frame.payload)
     if frame.frame_type == RawUdsFrameType.JSON_CONTROL:
-        payload = _normalize_raw_uds_control_payload(decode_raw_uds_json_payload(frame))
+        try:
+            payload = _normalize_raw_uds_control_payload(decode_raw_uds_json_payload(frame))
+        except LocalSttProtocolError as exc:
+            raise LocalSttProtocolError(
+                exc.message,
+                code="raw_uds_malformed_json_control",
+                fatal=exc.fatal,
+                retryable=exc.retryable,
+                metadata={"original_code": exc.code, **exc.metadata},
+            ) from exc
         try:
             return parse_client_message(payload)
         except LocalSttProtocolError as exc:
