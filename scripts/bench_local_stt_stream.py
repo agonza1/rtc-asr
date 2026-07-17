@@ -260,6 +260,7 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
             "frame_types": list(frame_type_codes),
             "frame_type_codes": frame_type_codes,
             "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+            "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
             "start_control_payload": {
                 "type": "start",
                 "protocol": "local-stt-v1",
@@ -328,6 +329,7 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                 "frame_types": list(frame_type_codes),
                 "frame_type_codes": frame_type_codes,
                 "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+                "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "start_control_payload": {
                     "type": "start",
                     "protocol": "local-stt-v1",

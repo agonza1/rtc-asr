@@ -799,6 +799,7 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
             "PONG": 6,
         },
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+        "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "start_control_payload": {
             "type": "start",
             "protocol": "local-stt-v1",
@@ -929,6 +930,7 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
             "PONG": 6,
         },
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+        "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "start_control_payload": {
             "type": "start",
             "protocol": "local-stt-v1",
