@@ -455,14 +455,39 @@ def parse_frame_type_code(value: Any) -> int | None:
     return None
 
 
+def normalize_frame_type_name(value: str) -> str:
+    return value.strip().upper()
+
+
+def raw_uds_frame_type_names(value: Any) -> list[str] | None:
+    if isinstance(value, list):
+        return [normalize_frame_type_name(frame_type) for frame_type in value if isinstance(frame_type, str)]
+    if isinstance(value, dict):
+        names: list[str] = []
+        for key, code in value.items():
+            if not isinstance(key, str):
+                continue
+            name = normalize_frame_type_name(key)
+            if name in RAW_UDS_REQUIRED_FRAME_TYPE_CODES:
+                names.append(name)
+                continue
+            parsed_code = parse_frame_type_code(code)
+            for required_name, required_code in RAW_UDS_REQUIRED_FRAME_TYPE_CODES.items():
+                if parsed_code == required_code:
+                    names.append(required_name)
+                    break
+        return names
+    return None
+
+
 def raw_uds_frame_type_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     raw_uds = transports.get("raw_uds")
     if raw_uds is None:
         return []
 
     gaps: list[str] = []
-    frame_types = raw_uds.get("frame_types")
-    if not isinstance(frame_types, list):
+    frame_types = raw_uds_frame_type_names(raw_uds.get("frame_types"))
+    if frame_types is None:
         gaps.append("raw_uds missing target.frame_types coverage")
     else:
         missing = [frame_type for frame_type in RAW_UDS_REQUIRED_FRAME_TYPES if frame_type not in frame_types]
