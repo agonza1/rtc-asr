@@ -1482,6 +1482,11 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
         "status": "recommended",
         "reason": "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype.",
         "next_action": "Proceed with the next raw UDS adapter prototype.",
+        "required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+        "missing_transports": [],
+        "unexpected_transports": [],
+        "blocking_gaps": [],
+        "blocking_gap_count": 0,
         "primary_metric": "time_to_first_interim_ms",
         "comparison_baseline": "uds_ws",
         "gate_passed": True,
@@ -1654,6 +1659,21 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
         },
         "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms"],
     }
+
+
+def test_raw_uds_decision_output_includes_blocking_gap_snapshot(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    comparison = compare_module.compare_artifacts([tcp, raw])
+    decision = compare_module.raw_uds_decision_output(comparison)
+
+    assert decision["required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
+    assert decision["missing_transports"] == ["uds_ws"]
+    assert decision["unexpected_transports"] == []
+    assert decision["blocking_gaps"] == ["missing transport benchmark: uds_ws"]
+    assert decision["blocking_gap_count"] == 1
+    assert decision["gate_blockers"] == ["missing_transport:uds_ws", "missing_raw_uds_latency_delta"]
 
 
 def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_path: Path) -> None:
