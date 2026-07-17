@@ -595,6 +595,19 @@ def test_raw_uds_client_frame_parser_accepts_issue_88_flat_start_payload() -> No
     assert start.client_stream_id == "raw-uds-experiment"
 
 
+def test_raw_uds_client_frame_parser_classifies_schema_bad_json_control() -> None:
+    frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "start"})
+    )
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_raw_uds_client_frame(frame)
+
+    error = excinfo.value.as_event()
+    assert error.code == "raw_uds_malformed_json_control"
+    assert error.metadata == {"original_code": "invalid_message"}
+
+
 def test_raw_uds_client_frame_parser_rejects_server_frame_types() -> None:
     event_frame = decode_raw_uds_frame(
         encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, build_ready_message().model_dump())
