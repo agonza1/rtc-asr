@@ -408,6 +408,15 @@ def test_raw_uds_client_encoder_accepts_issue_88_flat_start_payload() -> None:
     frame = decode_raw_uds_frame(encoded)
 
     assert frame.frame_type == RawUdsFrameType.JSON_CONTROL
+    payload = decode_raw_uds_json_payload(frame)
+    assert payload["version"] == PROTOCOL_VERSION
+    assert payload["audio"] == {
+        "sample_rate": HOT_PATH_SAMPLE_RATE,
+        "channels": HOT_PATH_CHANNELS,
+        "format": HOT_PATH_PCM_FORMAT,
+        "frame_ms": HOT_PATH_FRAME_MS,
+    }
+    assert "protocol" not in payload
     assert parse_raw_uds_client_frame(frame).type == "start"
 
 
