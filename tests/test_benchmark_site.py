@@ -943,6 +943,7 @@ def test_render_homepage_surfaces_raw_uds_transport_coverage() -> None:
             "transport_coverage": {
                 "comparable_local_stt_artifact_count": 3,
                 "raw_uds_artifact_count": 1,
+                "raw_uds_catalog_artifact_count": 1,
             },
         },
         "tracks": [
@@ -978,6 +979,7 @@ def test_render_homepage_surfaces_raw_uds_transport_coverage() -> None:
     assert "Transport coverage" in html
     assert "1 raw UDS artifacts" in html
     assert "3 Local STT artifacts are comparable today" in html
+    assert "1 artifact catalogs the raw UDS opt-in contract" in html
     assert "at least 5 ms p95" in html
 
 
