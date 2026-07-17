@@ -66,6 +66,15 @@ RAW_UDS_REQUIRED_ERROR_HANDLING = (
     "oversized_payload",
     "incomplete_frame",
 )
+RAW_UDS_REQUIRED_START_CONTROL_PAYLOAD = {
+    "type": "start",
+    "protocol": "local-stt-v1",
+    "sample_rate": 16000,
+    "channels": 1,
+    "format": "pcm_s16le",
+    "frame_ms": 20,
+    "partial_interval_ms": 100,
+}
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -445,6 +454,22 @@ def raw_uds_plugin_config_gaps(transports: dict[str, dict[str, Any]]) -> list[st
     return gaps
 
 
+def raw_uds_start_payload_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
+    raw_uds = transports.get("raw_uds")
+    if raw_uds is None:
+        return []
+
+    payload = raw_uds.get("start_control_payload")
+    if not isinstance(payload, dict):
+        return ["raw_uds missing target.start_control_payload"]
+
+    gaps: list[str] = []
+    for field, expected in RAW_UDS_REQUIRED_START_CONTROL_PAYLOAD.items():
+        if payload.get(field) != expected:
+            gaps.append(f"raw_uds target.start_control_payload.{field} must be {expected!r}")
+    return gaps
+
+
 def parse_frame_type_code(value: Any) -> int | None:
     if isinstance(value, int):
         return value
@@ -727,6 +752,7 @@ def recommendation_text(
     error_handling_gaps: list[str],
     runtime_gaps: list[str],
     plugin_config_gaps: list[str],
+    start_payload_gaps: list[str],
     input_gaps: list[str],
 ) -> str:
     if missing:
@@ -753,6 +779,8 @@ def recommendation_text(
         return "Re-run raw UDS benchmarks with shared stream runtime evidence before recommending raw UDS."
     if plugin_config_gaps:
         return "Re-run raw UDS benchmarks with plugin config target metadata before recommending raw UDS."
+    if start_payload_gaps:
+        return "Re-run raw UDS benchmarks with the documented Local STT v1 start payload before recommending raw UDS."
     if input_gaps:
         return "Re-run transport benchmarks with matching audio and pacing settings before recommending raw UDS."
     if not all_present_transports_protocol_error_free:
@@ -778,6 +806,7 @@ def blocking_gap_reasons(
     error_handling_gaps: list[str],
     runtime_gaps: list[str],
     plugin_config_gaps: list[str],
+    start_payload_gaps: list[str],
     input_gaps: list[str],
     transports: dict[str, dict[str, Any]],
 ) -> list[str]:
@@ -795,6 +824,7 @@ def blocking_gap_reasons(
     reasons.extend(error_handling_gaps)
     reasons.extend(runtime_gaps)
     reasons.extend(plugin_config_gaps)
+    reasons.extend(start_payload_gaps)
     reasons.extend(input_gaps)
     for transport, payload in sorted(transports.items()):
         if not payload["protocol_error_free"]:
@@ -831,6 +861,7 @@ def raw_uds_recommendation_gate(
     error_handling_gaps: list[str],
     runtime_gaps: list[str],
     plugin_config_gaps: list[str],
+    start_payload_gaps: list[str],
     input_gaps: list[str],
     all_present_transports_protocol_error_free: bool,
     raw_vs_uds_delta_ms: float | None,
@@ -850,6 +881,7 @@ def raw_uds_recommendation_gate(
     blockers.extend(f"error_handling:{gap}" for gap in error_handling_gaps)
     blockers.extend(f"runtime:{gap}" for gap in runtime_gaps)
     blockers.extend(f"plugin_config:{gap}" for gap in plugin_config_gaps)
+    blockers.extend(f"start_payload:{gap}" for gap in start_payload_gaps)
     blockers.extend(f"benchmark_input:{gap}" for gap in input_gaps)
     if not all_present_transports_protocol_error_free:
         blockers.append("protocol_errors")
@@ -894,6 +926,8 @@ def raw_uds_decision_next_action(gate_blockers: list[str]) -> str:
         return "Re-run raw UDS with shared stream runtime evidence."
     if blocker.startswith("plugin_config:"):
         return "Re-run raw UDS with plugin config target metadata."
+    if blocker.startswith("start_payload:"):
+        return "Re-run raw UDS with the documented Local STT v1 start payload."
     if blocker.startswith("benchmark_input:"):
         return "Re-run transport benchmarks with matching audio and pacing settings."
     if blocker == "protocol_errors":
@@ -960,6 +994,9 @@ def compare_artifacts(
         target_frame_type_codes = artifact["target"].get("frame_type_codes") or target_contract.get("frame_type_codes")
         target_error_handling = artifact["target"].get("error_handling") or target_contract.get("error_handling")
         target_plugin_config = artifact["target"].get("plugin_config") or target_contract.get("plugin_config")
+        target_start_control_payload = artifact["target"].get("start_control_payload") or target_contract.get(
+            "start_control_payload"
+        )
         shared_stream_runtime = artifact["target"].get("shared_stream_runtime")
         if shared_stream_runtime is None:
             shared_stream_runtime = target_contract.get("shared_stream_runtime")
@@ -983,6 +1020,7 @@ def compare_artifacts(
             "error_handling": target_error_handling,
             "shared_stream_runtime": shared_stream_runtime,
             "plugin_config": target_plugin_config,
+            "start_control_payload": target_start_control_payload,
             "audio": normalized_audio_inputs(artifact),
             "settings": normalized_benchmark_settings(artifact),
             "service": normalized_service_identity(artifact),
@@ -1035,6 +1073,7 @@ def compare_artifacts(
     error_handling_gaps = raw_uds_error_handling_gaps(by_transport)
     runtime_gaps = raw_uds_runtime_gaps(by_transport)
     plugin_config_gaps = raw_uds_plugin_config_gaps(by_transport)
+    start_payload_gaps = raw_uds_start_payload_gaps(by_transport)
     input_gaps = benchmark_input_gaps(by_transport)
 
     all_present_transports_protocol_error_free = all(
@@ -1053,6 +1092,7 @@ def compare_artifacts(
         error_handling_gaps=error_handling_gaps,
         runtime_gaps=runtime_gaps,
         plugin_config_gaps=plugin_config_gaps,
+        start_payload_gaps=start_payload_gaps,
         input_gaps=input_gaps,
         all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
         raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
@@ -1077,6 +1117,7 @@ def compare_artifacts(
         error_handling_gaps=error_handling_gaps,
         runtime_gaps=runtime_gaps,
         plugin_config_gaps=plugin_config_gaps,
+        start_payload_gaps=start_payload_gaps,
         input_gaps=input_gaps,
     )
 
@@ -1103,6 +1144,7 @@ def compare_artifacts(
         "raw_uds_error_handling_gaps": error_handling_gaps,
         "raw_uds_runtime_gaps": runtime_gaps,
         "raw_uds_plugin_config_gaps": plugin_config_gaps,
+        "raw_uds_start_payload_gaps": start_payload_gaps,
         "benchmark_input_gaps": input_gaps,
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_recommendation_gate": recommendation_gate,
@@ -1136,6 +1178,7 @@ def compare_artifacts(
             error_handling_gaps=error_handling_gaps,
             runtime_gaps=runtime_gaps,
             plugin_config_gaps=plugin_config_gaps,
+            start_payload_gaps=start_payload_gaps,
             input_gaps=input_gaps,
             transports=by_transport,
         ),
