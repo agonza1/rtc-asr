@@ -1257,6 +1257,8 @@ def test_manifest_contract_marks_raw_uds_without_websocket_url() -> None:
     assert contract["uds_path"] == "/tmp/stt.raw.sock"
     assert contract["frame_format"] == "uint8_type_uint32_len_le"
     assert contract["frame_header_bytes"] == 5
+    assert contract["per_frame_overhead_bytes"] == 5
+    assert contract["max_payload_bytes"] == 8 * 1024 * 1024
     assert contract["chunk_ms"] == 20
     assert contract["sample_rate"] == 16000
 
