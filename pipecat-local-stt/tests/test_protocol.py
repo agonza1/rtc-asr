@@ -5,10 +5,15 @@ import pytest
 from pipecat_local_stt import LocalSTTConfig, RtcAsrSTTService
 from pipecat_local_stt.protocol import (
     LocalSTTProtocolError,
+    RAW_UDS_MAX_PAYLOAD_BYTES,
     RawUdsFrame,
+    RawUdsFrameDecoder,
     RawUdsFrameType,
     build_start_message,
+    decode_raw_uds_frame,
     decode_raw_uds_json_payload,
+    encode_raw_uds_frame,
+    encode_raw_uds_json_frame,
     parse_transcript_event,
 )
 
@@ -102,11 +107,13 @@ def test_package_exports_raw_uds_codec_contract() -> None:
 
     encoded = package.encode_raw_uds_json_frame(package.RawUdsFrameType.JSON_CONTROL, {"type": "close"})
     decoded = package.decode_raw_uds_frame(encoded)
+    decoder = package.RawUdsFrameDecoder()
 
     assert package.RAW_UDS_HEADER_BYTES == 5
     assert package.RAW_UDS_MAX_PAYLOAD_BYTES >= 8 * 1024 * 1024
     assert decoded.frame_type == package.RawUdsFrameType.JSON_CONTROL
     assert decoded.payload == b'{"type":"close"}'
+    assert decoder.feed(encoded)[0] == decoded
 
 
 @pytest.mark.parametrize("payload", [b"{", b'["not-object"]', b"\xff"])
@@ -117,3 +124,44 @@ def test_raw_uds_json_payload_errors_are_protocol_errors(payload: bytes) -> None
         decode_raw_uds_json_payload(frame)
 
     assert excinfo.value.code == "raw_uds_invalid_json"
+
+
+def test_raw_uds_frame_decoder_buffers_socket_chunk_boundaries() -> None:
+    decoder = RawUdsFrameDecoder()
+    ready = encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "ready"})
+    pong = encode_raw_uds_frame(RawUdsFrameType.PONG, b"")
+
+    assert decoder.feed(ready[:3]) == []
+    assert decoder.buffered_bytes == 3
+    frames = decoder.feed(ready[3:] + pong)
+
+    assert frames == [
+        decode_raw_uds_frame(ready),
+        decode_raw_uds_frame(pong),
+    ]
+    assert decoder.buffered_bytes == 0
+
+
+def test_raw_uds_frame_decoder_clears_error_state() -> None:
+    decoder = RawUdsFrameDecoder()
+    oversized = bytes([RawUdsFrameType.JSON_EVENT]) + (RAW_UDS_MAX_PAYLOAD_BYTES + 1).to_bytes(4, "little")
+    ready = encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "ready"})
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        decoder.feed(oversized)
+
+    assert excinfo.value.code == "raw_uds_payload_too_large"
+    assert decoder.buffered_bytes == 0
+    assert decoder.feed(ready) == [decode_raw_uds_frame(ready)]
+
+
+def test_raw_uds_frame_decoder_finish_rejects_partial_tail() -> None:
+    decoder = RawUdsFrameDecoder()
+    ready = encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "ready"})
+
+    assert decoder.feed(ready[:-1]) == []
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        decoder.finish()
+
+    assert excinfo.value.code == "raw_uds_incomplete_frame"
+    assert decoder.buffered_bytes == 0
