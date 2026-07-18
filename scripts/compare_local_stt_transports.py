@@ -888,8 +888,6 @@ def apply_diagnostic_protocol_error_counts(
     metrics: dict[str, dict[str, float | None]],
     protocol_error_codes: dict[str, int],
 ) -> None:
-    if not protocol_error_codes:
-        return
     protocol_errors = metrics["protocol_errors"]
     if any(protocol_errors.get(percentile) is not None for percentile in PERCENTILES):
         return
