@@ -305,6 +305,11 @@ DIAGNOSTIC_CODE_ALIASES = {
     "warning_codes": ("warnings_by_code", "warning_counts"),
 }
 
+DIAGNOSTIC_TOTAL_ALIASES = {
+    "protocol_error_codes": ("protocol_error_total", "protocol_errors_total", "protocol_error_count"),
+    "warning_codes": ("warning_total", "warnings_total", "warning_count"),
+}
+
 
 def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[str, int]:
     diagnostics = artifact.get("diagnostics") if isinstance(artifact.get("diagnostics"), dict) else {}
@@ -327,6 +332,16 @@ def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[s
 
 def diagnostic_code_total(counts: dict[str, int]) -> int:
     return sum(count for count in counts.values() if count > 0)
+
+
+def extract_diagnostic_total(artifact: dict[str, Any], key: str, counts: dict[str, int]) -> int:
+    diagnostics = artifact.get("diagnostics") if isinstance(artifact.get("diagnostics"), dict) else {}
+    value = first_defined(*(diagnostics.get(alias) for alias in DIAGNOSTIC_TOTAL_ALIASES.get(key, ())))
+    try:
+        explicit_total = int(value) if value is not None else 0
+    except (TypeError, ValueError):
+        explicit_total = 0
+    return max(explicit_total, diagnostic_code_total(counts))
 
 
 def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: str) -> str | None:
@@ -886,12 +901,12 @@ def missing_required_metrics(metrics: dict[str, dict[str, float | None]]) -> lis
 
 def apply_diagnostic_protocol_error_counts(
     metrics: dict[str, dict[str, float | None]],
-    protocol_error_codes: dict[str, int],
+    protocol_error_total: int,
 ) -> None:
     protocol_errors = metrics["protocol_errors"]
     if any(protocol_errors.get(percentile) is not None for percentile in PERCENTILES):
         return
-    total = float(diagnostic_code_total(protocol_error_codes))
+    total = float(protocol_error_total)
     metrics["protocol_errors"] = {percentile: total for percentile in PERCENTILES}
 
 
@@ -1002,9 +1017,9 @@ def blocking_gap_reasons(
                 codes = payload.get("diagnostics", {}).get("protocol_error_codes", {})
                 recorded_codes = ", ".join(
                     f"{code}={count}" for code, count in sorted(codes.items())
-                )
+                ) or "no per-code counts"
                 reasons.append(
-                    f"{transport} diagnostic protocol_error_codes total must be zero; "
+                    f"{transport} diagnostic protocol_error_total must be zero; "
                     f"got total={diagnostic_total} ({recorded_codes})"
                 )
                 continue
@@ -1168,6 +1183,8 @@ def compare_artifacts(
         target_contract = normalized_target_contract(artifact)
         protocol_error_codes = extract_diagnostic_code_counts(artifact, "protocol_error_codes")
         warning_codes = extract_diagnostic_code_counts(artifact, "warning_codes")
+        protocol_error_total = extract_diagnostic_total(artifact, "protocol_error_codes", protocol_error_codes)
+        warning_total = extract_diagnostic_total(artifact, "warning_codes", warning_codes)
         target_semantic_lifecycle = artifact["target"].get("semantic_lifecycle") or target_contract.get("semantic_lifecycle")
         target_lifecycle = (
             artifact["target"].get("lifecycle")
@@ -1186,7 +1203,7 @@ def compare_artifacts(
         if shared_stream_runtime is None:
             shared_stream_runtime = target_contract.get("shared_stream_runtime")
         metrics = {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS}
-        apply_diagnostic_protocol_error_counts(metrics, protocol_error_codes)
+        apply_diagnostic_protocol_error_counts(metrics, protocol_error_total)
         metrics_p95 = {metric: metrics[metric]["p95"] for metric in KEY_METRICS}
         missing_metrics = missing_required_metrics(metrics)
         by_transport[transport] = {
@@ -1218,14 +1235,14 @@ def compare_artifacts(
             "missing_p95_metrics": missing_metrics,
             "protocol_error_free": protocol_error_free(
                 metrics,
-                diagnostic_protocol_error_total=diagnostic_code_total(protocol_error_codes),
+                diagnostic_protocol_error_total=protocol_error_total,
             ),
             "cpu_utilization_percent": extract_cpu_utilization_percent(artifact),
             "diagnostics": {
                 "protocol_error_codes": protocol_error_codes,
-                "protocol_error_total": diagnostic_code_total(protocol_error_codes),
+                "protocol_error_total": protocol_error_total,
                 "warning_codes": warning_codes,
-                "warning_total": diagnostic_code_total(warning_codes),
+                "warning_total": warning_total,
             },
         }
 
