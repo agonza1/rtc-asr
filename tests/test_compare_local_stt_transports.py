@@ -495,6 +495,22 @@ def test_compare_artifacts_accepts_string_cpu_utilization_percent(tmp_path: Path
     assert comparison["transports"]["raw_uds"]["cpu_utilization_percent"] == 10.0
 
 
+def test_compare_artifacts_treats_invalid_cpu_utilization_as_missing(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0, cpu_utilization_percent=None)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["metrics"] = {"cpu": {"average_percent": "not captured"}}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw], require_cpu_utilization=True)
+
+    assert comparison["transports"]["raw_uds"]["cpu_utilization_percent"] is None
+    assert comparison["cpu_utilization_gaps"] == ["raw_uds missing CPU utilization"]
+    assert comparison["cpu_utilization_coverage"]["missing_transports"] == ["raw_uds"]
+
+
 def test_compare_artifacts_blocks_nonzero_scalar_protocol_errors(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)

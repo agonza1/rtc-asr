@@ -190,7 +190,10 @@ def numeric_or_percentile(value: Any) -> float | None:
         value = value.strip()
         if value.endswith("%"):
             value = value[:-1].strip()
-    return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _matching_experimental_transport_contract(
