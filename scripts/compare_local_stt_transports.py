@@ -336,17 +336,13 @@ def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[s
             except (TypeError, ValueError):
                 continue
     else:
-        samples = artifact.get("samples")
-        if isinstance(samples, list):
-            for sample in samples:
-                if not isinstance(sample, dict):
-                    continue
-                sample_codes = sample.get(key)
-                if not isinstance(sample_codes, list):
-                    continue
-                for code in sample_codes:
-                    if isinstance(code, str):
-                        counts[code] = counts.get(code, 0) + 1
+        for sample in sample_records(artifact):
+            sample_codes = sample.get(key)
+            if not isinstance(sample_codes, list):
+                continue
+            for code in sample_codes:
+                if isinstance(code, str):
+                    counts[code] = counts.get(code, 0) + 1
     return dict(sorted(counts.items()))
 
 
@@ -496,7 +492,18 @@ def artifact_run_count(artifact: dict[str, Any]) -> int | None:
     samples = artifact.get("samples")
     if isinstance(samples, list):
         return len(samples)
+    if isinstance(samples, dict):
+        return len([sample for sample in samples.values() if isinstance(sample, dict)])
     return None
+
+
+def sample_records(artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    samples = artifact.get("samples")
+    if isinstance(samples, list):
+        return [sample for sample in samples if isinstance(sample, dict)]
+    if isinstance(samples, dict):
+        return [sample for sample in samples.values() if isinstance(sample, dict)]
+    return []
 
 
 def run_count_gaps(transports: dict[str, dict[str, Any]], min_runs: int | None) -> list[str]:
