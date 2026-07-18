@@ -449,6 +449,9 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "websocket_roundtrip_p95_ms",
         "websocket_roundtrip_samples",
         "warnings_received",
+        "audio_payload_bytes_sent",
+        "transport_audio_overhead_bytes",
+        "transport_audio_bytes_sent",
         "audio_frames_sent",
         "audio_frames_dropped",
         "interim_events_received",
@@ -544,6 +547,7 @@ async def run_benchmark(
                     index=index,
                     url=url,
                     audio=audio,
+                    transport=transport,
                     partial_interval_ms=partial_interval_ms,
                     realtime_pace=realtime_pace,
                     receive_timeout_seconds=receive_timeout_seconds,
@@ -617,6 +621,7 @@ async def _run_once(
     index: int,
     url: str,
     audio: AudioInput,
+    transport: str,
     partial_interval_ms: int,
     realtime_pace: bool,
     receive_timeout_seconds: int,
@@ -717,6 +722,7 @@ async def _run_once(
 
     receive_task = asyncio.create_task(receive_loop())
     frames_sent = 0
+    audio_payload_bytes_sent = 0
     try:
         for frame_index, frame in enumerate(audio.frames):
             if receive_done.is_set():
@@ -737,6 +743,7 @@ async def _run_once(
                 break
             send_latencies.append((time.perf_counter() - send_started) * 1000)
             frames_sent += 1
+            audio_payload_bytes_sent += len(frame)
             if realtime_pace:
                 await asyncio.sleep(audio.frame_ms / 1000)
         if audio_send_started_at is not None:
@@ -767,6 +774,10 @@ async def _run_once(
 
     send_p95 = percentile(send_latencies, 0.95)
     receive_p95 = percentile(receive_latencies, 0.95)
+    transport_audio_overhead_bytes = compute_transport_audio_overhead_bytes(
+        transport=transport,
+        frames_sent=frames_sent,
+    )
     partial_cadences = [
         (received_at - previous_received_at) * 1000
         for previous_received_at, received_at in zip(interim_received_at, interim_received_at[1:])
@@ -811,6 +822,9 @@ async def _run_once(
         "final_transcript": final_transcript,
         "warnings_received": warnings_received,
         "warning_codes": warning_codes,
+        "audio_payload_bytes_sent": audio_payload_bytes_sent,
+        "transport_audio_overhead_bytes": transport_audio_overhead_bytes,
+        "transport_audio_bytes_sent": audio_payload_bytes_sent + transport_audio_overhead_bytes,
         "reconnects": reconnects,
         "protocol_errors": protocol_errors,
         "protocol_error_codes": protocol_error_codes,
@@ -893,6 +907,12 @@ def compute_audio_end_finalization_rtf(final_after_finalize_ms: float | None, au
     return round(final_after_finalize_ms / audio_duration_ms, 3)
 
 
+def compute_transport_audio_overhead_bytes(*, transport: str, frames_sent: int) -> int:
+    if transport == "raw_uds":
+        return RAW_UDS_HEADER_BYTES * max(0, frames_sent)
+    return 0
+
+
 def _read_pcm16_mono_wav(path: Path) -> tuple[bytes, int]:
     with wave.open(str(path), "rb") as wav_file:
         channels = wav_file.getnchannels()
@@ -926,6 +946,7 @@ def _format_summary_value(metric: str, value: float | None) -> str:
         or metric.endswith("_dropped")
         or metric.endswith("_changes")
         or metric.endswith("_samples")
+        or metric.endswith("_bytes")
         or metric == "successful_runs"
         or metric == "reconnects"
     ):
