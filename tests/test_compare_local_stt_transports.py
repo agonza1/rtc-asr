@@ -273,6 +273,54 @@ def test_compare_artifacts_accepts_scalar_protocol_error_counts(tmp_path: Path) 
     assert comparison["transports"]["raw_uds"]["metrics_p95"]["protocol_errors"] == 0.0
 
 
+def test_compare_artifacts_accepts_diagnostic_protocol_error_counts(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    for path in (tcp, uds, raw):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["summary"].pop("protocol_errors")
+        payload["diagnostics"] = {"protocol_errors_by_code": {"raw_uds_malformed_json_control": 0}}
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_p95_metrics_by_transport"] == {}
+    assert comparison["all_present_transports_protocol_error_free"] is True
+    assert comparison["transports"]["raw_uds"]["metrics"]["protocol_errors"] == {
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+    }
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["protocol_error_codes"] == {
+        "raw_uds_malformed_json_control": 0
+    }
+
+
+def test_compare_artifacts_accepts_empty_diagnostic_protocol_error_counts(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    for path in (tcp, uds, raw):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["summary"].pop("protocol_errors")
+        payload["diagnostics"] = {"protocol_error_codes": {}, "protocol_error_total": 0}
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_p95_metrics_by_transport"] == {}
+    assert comparison["all_present_transports_protocol_error_free"] is True
+    assert comparison["transports"]["raw_uds"]["metrics"]["protocol_errors"] == {
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+    }
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["protocol_error_codes"] == {}
+
+
 def test_compare_artifacts_blocks_nonzero_scalar_protocol_errors(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
