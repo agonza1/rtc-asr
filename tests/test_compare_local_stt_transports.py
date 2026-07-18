@@ -141,6 +141,7 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
         "blockers": ["missing_transport:uds_ws", "missing_raw_uds_latency_delta"],
         "raw_uds_min_win_ms": 5.0,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": None,
+        "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": None,
     }
     assert comparison["raw_uds_decision_summary"]["next_action"] == (
         "Run the missing uds_ws benchmark before deciding on raw UDS."
@@ -1112,13 +1113,14 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
     assert comparison["raw_uds_should_remain_experimental"] is True
     assert comparison["raw_uds_recommendation_gate"] == {
         "passed": False,
-        "blockers": ["insufficient_raw_uds_latency_win"],
+        "blockers": ["insufficient_raw_uds_latency_win", "raw_uds_finalization_regression"],
         "raw_uds_min_win_ms": 5.0,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": 3.5,
+        "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": -3.0,
     }
     assert comparison["raw_uds_decision_summary"] == {
         "status": "experimental",
-        "reason": "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 5 ms.",
+        "reason": "Keep raw UDS experimental until final-after-finalize P95 does not regress against UDS websocket.",
         "next_action": "Keep raw UDS experimental unless a future benchmark clears the latency gate.",
         "primary_metric": "time_to_first_interim_ms",
         "comparison_baseline": "uds_ws",
@@ -1127,12 +1129,14 @@ def test_compare_artifacts_marks_raw_uds_experimental_under_five_ms_win(tmp_path
         "observed_final_after_finalize_p95_delta_ms": -3.0,
         "raw_uds_leading_p95_metrics": ["time_to_first_interim_ms"],
         "gate_passed": False,
-        "gate_blockers": ["insufficient_raw_uds_latency_win"],
-        "gate_blocker_count": 1,
+        "gate_blockers": ["insufficient_raw_uds_latency_win", "raw_uds_finalization_regression"],
+        "gate_blocker_count": 2,
     }
     assert comparison["all_present_transports_protocol_error_free"] is True
     assert comparison["transports"]["raw_uds"]["protocol_error_free"] is True
-    assert comparison["recommendation"] == "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 5 ms."
+    assert comparison["recommendation"] == (
+        "Keep raw UDS experimental until final-after-finalize P95 does not regress against UDS websocket."
+    )
     assert comparison["transports"]["raw_uds"]["metrics_p95"] == {
         "time_to_first_interim_ms": 12.5,
         "time_to_final_after_finalize_ms": 27.0,
@@ -1369,6 +1373,7 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
         "blockers": [],
         "raw_uds_min_win_ms": 5.0,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": 5.0,
+        "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": 0.0,
     }
     assert comparison["raw_uds_decision_summary"] == {
         "status": "recommended",
@@ -1388,6 +1393,31 @@ def test_compare_artifacts_allows_raw_uds_recommendation_at_five_ms_win(tmp_path
     assert comparison["recommendation"] == "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
 
 
+def test_compare_artifacts_keeps_raw_uds_experimental_on_finalization_regression(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 20.0, final_after_finalize_p95=25.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 20.0, final_after_finalize_p95=25.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 14.0, final_after_finalize_p95=31.0)
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 6.0
+    assert comparison["raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms"] == -6.0
+    assert comparison["raw_uds_should_remain_experimental"] is True
+    assert comparison["raw_uds_recommendation_gate"] == {
+        "passed": False,
+        "blockers": ["raw_uds_finalization_regression"],
+        "raw_uds_min_win_ms": 5.0,
+        "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": 6.0,
+        "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": -6.0,
+    }
+    assert comparison["raw_uds_decision_summary"]["next_action"] == (
+        "Keep raw UDS experimental until finalization latency no longer regresses."
+    )
+    assert comparison["recommendation"] == (
+        "Keep raw UDS experimental until final-after-finalize P95 does not regress against UDS websocket."
+    )
+
+
 def test_compare_artifacts_can_raise_raw_uds_recommendation_threshold(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
@@ -1403,6 +1433,7 @@ def test_compare_artifacts_can_raise_raw_uds_recommendation_threshold(tmp_path: 
         "blockers": ["insufficient_raw_uds_latency_win"],
         "raw_uds_min_win_ms": 7.5,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": 5.0,
+        "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": 0.0,
     }
     assert comparison["recommendation"] == (
         "Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least 7.5 ms."
