@@ -884,6 +884,19 @@ def missing_required_metrics(metrics: dict[str, dict[str, float | None]]) -> lis
     return missing
 
 
+def apply_diagnostic_protocol_error_counts(
+    metrics: dict[str, dict[str, float | None]],
+    protocol_error_codes: dict[str, int],
+) -> None:
+    if not protocol_error_codes:
+        return
+    protocol_errors = metrics["protocol_errors"]
+    if any(protocol_errors.get(percentile) is not None for percentile in PERCENTILES):
+        return
+    total = float(diagnostic_code_total(protocol_error_codes))
+    metrics["protocol_errors"] = {percentile: total for percentile in PERCENTILES}
+
+
 def recommendation_text(
     *,
     missing: list[str],
@@ -1166,6 +1179,7 @@ def compare_artifacts(
         if shared_stream_runtime is None:
             shared_stream_runtime = target_contract.get("shared_stream_runtime")
         metrics = {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS}
+        apply_diagnostic_protocol_error_counts(metrics, protocol_error_codes)
         metrics_p95 = {metric: metrics[metric]["p95"] for metric in KEY_METRICS}
         missing_metrics = missing_required_metrics(metrics)
         by_transport[transport] = {
