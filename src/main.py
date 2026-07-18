@@ -55,6 +55,8 @@ from .protocols import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 RAW_UDS_FRAME_TYPE_VALUES = {int(frame_type) for frame_type in RawUdsFrameType}
+RAW_UDS_FRAME_TYPE_CODES = {frame_type.name: int(frame_type) for frame_type in RawUdsFrameType}
+RAW_UDS_FRAME_TYPES = {name.lower(): value for name, value in RAW_UDS_FRAME_TYPE_CODES.items()}
 
 
 class TranscribeRequest(BaseModel):
@@ -215,22 +217,8 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     },
                     "latency_win_threshold_ms": 5.0,
                     "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
-                    "frame_types": {
-                        "json_control": 1,
-                        "audio_pcm16": 2,
-                        "json_event": 3,
-                        "error": 4,
-                        "ping": 5,
-                        "pong": 6,
-                    },
-                    "frame_type_codes": {
-                        "JSON_CONTROL": 1,
-                        "AUDIO_PCM16": 2,
-                        "JSON_EVENT": 3,
-                        "ERROR": 4,
-                        "PING": 5,
-                        "PONG": 6,
-                    },
+                    "frame_types": RAW_UDS_FRAME_TYPES,
+                    "frame_type_codes": RAW_UDS_FRAME_TYPE_CODES,
                     "notes": (
                         "Raw UDS framing is served on the configured Unix socket when LOCAL_STT_RAW_UDS_ENABLED=true; keep it experimental until benchmarked against UDS websocket."
                         if config is not None and config.local_stt_raw_uds_enabled
