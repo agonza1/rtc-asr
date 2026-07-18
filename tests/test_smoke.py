@@ -34,6 +34,8 @@ from src.protocols.local_stt_v1 import (
     PROTOCOL_VERSION,
     LocalSttProtocolError,
     decode_raw_uds_frame,
+    encode_raw_uds_frame,
+    encode_raw_uds_json_frame,
     parse_raw_uds_server_frame,
     parse_server_message,
     RawUdsFrameType,
@@ -559,6 +561,75 @@ def test_raw_uds_server_shares_local_stt_v1_stream_runtime(tmp_path: Path) -> No
         {
             "audio_size": len(chunk),
             "language": "en",
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "prefix": chunk[:4],
+        }
+    ]
+
+
+def test_raw_uds_server_accepts_issue_88_flat_start_payload(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    transcriber = FakeTranscriber()
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+    chunk = b"f" * HOT_PATH_BYTES_PER_FRAME
+
+    async def read_server_frame(reader: asyncio.StreamReader) -> dict[str, object]:
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+        return parse_raw_uds_server_frame(frame).model_dump(exclude_none=True)
+
+    async def scenario() -> None:
+        reader, writer = await asyncio.open_unix_connection(str(raw_socket_path))
+        try:
+            writer.write(
+                encode_raw_uds_json_frame(
+                    RawUdsFrameType.JSON_CONTROL,
+                    {
+                        "type": "start",
+                        "protocol": "local-stt-v1",
+                        "sample_rate": HOT_PATH_SAMPLE_RATE,
+                        "channels": HOT_PATH_CHANNELS,
+                        "format": HOT_PATH_PCM_FORMAT,
+                        "frame_ms": HOT_PATH_FRAME_MS,
+                        "partial_interval_ms": HOT_PATH_FRAME_MS,
+                        "client_stream_id": "flat-raw-turn",
+                    },
+                )
+            )
+            await writer.drain()
+            ready = await read_server_frame(reader)
+            assert ready["type"] == "ready"
+            assert ready["metadata"]["client_stream_id"] == "flat-raw-turn"
+
+            writer.write(encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, chunk))
+            await writer.drain()
+            partial = await read_server_frame(reader)
+            assert partial["type"] == "transcript"
+            assert partial["is_final"] is False
+            assert partial["metadata"]["client_stream_id"] == "flat-raw-turn"
+
+            writer.write(encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "finalize"}))
+            await writer.drain()
+            final = await read_server_frame(reader)
+            assert final["type"] == "transcript"
+            assert final["is_final"] is True
+            assert final["metadata"]["client_stream_id"] == "flat-raw-turn"
+
+            writer.write(encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "close"}))
+            await writer.drain()
+            assert await read_server_frame(reader) == {"type": "closed", "reason": "client_close", "metadata": {}}
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    with TestClient(create_app(config=config, transcriber=transcriber)):
+        asyncio.run(scenario())
+
+    assert transcriber.calls == [
+        {
+            "audio_size": len(chunk),
+            "language": None,
             "sample_rate": HOT_PATH_SAMPLE_RATE,
             "prefix": chunk[:4],
         }
