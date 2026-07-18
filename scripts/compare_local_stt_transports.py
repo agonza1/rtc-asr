@@ -323,16 +323,27 @@ def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[s
         diagnostics.get(key),
         *(diagnostics.get(alias) for alias in DIAGNOSTIC_CODE_ALIASES.get(key, ())),
     )
-    if not isinstance(values, dict):
-        return {}
     counts: dict[str, int] = {}
-    for code, count in values.items():
-        if not isinstance(code, str):
-            continue
-        try:
-            counts[code] = int(count)
-        except (TypeError, ValueError):
-            continue
+    if isinstance(values, dict):
+        for code, count in values.items():
+            if not isinstance(code, str):
+                continue
+            try:
+                counts[code] = int(count)
+            except (TypeError, ValueError):
+                continue
+    else:
+        samples = artifact.get("samples")
+        if isinstance(samples, list):
+            for sample in samples:
+                if not isinstance(sample, dict):
+                    continue
+                sample_codes = sample.get(key)
+                if not isinstance(sample_codes, list):
+                    continue
+                for code in sample_codes:
+                    if isinstance(code, str):
+                        counts[code] = counts.get(code, 0) + 1
     return dict(sorted(counts.items()))
 
 
