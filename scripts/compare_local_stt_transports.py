@@ -164,6 +164,22 @@ def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
     return current
 
 
+def numeric_or_percentile(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        value = first_defined(
+            value.get("p95"),
+            value.get("average"),
+            value.get("avg"),
+            value.get("mean"),
+            value.get("p50"),
+        )
+    if value is None:
+        return None
+    return float(value)
+
+
 def normalized_target_contract(artifact: dict[str, Any]) -> dict[str, Any]:
     target = artifact.get("target") if isinstance(artifact.get("target"), dict) else {}
     for candidate in (
@@ -179,6 +195,7 @@ def normalized_target_contract(artifact: dict[str, Any]) -> dict[str, Any]:
 def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
     environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
     metrics = artifact.get("metrics") if isinstance(artifact.get("metrics"), dict) else {}
+    summary = artifact.get("summary") if isinstance(artifact.get("summary"), dict) else {}
     system = artifact.get("system") if isinstance(artifact.get("system"), dict) else {}
     cpu = artifact.get("cpu") if isinstance(artifact.get("cpu"), dict) else {}
     value = first_defined(
@@ -205,6 +222,19 @@ def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
         nested_value(metrics, "cpu", "process_percent"),
         nested_value(metrics, "process", "cpu_percent"),
         nested_value(metrics, "process", "average_cpu_percent"),
+        summary.get("cpu_utilization_percent"),
+        summary.get("cpu_utilization"),
+        summary.get("cpu_percent"),
+        summary.get("average_cpu_percent"),
+        summary.get("process_cpu_percent"),
+        nested_value(summary, "cpu", "utilization_percent"),
+        nested_value(summary, "cpu", "utilization"),
+        nested_value(summary, "cpu", "average_utilization_percent"),
+        nested_value(summary, "cpu", "percent"),
+        nested_value(summary, "cpu", "average_percent"),
+        nested_value(summary, "cpu", "process_percent"),
+        nested_value(summary, "process", "cpu_percent"),
+        nested_value(summary, "process", "average_cpu_percent"),
         cpu.get("utilization_percent"),
         cpu.get("utilization"),
         cpu.get("average_utilization_percent"),
@@ -212,7 +242,7 @@ def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
         cpu.get("average_percent"),
         cpu.get("process_percent"),
     )
-    return None if value is None else float(value)
+    return numeric_or_percentile(value)
 
 
 DIAGNOSTIC_CODE_ALIASES = {
