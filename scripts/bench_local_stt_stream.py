@@ -280,6 +280,7 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
                 "oversized_payload",
                 "incomplete_frame",
                 "frame_length_mismatch",
+                "invalid_client_frame_type",
             ],
             "error_codes": [
                 "raw_uds_unsupported_frame_type",
@@ -287,6 +288,7 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
                 "raw_uds_payload_too_large",
                 "raw_uds_incomplete_frame",
                 "raw_uds_frame_length_mismatch",
+                "raw_uds_invalid_client_frame_type",
             ],
             "shared_stream_runtime": True,
             "benchmark_metrics": [
@@ -362,6 +364,7 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                     "oversized_payload",
                     "incomplete_frame",
                     "frame_length_mismatch",
+                    "invalid_client_frame_type",
                 ],
                 "error_codes": [
                     "raw_uds_unsupported_frame_type",
@@ -369,6 +372,7 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                     "raw_uds_payload_too_large",
                     "raw_uds_incomplete_frame",
                     "raw_uds_frame_length_mismatch",
+                    "raw_uds_invalid_client_frame_type",
                 ],
                 "shared_stream_runtime": True,
                 "benchmark_metrics": [
