@@ -19,7 +19,7 @@ KEY_METRICS = (
 METRIC_ALIASES = {
     # Issue #88 names these acceptance metrics without the historical audio_/ms
     # suffixes; accept both artifact spellings while keeping the comparison schema stable.
-    "audio_send_queue_depth_p95_ms": ("send_queue_depth_p95",),
+    "audio_send_queue_depth_p95_ms": ("send_queue_depth_p95", "send_queue_depth_p95_ms"),
     "asr_queue_delay_p95_ms": ("asr_queue_delay_p95",),
 }
 
