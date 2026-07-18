@@ -386,6 +386,26 @@ def test_compare_artifacts_accepts_health_catalog_frame_type_mapping(tmp_path: P
     assert comparison["raw_uds_frame_type_gaps"] == []
 
 
+def test_compare_artifacts_accepts_health_catalog_frame_type_code_mapping(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["frame_type_codes"] = {
+        "json_control": "0x01",
+        "audio_pcm16": "0x02",
+        "json_event": "0x03",
+        "error": "0x04",
+        "ping": "0x05",
+        "pong": "0x06",
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_type_gaps"] == []
+
+
 def test_compare_artifacts_requires_raw_uds_frame_type_code_coverage(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)

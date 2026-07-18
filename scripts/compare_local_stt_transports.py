@@ -543,6 +543,18 @@ def normalize_frame_type_name(value: str) -> str:
     return value.strip().upper()
 
 
+def raw_uds_frame_type_code_lookup(
+    frame_type_codes: dict[str, Any],
+    frame_type: str,
+) -> Any:
+    if frame_type in frame_type_codes:
+        return frame_type_codes[frame_type]
+    for key, code in frame_type_codes.items():
+        if isinstance(key, str) and normalize_frame_type_name(key) == frame_type:
+            return code
+    return None
+
+
 def raw_uds_frame_type_names(value: Any) -> list[str] | None:
     if isinstance(value, list):
         return [normalize_frame_type_name(frame_type) for frame_type in value if isinstance(frame_type, str)]
@@ -586,7 +598,7 @@ def raw_uds_frame_type_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     missing_codes = []
     wrong_codes = []
     for frame_type, expected_code in RAW_UDS_REQUIRED_FRAME_TYPE_CODES.items():
-        observed_code = frame_type_codes.get(frame_type)
+        observed_code = raw_uds_frame_type_code_lookup(frame_type_codes, frame_type)
         if observed_code is None:
             missing_codes.append(frame_type)
             continue
