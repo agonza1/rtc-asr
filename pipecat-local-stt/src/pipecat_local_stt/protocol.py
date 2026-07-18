@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import struct
 
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -43,8 +44,12 @@ class RawUdsFrameDecoder:
 
         frames: list[RawUdsFrame] = []
         while len(self._buffer) >= RAW_UDS_HEADER_BYTES:
-            frame_type = _parse_raw_uds_frame_type(self._buffer[0])
-            payload_len = int.from_bytes(self._buffer[1:RAW_UDS_HEADER_BYTES], "little")
+            try:
+                frame_type_value, payload_len = struct.unpack("<BI", self._buffer[:RAW_UDS_HEADER_BYTES])
+                frame_type = _parse_raw_uds_frame_type(frame_type_value)
+            except LocalSTTProtocolError:
+                self._buffer.clear()
+                raise
             if payload_len > RAW_UDS_MAX_PAYLOAD_BYTES:
                 self._buffer.clear()
                 raise LocalSTTProtocolError(
@@ -74,10 +79,15 @@ class RawUdsFrameDecoder:
         )
 
 
-def encode_raw_uds_frame(frame_type: RawUdsFrameType, payload: bytes) -> bytes:
-    if len(payload) > RAW_UDS_MAX_PAYLOAD_BYTES:
-        raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
-    return bytes([int(frame_type)]) + len(payload).to_bytes(4, "little") + payload
+def encode_raw_uds_frame(frame_type: RawUdsFrameType | int, payload: bytes | bytearray | memoryview) -> bytes:
+    resolved_type = _parse_raw_uds_frame_type(frame_type)
+    payload_bytes = bytes(payload)
+    if len(payload_bytes) > RAW_UDS_MAX_PAYLOAD_BYTES:
+        raise LocalSTTProtocolError(
+            f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+            code="raw_uds_payload_too_large",
+        )
+    return struct.pack("<BI", int(resolved_type), len(payload_bytes)) + payload_bytes
 
 
 def validate_raw_uds_audio_payload(payload: bytes) -> bytes:
@@ -95,16 +105,26 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, An
     return encode_raw_uds_frame(frame_type, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
 
 
-def decode_raw_uds_frame(data: bytes) -> RawUdsFrame:
-    if len(data) < RAW_UDS_HEADER_BYTES:
-        raise LocalSTTProtocolError("Raw UDS frame is missing its header")
-    frame_type = _parse_raw_uds_frame_type(data[0])
-    payload_len = int.from_bytes(data[1:RAW_UDS_HEADER_BYTES], "little")
+def decode_raw_uds_frame(data: bytes | bytearray | memoryview) -> RawUdsFrame:
+    frame_bytes = bytes(data)
+    if len(frame_bytes) < RAW_UDS_HEADER_BYTES:
+        raise LocalSTTProtocolError(
+            "Raw UDS frames must include a 5 byte header",
+            code="raw_uds_incomplete_frame",
+        )
+    frame_type_value, payload_len = struct.unpack("<BI", frame_bytes[:RAW_UDS_HEADER_BYTES])
+    frame_type = _parse_raw_uds_frame_type(frame_type_value)
     if payload_len > RAW_UDS_MAX_PAYLOAD_BYTES:
-        raise LocalSTTProtocolError(f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes")
-    payload = data[RAW_UDS_HEADER_BYTES:]
+        raise LocalSTTProtocolError(
+            f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
+            code="raw_uds_payload_too_large",
+        )
+    payload = frame_bytes[RAW_UDS_HEADER_BYTES:]
     if len(payload) != payload_len:
-        raise LocalSTTProtocolError("Raw UDS frame payload length mismatch")
+        raise LocalSTTProtocolError(
+            f"Raw UDS frame length mismatch: header declares {payload_len} payload bytes but received {len(payload)}",
+            code="raw_uds_frame_length_mismatch",
+        )
     return RawUdsFrame(frame_type=frame_type, payload=payload)
 
 
