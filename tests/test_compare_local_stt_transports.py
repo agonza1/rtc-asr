@@ -376,6 +376,59 @@ def test_compare_artifacts_accepts_empty_diagnostic_protocol_error_counts(tmp_pa
     assert comparison["transports"]["raw_uds"]["diagnostics"]["protocol_error_codes"] == {}
 
 
+def test_compare_artifacts_blocks_sample_protocol_error_codes_without_diagnostics(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["summary"].pop("protocol_errors")
+    raw_payload["samples"] = [
+        {"protocol_error_codes": ["raw_uds_malformed_json_control"]},
+        {"protocol_error_codes": ["raw_uds_malformed_json_control", "raw_uds_payload_too_large"]},
+    ]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["all_present_transports_protocol_error_free"] is False
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["protocol_error_codes"] == {
+        "raw_uds_malformed_json_control": 2,
+        "raw_uds_payload_too_large": 1,
+    }
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["protocol_error_total"] == 3
+    assert comparison["transports"]["raw_uds"]["metrics"]["protocol_errors"] == {
+        "p50": 3.0,
+        "p95": 3.0,
+        "p99": 3.0,
+    }
+    assert comparison["blocking_gaps"] == [
+        "raw_uds diagnostic protocol_error_total must be zero; got total=3 (raw_uds_malformed_json_control=2, raw_uds_payload_too_large=1)"
+    ]
+
+
+def test_compare_artifacts_reads_sample_warning_codes_without_diagnostics(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["samples"] = [
+        {"warning_codes": ["stream_canceled"]},
+        {"warning_codes": ["slow_consumer", "stream_canceled"]},
+    ]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["all_present_transports_protocol_error_free"] is True
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_codes"] == {
+        "slow_consumer": 1,
+        "stream_canceled": 2,
+    }
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_total"] == 3
+
+
 def test_compare_artifacts_blocks_nonzero_diagnostic_protocol_error_total(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
