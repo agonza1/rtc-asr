@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -138,6 +139,121 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     assert service.metrics.local_stt_audio_frames_sent_total == 1
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
+
+
+def test_raw_uds_public_api_verifies_start_audio_finalize_and_transcript_mapping(tmp_path: Path) -> None:
+    asyncio.run(_test_raw_uds_public_api_verifies_start_audio_finalize_and_transcript_mapping(tmp_path))
+
+
+async def _test_raw_uds_public_api_verifies_start_audio_finalize_and_transcript_mapping(tmp_path: Path) -> None:
+    socket_path = tmp_path / "stt.raw.sock"
+    received_frames: list[tuple[RawUdsFrameType, dict[str, Any] | bytes]] = []
+    start_metadata: dict[str, Any] = {}
+
+    async def send_event(
+        writer: asyncio.StreamWriter,
+        payload: dict[str, Any],
+        frame_type: RawUdsFrameType = RawUdsFrameType.JSON_EVENT,
+    ) -> None:
+        writer.write(encode_raw_uds_json_frame(frame_type, payload))
+        await writer.drain()
+
+    async def handle_raw_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        nonlocal start_metadata
+        try:
+            while True:
+                header = await reader.readexactly(5)
+                payload_length = int.from_bytes(header[1:5], "little")
+                frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+                if frame.frame_type == RawUdsFrameType.AUDIO_PCM16:
+                    received_frames.append((frame.frame_type, frame.payload))
+                    await send_event(
+                        writer,
+                        {
+                            "type": "transcript",
+                            "text": "hel",
+                            "is_final": False,
+                            "speech_final": False,
+                            "revision": 1,
+                            "audio_received_ms": 20,
+                            "audio_transcribed_ms": 20,
+                            "metadata": start_metadata,
+                        },
+                    )
+                    continue
+
+                payload = json.loads(frame.payload.decode("utf-8"))
+                received_frames.append((frame.frame_type, payload))
+                if payload["type"] == "start":
+                    start_metadata = dict(payload.get("metadata", {}))
+                    await send_event(writer, {"type": "ready", "metadata": start_metadata})
+                elif payload["type"] == "finalize":
+                    await send_event(
+                        writer,
+                        {
+                            "type": "transcript",
+                            "text": "hello raw uds",
+                            "is_final": True,
+                            "speech_final": True,
+                            "revision": 2,
+                            "audio_received_ms": 40,
+                            "audio_transcribed_ms": 40,
+                            "metadata": start_metadata,
+                        },
+                    )
+                elif payload["type"] == "close":
+                    await send_event(writer, {"type": "closed", "reason": "client_close"})
+                    return
+        except asyncio.IncompleteReadError:
+            return
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    server = await asyncio.start_unix_server(handle_raw_client, str(socket_path))
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(transport="raw_uds", uds_path=str(socket_path), aggregation_ms=20)
+    )
+    pushed_frames = capture_pushed_frames(service)
+
+    try:
+        await service.start(StartFrame(audio_in_sample_rate=16000))
+        await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+        await service.process_frame(
+            AudioRawFrame(audio=b"x" * 640, sample_rate=16000, num_channels=1),
+            FrameDirection.DOWNSTREAM,
+        )
+        await wait_for(lambda: InterimTranscriptionFrame in pushed_frame_types(pushed_frames))
+        await service.process_frame(VADUserStoppedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+        await wait_for(lambda: TranscriptionFrame in pushed_frame_types(pushed_frames))
+        await service.cleanup()
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    start_payload = next(
+        payload
+        for frame_type, payload in received_frames
+        if frame_type == RawUdsFrameType.JSON_CONTROL
+        and isinstance(payload, dict)
+        and payload["type"] == "start"
+    )
+    audio_payloads = [
+        payload
+        for frame_type, payload in received_frames
+        if frame_type == RawUdsFrameType.AUDIO_PCM16
+    ]
+    final_frames = [frame for frame, _ in pushed_frames if isinstance(frame, TranscriptionFrame)]
+
+    assert start_payload["protocol"] == "local-stt-v1"
+    assert start_payload["sample_rate"] == 16000
+    assert audio_payloads == [b"x" * 640]
+    assert final_frames[-1].text == "hello raw uds"
+    assert final_frames[-1].finalized is True
+    assert service.metrics.local_stt_audio_frames_sent_total == 1
+    assert service.metrics.local_stt_interim_events_total == 1
+    assert service.metrics.local_stt_final_events_total == 1
+
 
 def test_config_validates_optional_uds_transport() -> None:
     config = LocalSTTConfig(transport="uds_ws", uds_path="/tmp/rtc-asr.sock")
