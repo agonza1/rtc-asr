@@ -184,6 +184,10 @@ def numeric_or_percentile(value: Any) -> float | None:
         )
     if value is None:
         return None
+    if isinstance(value, str):
+        value = value.strip()
+        if value.endswith("%"):
+            value = value[:-1].strip()
     return float(value)
 
 
