@@ -490,6 +490,9 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["final_transcript"] == "hello"
     assert sample["warnings_received"] == 1
     assert sample["warning_codes"] == ["partial_dropped"]
+    assert sample["audio_payload_bytes_sent"] == 1280
+    assert sample["transport_audio_overhead_bytes"] == 0
+    assert sample["transport_audio_bytes_sent"] == 1280
     assert sample["protocol_errors"] == 0
     assert sample["protocol_error_codes"] == []
     assert sample["time_to_first_interim_ms"] is not None
@@ -529,6 +532,9 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
     assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+    assert payload["summary"]["audio_payload_bytes_sent"] == {"p50": 1280.0, "p95": 1280.0, "p99": 1280.0}
+    assert payload["summary"]["transport_audio_overhead_bytes"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+    assert payload["summary"]["transport_audio_bytes_sent"] == {"p50": 1280.0, "p95": 1280.0, "p99": 1280.0}
     assert payload["diagnostics"] == {
         "warning_codes": {"partial_dropped": 1},
         "warning_total": 1,
@@ -567,6 +573,8 @@ def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_er
     sample = payload["samples"][0]
     assert sample["audio_frames_sent"] == 1
     assert sample["audio_frames_dropped"] == 2
+    assert sample["audio_payload_bytes_sent"] == 640
+    assert sample["transport_audio_bytes_sent"] == 640
     assert sample["protocol_errors"] == 1
     assert sample["successful_runs"] == 0
     assert sample["protocol_error_codes"] == ["send_exception"]
@@ -574,6 +582,34 @@ def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_er
     assert payload["summary"]["successful_runs"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["protocol_errors"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["diagnostics"]["protocol_error_codes"] == {"send_exception": 1}
+
+
+def test_run_benchmark_records_raw_uds_audio_frame_overhead() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            transport="raw_uds",
+            uds_path="/tmp/stt.raw.sock",
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=FakeLocalSttClient,
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["audio_payload_bytes_sent"] == 1280
+    assert sample["transport_audio_overhead_bytes"] == RAW_UDS_HEADER_BYTES * 2
+    assert sample["transport_audio_bytes_sent"] == 1280 + RAW_UDS_HEADER_BYTES * 2
+    assert payload["summary"]["transport_audio_overhead_bytes"] == {"p50": 10.0, "p95": 10.0, "p99": 10.0}
 
 
 def test_run_benchmark_records_malformed_receive_event_as_protocol_error() -> None:
@@ -686,6 +722,14 @@ def test_compute_audio_end_finalization_rtf_normalizes_by_audio_duration() -> No
 
     assert benchmark_module.compute_audio_end_finalization_rtf(150.0, audio) == 1.5
     assert benchmark_module.compute_audio_end_finalization_rtf(None, audio) is None
+
+
+def test_compute_transport_audio_overhead_counts_raw_uds_frame_headers_only() -> None:
+    assert benchmark_module.compute_transport_audio_overhead_bytes(transport="raw_uds", frames_sent=3) == (
+        RAW_UDS_HEADER_BYTES * 3
+    )
+    assert benchmark_module.compute_transport_audio_overhead_bytes(transport="tcp_ws", frames_sent=3) == 0
+    assert benchmark_module.compute_transport_audio_overhead_bytes(transport="uds_ws", frames_sent=3) == 0
 
 
 def test_receive_latency_ignores_empty_poll_timeouts() -> None:
