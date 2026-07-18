@@ -73,6 +73,7 @@ def write_artifact(
                             ],
                             "shared_stream_runtime": True,
                             "plugin_config": {"transport": "raw_uds", "uds_path": "/tmp/stt.sock"},
+                            "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                             "start_control_payload": {
                                 "type": "start",
                                 "protocol": "local-stt-v1",
@@ -260,6 +261,32 @@ def test_compare_artifacts_accepts_issue_88_queue_metric_aliases(tmp_path: Path)
     assert comparison["transports"]["raw_uds"]["metrics_p95"]["asr_queue_delay_p95_ms"] == 5.0
     assert comparison["transports"]["tcp_ws"]["metrics"]["audio_send_queue_depth_p95_ms"]["p50"] == 1.0
     assert comparison["transports"]["tcp_ws"]["metrics"]["asr_queue_delay_p95_ms"]["p50"] == 4.0
+
+
+def test_compare_artifacts_requires_raw_uds_three_transport_comparison_metadata(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    payload = json.loads(raw.read_text(encoding="utf8"))
+    payload["target"]["comparison_required_transports"] = ["tcp_ws", "raw_uds"]
+    raw.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_comparison_requirement_gaps"] == [
+        "raw_uds missing comparison transport coverage: uds_ws"
+    ]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "comparison_required_transports:raw_uds missing comparison transport coverage: uds_ws"
+    ]
+    assert comparison["raw_uds_decision_summary"]["next_action"] == (
+        "Re-run raw UDS with explicit TCP, UDS websocket, and raw UDS comparison coverage."
+    )
+    assert comparison["recommendation"] == (
+        "Re-run raw UDS benchmarks with explicit three-transport comparison coverage before recommending raw UDS."
+    )
+    assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
 def test_compare_artifacts_accepts_send_queue_depth_ms_alias(tmp_path: Path) -> None:
