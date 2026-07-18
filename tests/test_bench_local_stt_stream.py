@@ -531,7 +531,9 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["diagnostics"] == {
         "warning_codes": {"partial_dropped": 1},
+        "warning_total": 1,
         "protocol_error_codes": {},
+        "protocol_error_total": 0,
     }
     assert payload["summary"]["audio_frames_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["audio_frames_dropped"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
@@ -705,7 +707,9 @@ def test_summarize_diagnostics_counts_codes_across_runs() -> None:
 
     assert diagnostics == {
         "warning_codes": {"partial_dropped": 2, "queue_depth_high": 1},
+        "warning_total": 3,
         "protocol_error_codes": {"receive_exception": 1, "send_exception": 2},
+        "protocol_error_total": 3,
     }
 
 

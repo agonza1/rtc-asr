@@ -583,10 +583,14 @@ async def run_benchmark(
     }
 
 
-def summarize_diagnostics(samples: list[dict[str, Any]]) -> dict[str, dict[str, int]]:
+def summarize_diagnostics(samples: list[dict[str, Any]]) -> dict[str, dict[str, int] | int]:
+    warning_codes = _count_codes(samples, "warning_codes")
+    protocol_error_codes = _count_codes(samples, "protocol_error_codes")
     return {
-        "warning_codes": _count_codes(samples, "warning_codes"),
-        "protocol_error_codes": _count_codes(samples, "protocol_error_codes"),
+        "warning_codes": warning_codes,
+        "warning_total": sum(warning_codes.values()),
+        "protocol_error_codes": protocol_error_codes,
+        "protocol_error_total": sum(protocol_error_codes.values()),
     }
 
 
