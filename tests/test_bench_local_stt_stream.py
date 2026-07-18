@@ -802,6 +802,10 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
             "PING": 5,
             "PONG": 6,
         },
+        "benchmark_command": (
+            "python scripts/bench_local_stt_stream.py --transport raw_uds "
+            "--uds-path <LOCAL_STT_RAW_UDS_PATH> --input-raw-pcm <clip.pcm>"
+        ),
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "start_control_payload": {
@@ -941,6 +945,10 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
             "PING": 5,
             "PONG": 6,
         },
+        "benchmark_command": (
+            "python scripts/bench_local_stt_stream.py --transport raw_uds "
+            "--uds-path /tmp/stt.raw.sock --input-raw-pcm <clip.pcm>"
+        ),
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "start_control_payload": {

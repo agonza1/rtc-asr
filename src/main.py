@@ -167,6 +167,10 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                     "frame_format": "uint8_type_uint32_len_le",
                     "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+                    "benchmark_command": (
+                        "python scripts/bench_local_stt_stream.py --transport raw_uds "
+                        "--uds-path <LOCAL_STT_RAW_UDS_PATH> --input-raw-pcm <clip.pcm>"
+                    ),
                     "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                     "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                     "start_control_payload": {
