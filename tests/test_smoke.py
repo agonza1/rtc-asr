@@ -98,6 +98,7 @@ DEFAULT_PROTOCOLS = [
                     "oversized_payload",
                     "incomplete_frame",
                     "frame_length_mismatch",
+                    "invalid_client_frame_type",
                 ],
                 "error_codes": [
                     "raw_uds_unsupported_frame_type",
@@ -105,6 +106,7 @@ DEFAULT_PROTOCOLS = [
                     "raw_uds_payload_too_large",
                     "raw_uds_incomplete_frame",
                     "raw_uds_frame_length_mismatch",
+                    "raw_uds_invalid_client_frame_type",
                 ],
                 "shared_stream_runtime": True,
                 "benchmark_metrics": [
@@ -484,6 +486,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
         "oversized_payload",
         "incomplete_frame",
         "frame_length_mismatch",
+        "invalid_client_frame_type",
     ]
     assert raw_uds["error_codes"] == [
         "raw_uds_unsupported_frame_type",
@@ -491,6 +494,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
         "raw_uds_payload_too_large",
         "raw_uds_incomplete_frame",
         "raw_uds_frame_length_mismatch",
+        "raw_uds_invalid_client_frame_type",
     ]
     assert raw_uds["frame_type_codes"] == {
         "JSON_CONTROL": 1,
@@ -777,6 +781,40 @@ def test_raw_uds_malformed_json_control_does_not_stop_listener(tmp_path: Path) -
     assert error["type"] == "error"
     assert error["code"] == "raw_uds_malformed_json_control"
     assert error["metadata"] == {"original_code": "raw_uds_invalid_json"}
+    assert health.status_code == 200
+    assert health.json()["ready"] is True
+
+
+def test_raw_uds_invalid_client_frame_type_does_not_stop_listener(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+
+    async def read_server_frame(reader: asyncio.StreamReader) -> dict[str, object]:
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+        return parse_raw_uds_server_frame(frame).model_dump(exclude_none=True)
+
+    async def send_server_only_frame_then_valid_client() -> dict[str, object]:
+        reader, writer = await asyncio.open_unix_connection(str(raw_socket_path))
+        writer.write(encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "ready"}))
+        await writer.drain()
+        error = await read_server_frame(reader)
+        writer.close()
+        await writer.wait_closed()
+
+        client = AsyncRawUdsLocalSttClient(str(raw_socket_path))
+        ready = await client.start(client_stream_id="after-invalid-client-frame")
+        await client.close()
+        assert ready["metadata"]["client_stream_id"] == "after-invalid-client-frame"
+        return error
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as http_client:
+        error = asyncio.run(send_server_only_frame_then_valid_client())
+        health = http_client.get("/health")
+
+    assert error["type"] == "error"
+    assert error["code"] == "raw_uds_invalid_client_frame_type"
     assert health.status_code == 200
     assert health.json()["ready"] is True
 

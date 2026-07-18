@@ -190,6 +190,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "oversized_payload",
                         "incomplete_frame",
                         "frame_length_mismatch",
+                        "invalid_client_frame_type",
                     ],
                     "error_codes": [
                         "raw_uds_unsupported_frame_type",
@@ -197,6 +198,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "raw_uds_payload_too_large",
                         "raw_uds_incomplete_frame",
                         "raw_uds_frame_length_mismatch",
+                        "raw_uds_invalid_client_frame_type",
                     ],
                     "shared_stream_runtime": True,
                     "benchmark_metrics": [
