@@ -403,6 +403,16 @@ def run_count_coverage(transports: dict[str, dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def artifact_run_count(artifact: dict[str, Any]) -> int | None:
+    runs = artifact.get("runs")
+    if isinstance(runs, int):
+        return runs
+    samples = artifact.get("samples")
+    if isinstance(samples, list):
+        return len(samples)
+    return None
+
+
 def run_count_gaps(transports: dict[str, dict[str, Any]], min_runs: int | None) -> list[str]:
     if min_runs is None:
         return []
@@ -1133,7 +1143,7 @@ def compare_artifacts(
             "audio": normalized_audio_inputs(artifact),
             "settings": normalized_benchmark_settings(artifact),
             "service": normalized_service_identity(artifact),
-            "runs": artifact.get("runs"),
+            "runs": artifact_run_count(artifact),
             "metrics": metrics,
             "metrics_p95": metrics_p95,
             "missing_p95_metrics": missing_metrics,

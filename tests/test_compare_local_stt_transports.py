@@ -150,6 +150,27 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
     assert comparison["recommendation"] == "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
 
 
+def test_compare_artifacts_infers_run_count_from_samples(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, runs=None)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0, runs=None)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0, runs=None)
+
+    for path, count in ((tcp, 3), (uds, 4), (raw, 5)):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["samples"] = [{"index": index} for index in range(1, count + 1)]
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw], min_runs=3)
+
+    assert comparison["run_count_coverage"]["run_counts"] == {
+        "raw_uds": 5,
+        "tcp_ws": 3,
+        "uds_ws": 4,
+    }
+    assert comparison["run_count_coverage"]["min_runs"] == 3
+    assert comparison["run_count_gaps"] == []
+
+
 def test_compare_artifacts_reports_unexpected_transport_artifacts(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
