@@ -716,6 +716,25 @@ def test_raw_uds_cancel_resets_stream_without_transcribing(tmp_path: Path) -> No
     ]
 
 
+def test_raw_uds_ping_and_close_do_not_start_runtime(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    transcriber = FakeTranscriber()
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient(str(raw_socket_path))
+        pong = await client.ping(ping_id="pre-start")
+        closed = await client.close()
+
+        assert pong == {"type": "pong", "ping_id": "pre-start", "metadata": {}}
+        assert closed == {"type": "closed", "reason": "client_close", "metadata": {}}
+
+    with TestClient(create_app(config=config, transcriber=transcriber)):
+        asyncio.run(scenario())
+
+    assert transcriber.calls == []
+
+
 def test_raw_uds_protocol_error_does_not_stop_listener(tmp_path: Path) -> None:
     raw_socket_path = tmp_path / "stt.raw.sock"
     config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
