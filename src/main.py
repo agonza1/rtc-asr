@@ -205,6 +205,14 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "protocol_errors",
                         "cpu_utilization",
                     ],
+                    "benchmark_metric_requirements": {
+                        "time_to_first_interim_ms": ["p50", "p95", "p99"],
+                        "time_to_final_after_finalize_ms": ["p50", "p95", "p99"],
+                        "send_queue_depth_p95": ["p95"],
+                        "asr_queue_delay_p95": ["p95"],
+                        "protocol_errors": ["p50", "p95", "p99"],
+                        "cpu_utilization": ["if_available"],
+                    },
                     "latency_win_threshold_ms": 5.0,
                     "recommendation_gate": "experimental_until_p95_win_over_uds_ws_is_at_least_5ms",
                     "frame_types": {
