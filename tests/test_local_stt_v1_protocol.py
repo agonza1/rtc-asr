@@ -384,10 +384,14 @@ def test_raw_uds_json_frame_codec_uses_compact_object_payload() -> None:
 
 def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
     start = decode_raw_uds_frame(encode_raw_uds_client_message(build_start_message().model_dump()))
+    bare_ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping"}))
     ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping", "ping_id": "p1"}))
     audio = decode_raw_uds_frame(encode_raw_uds_audio_frame(memoryview(b"\x00\x01")))
 
     assert start.frame_type == RawUdsFrameType.JSON_CONTROL
+    assert bare_ping.frame_type == RawUdsFrameType.PING
+    assert bare_ping.payload == b""
+    assert parse_raw_uds_client_frame(bare_ping).type == "ping"
     assert ping.frame_type == RawUdsFrameType.PING
     assert decode_raw_uds_json_payload(ping) == {"type": "ping", "ping_id": "p1"}
     assert audio.frame_type == RawUdsFrameType.AUDIO_PCM16
