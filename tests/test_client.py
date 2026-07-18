@@ -558,6 +558,41 @@ def test_async_raw_uds_client_rejects_invalid_ping_without_connecting() -> None:
     asyncio.run(scenario())
 
 
+def test_async_raw_uds_client_uses_empty_ping_frame_for_bare_ping() -> None:
+    class EmptyPongReader:
+        def __init__(self) -> None:
+            self.frame = bytes([RawUdsFrameType.PONG]) + (0).to_bytes(4, "little")
+            self.offset = 0
+
+        async def readexactly(self, size: int) -> bytes:
+            chunk = self.frame[self.offset : self.offset + size]
+            self.offset += size
+            return chunk
+
+    class RecordingWriter:
+        def __init__(self) -> None:
+            self.sent: list[bytes] = []
+
+        def write(self, data: bytes) -> None:
+            self.sent.append(data)
+
+        async def drain(self) -> None:
+            pass
+
+    writer = RecordingWriter()
+
+    async def connect_fn(_path: str):
+        return EmptyPongReader(), writer
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=connect_fn)
+        assert await client.ping() == {"type": "pong", "metadata": {}}
+
+    asyncio.run(scenario())
+
+    assert writer.sent == [bytes([RawUdsFrameType.PING]) + (0).to_bytes(4, "little")]
+
+
 def test_async_raw_uds_client_clears_connection_after_close_wait_failure() -> None:
     class NoopReader:
         pass
