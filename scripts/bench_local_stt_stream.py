@@ -259,6 +259,10 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
             "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
             "frame_types": list(frame_type_codes),
             "frame_type_codes": frame_type_codes,
+            "benchmark_command": (
+                "python scripts/bench_local_stt_stream.py --transport raw_uds "
+                "--uds-path <LOCAL_STT_RAW_UDS_PATH> --input-raw-pcm <clip.pcm>"
+            ),
             "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
             "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
             "start_control_payload": {
@@ -337,6 +341,10 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "frame_types": list(frame_type_codes),
                 "frame_type_codes": frame_type_codes,
+                "benchmark_command": (
+                    "python scripts/bench_local_stt_stream.py --transport raw_uds "
+                    f"--uds-path {uds_path} --input-raw-pcm <clip.pcm>"
+                ),
                 "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "start_control_payload": {

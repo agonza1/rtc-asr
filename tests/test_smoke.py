@@ -84,6 +84,10 @@ DEFAULT_PROTOCOLS = [
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "frame_format": "uint8_type_uint32_len_le",
                 "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+                "benchmark_command": (
+                    "python scripts/bench_local_stt_stream.py --transport raw_uds "
+                    "--uds-path <LOCAL_STT_RAW_UDS_PATH> --input-raw-pcm <clip.pcm>"
+                ),
                 "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "semantic_lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
                 "error_handling": [
@@ -459,6 +463,10 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
     assert raw_uds["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
     assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
+    assert raw_uds["benchmark_command"] == (
+        "python scripts/bench_local_stt_stream.py --transport raw_uds "
+        "--uds-path <LOCAL_STT_RAW_UDS_PATH> --input-raw-pcm <clip.pcm>"
+    )
     assert raw_uds["lifecycle"] == ["start", "audio", "transcript", "finalize", "cancel", "close"]
     assert raw_uds["error_handling"] == [
         "bad_frame_type",
