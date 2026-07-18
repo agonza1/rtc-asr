@@ -1663,6 +1663,8 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
         "required_benchmark_input_snapshot": required_benchmark_input_snapshot,
         "required_metric_snapshot": required_metric_snapshot,
         "required_diagnostic_snapshot": required_diagnostic_snapshot,
+        "run_count_coverage": comparison["run_count_coverage"],
+        "cpu_utilization_coverage": comparison["cpu_utilization_coverage"],
         "raw_uds_vs_uds_ws_p95_deltas_ms": comparison["raw_uds_vs_uds_ws_p95_deltas_ms"],
         "raw_uds_leading_p95_metrics": decision["raw_uds_leading_p95_metrics"],
     }

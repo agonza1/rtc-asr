@@ -1865,6 +1865,20 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "warning_total": 0,
             },
         },
+        "run_count_coverage": {
+            "available_transports": ["raw_uds", "tcp_ws", "uds_ws"],
+            "complete": True,
+            "min_runs": 3,
+            "missing_transports": [],
+            "required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+            "run_counts": {"raw_uds": 3, "tcp_ws": 3, "uds_ws": 3},
+        },
+        "cpu_utilization_coverage": {
+            "available_transports": ["raw_uds", "tcp_ws", "uds_ws"],
+            "complete": True,
+            "missing_transports": [],
+            "required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
+        },
         "required_benchmark_input_snapshot": {
             "raw_uds": {
                 "audio": {
