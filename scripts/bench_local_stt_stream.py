@@ -315,7 +315,8 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
 
 
 def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None) -> dict[str, Any]:
-    target: dict[str, Any] = {"transport": transport, "url": url, "uds_path": uds_path}
+    target_url = None if transport == "raw_uds" else url
+    target: dict[str, Any] = {"transport": transport, "url": target_url, "uds_path": uds_path}
     if transport == "raw_uds":
         frame_type_codes = {
             "JSON_CONTROL": int(RawUdsFrameType.JSON_CONTROL),

@@ -919,7 +919,7 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
 
     assert payload["target"] == {
         "transport": "raw_uds",
-        "url": "ws://ignored/v1/stt/stream",
+        "url": None,
         "uds_path": "/tmp/stt.raw.sock",
         "frame_format": "uint8_type_uint32_len_le",
         "plugin_config": {"transport": "raw_uds", "uds_path": "/tmp/stt.raw.sock"},
