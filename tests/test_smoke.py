@@ -500,6 +500,14 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
         "PING": 5,
         "PONG": 6,
     }
+    assert raw_uds["frame_types"] == {
+        "json_control": 1,
+        "audio_pcm16": 2,
+        "json_event": 3,
+        "error": 4,
+        "ping": 5,
+        "pong": 6,
+    }
     assert raw_uds["start_control_payload"] == {
         "type": "start",
         "protocol": "local-stt-v1",
