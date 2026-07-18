@@ -705,16 +705,23 @@ def test_raw_uds_server_frame_parser_maps_event_error_and_empty_pong() -> None:
     error_payload = ErrorMessage(type="error", code="bad", message="bad request").model_dump()
     error_frame = decode_raw_uds_frame(encode_raw_uds_server_message(error_payload))
     empty_pong_frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.PONG, b""))
+    closed_frame = decode_raw_uds_frame(
+        encode_raw_uds_server_message({"type": "closed", "reason": "client_close", "metadata": {"turn_id": "t1"}})
+    )
 
     ready = parse_raw_uds_server_frame(ready_frame)
     error = parse_raw_uds_server_frame(error_frame)
     pong = parse_raw_uds_server_frame(empty_pong_frame)
+    closed = parse_raw_uds_server_frame(closed_frame)
 
     assert ready.type == "ready"
     assert error.type == "error"
     assert error.code == "bad"
     assert pong.type == "pong"
     assert pong.ping_id is None
+    assert closed.type == "closed"
+    assert closed.reason == "client_close"
+    assert closed.metadata == {"turn_id": "t1"}
 
 
 def test_raw_uds_server_frame_parser_rejects_client_frame_types() -> None:
