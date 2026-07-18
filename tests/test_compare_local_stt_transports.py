@@ -172,6 +172,31 @@ def test_compare_artifacts_infers_run_count_from_samples(tmp_path: Path) -> None
     assert comparison["run_count_gaps"] == []
 
 
+def test_compare_artifacts_accepts_common_run_count_aliases(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    for path, key, count in (
+        (tcp, "run_count", 3),
+        (uds, "iteration_count", 4),
+        (raw, "sample_count", 5),
+    ):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload.pop("runs")
+        payload[key] = count
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw], min_runs=3)
+
+    assert comparison["run_count_coverage"]["run_counts"] == {
+        "raw_uds": 5,
+        "tcp_ws": 3,
+        "uds_ws": 4,
+    }
+    assert comparison["run_count_gaps"] == []
+
+
 def test_compare_artifacts_reports_unexpected_transport_artifacts(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
