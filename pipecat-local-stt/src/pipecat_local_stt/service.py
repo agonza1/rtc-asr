@@ -527,7 +527,7 @@ class RawUdsConnectionAdapter:
         except ValueError as exc:
             raise LocalSTTProtocolError(
                 f"Unsupported Raw UDS frame type: {header[0]}",
-                code="raw_uds_invalid_server_frame_type",
+                code="raw_uds_unsupported_frame_type",
             ) from exc
         if frame_type in {RawUdsFrameType.JSON_CONTROL, RawUdsFrameType.AUDIO_PCM16}:
             raise LocalSTTProtocolError(

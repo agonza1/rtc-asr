@@ -464,6 +464,17 @@ def test_raw_uds_adapter_rejects_client_frame_types_from_server() -> None:
     assert excinfo.value.code == "raw_uds_invalid_server_frame_type"
 
 
+def test_raw_uds_adapter_reports_unknown_frame_type_with_codec_error_code() -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(bytes([0x99]) + (0).to_bytes(4, "little"))
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    with pytest.raises(LocalSTTProtocolError, match="Unsupported Raw UDS frame type") as excinfo:
+        asyncio.run(connection.recv())
+
+    assert excinfo.value.code == "raw_uds_unsupported_frame_type"
+
+
 def test_raw_uds_adapter_rejects_client_frame_type_before_payload_read() -> None:
     writer = FakeRawUdsWriter()
     header = bytes([RawUdsFrameType.AUDIO_PCM16]) + (4).to_bytes(4, "little")
