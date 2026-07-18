@@ -67,6 +67,13 @@ RAW_UDS_REQUIRED_ERROR_HANDLING = (
     "incomplete_frame",
     "frame_length_mismatch",
 )
+RAW_UDS_REQUIRED_ERROR_CODES = (
+    "raw_uds_unsupported_frame_type",
+    "raw_uds_malformed_json_control",
+    "raw_uds_payload_too_large",
+    "raw_uds_incomplete_frame",
+    "raw_uds_frame_length_mismatch",
+)
 RAW_UDS_REQUIRED_START_CONTROL_PAYLOAD = {
     "type": "start",
     "protocol": "local-stt-v1",
@@ -480,6 +487,21 @@ def raw_uds_error_handling_gaps(transports: dict[str, dict[str, Any]]) -> list[s
     return []
 
 
+def raw_uds_error_code_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
+    raw_uds = transports.get("raw_uds")
+    if raw_uds is None:
+        return []
+
+    error_codes = raw_uds.get("error_codes")
+    if not isinstance(error_codes, list):
+        return ["raw_uds missing target.error_codes coverage"]
+
+    missing = [code for code in RAW_UDS_REQUIRED_ERROR_CODES if code not in error_codes]
+    if missing:
+        return [f"raw_uds missing protocol-error code coverage: {','.join(missing)}"]
+    return []
+
+
 def raw_uds_runtime_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     raw_uds = transports.get("raw_uds")
     if raw_uds is None:
@@ -820,6 +842,7 @@ def recommendation_text(
     frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     error_handling_gaps: list[str],
+    error_code_gaps: list[str],
     runtime_gaps: list[str],
     plugin_config_gaps: list[str],
     start_payload_gaps: list[str],
@@ -845,6 +868,8 @@ def recommendation_text(
         return "Re-run raw UDS benchmarks with full Local STT v1 lifecycle coverage before recommending raw UDS."
     if error_handling_gaps:
         return "Re-run raw UDS benchmarks with protocol-error handling coverage before recommending raw UDS."
+    if error_code_gaps:
+        return "Re-run raw UDS benchmarks with protocol-error code coverage before recommending raw UDS."
     if runtime_gaps:
         return "Re-run raw UDS benchmarks with shared stream runtime evidence before recommending raw UDS."
     if plugin_config_gaps:
@@ -874,6 +899,7 @@ def blocking_gap_reasons(
     frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     error_handling_gaps: list[str],
+    error_code_gaps: list[str],
     runtime_gaps: list[str],
     plugin_config_gaps: list[str],
     start_payload_gaps: list[str],
@@ -892,6 +918,7 @@ def blocking_gap_reasons(
     reasons.extend(frame_type_gaps)
     reasons.extend(lifecycle_gaps)
     reasons.extend(error_handling_gaps)
+    reasons.extend(error_code_gaps)
     reasons.extend(runtime_gaps)
     reasons.extend(plugin_config_gaps)
     reasons.extend(start_payload_gaps)
@@ -929,6 +956,7 @@ def raw_uds_recommendation_gate(
     frame_type_gaps: list[str],
     lifecycle_gaps: list[str],
     error_handling_gaps: list[str],
+    error_code_gaps: list[str],
     runtime_gaps: list[str],
     plugin_config_gaps: list[str],
     start_payload_gaps: list[str],
@@ -949,6 +977,7 @@ def raw_uds_recommendation_gate(
     blockers.extend(f"frame_type:{gap}" for gap in frame_type_gaps)
     blockers.extend(f"lifecycle:{gap}" for gap in lifecycle_gaps)
     blockers.extend(f"error_handling:{gap}" for gap in error_handling_gaps)
+    blockers.extend(f"error_codes:{gap}" for gap in error_code_gaps)
     blockers.extend(f"runtime:{gap}" for gap in runtime_gaps)
     blockers.extend(f"plugin_config:{gap}" for gap in plugin_config_gaps)
     blockers.extend(f"start_payload:{gap}" for gap in start_payload_gaps)
@@ -992,6 +1021,8 @@ def raw_uds_decision_next_action(gate_blockers: list[str]) -> str:
         return "Re-run raw UDS with full Local STT v1 lifecycle coverage."
     if blocker.startswith("error_handling:"):
         return "Re-run raw UDS with protocol-error handling coverage."
+    if blocker.startswith("error_codes:"):
+        return "Re-run raw UDS with protocol-error code coverage."
     if blocker.startswith("runtime:"):
         return "Re-run raw UDS with shared stream runtime evidence."
     if blocker.startswith("plugin_config:"):
@@ -1068,6 +1099,7 @@ def compare_artifacts(
         target_frame_types = artifact["target"].get("frame_types") or target_contract.get("frame_types")
         target_frame_type_codes = artifact["target"].get("frame_type_codes") or target_contract.get("frame_type_codes")
         target_error_handling = artifact["target"].get("error_handling") or target_contract.get("error_handling")
+        target_error_codes = artifact["target"].get("error_codes") or target_contract.get("error_codes")
         target_plugin_config = artifact["target"].get("plugin_config") or target_contract.get("plugin_config")
         target_start_control_payload = artifact["target"].get("start_control_payload") or target_contract.get(
             "start_control_payload"
@@ -1094,6 +1126,7 @@ def compare_artifacts(
             "lifecycle": target_lifecycle,
             "semantic_lifecycle": target_semantic_lifecycle,
             "error_handling": target_error_handling,
+            "error_codes": target_error_codes,
             "shared_stream_runtime": shared_stream_runtime,
             "plugin_config": target_plugin_config,
             "start_control_payload": target_start_control_payload,
@@ -1147,6 +1180,7 @@ def compare_artifacts(
     frame_type_gaps = raw_uds_frame_type_gaps(by_transport)
     lifecycle_gaps = raw_uds_lifecycle_gaps(by_transport)
     error_handling_gaps = raw_uds_error_handling_gaps(by_transport)
+    error_code_gaps = raw_uds_error_code_gaps(by_transport)
     runtime_gaps = raw_uds_runtime_gaps(by_transport)
     plugin_config_gaps = raw_uds_plugin_config_gaps(by_transport)
     start_payload_gaps = raw_uds_start_payload_gaps(by_transport)
@@ -1166,6 +1200,7 @@ def compare_artifacts(
         frame_type_gaps=frame_type_gaps,
         lifecycle_gaps=lifecycle_gaps,
         error_handling_gaps=error_handling_gaps,
+        error_code_gaps=error_code_gaps,
         runtime_gaps=runtime_gaps,
         plugin_config_gaps=plugin_config_gaps,
         start_payload_gaps=start_payload_gaps,
@@ -1191,6 +1226,7 @@ def compare_artifacts(
         frame_type_gaps=frame_type_gaps,
         lifecycle_gaps=lifecycle_gaps,
         error_handling_gaps=error_handling_gaps,
+        error_code_gaps=error_code_gaps,
         runtime_gaps=runtime_gaps,
         plugin_config_gaps=plugin_config_gaps,
         start_payload_gaps=start_payload_gaps,
@@ -1218,6 +1254,7 @@ def compare_artifacts(
         "raw_uds_frame_type_gaps": frame_type_gaps,
         "raw_uds_lifecycle_gaps": lifecycle_gaps,
         "raw_uds_error_handling_gaps": error_handling_gaps,
+        "raw_uds_error_code_gaps": error_code_gaps,
         "raw_uds_runtime_gaps": runtime_gaps,
         "raw_uds_plugin_config_gaps": plugin_config_gaps,
         "raw_uds_start_payload_gaps": start_payload_gaps,
@@ -1252,6 +1289,7 @@ def compare_artifacts(
             frame_type_gaps=frame_type_gaps,
             lifecycle_gaps=lifecycle_gaps,
             error_handling_gaps=error_handling_gaps,
+            error_code_gaps=error_code_gaps,
             runtime_gaps=runtime_gaps,
             plugin_config_gaps=plugin_config_gaps,
             start_payload_gaps=start_payload_gaps,
@@ -1276,6 +1314,7 @@ def comparison_has_blocking_gaps(
         or comparison.get("raw_uds_frame_type_gaps")
         or comparison.get("raw_uds_lifecycle_gaps")
         or comparison.get("raw_uds_error_handling_gaps")
+        or comparison.get("raw_uds_error_code_gaps")
         or comparison.get("raw_uds_runtime_gaps")
         or comparison.get("raw_uds_plugin_config_gaps")
         or comparison.get("raw_uds_start_payload_gaps")
@@ -1354,14 +1393,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
         [
             "",
             "Transport targets:",
-            "| Transport | URL | UDS path | Raw frame format | Header bytes | Max payload bytes | Frame types | Lifecycle | Error handling | Shared runtime |",
-            "| --- | --- | --- | --- | ---: | ---: | --- | --- | --- | --- |",
+            "| Transport | URL | UDS path | Raw frame format | Header bytes | Max payload bytes | Frame types | Lifecycle | Error handling | Error codes | Shared runtime |",
+            "| --- | --- | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |",
         ]
     )
     for transport in comparison["required_transports"]:
         payload = comparison["transports"].get(transport)
         if payload is None:
-            lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing | missing | missing | missing |")
+            lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing | missing | missing | missing | missing |")
             continue
         lines.append(
             "| "
@@ -1376,6 +1415,7 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                     _format_optional_value(payload.get("frame_types")),
                     _format_optional_value(payload.get("lifecycle")),
                     _format_optional_value(payload.get("error_handling")),
+                    _format_optional_value(payload.get("error_codes")),
                     _format_optional_value(payload.get("shared_stream_runtime")),
                 ]
             )
@@ -1608,6 +1648,7 @@ def raw_uds_decision_output(comparison: dict[str, Any]) -> dict[str, Any]:
             "lifecycle": payload.get("lifecycle"),
             "semantic_lifecycle": payload.get("semantic_lifecycle"),
             "error_handling": payload.get("error_handling"),
+            "error_codes": payload.get("error_codes"),
             "shared_stream_runtime": payload.get("shared_stream_runtime"),
             "plugin_config": payload.get("plugin_config"),
             "start_control_payload": payload.get("start_control_payload"),
