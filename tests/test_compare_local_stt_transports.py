@@ -562,6 +562,58 @@ def test_compare_artifacts_accepts_nested_raw_uds_target_contract_alias(tmp_path
     assert comparison["transports"]["raw_uds"]["frame_format"] == "uint8_type_uint32_len_le"
 
 
+def test_compare_artifacts_accepts_raw_uds_contract_from_service_protocol_catalog(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    catalog_fields = {}
+    for field in (
+        "frame_format",
+        "frame_header_bytes",
+        "per_frame_overhead_bytes",
+        "max_payload_bytes",
+        "frame_types",
+        "frame_type_codes",
+        "lifecycle",
+        "error_handling",
+        "error_codes",
+        "shared_stream_runtime",
+        "plugin_config",
+        "start_control_payload",
+    ):
+        catalog_fields[field] = raw_payload["target"].pop(field)
+    catalog_fields["semantic_lifecycle"] = catalog_fields["lifecycle"]
+    raw_payload["service"] = {
+        "protocols": [
+            {
+                "id": "local-stt-v1",
+                "experimental_transports": [
+                    {"transport": "other_raw_transport", **catalog_fields},
+                    {"transport": "raw_uds", **catalog_fields},
+                ],
+            }
+        ]
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_contract_gaps"] == []
+    assert comparison["raw_uds_frame_type_gaps"] == []
+    assert comparison["raw_uds_lifecycle_gaps"] == []
+    assert comparison["raw_uds_error_handling_gaps"] == []
+    assert comparison["raw_uds_error_code_gaps"] == []
+    assert comparison["raw_uds_runtime_gaps"] == []
+    assert comparison["raw_uds_plugin_config_gaps"] == []
+    assert comparison["raw_uds_start_payload_gaps"] == []
+    assert comparison["transports"]["raw_uds"]["frame_format"] == "uint8_type_uint32_len_le"
+    assert comparison["transports"]["raw_uds"]["plugin_config"] == {
+        "transport": "raw_uds",
+        "uds_path": "/tmp/stt.sock",
+    }
+
+
 def test_compare_artifacts_requires_raw_uds_lifecycle_coverage(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)

@@ -187,8 +187,56 @@ def numeric_or_percentile(value: Any) -> float | None:
     return float(value)
 
 
+def _matching_experimental_transport_contract(
+    candidates: Any, transport: str | None
+) -> dict[str, Any] | None:
+    if not isinstance(candidates, list) or not transport:
+        return None
+    for candidate in candidates:
+        if isinstance(candidate, dict) and candidate.get("transport") == transport:
+            return dict(candidate)
+    return None
+
+
+def _service_protocol_transport_contract(artifact: dict[str, Any], transport: str | None) -> dict[str, Any] | None:
+    service = artifact.get("service")
+    if not isinstance(service, dict):
+        return None
+    protocols = service.get("protocols")
+    if not isinstance(protocols, list):
+        return None
+    for protocol in protocols:
+        if not isinstance(protocol, dict):
+            continue
+        contract = _matching_experimental_transport_contract(
+            protocol.get("experimental_transports"),
+            transport,
+        )
+        if contract is not None:
+            return contract
+    return None
+
+
 def normalized_target_contract(artifact: dict[str, Any]) -> dict[str, Any]:
     target = artifact.get("target") if isinstance(artifact.get("target"), dict) else {}
+    transport = target.get("transport") if isinstance(target.get("transport"), str) else None
+    normalized: dict[str, Any] = {}
+    for candidate in (
+        _service_protocol_transport_contract(artifact, transport),
+        _matching_experimental_transport_contract(
+            artifact.get("contract", {}).get("experimental_transports")
+            if isinstance(artifact.get("contract"), dict)
+            else None,
+            transport,
+        ),
+        target.get("contract"),
+        artifact.get("contract"),
+        artifact.get("target_contract"),
+    ):
+        if isinstance(candidate, dict):
+            normalized.update(candidate)
+    if normalized:
+        return normalized
     for candidate in (
         artifact.get("target_contract"),
         artifact.get("contract"),
