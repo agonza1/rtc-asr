@@ -417,6 +417,12 @@ def raw_uds_lifecycle_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
     if not isinstance(lifecycle, list):
         return ["raw_uds missing target.lifecycle coverage"]
 
+    semantic_lifecycle = raw_uds.get("semantic_lifecycle")
+    if isinstance(semantic_lifecycle, list) and semantic_lifecycle != lifecycle:
+        expected = ",".join(lifecycle)
+        observed = ",".join(str(event) for event in semantic_lifecycle)
+        return [f"raw_uds semantic_lifecycle mismatch: expected {expected}; got {observed}"]
+
     missing = [event for event in RAW_UDS_REQUIRED_LIFECYCLE if event not in lifecycle]
     if missing:
         return [f"raw_uds missing lifecycle coverage: {','.join(missing)}"]
