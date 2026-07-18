@@ -121,6 +121,8 @@ def test_compare_artifacts_requires_all_raw_uds_experiment_transports(tmp_path: 
     comparison = compare_module.compare_artifacts([tcp, raw])
 
     assert comparison["missing_transports"] == ["uds_ws"]
+    assert comparison["run_count_coverage"]["missing_transports"] == ["uds_ws"]
+    assert comparison["cpu_utilization_coverage"]["missing_transports"] == ["uds_ws"]
     assert comparison["blocking_gaps"] == ["missing transport benchmark: uds_ws"]
     assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
     assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "tcp_ws"
@@ -1676,13 +1678,13 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "CPU utilization coverage:" in markdown
     assert "- Complete: False" in markdown
     assert "- Available transports: raw_uds,tcp_ws" in markdown
-    assert "- Missing CPU samples: missing" in markdown
+    assert "- Missing CPU samples: uds_ws" in markdown
     assert "- Missing required transports: uds_ws" in markdown
     assert "Run count coverage:" in markdown
     assert "- Complete: False" in markdown
     assert "- Minimum observed runs: 3" in markdown
     assert "- Required minimum runs: missing" in markdown
-    assert "- Missing run counts: missing" in markdown
+    assert "- Missing run counts: uds_ws" in markdown
     assert "- Recorded runs: raw_uds=3,tcp_ws=3" in markdown
     assert "First-interim p95 deltas:" in markdown
     assert "| TCP WebSocket | protocol_errors | 0 | 0 | 0 | matched |" in markdown

@@ -354,8 +354,8 @@ def lowest_cpu_utilization_transport(transports: dict[str, dict[str, Any]]) -> s
 def missing_cpu_utilization_transports(transports: dict[str, dict[str, Any]]) -> list[str]:
     return [
         transport
-        for transport, payload in sorted(transports.items())
-        if payload.get("cpu_utilization_percent") is None
+        for transport in sorted(REQUIRED_TRANSPORTS)
+        if transports.get(transport, {}).get("cpu_utilization_percent") is None
     ]
 
 
@@ -383,9 +383,9 @@ def run_count_coverage(transports: dict[str, dict[str, Any]]) -> dict[str, Any]:
     run_counts = {
         transport: payload.get("runs")
         for transport, payload in sorted(transports.items())
-        if isinstance(payload.get("runs"), int)
+        if transport in REQUIRED_TRANSPORTS and isinstance(payload.get("runs"), int)
     }
-    missing = sorted(transport for transport in transports if transport not in run_counts)
+    missing = sorted(transport for transport in REQUIRED_TRANSPORTS if transport not in run_counts)
     return {
         "available_transports": sorted(run_counts),
         "missing_transports": missing,
