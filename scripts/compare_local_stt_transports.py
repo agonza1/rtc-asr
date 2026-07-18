@@ -983,6 +983,7 @@ def recommendation_text(
     start_payload_gaps: list[str],
     comparison_requirement_gaps: list[str],
     input_gaps: list[str],
+    raw_uds_queue_regressions: list[str],
 ) -> str:
     if missing:
         return "Run the missing transport benchmarks before comparing TCP, UDS websocket, and raw UDS paths."
@@ -1022,6 +1023,8 @@ def recommendation_text(
         return "Raw UDS and UDS websocket first-interim P95 metrics were unavailable; keep raw UDS experimental."
     if raw_vs_uds_final_after_finalize_delta_ms is not None and raw_vs_uds_final_after_finalize_delta_ms < 0:
         return "Keep raw UDS experimental until final-after-finalize P95 does not regress against UDS websocket."
+    if raw_uds_queue_regressions:
+        return "Keep raw UDS experimental until queue latency P95 does not regress against UDS websocket."
     if raw_uds_experimental:
         return f"Keep raw UDS experimental until it beats UDS websocket first-interim P95 by at least {raw_uds_min_win_ms:g} ms."
     return "Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype."
@@ -1107,6 +1110,7 @@ def raw_uds_recommendation_gate(
     all_present_transports_protocol_error_free: bool,
     raw_vs_uds_delta_ms: float | None,
     raw_vs_uds_final_after_finalize_delta_ms: float | None,
+    raw_vs_uds_deltas: dict[str, float | None],
     raw_uds_min_win_ms: float,
 ) -> dict[str, Any]:
     blockers: list[str] = []
@@ -1135,6 +1139,8 @@ def raw_uds_recommendation_gate(
         blockers.append("insufficient_raw_uds_latency_win")
     if raw_vs_uds_final_after_finalize_delta_ms is not None and raw_vs_uds_final_after_finalize_delta_ms < 0:
         blockers.append("raw_uds_finalization_regression")
+    queue_regressions = raw_uds_queue_regressions(raw_vs_uds_deltas)
+    blockers.extend(f"raw_uds_queue_regression:{metric}" for metric in queue_regressions)
     return {
         "passed": not blockers,
         "blockers": blockers,
@@ -1142,6 +1148,14 @@ def raw_uds_recommendation_gate(
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,
         "raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms": raw_vs_uds_final_after_finalize_delta_ms,
     }
+
+
+def raw_uds_queue_regressions(raw_vs_uds_deltas: dict[str, float | None]) -> list[str]:
+    return [
+        metric
+        for metric in ("audio_send_queue_depth_p95_ms", "asr_queue_delay_p95_ms")
+        if raw_vs_uds_deltas.get(metric) is not None and raw_vs_uds_deltas[metric] < 0
+    ]
 
 
 def raw_uds_decision_next_action(gate_blockers: list[str]) -> str:
@@ -1189,6 +1203,9 @@ def raw_uds_decision_next_action(gate_blockers: list[str]) -> str:
         return "Keep raw UDS experimental unless a future benchmark clears the latency gate."
     if blocker == "raw_uds_finalization_regression":
         return "Keep raw UDS experimental until finalization latency no longer regresses."
+    if blocker.startswith("raw_uds_queue_regression:"):
+        metric = blocker.split(":", 1)[1]
+        return f"Keep raw UDS experimental until {metric} no longer regresses."
     return "Review the gate blockers before deciding on raw UDS."
 
 
@@ -1321,6 +1338,7 @@ def compare_artifacts(
     raw_uds_comparison_summary = raw_uds_p95_comparison_summary(by_transport)
     raw_vs_uds_delta_ms = raw_vs_uds_deltas["time_to_first_interim_ms"]
     raw_vs_uds_final_after_finalize_delta_ms = raw_vs_uds_deltas["time_to_final_after_finalize_ms"]
+    queue_regressions = raw_uds_queue_regressions(raw_vs_uds_deltas)
     raw_uds_latency_experimental = raw_vs_uds_delta_ms is None or raw_vs_uds_delta_ms < raw_uds_min_win_ms
     fastest_first_interim_transport = fastest_transport_by_metric(by_transport, "time_to_first_interim_ms")
     fastest_final_after_finalize_transport = fastest_transport_by_metric(
@@ -1369,6 +1387,7 @@ def compare_artifacts(
         all_present_transports_protocol_error_free=all_present_transports_protocol_error_free,
         raw_vs_uds_delta_ms=raw_vs_uds_delta_ms,
         raw_vs_uds_final_after_finalize_delta_ms=raw_vs_uds_final_after_finalize_delta_ms,
+        raw_vs_uds_deltas=raw_vs_uds_deltas,
         raw_uds_min_win_ms=raw_uds_min_win_ms,
     )
     raw_uds_experimental = bool(raw_uds_latency_experimental or not recommendation_gate["passed"])
@@ -1395,6 +1414,7 @@ def compare_artifacts(
         start_payload_gaps=start_payload_gaps,
         comparison_requirement_gaps=comparison_requirement_gaps,
         input_gaps=input_gaps,
+        raw_uds_queue_regressions=queue_regressions,
     )
 
     return {
@@ -1427,6 +1447,7 @@ def compare_artifacts(
         "raw_uds_min_win_ms": raw_uds_min_win_ms,
         "raw_uds_recommendation_gate": recommendation_gate,
         "raw_uds_vs_uds_ws_p95_deltas_ms": raw_vs_uds_deltas,
+        "raw_uds_queue_regressions": queue_regressions,
         "raw_uds_p95_comparison_summary": raw_uds_comparison_summary,
         "pairwise_p95_deltas_ms": p95_delta_matrix,
         "raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms": raw_vs_uds_delta_ms,

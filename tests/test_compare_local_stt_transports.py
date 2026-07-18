@@ -326,6 +326,36 @@ def test_compare_artifacts_accepts_send_queue_depth_ms_alias(tmp_path: Path) -> 
     assert comparison["transports"]["raw_uds"]["metrics_p95"]["audio_send_queue_depth_p95_ms"] == 2.0
 
 
+def test_compare_artifacts_blocks_raw_uds_queue_latency_regressions(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(
+        tmp_path / "raw.json",
+        "raw_uds",
+        12.0,
+        audio_send_queue_depth_p95=4.0,
+        asr_queue_delay_p95=7.0,
+    )
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_queue_regressions"] == [
+        "audio_send_queue_depth_p95_ms",
+        "asr_queue_delay_p95_ms",
+    ]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "raw_uds_queue_regression:audio_send_queue_depth_p95_ms",
+        "raw_uds_queue_regression:asr_queue_delay_p95_ms",
+    ]
+    assert comparison["raw_uds_decision_summary"]["next_action"] == (
+        "Keep raw UDS experimental until audio_send_queue_depth_p95_ms no longer regresses."
+    )
+    assert comparison["raw_uds_should_remain_experimental"] is True
+    assert comparison["recommendation"] == (
+        "Keep raw UDS experimental until queue latency P95 does not regress against UDS websocket."
+    )
+
+
 def test_compare_artifacts_accepts_scalar_protocol_error_counts(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
