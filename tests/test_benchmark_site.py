@@ -977,9 +977,56 @@ def test_render_homepage_surfaces_raw_uds_transport_coverage() -> None:
     assert "4.0 KB" in html
     assert "Current public ranking artifacts: 1" in html
     assert "Transport coverage" in html
-    assert "1 raw UDS artifacts" in html
+    assert "1 raw UDS artifact" in html
     assert "3 Local STT artifacts are comparable today" in html
     assert "1 artifact catalogs the raw UDS opt-in contract" in html
+    assert "1 raw UDS artifacts" not in html
+
+
+def test_render_homepage_pluralizes_empty_raw_uds_transport_coverage() -> None:
+    homepage = """<!-- BEGIN GENERATED:static-summary -->\nold\n<!-- END GENERATED:static-summary -->\n<!-- BEGIN GENERATED:generated-at -->\nold\n<!-- END GENERATED:generated-at -->"""
+    manifest = {
+        "summary": {
+            "validated_count": 1,
+            "tracked_count": 1,
+            "transport_coverage": {
+                "comparable_local_stt_artifact_count": 1,
+                "raw_uds_artifact_count": 0,
+                "raw_uds_catalog_artifact_count": 2,
+            },
+        },
+        "tracks": [
+            {
+                "slug": "validated",
+                "label": "Validated Lane",
+                "status": "validated",
+                "status_detail": "publishable",
+                "artifact_path": "benchmark-results/validated.json",
+                "lane": "local",
+                "runtime": "cpu / int8",
+                "backend": "demo",
+                "model": "demo-v1",
+                "rest": {},
+                "streaming": {
+                    "live_metrics_comparable": True,
+                    "first_partial_end_to_end_mean_ms": 20,
+                    "partial_mean_ms": 30,
+                    "partial_gap_mean_ms": 5,
+                    "final_mean_ms": 40,
+                },
+                "sample_count": 8,
+                "target_sample_count": 10,
+            },
+        ],
+    }
+
+    html = render_homepage(manifest, homepage)
+
+    assert "0 raw UDS artifacts" in html
+    assert "1 Local STT artifact is comparable today" in html
+    assert "2 artifacts catalog the raw UDS opt-in contract" in html
+    assert "1 Local STT artifacts are comparable today" not in html
+    assert "2 artifact catalogs the raw UDS opt-in contract" not in html
     assert "at least 5 ms p95" in html
 
 

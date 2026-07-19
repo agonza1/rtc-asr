@@ -74,6 +74,11 @@ def format_count(value: float | int | None) -> str:
     return str(value)
 
 
+def pluralize_count(value: float | int | None, singular: str, plural: str | None = None) -> str:
+    label = singular if value == 1 else plural or f"{singular}s"
+    return f"{format_count(value)} {label}"
+
+
 def format_sample_coverage(sample_count: float | int | None, target_sample_count: float | int | None) -> str:
     if sample_count is None and target_sample_count is None:
         return "n/a"
@@ -1308,8 +1313,13 @@ def render_homepage(manifest: dict[str, Any], homepage: str) -> str:
         raw_uds_count = transport_coverage.get("raw_uds_artifact_count", 0)
         raw_uds_catalog_count = transport_coverage.get("raw_uds_catalog_artifact_count", 0)
         comparable_count = transport_coverage.get("comparable_local_stt_artifact_count", 0)
+        raw_uds_label = pluralize_count(raw_uds_count, "raw UDS artifact")
+        comparable_label = pluralize_count(comparable_count, "Local STT artifact")
+        comparable_verb = "is" if comparable_count == 1 else "are"
+        catalog_label = pluralize_count(raw_uds_catalog_count, "artifact")
+        catalog_verb = "catalogs" if raw_uds_catalog_count == 1 else "catalog"
         summary_cards.append(
-            f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Transport coverage</div><div class="headline-value">{raw_uds_count} raw UDS artifacts</div><p>{comparable_count} Local STT artifacts are comparable today; {raw_uds_catalog_count} artifact catalogs the raw UDS opt-in contract. Raw UDS stays experimental until checked-in evidence beats UDS websocket by at least 5 ms p95.</p></article>'
+            f'<article class="snapshot-card {tone_class(2)}"><div class="section-kicker">Transport coverage</div><div class="headline-value">{raw_uds_label}</div><p>{comparable_label} {comparable_verb} comparable today; {catalog_label} {catalog_verb} the raw UDS opt-in contract. Raw UDS stays experimental until checked-in evidence beats UDS websocket by at least 5 ms p95.</p></article>'
         )
     summary_cards.append(
         f'<article class="snapshot-card {tone_class(0)}"><div class="section-kicker">Best live numbers</div><div class="headline-value">{format_ms(best_first_partial)}</div><p>Fastest ASR TTFB / first visible partial in the primary comparison. Best finalization is {format_ms(best_final)}.</p></article>'
