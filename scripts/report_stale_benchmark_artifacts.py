@@ -165,7 +165,12 @@ def limit_artifacts(stale: list[dict[str, Any]], limit: int | None) -> list[dict
     return stale[:limit]
 
 
-def render_text(stale: list[dict[str, Any]], *, total_count: int | None = None) -> str:
+def render_text(
+    stale: list[dict[str, Any]],
+    *,
+    total_count: int | None = None,
+    total_size_bytes: int | None = None,
+) -> str:
     if not stale:
         if total_count:
             return (
@@ -198,7 +203,11 @@ def render_text(stale: list[dict[str, Any]], *, total_count: int | None = None) 
             )
         )
     if total_count > summary["count"]:
-        lines.append(f"... {total_count - summary['count']} more stale artifacts omitted by --limit.")
+        suffix = ""
+        if total_size_bytes is not None:
+            omitted_size_bytes = max(total_size_bytes - summary["total_size_bytes"], 0)
+            suffix = f" ({format_bytes(omitted_size_bytes)}, {omitted_size_bytes} bytes)"
+        lines.append(f"... {total_count - summary['count']} more stale artifacts{suffix} omitted by --limit.")
     return "\n".join(lines)
 
 
@@ -219,7 +228,14 @@ def main(argv: list[str] | None = None) -> int:
         summary["total_matching_size"] = matching_summary["total_size"]
         print(json.dumps(summary, indent=2))
     else:
-        print(render_text(limited_stale, total_count=len(stale)))
+        matching_summary = stale_summary(stale)
+        print(
+            render_text(
+                limited_stale,
+                total_count=len(stale),
+                total_size_bytes=matching_summary["total_size_bytes"],
+            )
+        )
     return 1 if args.fail_on_stale and stale else 0
 
 
