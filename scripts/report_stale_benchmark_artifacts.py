@@ -105,7 +105,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--status",
         action="append",
         default=None,
-        help="Only include stale artifacts with this status; repeat to include multiple statuses (default: legacy)",
+        help="Only include stale artifacts with this status; repeat to include multiple statuses; use 'any' for all statuses (default: legacy)",
     )
     parser.add_argument(
         "--fail-on-stale",
@@ -160,6 +160,13 @@ def detail_page_path(artifact_path: str | None) -> str | None:
     return f"benchmark-results/pages/{Path(artifact_name).stem}.html"
 
 
+def normalize_status_filters(statuses: list[str] | None) -> set[str] | None:
+    if statuses is None:
+        return {"legacy"}
+    normalized = {status.lower() for status in statuses}
+    return None if "any" in normalized else normalized
+
+
 def stale_artifacts(
     manifest: dict[str, Any],
     *,
@@ -205,14 +212,14 @@ def stale_artifacts(
     current_paths = {track["artifact_path"] for track in tracks}
     current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
     allowed_backends = None if backends is None else {backend.lower() for backend in backends}
-    allowed_statuses = {"legacy"} if statuses is None else {status.lower() for status in statuses}
+    allowed_statuses = normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
         artifact_path = artifact.get("artifact_path")
         if not artifact_path or artifact_path in current_paths:
             continue
         artifact_status = str(artifact.get("status") or "").lower()
-        if artifact_status not in allowed_statuses:
+        if allowed_statuses is not None and artifact_status not in allowed_statuses:
             continue
         if slugs is not None and artifact.get("slug") not in slugs:
             continue

@@ -20,6 +20,7 @@ stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
 detail_page_path = report_module.detail_page_path
 limit_artifacts = report_module.limit_artifacts
+normalize_status_filters = report_module.normalize_status_filters
 
 
 def test_stale_artifacts_excludes_current_track_artifact() -> None:
@@ -503,6 +504,37 @@ def test_stale_artifacts_can_filter_by_status() -> None:
     ]
 
 
+def test_stale_artifacts_status_any_includes_every_status() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/legacy.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/blocked.json",
+                "status": "blocked",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/preview.json",
+                "status": "preview",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, statuses=["any"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/preview.json",
+        "benchmark-results/blocked.json",
+        "benchmark-results/legacy.json",
+    ]
+
+
 def test_stale_artifacts_status_filter_defaults_to_legacy() -> None:
     manifest = {
         "tracks": [],
@@ -523,6 +555,12 @@ def test_stale_artifacts_status_filter_defaults_to_legacy() -> None:
     stale = stale_artifacts(manifest)
 
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/legacy.json"]
+
+
+def test_normalize_status_filters_treats_any_as_unfiltered() -> None:
+    assert normalize_status_filters(None) == {"legacy"}
+    assert normalize_status_filters(["blocked", "PREVIEW"]) == {"blocked", "preview"}
+    assert normalize_status_filters(["legacy", "ANY"]) is None
 
 
 def test_stale_artifacts_rejects_negative_minimum_size() -> None:
