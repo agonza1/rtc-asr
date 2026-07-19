@@ -108,6 +108,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose track currently points at this artifact path; repeat to include multiple paths",
     )
     parser.add_argument(
+        "--artifact-path",
+        action="append",
+        default=None,
+        help="Only include this stale artifact path; repeat to include multiple paths",
+    )
+    parser.add_argument(
         "--status",
         action="append",
         default=None,
@@ -195,6 +201,7 @@ def stale_artifacts(
     backends: list[str] | None = None,
     models: list[str] | None = None,
     current_paths: list[str] | None = None,
+    artifact_paths: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
@@ -230,11 +237,14 @@ def stale_artifacts(
     current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
     allowed_backends = None if backends is None else {backend.lower() for backend in backends}
     allowed_current_paths = None if current_paths is None else set(current_paths)
+    allowed_artifact_paths = None if artifact_paths is None else set(artifact_paths)
     allowed_statuses = normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
         artifact_path = artifact.get("artifact_path")
         if not artifact_path or artifact_path in current_artifact_paths:
+            continue
+        if allowed_artifact_paths is not None and artifact_path not in allowed_artifact_paths:
             continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
@@ -469,6 +479,7 @@ def main(argv: list[str] | None = None) -> int:
         backends=args.backend,
         models=args.model,
         current_paths=args.current_path,
+        artifact_paths=args.artifact_path,
         statuses=args.status,
         sort_by=args.sort,
     )
