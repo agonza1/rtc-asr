@@ -128,6 +128,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="With --paths-only, only print matching prerendered detail page paths",
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    parser.add_argument("--count-only", action="store_true", help="Print only the matching stale artifact count")
     return parser.parse_args(argv)
 
 
@@ -355,6 +356,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.json and args.paths_only:
         raise ValueError("--json and --paths-only cannot be used together")
+    if args.count_only and args.json:
+        raise ValueError("--count-only and --json cannot be used together")
+    if args.count_only and args.paths_only:
+        raise ValueError("--count-only and --paths-only cannot be used together")
     if args.include_detail_pages and not args.paths_only:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
@@ -377,7 +382,9 @@ def main(argv: list[str] | None = None) -> int:
         sort_by=args.sort,
     )
     limited_stale = limit_artifacts(stale, args.limit)
-    if args.paths_only:
+    if args.count_only:
+        print(len(stale))
+    elif args.paths_only:
         print(
             render_paths(
                 limited_stale,

@@ -991,6 +991,40 @@ def test_main_paths_only_honors_filters_and_limits(monkeypatch, capsys) -> None:
     assert capsys.readouterr().out == "benchmark-results/large.json\n"
 
 
+def test_main_count_only_reports_total_matches_before_limit(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "label": "Faster Whisper",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "label": "Faster Whisper",
+                    "artifact_size_bytes": 10,
+                },
+                {
+                    "artifact_path": "benchmark-results/qwen.json",
+                    "status": "legacy",
+                    "label": "Qwen",
+                    "artifact_size_bytes": 100,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--count-only", "--label", "whisper", "--limit", "1"]) == 0
+
+    assert capsys.readouterr().out == "2\n"
+
+
 def test_main_rejects_paths_only_with_json() -> None:
     try:
         report_module.main(["--paths-only", "--json"])
@@ -998,3 +1032,19 @@ def test_main_rejects_paths_only_with_json() -> None:
         assert str(error) == "--json and --paths-only cannot be used together"
     else:
         raise AssertionError("paths-only JSON output should be rejected")
+
+
+def test_main_rejects_count_only_with_structured_output_modes() -> None:
+    try:
+        report_module.main(["--count-only", "--json"])
+    except ValueError as error:
+        assert str(error) == "--count-only and --json cannot be used together"
+    else:
+        raise AssertionError("count-only JSON output should be rejected")
+
+    try:
+        report_module.main(["--count-only", "--paths-only"])
+    except ValueError as error:
+        assert str(error) == "--count-only and --paths-only cannot be used together"
+    else:
+        raise AssertionError("count-only path output should be rejected")
