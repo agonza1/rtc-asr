@@ -96,6 +96,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts for this backend; repeat to include multiple backends",
     )
     parser.add_argument(
+        "--model",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose model contains this text; repeat to include multiple models",
+    )
+    parser.add_argument(
         "--status",
         action="append",
         default=None,
@@ -148,6 +154,7 @@ def stale_artifacts(
     slugs: list[str] | None = None,
     labels: list[str] | None = None,
     backends: list[str] | None = None,
+    models: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
@@ -200,6 +207,10 @@ def stale_artifacts(
         artifact_backend = str(artifact.get("backend") or "").lower()
         if allowed_backends is not None and artifact_backend not in allowed_backends:
             continue
+        if models is not None:
+            artifact_model = str(artifact.get("model") or "").lower()
+            if not any(model.lower() in artifact_model for model in models):
+                continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
@@ -215,6 +226,7 @@ def stale_artifacts(
                 "slug": artifact.get("slug"),
                 "label": artifact.get("label"),
                 "backend": artifact.get("backend"),
+                "model": artifact.get("model"),
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
                 "current_artifact_path": current_path_by_slug.get(artifact.get("slug")),
@@ -320,6 +332,7 @@ def main(argv: list[str] | None = None) -> int:
         slugs=args.slug,
         labels=args.label,
         backends=args.backend,
+        models=args.model,
         statuses=args.status,
         sort_by=args.sort,
     )
