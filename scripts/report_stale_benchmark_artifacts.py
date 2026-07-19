@@ -127,6 +127,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="With --paths-only, only print matching prerendered detail page paths",
     )
+    parser.add_argument(
+        "--existing-paths-only",
+        action="store_true",
+        help="With --paths-only, only print artifact or detail page paths that exist on disk",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     parser.add_argument("--count-only", action="store_true", help="Print only the matching stale artifact count")
     parser.add_argument(
@@ -373,13 +378,18 @@ def render_paths(
     *,
     include_detail_pages: bool = False,
     detail_pages_only: bool = False,
+    existing_root: Path | None = None,
 ) -> str:
     paths = []
     for entry in stale:
         if not detail_pages_only:
-            paths.append(entry["artifact_path"])
+            artifact_path = entry["artifact_path"]
+            if existing_root is None or (existing_root / artifact_path).exists():
+                paths.append(artifact_path)
         detail_path = entry.get("detail_page_path")
         if (include_detail_pages or detail_pages_only) and detail_path:
+            if existing_root is not None and not (existing_root / detail_path).exists():
+                continue
             paths.append(detail_path)
     return "\n".join(paths)
 
@@ -427,6 +437,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
         raise ValueError("--detail-pages-only requires --paths-only")
+    if args.existing_paths_only and not args.paths_only:
+        raise ValueError("--existing-paths-only requires --paths-only")
     if args.detail_pages_only and args.include_detail_pages:
         raise ValueError("--detail-pages-only cannot be combined with --include-detail-pages")
 
@@ -455,6 +467,7 @@ def main(argv: list[str] | None = None) -> int:
                 limited_stale,
                 include_detail_pages=args.include_detail_pages,
                 detail_pages_only=args.detail_pages_only,
+                existing_root=args.results_dir.parent if args.existing_paths_only else None,
             )
         )
     elif args.json:
