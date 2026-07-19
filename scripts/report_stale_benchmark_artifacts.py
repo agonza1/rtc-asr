@@ -28,7 +28,7 @@ def format_bytes(size_bytes: int | None) -> str:
     return f"{size:.1f} {unit}"
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Report stale benchmark artifacts")
     parser.add_argument(
         "--results-dir",
@@ -60,8 +60,13 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Only include stale artifacts at least this many bytes large",
     )
+    parser.add_argument(
+        "--fail-on-stale",
+        action="store_true",
+        help="Exit non-zero when matching stale artifacts are found",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def parse_timestamp(value: Any) -> datetime | None:
@@ -197,8 +202,8 @@ def render_text(stale: list[dict[str, Any]], *, total_count: int | None = None) 
     return "\n".join(lines)
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     manifest = build_manifest(args.results_dir, args.tracks)
     stale = stale_artifacts(
         manifest,
@@ -212,7 +217,8 @@ def main() -> None:
         print(json.dumps(summary, indent=2))
     else:
         print(render_text(limited_stale, total_count=len(stale)))
+    return 1 if args.fail_on_stale and stale else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -225,3 +225,41 @@ def test_limit_artifacts_rejects_negative_limits() -> None:
         assert str(error) == "limit must be non-negative"
     else:
         raise AssertionError("negative limits should fail")
+
+
+def test_main_can_fail_when_matching_stale_artifacts(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/old.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale"]) == 1
+
+
+def test_main_fail_on_stale_honors_filters(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/tiny.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale", "--min-size-bytes", "100"]) == 0
