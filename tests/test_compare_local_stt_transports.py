@@ -2191,6 +2191,7 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "- missing transport benchmark: uds_ws" in markdown
     assert "Raw UDS recommendation gate: blocked" in markdown
     assert "Raw UDS first-interim p95 win over UDS WebSocket: missing" in markdown
+    assert "Raw UDS next action: Run the missing uds_ws benchmark before deciding on raw UDS." in markdown
     assert "Raw UDS gate blockers:" in markdown
     assert "- missing_transport:uds_ws" in markdown
     assert "- missing_raw_uds_latency_delta" in markdown
@@ -2207,6 +2208,7 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     markdown = markdown_path.read_text(encoding="utf8")
     assert "Recommendation: Raw UDS has a measurable first-interim P95 win; consider it for the next adapter prototype." in markdown
     assert "Raw UDS recommendation gate: passed" in markdown
+    assert "Raw UDS next action: Proceed with the next raw UDS adapter prototype." in markdown
     assert "P95 metric leaders:" in markdown
     assert "| time_to_first_interim_ms | raw_uds |" in markdown
     assert "CPU utilization coverage:" in markdown

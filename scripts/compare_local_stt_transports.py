@@ -1802,6 +1802,7 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
             f"Raw UDS first-interim p95 win over UDS WebSocket: {_format_optional_ms(gate['raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms'])}",
             f"Minimum required win: {gate['raw_uds_min_win_ms']:g} ms",
             f"Raw UDS decision status: {_format_optional_value(decision.get('status'))}",
+            f"Raw UDS next action: {_format_optional_value(decision.get('next_action'))}",
             f"Raw UDS leading p95 metrics: {_format_optional_value(decision.get('raw_uds_leading_p95_metrics'))}",
         ]
     )
