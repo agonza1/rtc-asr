@@ -102,6 +102,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose model contains this text; repeat to include multiple models",
     )
     parser.add_argument(
+        "--current-path",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose track currently points at this artifact path; repeat to include multiple paths",
+    )
+    parser.add_argument(
         "--status",
         action="append",
         default=None,
@@ -188,6 +194,7 @@ def stale_artifacts(
     labels: list[str] | None = None,
     backends: list[str] | None = None,
     models: list[str] | None = None,
+    current_paths: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
@@ -219,14 +226,15 @@ def stale_artifacts(
         cutoff = min(cutoff, measured_before_cutoff) if cutoff is not None else measured_before_cutoff
 
     tracks = [track for track in manifest.get("tracks", []) if track.get("artifact_path")]
-    current_paths = {track["artifact_path"] for track in tracks}
+    current_artifact_paths = {track["artifact_path"] for track in tracks}
     current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
     allowed_backends = None if backends is None else {backend.lower() for backend in backends}
+    allowed_current_paths = None if current_paths is None else set(current_paths)
     allowed_statuses = normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
         artifact_path = artifact.get("artifact_path")
-        if not artifact_path or artifact_path in current_paths:
+        if not artifact_path or artifact_path in current_artifact_paths:
             continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
@@ -244,6 +252,9 @@ def stale_artifacts(
             artifact_model = str(artifact.get("model") or "").lower()
             if not any(model.lower() in artifact_model for model in models):
                 continue
+        current_artifact_path = current_path_by_slug.get(artifact.get("slug"))
+        if allowed_current_paths is not None and current_artifact_path not in allowed_current_paths:
+            continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
@@ -262,7 +273,7 @@ def stale_artifacts(
                 "model": artifact.get("model"),
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
-                "current_artifact_path": current_path_by_slug.get(artifact.get("slug")),
+                "current_artifact_path": current_artifact_path,
                 "detail_page_path": detail_page_path(artifact_path),
                 "artifact_size_bytes": artifact_size_bytes,
                 "artifact_size": format_bytes(artifact_size_bytes),
@@ -457,6 +468,7 @@ def main(argv: list[str] | None = None) -> int:
         labels=args.label,
         backends=args.backend,
         models=args.model,
+        current_paths=args.current_path,
         statuses=args.status,
         sort_by=args.sort,
     )
