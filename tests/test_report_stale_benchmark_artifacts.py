@@ -129,6 +129,38 @@ def test_stale_summary_groups_artifact_size_by_slug() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_status() -> None:
+    stale = [
+        {"artifact_path": "benchmark-results/legacy-large.json", "status": "legacy", "artifact_size_bytes": 40},
+        {"artifact_path": "benchmark-results/blocked.json", "status": "blocked", "artifact_size_bytes": 30},
+        {"artifact_path": "benchmark-results/legacy-small.json", "status": "legacy", "artifact_size_bytes": 10},
+        {"artifact_path": "benchmark-results/unknown.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_status"] == [
+        {
+            "status": "legacy",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "status": "blocked",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "status": "unknown",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
     manifest = {
         "tracks": [],
@@ -839,7 +871,9 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
     assert rendered == (
         "Found 3 stale benchmark artifacts (65 B, 65 bytes).\n"
         "- base: 2 artifacts (35 B, 35 bytes)\n"
-        "- untracked: 1 artifact (30 B, 30 bytes)"
+        "- untracked: 1 artifact (30 B, 30 bytes)\n"
+        "By status:\n"
+        "- unknown: 3 artifacts (65 B, 65 bytes)"
     )
 
 
@@ -1436,6 +1470,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
     assert capsys.readouterr().out == (
         "Found 2 stale benchmark artifacts (100 B, 100 bytes).\n"
         "- base: 2 artifacts (100 B, 100 bytes)\n"
+        "By status:\n"
+        "- legacy: 2 artifacts (100 B, 100 bytes)\n"
     )
 
 
