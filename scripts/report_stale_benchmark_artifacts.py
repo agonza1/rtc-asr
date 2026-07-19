@@ -67,6 +67,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts at least this many bytes large",
     )
     parser.add_argument(
+        "--max-size-bytes",
+        type=int,
+        default=None,
+        help="Only include stale artifacts no larger than this many bytes",
+    )
+    parser.add_argument(
         "--slug",
         action="append",
         default=None,
@@ -113,6 +119,7 @@ def stale_artifacts(
     *,
     older_than_days: int | None = None,
     min_size_bytes: int | None = None,
+    max_size_bytes: int | None = None,
     slugs: list[str] | None = None,
     labels: list[str] | None = None,
     now: datetime | None = None,
@@ -120,6 +127,10 @@ def stale_artifacts(
 ) -> list[dict[str, Any]]:
     if min_size_bytes is not None and min_size_bytes < 0:
         raise ValueError("min_size_bytes must be non-negative")
+    if max_size_bytes is not None and max_size_bytes < 0:
+        raise ValueError("max_size_bytes must be non-negative")
+    if min_size_bytes is not None and max_size_bytes is not None and min_size_bytes > max_size_bytes:
+        raise ValueError("min_size_bytes cannot exceed max_size_bytes")
 
     cutoff = None
     if older_than_days is not None:
@@ -152,6 +163,8 @@ def stale_artifacts(
             continue
         artifact_size_bytes = artifact.get("artifact_size_bytes")
         if min_size_bytes is not None and (artifact_size_bytes or 0) < min_size_bytes:
+            continue
+        if max_size_bytes is not None and (artifact_size_bytes or 0) > max_size_bytes:
             continue
         stale.append(
             {
@@ -257,6 +270,7 @@ def main(argv: list[str] | None = None) -> int:
         manifest,
         older_than_days=args.older_than_days,
         min_size_bytes=args.min_size_bytes,
+        max_size_bytes=args.max_size_bytes,
         slugs=args.slug,
         labels=args.label,
         sort_by=args.sort,

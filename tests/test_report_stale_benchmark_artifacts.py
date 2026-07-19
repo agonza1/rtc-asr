@@ -217,6 +217,35 @@ def test_stale_artifacts_can_filter_by_minimum_size() -> None:
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/large.json"]
 
 
+def test_stale_artifacts_can_filter_by_maximum_size() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/tiny.json",
+                "status": "legacy",
+                "artifact_size_bytes": 99,
+            },
+            {
+                "artifact_path": "benchmark-results/large.json",
+                "status": "legacy",
+                "artifact_size_bytes": 100,
+            },
+            {
+                "artifact_path": "benchmark-results/missing-size.json",
+                "status": "legacy",
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, max_size_bytes=99)
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/tiny.json",
+        "benchmark-results/missing-size.json",
+    ]
+
+
 def test_stale_artifacts_can_filter_by_track_slug() -> None:
     manifest = {
         "tracks": [],
@@ -288,6 +317,22 @@ def test_stale_artifacts_rejects_negative_minimum_size() -> None:
         assert str(error) == "min_size_bytes must be non-negative"
     else:
         raise AssertionError("negative minimum sizes should fail")
+
+
+def test_stale_artifacts_rejects_invalid_maximum_size_filters() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, max_size_bytes=-1)
+    except ValueError as error:
+        assert str(error) == "max_size_bytes must be non-negative"
+    else:
+        raise AssertionError("negative maximum sizes should fail")
+
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, min_size_bytes=100, max_size_bytes=99)
+    except ValueError as error:
+        assert str(error) == "min_size_bytes cannot exceed max_size_bytes"
+    else:
+        raise AssertionError("inverted size ranges should fail")
 
 
 def test_format_bytes_uses_binary_units() -> None:
@@ -406,6 +451,26 @@ def test_main_fail_on_stale_honors_filters(monkeypatch) -> None:
     )
 
     assert report_module.main(["--fail-on-stale", "--min-size-bytes", "100"]) == 0
+
+
+def test_main_fail_on_stale_honors_max_size_filter(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 100,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale", "--max-size-bytes", "99"]) == 0
+    assert report_module.main(["--fail-on-stale", "--max-size-bytes", "100"]) == 1
 
 
 def test_main_fail_on_stale_honors_slug_filter(monkeypatch) -> None:
