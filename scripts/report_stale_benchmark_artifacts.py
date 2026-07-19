@@ -67,6 +67,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts at least this many bytes large",
     )
     parser.add_argument(
+        "--slug",
+        action="append",
+        default=None,
+        help="Only include stale artifacts for this benchmark track slug; repeat to include multiple slugs",
+    )
+    parser.add_argument(
         "--fail-on-stale",
         action="store_true",
         help="Exit non-zero when matching stale artifacts are found",
@@ -101,6 +107,7 @@ def stale_artifacts(
     *,
     older_than_days: int | None = None,
     min_size_bytes: int | None = None,
+    slugs: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
 ) -> list[dict[str, Any]]:
@@ -125,6 +132,8 @@ def stale_artifacts(
         if not artifact_path or artifact_path in current_paths:
             continue
         if artifact.get("status") != "legacy":
+            continue
+        if slugs is not None and artifact.get("slug") not in slugs:
             continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
@@ -237,6 +246,7 @@ def main(argv: list[str] | None = None) -> int:
         manifest,
         older_than_days=args.older_than_days,
         min_size_bytes=args.min_size_bytes,
+        slugs=args.slug,
         sort_by=args.sort,
     )
     limited_stale = limit_artifacts(stale, args.limit)

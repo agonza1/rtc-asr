@@ -217,6 +217,38 @@ def test_stale_artifacts_can_filter_by_minimum_size() -> None:
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/large.json"]
 
 
+def test_stale_artifacts_can_filter_by_track_slug() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/small.json",
+                "status": "legacy",
+                "slug": "small",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, slugs=["base", "small"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/small.json",
+        "benchmark-results/base.json",
+    ]
+
+
 def test_stale_artifacts_rejects_negative_minimum_size() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, min_size_bytes=-1)
@@ -342,6 +374,27 @@ def test_main_fail_on_stale_honors_filters(monkeypatch) -> None:
     )
 
     assert report_module.main(["--fail-on-stale", "--min-size-bytes", "100"]) == 0
+
+
+def test_main_fail_on_stale_honors_slug_filter(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale", "--slug", "small"]) == 0
+    assert report_module.main(["--fail-on-stale", "--slug", "base"]) == 1
 
 
 def test_main_json_reports_total_matching_size_when_limited(monkeypatch, capsys) -> None:
