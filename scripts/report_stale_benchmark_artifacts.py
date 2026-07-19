@@ -319,6 +319,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     total_size_bytes = sum(entry.get("artifact_size_bytes") or 0 for entry in stale)
     by_slug: dict[str, dict[str, Any]] = {}
     by_status: dict[str, dict[str, Any]] = {}
+    by_backend: dict[str, dict[str, Any]] = {}
     for entry in stale:
         slug = str(entry.get("slug") or "untracked")
         bucket = by_slug.setdefault(
@@ -348,6 +349,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         status_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         status_bucket["total_size"] = format_bytes(status_bucket["total_size_bytes"])
 
+        backend = str(entry.get("backend") or "unknown")
+        backend_bucket = by_backend.setdefault(
+            backend,
+            {
+                "backend": backend,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        backend_bucket["count"] += 1
+        backend_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        backend_bucket["total_size"] = format_bytes(backend_bucket["total_size_bytes"])
+
     return {
         "count": len(stale),
         "total_size_bytes": total_size_bytes,
@@ -359,6 +374,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_status": sorted(
             by_status.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["status"]),
+        ),
+        "by_backend": sorted(
+            by_backend.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["backend"]),
         ),
         "artifacts": stale,
     }
@@ -478,6 +497,19 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
         lines.append(
             "- {status}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
                 status=bucket["status"],
+                count=bucket["count"],
+                bucket_noun=bucket_noun,
+                size=bucket["total_size"],
+                bytes=bucket["total_size_bytes"],
+            )
+        )
+    if summary["by_backend"]:
+        lines.append("By backend:")
+    for bucket in summary["by_backend"]:
+        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+        lines.append(
+            "- {backend}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                backend=bucket["backend"],
                 count=bucket["count"],
                 bucket_noun=bucket_noun,
                 size=bucket["total_size"],

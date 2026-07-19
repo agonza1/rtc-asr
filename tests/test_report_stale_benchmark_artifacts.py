@@ -161,6 +161,50 @@ def test_stale_summary_groups_artifact_size_by_status() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_backend() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-large.json",
+            "backend": "faster-whisper",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "backend": "qwen-asr",
+            "artifact_size_bytes": 30,
+        },
+        {
+            "artifact_path": "benchmark-results/base-small.json",
+            "backend": "faster-whisper",
+            "artifact_size_bytes": 10,
+        },
+        {"artifact_path": "benchmark-results/unknown.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_backend"] == [
+        {
+            "backend": "faster-whisper",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "backend": "qwen-asr",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "backend": "unknown",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
     manifest = {
         "tracks": [],
@@ -878,9 +922,23 @@ def test_render_paths_can_filter_to_missing_paths(tmp_path) -> None:
 def test_render_summary_groups_stale_artifacts_by_slug() -> None:
     rendered = render_summary(
         [
-            {"artifact_path": "benchmark-results/base-old.json", "slug": "base", "artifact_size_bytes": 20},
-            {"artifact_path": "benchmark-results/untracked.json", "artifact_size_bytes": 30},
-            {"artifact_path": "benchmark-results/base-older.json", "slug": "base", "artifact_size_bytes": 15},
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "slug": "base",
+                "backend": "faster-whisper",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "backend": "qwen-asr",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-older.json",
+                "slug": "base",
+                "backend": "faster-whisper",
+                "artifact_size_bytes": 15,
+            },
         ]
     )
 
@@ -889,7 +947,10 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- base: 2 artifacts (35 B, 35 bytes)\n"
         "- untracked: 1 artifact (30 B, 30 bytes)\n"
         "By status:\n"
-        "- unknown: 3 artifacts (65 B, 65 bytes)"
+        "- unknown: 3 artifacts (65 B, 65 bytes)\n"
+        "By backend:\n"
+        "- faster-whisper: 2 artifacts (35 B, 35 bytes)\n"
+        "- qwen-asr: 1 artifact (30 B, 30 bytes)"
     )
 
 
@@ -1488,6 +1549,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- base: 2 artifacts (100 B, 100 bytes)\n"
         "By status:\n"
         "- legacy: 2 artifacts (100 B, 100 bytes)\n"
+        "By backend:\n"
+        "- unknown: 2 artifacts (100 B, 100 bytes)\n"
     )
 
 
