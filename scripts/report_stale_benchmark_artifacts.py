@@ -342,9 +342,11 @@ def render_text(
         return "No stale benchmark artifacts found."
     summary = stale_summary(stale)
     total_count = total_count if total_count is not None else summary["count"]
+    shown_noun = "artifact" if summary["count"] == 1 else "artifacts"
     lines = [
-        "Found {count} stale benchmark artifacts ({size}, {bytes} bytes):".format(
+        "Found {count} stale benchmark {noun} ({size}, {bytes} bytes):".format(
             count=summary["count"],
+            noun=shown_noun,
             size=summary["total_size"],
             bytes=summary["total_size_bytes"],
         )
@@ -369,7 +371,9 @@ def render_text(
         if total_size_bytes is not None:
             omitted_size_bytes = max(total_size_bytes - summary["total_size_bytes"], 0)
             suffix = f" ({format_bytes(omitted_size_bytes)}, {omitted_size_bytes} bytes)"
-        lines.append(f"... {total_count - summary['count']} more stale artifacts{suffix} omitted by --limit.")
+        omitted_count = total_count - summary["count"]
+        omitted_noun = "artifact" if omitted_count == 1 else "artifacts"
+        lines.append(f"... {omitted_count} more stale {omitted_noun}{suffix} omitted by --limit.")
     return "\n".join(lines)
 
 

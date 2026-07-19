@@ -619,7 +619,7 @@ def test_render_text_summarizes_stale_artifacts() -> None:
         ]
     )
 
-    assert "Found 1 stale benchmark artifacts (75 B, 75 bytes):" in rendered
+    assert "Found 1 stale benchmark artifact (75 B, 75 bytes):" in rendered
     assert (
         "benchmark-results/older.json [demo] measured 2026-06-10T00:00:00Z (75 B); "
         "current: benchmark-results/current.json; detail: benchmark-results/pages/older.html"
@@ -636,8 +636,8 @@ def test_limit_artifacts_keeps_largest_entries_and_text_mentions_omissions() -> 
     rendered = render_text(limited, total_count=len(stale))
 
     assert limited == [stale[0]]
-    assert "Found 1 stale benchmark artifacts (90 B, 90 bytes):" in rendered
-    assert "... 1 more stale artifacts omitted by --limit." in rendered
+    assert "Found 1 stale benchmark artifact (90 B, 90 bytes):" in rendered
+    assert "... 1 more stale artifact omitted by --limit." in rendered
 
 
 def test_render_text_can_report_omitted_limited_artifact_size() -> None:
@@ -648,7 +648,7 @@ def test_render_text_can_report_omitted_limited_artifact_size() -> None:
 
     rendered = render_text(stale[:1], total_count=len(stale), total_size_bytes=100)
 
-    assert "... 1 more stale artifacts (10 B, 10 bytes) omitted by --limit." in rendered
+    assert "... 1 more stale artifact (10 B, 10 bytes) omitted by --limit." in rendered
 
 
 def test_render_text_reports_zero_limit_omits_all_matches() -> None:
@@ -1120,7 +1120,7 @@ def test_main_text_reports_total_matching_size_when_limited(monkeypatch, capsys)
     assert report_module.main(["--limit", "1"]) == 0
 
     assert (
-        "... 1 more stale artifacts (10 B, 10 bytes) omitted by --limit."
+        "... 1 more stale artifact (10 B, 10 bytes) omitted by --limit."
         in capsys.readouterr().out
     )
 
