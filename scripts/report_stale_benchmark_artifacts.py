@@ -214,6 +214,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         summary = stale_summary(limited_stale)
         summary["total_matching_count"] = len(stale)
+        matching_summary = stale_summary(stale)
+        summary["total_matching_size_bytes"] = matching_summary["total_size_bytes"]
+        summary["total_matching_size"] = matching_summary["total_size"]
         print(json.dumps(summary, indent=2))
     else:
         print(render_text(limited_stale, total_count=len(stale)))
