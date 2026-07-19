@@ -205,6 +205,50 @@ def test_stale_summary_groups_artifact_size_by_backend() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_model() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-large.json",
+            "model": "base.en",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "model": "Qwen/Qwen3-ASR-0.6B",
+            "artifact_size_bytes": 30,
+        },
+        {
+            "artifact_path": "benchmark-results/base-small.json",
+            "model": "base.en",
+            "artifact_size_bytes": 10,
+        },
+        {"artifact_path": "benchmark-results/unknown.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_model"] == [
+        {
+            "model": "base.en",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "model": "Qwen/Qwen3-ASR-0.6B",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "model": "unknown",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
     manifest = {
         "tracks": [],
@@ -926,17 +970,20 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
                 "artifact_path": "benchmark-results/base-old.json",
                 "slug": "base",
                 "backend": "faster-whisper",
+                "model": "base.en",
                 "artifact_size_bytes": 20,
             },
             {
                 "artifact_path": "benchmark-results/untracked.json",
                 "backend": "qwen-asr",
+                "model": "Qwen/Qwen3-ASR-0.6B",
                 "artifact_size_bytes": 30,
             },
             {
                 "artifact_path": "benchmark-results/base-older.json",
                 "slug": "base",
                 "backend": "faster-whisper",
+                "model": "base.en",
                 "artifact_size_bytes": 15,
             },
         ]
@@ -950,7 +997,10 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By backend:\n"
         "- faster-whisper: 2 artifacts (35 B, 35 bytes)\n"
-        "- qwen-asr: 1 artifact (30 B, 30 bytes)"
+        "- qwen-asr: 1 artifact (30 B, 30 bytes)\n"
+        "By model:\n"
+        "- base.en: 2 artifacts (35 B, 35 bytes)\n"
+        "- Qwen/Qwen3-ASR-0.6B: 1 artifact (30 B, 30 bytes)"
     )
 
 
@@ -1530,12 +1580,14 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
                     "artifact_path": "benchmark-results/large.json",
                     "status": "legacy",
                     "slug": "base",
+                    "model": "base.en",
                     "artifact_size_bytes": 90,
                 },
                 {
                     "artifact_path": "benchmark-results/small.json",
                     "status": "legacy",
                     "slug": "base",
+                    "model": "base.en",
                     "artifact_size_bytes": 10,
                 },
             ],
@@ -1551,6 +1603,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- legacy: 2 artifacts (100 B, 100 bytes)\n"
         "By backend:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
+        "By model:\n"
+        "- base.en: 2 artifacts (100 B, 100 bytes)\n"
     )
 
 
