@@ -800,6 +800,33 @@ def test_render_paths_can_filter_to_existing_paths(tmp_path) -> None:
     )
 
 
+def test_render_paths_can_filter_to_missing_paths(tmp_path) -> None:
+    docs_root = tmp_path / "docs"
+    (docs_root / "benchmark-results" / "pages").mkdir(parents=True)
+    (docs_root / "benchmark-results" / "oldest.json").write_text("{}", encoding="utf-8")
+    (docs_root / "benchmark-results" / "pages" / "oldest.html").write_text("", encoding="utf-8")
+
+    rendered = render_paths(
+        [
+            {
+                "artifact_path": "benchmark-results/oldest.json",
+                "detail_page_path": "benchmark-results/pages/oldest.html",
+            },
+            {
+                "artifact_path": "benchmark-results/missing.json",
+                "detail_page_path": "benchmark-results/pages/missing.html",
+            },
+        ],
+        include_detail_pages=True,
+        missing_root=docs_root,
+    )
+
+    assert rendered == (
+        "benchmark-results/missing.json\n"
+        "benchmark-results/pages/missing.html"
+    )
+
+
 def test_render_summary_groups_stale_artifacts_by_slug() -> None:
     rendered = render_summary(
         [
@@ -972,6 +999,51 @@ def test_main_paths_only_can_filter_to_existing_paths(monkeypatch, tmp_path, cap
     )
 
 
+def test_main_paths_only_can_filter_to_missing_paths(monkeypatch, tmp_path, capsys) -> None:
+    results_dir = tmp_path / "docs" / "benchmark-results"
+    pages_dir = results_dir / "pages"
+    pages_dir.mkdir(parents=True)
+    (results_dir / "old.json").write_text("{}", encoding="utf-8")
+    (pages_dir / "old.html").write_text("", encoding="utf-8")
+
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/old.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                },
+                {
+                    "artifact_path": "benchmark-results/missing.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 20,
+                },
+            ],
+        },
+    )
+
+    assert (
+        report_module.main(
+            [
+                "--results-dir",
+                str(results_dir),
+                "--paths-only",
+                "--include-detail-pages",
+                "--missing-paths-only",
+            ]
+        )
+        == 0
+    )
+
+    assert capsys.readouterr().out == (
+        "benchmark-results/missing.json\nbenchmark-results/pages/missing.html\n"
+    )
+
+
 def test_main_rejects_detail_pages_without_paths_only() -> None:
     try:
         report_module.main(["--include-detail-pages"])
@@ -1006,6 +1078,24 @@ def test_main_rejects_existing_paths_only_without_paths_only() -> None:
         assert str(error) == "--existing-paths-only requires --paths-only"
     else:
         raise AssertionError("--existing-paths-only should require --paths-only")
+
+
+def test_main_rejects_missing_paths_only_without_paths_only() -> None:
+    try:
+        report_module.main(["--missing-paths-only"])
+    except ValueError as error:
+        assert str(error) == "--missing-paths-only requires --paths-only"
+    else:
+        raise AssertionError("--missing-paths-only should require --paths-only")
+
+
+def test_main_rejects_existing_and_missing_paths_only_together() -> None:
+    try:
+        report_module.main(["--paths-only", "--existing-paths-only", "--missing-paths-only"])
+    except ValueError as error:
+        assert str(error) == "--existing-paths-only cannot be combined with --missing-paths-only"
+    else:
+        raise AssertionError("existing and missing path modes should be mutually exclusive")
 
 
 def test_main_fail_on_stale_honors_measured_before_filter(monkeypatch) -> None:
