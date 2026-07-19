@@ -633,6 +633,75 @@ def test_stale_artifacts_can_filter_by_measured_before_timestamp() -> None:
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/old.json"]
 
 
+def test_stale_artifacts_can_filter_by_measured_after_timestamp() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/old.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/cutoff.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/new.json",
+                "status": "legacy",
+                "measured_at": "2026-06-25T00:00:00Z",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 40,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, measured_after="2026-06-20")
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/new.json"]
+
+
+def test_stale_artifacts_can_filter_by_measured_window() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/old.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/window.json",
+                "status": "legacy",
+                "measured_at": "2026-06-15T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/new.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T00:00:00Z",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        measured_after="2026-06-12T00:00:00Z",
+        measured_before="2026-06-18T00:00:00Z",
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/window.json"]
+
+
 def test_stale_artifacts_uses_stricter_cutoff_when_age_and_measured_before_are_set() -> None:
     manifest = {
         "tracks": [],
@@ -660,6 +729,28 @@ def test_stale_artifacts_uses_stricter_cutoff_when_age_and_measured_before_are_s
     )
 
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/oldest.json"]
+
+
+def test_stale_artifacts_rejects_invalid_measured_after_timestamp() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, measured_after="not a timestamp")
+    except ValueError as error:
+        assert str(error) == "measured_after must be an ISO timestamp or date"
+    else:
+        raise AssertionError("invalid measured-after filters should fail")
+
+
+def test_stale_artifacts_rejects_empty_measured_window() -> None:
+    try:
+        stale_artifacts(
+            {"tracks": [], "artifacts": []},
+            measured_after="2026-06-20T00:00:00Z",
+            measured_before="2026-06-20T00:00:00Z",
+        )
+    except ValueError as error:
+        assert str(error) == "measured_after must be earlier than the effective measured-before cutoff"
+    else:
+        raise AssertionError("empty measured windows should fail")
 
 
 def test_stale_artifacts_rejects_invalid_measured_before_timestamp() -> None:
