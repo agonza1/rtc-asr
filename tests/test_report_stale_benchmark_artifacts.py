@@ -721,7 +721,7 @@ def test_render_text_summarizes_stale_artifacts() -> None:
 
     assert "Found 1 stale benchmark artifact (75 B, 75 bytes):" in rendered
     assert (
-        "benchmark-results/older.json [demo] measured 2026-06-10T00:00:00Z (75 B); "
+        "benchmark-results/older.json [demo] status unknown measured 2026-06-10T00:00:00Z (75 B); "
         "current: benchmark-results/current.json; detail: benchmark-results/pages/older.html"
     ) in rendered
 
@@ -738,6 +738,22 @@ def test_limit_artifacts_keeps_largest_entries_and_text_mentions_omissions() -> 
     assert limited == [stale[0]]
     assert "Found 1 stale benchmark artifact (90 B, 90 bytes):" in rendered
     assert "... 1 more stale artifact omitted by --limit." in rendered
+
+
+def test_render_text_includes_status_for_mixed_cleanup_reviews() -> None:
+    rendered = render_text(
+        [
+            {
+                "artifact_path": "benchmark-results/blocked.json",
+                "slug": "demo",
+                "status": "blocked",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 75,
+            }
+        ]
+    )
+
+    assert "benchmark-results/blocked.json [demo] status blocked measured" in rendered
 
 
 def test_render_text_can_report_omitted_limited_artifact_size() -> None:
