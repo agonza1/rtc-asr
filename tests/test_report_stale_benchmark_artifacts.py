@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -263,3 +264,34 @@ def test_main_fail_on_stale_honors_filters(monkeypatch) -> None:
     )
 
     assert report_module.main(["--fail-on-stale", "--min-size-bytes", "100"]) == 0
+
+
+def test_main_json_reports_total_matching_size_when_limited(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--json", "--limit", "1"]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["count"] == 1
+    assert payload["total_size_bytes"] == 90
+    assert payload["total_matching_count"] == 2
+    assert payload["total_matching_size_bytes"] == 100
+    assert payload["total_matching_size"] == "100 B"
