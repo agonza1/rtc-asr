@@ -210,6 +210,17 @@ def test_limit_artifacts_keeps_largest_entries_and_text_mentions_omissions() -> 
     assert "... 1 more stale artifacts omitted by --limit." in rendered
 
 
+def test_render_text_can_report_omitted_limited_artifact_size() -> None:
+    stale = [
+        {"artifact_path": "benchmark-results/large.json", "artifact_size_bytes": 90},
+        {"artifact_path": "benchmark-results/small.json", "artifact_size_bytes": 10},
+    ]
+
+    rendered = render_text(stale[:1], total_count=len(stale), total_size_bytes=100)
+
+    assert "... 1 more stale artifacts (10 B, 10 bytes) omitted by --limit." in rendered
+
+
 def test_render_text_reports_zero_limit_omits_all_matches() -> None:
     rendered = render_text([], total_count=2)
 
@@ -295,3 +306,32 @@ def test_main_json_reports_total_matching_size_when_limited(monkeypatch, capsys)
     assert payload["total_matching_count"] == 2
     assert payload["total_matching_size_bytes"] == 100
     assert payload["total_matching_size"] == "100 B"
+
+
+def test_main_text_reports_total_matching_size_when_limited(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--limit", "1"]) == 0
+
+    assert (
+        "... 1 more stale artifacts (10 B, 10 bytes) omitted by --limit."
+        in capsys.readouterr().out
+    )
