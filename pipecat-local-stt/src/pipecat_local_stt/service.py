@@ -152,11 +152,14 @@ class LocalStreamingSTTService(STTService):
         final_event = self._final_events.setdefault(generation, asyncio.Event())
         await self._send_control({"type": "finalize"}, ensure_started=False)
         self._utterance_active = False
-        if self.config.final_timeout_s > 0:
-            try:
-                await asyncio.wait_for(final_event.wait(), timeout=self.config.final_timeout_s)
-            except asyncio.TimeoutError:
-                logger.debug("Timed out waiting for Local STT final transcript for generation %s", generation)
+        try:
+            if self.config.final_timeout_s > 0:
+                try:
+                    await asyncio.wait_for(final_event.wait(), timeout=self.config.final_timeout_s)
+                except asyncio.TimeoutError:
+                    logger.debug("Timed out waiting for Local STT final transcript for generation %s", generation)
+        finally:
+            self._final_events.pop(generation, None)
 
     async def cancel_current_utterance(self) -> None:
         self._generation += 1
@@ -338,8 +341,9 @@ class LocalStreamingSTTService(STTService):
                 self._utterance_active = False
                 generation = self._event_generation(event)
                 if isinstance(generation, int):
-                    final_event = self._final_events.setdefault(generation, asyncio.Event())
-                    final_event.set()
+                    final_event = self._final_events.get(generation)
+                    if final_event is not None:
+                        final_event.set()
             return
         if event_type == "error":
             self.metrics.local_stt_protocol_errors_total += 1

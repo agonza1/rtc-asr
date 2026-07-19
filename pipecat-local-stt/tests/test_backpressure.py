@@ -181,6 +181,36 @@ class FinalizeWaitWebSocket:
         return None
 
 
+class FinalTranscriptWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str):
+            payload = json.loads(data)
+            if payload["type"] == "start":
+                await self.incoming.put(json.dumps({"type": "ready"}))
+            elif payload["type"] == "finalize":
+                await self.incoming.put(json.dumps({
+                    "type": "transcript",
+                    "text": "done",
+                    "is_final": True,
+                    "speech_final": True,
+                    "revision": 1,
+                    "audio_received_ms": 20,
+                    "audio_transcribed_ms": 20,
+                    "metadata": {"local_stt_generation": 1},
+                }))
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
 class AlwaysFailSendWebSocket:
     def __init__(self) -> None:
         self.sent: list[str | bytes] = []
@@ -362,6 +392,26 @@ async def _test_finalize_waits_for_queued_audio_before_control_message() -> None
     await service.cleanup()
 
     assert websocket.finalize_before_binary_completed is False
+
+
+def test_finalize_drops_completed_waiter() -> None:
+    asyncio.run(_test_finalize_drops_completed_waiter())
+
+
+async def _test_finalize_drops_completed_waiter() -> None:
+    websocket = FinalTranscriptWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await service.finalize_current_utterance()
+
+    assert service._final_events == {}
+    await service.cleanup()
 
 
 def test_finalize_skips_control_after_queued_send_failure_disconnects() -> None:
