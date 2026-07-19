@@ -552,6 +552,29 @@ def test_health_reports_enabled_raw_uds_server_path(tmp_path: Path) -> None:
     assert not raw_socket_path.exists()
 
 
+def test_api_models_reports_enabled_raw_uds_server_path(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as client:
+        response = client.get("/api/models")
+        assert raw_socket_path.exists()
+
+    assert response.status_code == 200
+    local_stt = next(protocol for protocol in response.json()["protocols"] if protocol["id"] == PROTOCOL_VERSION)
+    raw_uds = next(
+        transport for transport in local_stt["experimental_transports"] if transport["transport"] == "raw_uds"
+    )
+    assert raw_uds["status"] == "served"
+    assert raw_uds["enabled"] is True
+    assert raw_uds["uds_path"] == str(raw_socket_path)
+    assert raw_uds["plugin_config"] == {"transport": "raw_uds", "uds_path": str(raw_socket_path)}
+    assert raw_uds["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
+    assert raw_uds["max_payload_bytes"] == RAW_UDS_MAX_PAYLOAD_BYTES
+    assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
+    assert not raw_socket_path.exists()
+
+
 def test_raw_uds_server_shares_local_stt_v1_stream_runtime(tmp_path: Path) -> None:
     raw_socket_path = tmp_path / "stt.raw.sock"
     transcriber = FakeTranscriber()
