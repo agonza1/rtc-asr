@@ -274,10 +274,30 @@ def stale_artifacts(
 
 def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     total_size_bytes = sum(entry.get("artifact_size_bytes") or 0 for entry in stale)
+    by_slug: dict[str, dict[str, Any]] = {}
+    for entry in stale:
+        slug = str(entry.get("slug") or "untracked")
+        bucket = by_slug.setdefault(
+            slug,
+            {
+                "slug": slug,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        bucket["count"] += 1
+        bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        bucket["total_size"] = format_bytes(bucket["total_size_bytes"])
+
     return {
         "count": len(stale),
         "total_size_bytes": total_size_bytes,
         "total_size": format_bytes(total_size_bytes),
+        "by_slug": sorted(
+            by_slug.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["slug"]),
+        ),
         "artifacts": stale,
     }
 

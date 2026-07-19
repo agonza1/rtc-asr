@@ -95,6 +95,38 @@ def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
     assert summary["total_size"] == "100 B"
 
 
+def test_stale_summary_groups_artifact_size_by_slug() -> None:
+    stale = [
+        {"artifact_path": "benchmark-results/base-old.json", "slug": "base", "artifact_size_bytes": 20},
+        {"artifact_path": "benchmark-results/untracked.json", "artifact_size_bytes": 30},
+        {"artifact_path": "benchmark-results/base-older.json", "slug": "base", "artifact_size_bytes": 15},
+        {"artifact_path": "benchmark-results/qwen.json", "slug": "qwen", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_slug"] == [
+        {
+            "slug": "base",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "slug": "untracked",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "slug": "qwen",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
     manifest = {
         "tracks": [],
