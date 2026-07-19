@@ -91,6 +91,73 @@ def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
     assert summary["total_size"] == "100 B"
 
 
+def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/newer.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T00:00:00Z",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/older.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 100,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="measured-at")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+        "benchmark-results/unknown.json",
+    ]
+
+
+def test_stale_artifacts_can_sort_by_path() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/z.json",
+                "status": "legacy",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/a.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="path")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/a.json",
+        "benchmark-results/z.json",
+    ]
+
+
+def test_stale_artifacts_rejects_unknown_sort_order() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, sort_by="unknown")
+    except ValueError as error:
+        assert str(error) == "sort_by must be one of: size, measured-at, path"
+    else:
+        raise AssertionError("unknown stale artifact sort orders should fail")
+
+
 def test_stale_artifacts_can_filter_by_age() -> None:
     manifest = {
         "tracks": [],

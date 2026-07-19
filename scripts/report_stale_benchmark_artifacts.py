@@ -52,7 +52,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--limit",
         type=int,
         default=None,
-        help="Only print the largest N stale artifacts after filtering",
+        help="Only print the first N stale artifacts after filtering and sorting",
+    )
+    parser.add_argument(
+        "--sort",
+        choices=("size", "measured-at", "path"),
+        default="size",
+        help="Sort stale artifacts before applying --limit",
     )
     parser.add_argument(
         "--min-size-bytes",
@@ -96,6 +102,7 @@ def stale_artifacts(
     older_than_days: int | None = None,
     min_size_bytes: int | None = None,
     now: datetime | None = None,
+    sort_by: str = "size",
 ) -> list[dict[str, Any]]:
     if min_size_bytes is not None and min_size_bytes < 0:
         raise ValueError("min_size_bytes must be non-negative")
@@ -138,13 +145,25 @@ def stale_artifacts(
                 "artifact_size": format_bytes(artifact_size_bytes),
             }
         )
-    return sorted(
-        stale,
-        key=lambda entry: (
-            -(entry.get("artifact_size_bytes") or 0),
-            entry.get("artifact_path") or "",
-        ),
-    )
+    if sort_by == "size":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                -(entry.get("artifact_size_bytes") or 0),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "measured-at":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                parse_timestamp(entry.get("measured_at")) or datetime.max.replace(tzinfo=UTC),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "path":
+        return sorted(stale, key=lambda entry: entry.get("artifact_path") or "")
+    raise ValueError("sort_by must be one of: size, measured-at, path")
 
 
 def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
@@ -218,6 +237,7 @@ def main(argv: list[str] | None = None) -> int:
         manifest,
         older_than_days=args.older_than_days,
         min_size_bytes=args.min_size_bytes,
+        sort_by=args.sort,
     )
     limited_stale = limit_artifacts(stale, args.limit)
     if args.json:
