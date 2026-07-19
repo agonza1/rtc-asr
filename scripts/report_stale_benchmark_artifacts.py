@@ -49,6 +49,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts measured before this many days ago",
     )
     parser.add_argument(
+        "--measured-before",
+        default=None,
+        help="Only include stale artifacts measured before this ISO timestamp or date",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=None,
@@ -105,6 +110,13 @@ def parse_timestamp(value: Any) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
+def parse_required_timestamp(value: str, *, field_name: str) -> datetime:
+    parsed = parse_timestamp(value)
+    if parsed is None:
+        raise ValueError(f"{field_name} must be an ISO timestamp or date")
+    return parsed
+
+
 def detail_page_path(artifact_path: str | None) -> str | None:
     if not artifact_path:
         return None
@@ -118,6 +130,7 @@ def stale_artifacts(
     manifest: dict[str, Any],
     *,
     older_than_days: int | None = None,
+    measured_before: datetime | str | None = None,
     min_size_bytes: int | None = None,
     max_size_bytes: int | None = None,
     slugs: list[str] | None = None,
@@ -140,6 +153,16 @@ def stale_artifacts(
         if reference.tzinfo is None:
             reference = reference.replace(tzinfo=UTC)
         cutoff = reference.astimezone(UTC) - timedelta(days=older_than_days)
+    if measured_before is not None:
+        measured_before_cutoff = (
+            parse_required_timestamp(measured_before, field_name="measured_before")
+            if isinstance(measured_before, str)
+            else measured_before
+        )
+        if measured_before_cutoff.tzinfo is None:
+            measured_before_cutoff = measured_before_cutoff.replace(tzinfo=UTC)
+        measured_before_cutoff = measured_before_cutoff.astimezone(UTC)
+        cutoff = min(cutoff, measured_before_cutoff) if cutoff is not None else measured_before_cutoff
 
     tracks = [track for track in manifest.get("tracks", []) if track.get("artifact_path")]
     current_paths = {track["artifact_path"] for track in tracks}
@@ -269,6 +292,7 @@ def main(argv: list[str] | None = None) -> int:
     stale = stale_artifacts(
         manifest,
         older_than_days=args.older_than_days,
+        measured_before=args.measured_before,
         min_size_bytes=args.min_size_bytes,
         max_size_bytes=args.max_size_bytes,
         slugs=args.slug,
