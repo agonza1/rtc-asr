@@ -475,6 +475,49 @@ def test_stale_artifacts_can_filter_by_model_text() -> None:
     assert stale[0]["model"] == "Qwen/Qwen3-ASR-0.6B"
 
 
+def test_stale_artifacts_can_filter_by_current_artifact_path() -> None:
+    manifest = {
+        "tracks": [
+            {
+                "slug": "base",
+                "artifact_path": "benchmark-results/base-current.json",
+            },
+            {
+                "slug": "qwen",
+                "artifact_path": "benchmark-results/qwen-current.json",
+            },
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-current.json",
+                "status": "validated",
+                "slug": "base",
+                "artifact_size_bytes": 100,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        current_paths=["benchmark-results/base-current.json"],
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+    assert stale[0]["current_artifact_path"] == "benchmark-results/base-current.json"
+
+
 def test_stale_artifacts_can_filter_by_status() -> None:
     manifest = {
         "tracks": [],
@@ -1043,6 +1086,40 @@ def test_main_fail_on_stale_honors_model_filter(monkeypatch) -> None:
 
     assert report_module.main(["--fail-on-stale", "--model", "small.en"]) == 0
     assert report_module.main(["--fail-on-stale", "--model", "base"]) == 1
+
+
+def test_main_fail_on_stale_honors_current_path_filter(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [
+                {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+            ],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base-current.json",
+                    "status": "validated",
+                    "slug": "base",
+                    "artifact_size_bytes": 100,
+                },
+                {
+                    "artifact_path": "benchmark-results/base-old.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale", "--current-path", "benchmark-results/qwen.json"]) == 0
+    assert (
+        report_module.main(
+            ["--fail-on-stale", "--current-path", "benchmark-results/base-current.json"]
+        )
+        == 1
+    )
 
 
 def test_main_fail_on_stale_honors_status_filter(monkeypatch) -> None:
