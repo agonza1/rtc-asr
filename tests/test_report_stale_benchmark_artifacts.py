@@ -600,6 +600,25 @@ def test_render_paths_outputs_one_artifact_path_per_line() -> None:
     assert rendered == "benchmark-results/oldest.json\nbenchmark-results/old.json"
 
 
+def test_render_paths_can_include_detail_pages() -> None:
+    rendered = render_paths(
+        [
+            {
+                "artifact_path": "benchmark-results/oldest.json",
+                "detail_page_path": "benchmark-results/pages/oldest.html",
+            },
+            {"artifact_path": "benchmark-results/no-page.json"},
+        ],
+        include_detail_pages=True,
+    )
+
+    assert rendered == (
+        "benchmark-results/oldest.json\n"
+        "benchmark-results/pages/oldest.html\n"
+        "benchmark-results/no-page.json"
+    )
+
+
 def test_limit_artifacts_rejects_negative_limits() -> None:
     try:
         limit_artifacts([], -1)
@@ -665,6 +684,38 @@ def test_main_fail_on_stale_honors_max_size_filter(monkeypatch) -> None:
 
     assert report_module.main(["--fail-on-stale", "--max-size-bytes", "99"]) == 0
     assert report_module.main(["--fail-on-stale", "--max-size-bytes", "100"]) == 1
+
+
+def test_main_paths_only_can_include_detail_pages(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/old.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--paths-only", "--include-detail-pages"]) == 0
+
+    assert capsys.readouterr().out == (
+        "benchmark-results/old.json\nbenchmark-results/pages/old.html\n"
+    )
+
+
+def test_main_rejects_detail_pages_without_paths_only() -> None:
+    try:
+        report_module.main(["--include-detail-pages"])
+    except ValueError as error:
+        assert str(error) == "--include-detail-pages requires --paths-only"
+    else:
+        raise AssertionError("--include-detail-pages should require --paths-only")
 
 
 def test_main_fail_on_stale_honors_measured_before_filter(monkeypatch) -> None:
