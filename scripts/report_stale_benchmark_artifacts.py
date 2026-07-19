@@ -54,6 +54,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts measured before this ISO timestamp or date",
     )
     parser.add_argument(
+        "--measured-after",
+        default=None,
+        help="Only include stale artifacts measured after this ISO timestamp or date",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=None,
@@ -205,6 +210,7 @@ def stale_artifacts(
     *,
     older_than_days: int | None = None,
     measured_before: datetime | str | None = None,
+    measured_after: datetime | str | None = None,
     min_size_bytes: int | None = None,
     max_size_bytes: int | None = None,
     slugs: list[str] | None = None,
@@ -245,6 +251,18 @@ def stale_artifacts(
             measured_before_cutoff = measured_before_cutoff.replace(tzinfo=UTC)
         measured_before_cutoff = measured_before_cutoff.astimezone(UTC)
         cutoff = min(cutoff, measured_before_cutoff) if cutoff is not None else measured_before_cutoff
+    lower_cutoff = None
+    if measured_after is not None:
+        lower_cutoff = (
+            parse_required_timestamp(measured_after, field_name="measured_after")
+            if isinstance(measured_after, str)
+            else measured_after
+        )
+        if lower_cutoff.tzinfo is None:
+            lower_cutoff = lower_cutoff.replace(tzinfo=UTC)
+        lower_cutoff = lower_cutoff.astimezone(UTC)
+    if cutoff is not None and lower_cutoff is not None and lower_cutoff >= cutoff:
+        raise ValueError("measured_after must be earlier than the effective measured-before cutoff")
 
     tracks = [track for track in manifest.get("tracks", []) if track.get("artifact_path")]
     current_artifact_paths = {track["artifact_path"] for track in tracks}
@@ -286,6 +304,8 @@ def stale_artifacts(
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
+            continue
+        if lower_cutoff is not None and (measured_timestamp is None or measured_timestamp <= lower_cutoff):
             continue
         artifact_size_bytes = artifact.get("artifact_size_bytes")
         if min_size_bytes is not None and (artifact_size_bytes or 0) < min_size_bytes:
@@ -672,6 +692,7 @@ def main(argv: list[str] | None = None) -> int:
         manifest,
         older_than_days=args.older_than_days,
         measured_before=args.measured_before,
+        measured_after=args.measured_after,
         min_size_bytes=args.min_size_bytes,
         max_size_bytes=args.max_size_bytes,
         slugs=args.slug,
