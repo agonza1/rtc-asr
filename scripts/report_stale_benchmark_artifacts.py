@@ -401,10 +401,12 @@ def render_text(
         current_suffix = f"; current: {current_artifact_path}" if current_artifact_path else ""
         detail_page_path = entry.get("detail_page_path")
         detail_suffix = f"; detail: {detail_page_path}" if detail_page_path else ""
+        status = entry.get("status") or "unknown"
         lines.append(
-            "- {artifact_path} [{slug}] measured {measured_at} ({artifact_size}){current_suffix}{detail_suffix}".format(
+            "- {artifact_path} [{slug}] status {status} measured {measured_at} ({artifact_size}){current_suffix}{detail_suffix}".format(
                 artifact_path=entry["artifact_path"],
                 slug=entry.get("slug") or "untracked",
+                status=status,
                 measured_at=entry.get("measured_at") or "unknown",
                 artifact_size=entry.get("artifact_size") or format_bytes(entry.get("artifact_size_bytes")),
                 current_suffix=current_suffix,
