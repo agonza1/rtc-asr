@@ -112,6 +112,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero when matching stale artifacts are found",
     )
+    parser.add_argument(
+        "--paths-only",
+        action="store_true",
+        help="Print one stale artifact path per line for cleanup scripts",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     return parser.parse_args(argv)
 
@@ -320,8 +325,15 @@ def render_text(
     return "\n".join(lines)
 
 
+def render_paths(stale: list[dict[str, Any]]) -> str:
+    return "\n".join(entry["artifact_path"] for entry in stale)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.json and args.paths_only:
+        raise ValueError("--json and --paths-only cannot be used together")
+
     manifest = build_manifest(args.results_dir, args.tracks)
     stale = stale_artifacts(
         manifest,
@@ -337,7 +349,9 @@ def main(argv: list[str] | None = None) -> int:
         sort_by=args.sort,
     )
     limited_stale = limit_artifacts(stale, args.limit)
-    if args.json:
+    if args.paths_only:
+        print(render_paths(limited_stale))
+    elif args.json:
         summary = stale_summary(limited_stale)
         summary["total_matching_count"] = len(stale)
         matching_summary = stale_summary(stale)
