@@ -638,6 +638,59 @@ def test_stale_artifacts_can_filter_by_current_artifact_path() -> None:
     assert stale[0]["current_artifact_path"] == "benchmark-results/base-current.json"
 
 
+def test_stale_artifacts_can_filter_by_track_state() -> None:
+    manifest = {
+        "tracks": [
+            {
+                "slug": "base",
+                "artifact_path": "benchmark-results/base-current.json",
+            },
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-current.json",
+                "status": "validated",
+                "slug": "base",
+                "artifact_size_bytes": 100,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, track_state="tracked")] == [
+        "benchmark-results/base-old.json"
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, track_state="untracked")] == [
+        "benchmark-results/untracked.json",
+        "benchmark-results/qwen-old.json",
+    ]
+
+
+def test_stale_artifacts_rejects_unknown_track_state() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, track_state="detached")
+    except ValueError as error:
+        assert str(error) == "track_state must be one of: any, tracked, untracked"
+    else:
+        raise AssertionError("unknown track state filters should fail")
+
+
 def test_stale_artifacts_can_filter_by_artifact_path() -> None:
     manifest = {
         "tracks": [],
@@ -1396,6 +1449,35 @@ def test_main_fail_on_stale_honors_current_path_filter(monkeypatch) -> None:
         )
         == 1
     )
+
+
+def test_main_fail_on_stale_honors_track_state_filter(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [
+                {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+            ],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base-current.json",
+                    "status": "validated",
+                    "slug": "base",
+                    "artifact_size_bytes": 100,
+                },
+                {
+                    "artifact_path": "benchmark-results/base-old.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale", "--track-state", "untracked"]) == 0
+    assert report_module.main(["--fail-on-stale", "--track-state", "tracked"]) == 1
 
 
 def test_main_fail_on_stale_honors_artifact_path_filter(monkeypatch) -> None:

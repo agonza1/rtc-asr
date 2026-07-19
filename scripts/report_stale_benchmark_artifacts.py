@@ -108,6 +108,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose track currently points at this artifact path; repeat to include multiple paths",
     )
     parser.add_argument(
+        "--track-state",
+        choices=("any", "tracked", "untracked"),
+        default="any",
+        help="Filter stale artifacts by whether their slug still maps to a current benchmark track",
+    )
+    parser.add_argument(
         "--artifact-path",
         action="append",
         default=None,
@@ -206,6 +212,7 @@ def stale_artifacts(
     backends: list[str] | None = None,
     models: list[str] | None = None,
     current_paths: list[str] | None = None,
+    track_state: str = "any",
     artifact_paths: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
@@ -217,6 +224,8 @@ def stale_artifacts(
         raise ValueError("max_size_bytes must be non-negative")
     if min_size_bytes is not None and max_size_bytes is not None and min_size_bytes > max_size_bytes:
         raise ValueError("min_size_bytes cannot exceed max_size_bytes")
+    if track_state not in {"any", "tracked", "untracked"}:
+        raise ValueError("track_state must be one of: any, tracked, untracked")
 
     cutoff = None
     if older_than_days is not None:
@@ -269,6 +278,10 @@ def stale_artifacts(
                 continue
         current_artifact_path = current_path_by_slug.get(artifact.get("slug"))
         if allowed_current_paths is not None and current_artifact_path not in allowed_current_paths:
+            continue
+        if track_state == "tracked" and current_artifact_path is None:
+            continue
+        if track_state == "untracked" and current_artifact_path is not None:
             continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
@@ -590,6 +603,7 @@ def main(argv: list[str] | None = None) -> int:
         backends=args.backend,
         models=args.model,
         current_paths=args.current_path,
+        track_state=args.track_state,
         artifact_paths=args.artifact_path,
         statuses=args.status,
         sort_by=args.sort,
