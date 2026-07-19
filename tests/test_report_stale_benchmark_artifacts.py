@@ -249,6 +249,50 @@ def test_stale_summary_groups_artifact_size_by_model() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_current_artifact_path() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "current_artifact_path": "benchmark-results/base-current.json",
+            "artifact_size_bytes": 20,
+        },
+        {"artifact_path": "benchmark-results/untracked.json", "artifact_size_bytes": 30},
+        {
+            "artifact_path": "benchmark-results/base-older.json",
+            "current_artifact_path": "benchmark-results/base-current.json",
+            "artifact_size_bytes": 15,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen-old.json",
+            "current_artifact_path": "benchmark-results/qwen-current.json",
+            "artifact_size_bytes": 5,
+        },
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_current_artifact_path"] == [
+        {
+            "current_artifact_path": "benchmark-results/base-current.json",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "current_artifact_path": "untracked",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "current_artifact_path": "benchmark-results/qwen-current.json",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
     manifest = {
         "tracks": [],
@@ -1264,7 +1308,9 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- qwen-asr: 1 artifact (30 B, 30 bytes)\n"
         "By model:\n"
         "- base.en: 2 artifacts (35 B, 35 bytes)\n"
-        "- Qwen/Qwen3-ASR-0.6B: 1 artifact (30 B, 30 bytes)"
+        "- Qwen/Qwen3-ASR-0.6B: 1 artifact (30 B, 30 bytes)\n"
+        "By current artifact:\n"
+        "- untracked: 3 artifacts (65 B, 65 bytes)"
     )
 
 
@@ -1898,6 +1944,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By model:\n"
         "- base.en: 2 artifacts (100 B, 100 bytes)\n"
+        "By current artifact:\n"
+        "- untracked: 2 artifacts (100 B, 100 bytes)\n"
     )
 
 
