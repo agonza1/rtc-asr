@@ -475,11 +475,54 @@ def test_stale_artifacts_can_sort_by_label_backend_and_path() -> None:
     ]
 
 
+def test_stale_artifacts_can_sort_by_current_path_then_artifact_path() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 40,
+            },
+            {
+                "artifact_path": "benchmark-results/base-b.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/base-a.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="current-path")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/untracked.json",
+        "benchmark-results/base-a.json",
+        "benchmark-results/base-b.json",
+        "benchmark-results/qwen-old.json",
+    ]
+
+
 def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, sort_by="unknown")
     except ValueError as error:
-        assert str(error) == "sort_by must be one of: size, measured-at, path, status, backend, model, label"
+        assert str(error) == "sort_by must be one of: size, measured-at, path, status, backend, model, label, current-path"
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
 
