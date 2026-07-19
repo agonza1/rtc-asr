@@ -122,6 +122,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="With --paths-only, also print matching prerendered detail page paths",
     )
+    parser.add_argument(
+        "--detail-pages-only",
+        action="store_true",
+        help="With --paths-only, only print matching prerendered detail page paths",
+    )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     return parser.parse_args(argv)
 
@@ -330,12 +335,18 @@ def render_text(
     return "\n".join(lines)
 
 
-def render_paths(stale: list[dict[str, Any]], *, include_detail_pages: bool = False) -> str:
+def render_paths(
+    stale: list[dict[str, Any]],
+    *,
+    include_detail_pages: bool = False,
+    detail_pages_only: bool = False,
+) -> str:
     paths = []
     for entry in stale:
-        paths.append(entry["artifact_path"])
+        if not detail_pages_only:
+            paths.append(entry["artifact_path"])
         detail_path = entry.get("detail_page_path")
-        if include_detail_pages and detail_path:
+        if (include_detail_pages or detail_pages_only) and detail_path:
             paths.append(detail_path)
     return "\n".join(paths)
 
@@ -346,6 +357,10 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--json and --paths-only cannot be used together")
     if args.include_detail_pages and not args.paths_only:
         raise ValueError("--include-detail-pages requires --paths-only")
+    if args.detail_pages_only and not args.paths_only:
+        raise ValueError("--detail-pages-only requires --paths-only")
+    if args.detail_pages_only and args.include_detail_pages:
+        raise ValueError("--detail-pages-only cannot be combined with --include-detail-pages")
 
     manifest = build_manifest(args.results_dir, args.tracks)
     stale = stale_artifacts(
@@ -363,7 +378,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     limited_stale = limit_artifacts(stale, args.limit)
     if args.paths_only:
-        print(render_paths(limited_stale, include_detail_pages=args.include_detail_pages))
+        print(
+            render_paths(
+                limited_stale,
+                include_detail_pages=args.include_detail_pages,
+                detail_pages_only=args.detail_pages_only,
+            )
+        )
     elif args.json:
         summary = stale_summary(limited_stale)
         summary["total_matching_count"] = len(stale)
