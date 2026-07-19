@@ -15,6 +15,7 @@ SPEC.loader.exec_module(report_module)
 
 format_bytes = report_module.format_bytes
 render_text = report_module.render_text
+render_paths = report_module.render_paths
 stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
 detail_page_path = report_module.detail_page_path
@@ -588,6 +589,17 @@ def test_render_text_reports_zero_limit_omits_all_matches() -> None:
     )
 
 
+def test_render_paths_outputs_one_artifact_path_per_line() -> None:
+    rendered = render_paths(
+        [
+            {"artifact_path": "benchmark-results/oldest.json"},
+            {"artifact_path": "benchmark-results/old.json"},
+        ]
+    )
+
+    assert rendered == "benchmark-results/oldest.json\nbenchmark-results/old.json"
+
+
 def test_limit_artifacts_rejects_negative_limits() -> None:
     try:
         limit_artifacts([], -1)
@@ -838,3 +850,46 @@ def test_main_text_reports_total_matching_size_when_limited(monkeypatch, capsys)
         "... 1 more stale artifacts (10 B, 10 bytes) omitted by --limit."
         in capsys.readouterr().out
     )
+
+
+def test_main_paths_only_honors_filters_and_limits(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "label": "Faster Whisper",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "label": "Faster Whisper",
+                    "artifact_size_bytes": 10,
+                },
+                {
+                    "artifact_path": "benchmark-results/qwen.json",
+                    "status": "legacy",
+                    "label": "Qwen",
+                    "artifact_size_bytes": 100,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--paths-only", "--label", "whisper", "--limit", "1"]) == 0
+
+    assert capsys.readouterr().out == "benchmark-results/large.json\n"
+
+
+def test_main_rejects_paths_only_with_json() -> None:
+    try:
+        report_module.main(["--paths-only", "--json"])
+    except ValueError as error:
+        assert str(error) == "--json and --paths-only cannot be used together"
+    else:
+        raise AssertionError("paths-only JSON output should be rejected")
