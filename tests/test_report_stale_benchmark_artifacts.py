@@ -53,6 +53,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "artifact_path": "benchmark-results/older.json",
             "slug": "demo",
             "label": "Demo",
+            "status": "legacy",
             "measured_at": "2026-06-10T00:00:00Z",
             "current_artifact_path": "benchmark-results/current.json",
             "detail_page_path": "benchmark-results/pages/older.html",
@@ -377,6 +378,58 @@ def test_stale_artifacts_can_filter_by_label_text() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_status() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/legacy.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/blocked.json",
+                "status": "blocked",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/preview.json",
+                "status": "preview",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, statuses=["blocked", "PREVIEW"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/preview.json",
+        "benchmark-results/blocked.json",
+    ]
+
+
+def test_stale_artifacts_status_filter_defaults_to_legacy() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/legacy.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/blocked.json",
+                "status": "blocked",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest)
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/legacy.json"]
+
+
 def test_stale_artifacts_rejects_negative_minimum_size() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, min_size_bytes=-1)
@@ -601,6 +654,26 @@ def test_main_fail_on_stale_honors_label_filter(monkeypatch) -> None:
 
     assert report_module.main(["--fail-on-stale", "--label", "qwen"]) == 0
     assert report_module.main(["--fail-on-stale", "--label", "whisper"]) == 1
+
+
+def test_main_fail_on_stale_honors_status_filter(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/blocked.json",
+                    "status": "blocked",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale"]) == 0
+    assert report_module.main(["--fail-on-stale", "--status", "blocked"]) == 1
 
 
 def test_main_json_reports_total_matching_size_when_limited(monkeypatch, capsys) -> None:
