@@ -73,6 +73,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts for this benchmark track slug; repeat to include multiple slugs",
     )
     parser.add_argument(
+        "--label",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose label contains this text; repeat to include multiple labels",
+    )
+    parser.add_argument(
         "--fail-on-stale",
         action="store_true",
         help="Exit non-zero when matching stale artifacts are found",
@@ -108,6 +114,7 @@ def stale_artifacts(
     older_than_days: int | None = None,
     min_size_bytes: int | None = None,
     slugs: list[str] | None = None,
+    labels: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
 ) -> list[dict[str, Any]]:
@@ -135,6 +142,10 @@ def stale_artifacts(
             continue
         if slugs is not None and artifact.get("slug") not in slugs:
             continue
+        if labels is not None:
+            artifact_label = str(artifact.get("label") or "").lower()
+            if not any(label.lower() in artifact_label for label in labels):
+                continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
@@ -247,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
         older_than_days=args.older_than_days,
         min_size_bytes=args.min_size_bytes,
         slugs=args.slug,
+        labels=args.label,
         sort_by=args.sort,
     )
     limited_stale = limit_artifacts(stale, args.limit)
