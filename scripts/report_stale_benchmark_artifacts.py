@@ -129,6 +129,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     parser.add_argument("--count-only", action="store_true", help="Print only the matching stale artifact count")
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Print only stale artifact totals grouped by track slug",
+    )
     return parser.parse_args(argv)
 
 
@@ -379,6 +384,31 @@ def render_paths(
     return "\n".join(paths)
 
 
+def render_summary(stale: list[dict[str, Any]]) -> str:
+    summary = stale_summary(stale)
+    total_noun = "artifact" if summary["count"] == 1 else "artifacts"
+    lines = [
+        "Found {count} stale benchmark {total_noun} ({size}, {bytes} bytes).".format(
+            count=summary["count"],
+            total_noun=total_noun,
+            size=summary["total_size"],
+            bytes=summary["total_size_bytes"],
+        )
+    ]
+    for bucket in summary["by_slug"]:
+        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+        lines.append(
+            "- {slug}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                slug=bucket["slug"],
+                count=bucket["count"],
+                bucket_noun=bucket_noun,
+                size=bucket["total_size"],
+                bytes=bucket["total_size_bytes"],
+            )
+        )
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.json and args.paths_only:
@@ -387,6 +417,12 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--count-only and --json cannot be used together")
     if args.count_only and args.paths_only:
         raise ValueError("--count-only and --paths-only cannot be used together")
+    if args.summary_only and args.json:
+        raise ValueError("--summary-only and --json cannot be used together")
+    if args.summary_only and args.paths_only:
+        raise ValueError("--summary-only and --paths-only cannot be used together")
+    if args.summary_only and args.count_only:
+        raise ValueError("--summary-only and --count-only cannot be used together")
     if args.include_detail_pages and not args.paths_only:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
@@ -411,6 +447,8 @@ def main(argv: list[str] | None = None) -> int:
     limited_stale = limit_artifacts(stale, args.limit)
     if args.count_only:
         print(len(stale))
+    elif args.summary_only:
+        print(render_summary(stale))
     elif args.paths_only:
         print(
             render_paths(
