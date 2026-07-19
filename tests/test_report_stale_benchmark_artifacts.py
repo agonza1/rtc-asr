@@ -619,6 +619,21 @@ def test_render_paths_can_include_detail_pages() -> None:
     )
 
 
+def test_render_paths_can_output_detail_pages_only() -> None:
+    rendered = render_paths(
+        [
+            {
+                "artifact_path": "benchmark-results/oldest.json",
+                "detail_page_path": "benchmark-results/pages/oldest.html",
+            },
+            {"artifact_path": "benchmark-results/no-page.json"},
+        ],
+        detail_pages_only=True,
+    )
+
+    assert rendered == "benchmark-results/pages/oldest.html"
+
+
 def test_limit_artifacts_rejects_negative_limits() -> None:
     try:
         limit_artifacts([], -1)
@@ -709,6 +724,27 @@ def test_main_paths_only_can_include_detail_pages(monkeypatch, capsys) -> None:
     )
 
 
+def test_main_paths_only_can_output_detail_pages_only(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/old.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--paths-only", "--detail-pages-only"]) == 0
+
+    assert capsys.readouterr().out == "benchmark-results/pages/old.html\n"
+
+
 def test_main_rejects_detail_pages_without_paths_only() -> None:
     try:
         report_module.main(["--include-detail-pages"])
@@ -716,6 +752,24 @@ def test_main_rejects_detail_pages_without_paths_only() -> None:
         assert str(error) == "--include-detail-pages requires --paths-only"
     else:
         raise AssertionError("--include-detail-pages should require --paths-only")
+
+
+def test_main_rejects_detail_pages_only_without_paths_only() -> None:
+    try:
+        report_module.main(["--detail-pages-only"])
+    except ValueError as error:
+        assert str(error) == "--detail-pages-only requires --paths-only"
+    else:
+        raise AssertionError("--detail-pages-only should require --paths-only")
+
+
+def test_main_rejects_detail_page_path_modes_together() -> None:
+    try:
+        report_module.main(["--paths-only", "--include-detail-pages", "--detail-pages-only"])
+    except ValueError as error:
+        assert str(error) == "--detail-pages-only cannot be combined with --include-detail-pages"
+    else:
+        raise AssertionError("detail page path modes should be mutually exclusive")
 
 
 def test_main_fail_on_stale_honors_measured_before_filter(monkeypatch) -> None:
