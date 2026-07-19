@@ -395,10 +395,7 @@ def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
     if isinstance(message, PingMessage) and message.ping_id is None and message.timestamp_ms is None:
         return encode_raw_uds_frame(RawUdsFrameType.PING, b"")
     frame_type = RawUdsFrameType.PING if isinstance(message, PingMessage) else RawUdsFrameType.JSON_CONTROL
-    message_payload = message.model_dump(exclude_none=True)
-    if message_payload.get("metadata") == {}:
-        message_payload.pop("metadata")
-    return encode_raw_uds_json_frame(frame_type, message_payload)
+    return encode_raw_uds_json_frame(frame_type, _compact_raw_uds_message_payload(message))
 
 
 def encode_raw_uds_audio_frame(payload: bytes | bytearray | memoryview) -> bytes:
@@ -520,7 +517,7 @@ def encode_raw_uds_server_message(payload: dict[str, Any]) -> bytes:
         frame_type = RawUdsFrameType.PING
     elif isinstance(message, PongMessage):
         frame_type = RawUdsFrameType.PONG
-    return encode_raw_uds_json_frame(frame_type, message.model_dump())
+    return encode_raw_uds_json_frame(frame_type, _compact_raw_uds_message_payload(message))
 
 
 def encode_raw_uds_protocol_error(exc: LocalSttProtocolError) -> bytes:
@@ -535,6 +532,13 @@ def _parse_raw_uds_frame_type(frame_type: RawUdsFrameType | int) -> RawUdsFrameT
             f"Unsupported Raw UDS frame type: {frame_type}",
             code="raw_uds_unsupported_frame_type",
         ) from exc
+
+
+def _compact_raw_uds_message_payload(message: LocalSttModel) -> dict[str, Any]:
+    payload = message.model_dump(exclude_none=True)
+    if payload.get("metadata") == {}:
+        payload.pop("metadata")
+    return payload
 
 
 def _validate_message(payload: Any, *, adapter: TypeAdapter[Any]) -> Any:

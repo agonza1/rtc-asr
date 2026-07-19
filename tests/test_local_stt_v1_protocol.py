@@ -685,6 +685,15 @@ def test_raw_uds_server_encoder_selects_event_error_and_pong_frame_types() -> No
     assert decode_raw_uds_json_payload(pong)["ping_id"] == "p1"
 
 
+def test_raw_uds_server_encoder_omits_empty_optional_fields() -> None:
+    pong = decode_raw_uds_frame(
+        encode_raw_uds_server_message({"type": "pong", "ping_id": "p1", "metadata": {}})
+    )
+
+    assert pong.payload == b'{"type":"pong","ping_id":"p1"}'
+    assert parse_raw_uds_server_frame(pong).ping_id == "p1"
+
+
 def test_raw_uds_protocol_error_encoder_emits_parseable_error_frame() -> None:
     exc = LocalSttProtocolError(
         "Raw UDS JSON frame payload must be valid UTF-8 JSON",
