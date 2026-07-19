@@ -53,6 +53,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "artifact_path": "benchmark-results/older.json",
             "slug": "demo",
             "label": "Demo",
+            "backend": None,
             "status": "legacy",
             "measured_at": "2026-06-10T00:00:00Z",
             "current_artifact_path": "benchmark-results/current.json",
@@ -378,6 +379,36 @@ def test_stale_artifacts_can_filter_by_label_text() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_backend() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/faster-whisper.json",
+                "status": "legacy",
+                "backend": "faster-whisper",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "backend": "qwen-asr",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/missing-backend.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, backends=["QWEN-ASR", "parakeet"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/qwen.json"]
+    assert stale[0]["backend"] == "qwen-asr"
+
+
 def test_stale_artifacts_can_filter_by_status() -> None:
     manifest = {
         "tracks": [],
@@ -654,6 +685,27 @@ def test_main_fail_on_stale_honors_label_filter(monkeypatch) -> None:
 
     assert report_module.main(["--fail-on-stale", "--label", "qwen"]) == 0
     assert report_module.main(["--fail-on-stale", "--label", "whisper"]) == 1
+
+
+def test_main_fail_on_stale_honors_backend_filter(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "backend": "faster-whisper",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale", "--backend", "qwen-asr"]) == 0
+    assert report_module.main(["--fail-on-stale", "--backend", "faster-whisper"]) == 1
 
 
 def test_main_fail_on_stale_honors_status_filter(monkeypatch) -> None:

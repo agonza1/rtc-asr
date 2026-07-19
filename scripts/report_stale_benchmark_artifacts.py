@@ -90,6 +90,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose label contains this text; repeat to include multiple labels",
     )
     parser.add_argument(
+        "--backend",
+        action="append",
+        default=None,
+        help="Only include stale artifacts for this backend; repeat to include multiple backends",
+    )
+    parser.add_argument(
         "--status",
         action="append",
         default=None,
@@ -141,6 +147,7 @@ def stale_artifacts(
     max_size_bytes: int | None = None,
     slugs: list[str] | None = None,
     labels: list[str] | None = None,
+    backends: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
@@ -174,6 +181,7 @@ def stale_artifacts(
     tracks = [track for track in manifest.get("tracks", []) if track.get("artifact_path")]
     current_paths = {track["artifact_path"] for track in tracks}
     current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
+    allowed_backends = None if backends is None else {backend.lower() for backend in backends}
     allowed_statuses = {"legacy"} if statuses is None else {status.lower() for status in statuses}
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
@@ -189,6 +197,9 @@ def stale_artifacts(
             artifact_label = str(artifact.get("label") or "").lower()
             if not any(label.lower() in artifact_label for label in labels):
                 continue
+        artifact_backend = str(artifact.get("backend") or "").lower()
+        if allowed_backends is not None and artifact_backend not in allowed_backends:
+            continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
@@ -203,6 +214,7 @@ def stale_artifacts(
                 "artifact_path": artifact_path,
                 "slug": artifact.get("slug"),
                 "label": artifact.get("label"),
+                "backend": artifact.get("backend"),
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
                 "current_artifact_path": current_path_by_slug.get(artifact.get("slug")),
@@ -307,6 +319,7 @@ def main(argv: list[str] | None = None) -> int:
         max_size_bytes=args.max_size_bytes,
         slugs=args.slug,
         labels=args.label,
+        backends=args.backend,
         statuses=args.status,
         sort_by=args.sort,
     )
