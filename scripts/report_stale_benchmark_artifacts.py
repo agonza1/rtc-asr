@@ -61,7 +61,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--sort",
-        choices=("size", "measured-at", "path", "status", "backend", "model"),
+        choices=("size", "measured-at", "path", "status", "backend", "model", "label"),
         default="size",
         help="Sort stale artifacts before applying --limit",
     )
@@ -352,7 +352,16 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    raise ValueError("sort_by must be one of: size, measured-at, path, status, backend, model")
+    if sort_by == "label":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                str(entry.get("label") or "unknown").lower(),
+                str(entry.get("backend") or "unknown").lower(),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    raise ValueError("sort_by must be one of: size, measured-at, path, status, backend, model, label")
 
 
 def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
