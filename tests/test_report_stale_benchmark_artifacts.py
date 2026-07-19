@@ -16,6 +16,7 @@ SPEC.loader.exec_module(report_module)
 format_bytes = report_module.format_bytes
 render_text = report_module.render_text
 render_paths = report_module.render_paths
+render_summary = report_module.render_summary
 stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
 detail_page_path = report_module.detail_page_path
@@ -704,6 +705,22 @@ def test_render_paths_can_output_detail_pages_only() -> None:
     assert rendered == "benchmark-results/pages/oldest.html"
 
 
+def test_render_summary_groups_stale_artifacts_by_slug() -> None:
+    rendered = render_summary(
+        [
+            {"artifact_path": "benchmark-results/base-old.json", "slug": "base", "artifact_size_bytes": 20},
+            {"artifact_path": "benchmark-results/untracked.json", "artifact_size_bytes": 30},
+            {"artifact_path": "benchmark-results/base-older.json", "slug": "base", "artifact_size_bytes": 15},
+        ]
+    )
+
+    assert rendered == (
+        "Found 3 stale benchmark artifacts (65 B, 65 bytes).\n"
+        "- base: 2 artifacts (35 B, 35 bytes)\n"
+        "- untracked: 1 artifact (30 B, 30 bytes)"
+    )
+
+
 def test_limit_artifacts_rejects_negative_limits() -> None:
     try:
         limit_artifacts([], -1)
@@ -1095,6 +1112,37 @@ def test_main_count_only_reports_total_matches_before_limit(monkeypatch, capsys)
     assert capsys.readouterr().out == "2\n"
 
 
+def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--summary-only", "--limit", "1"]) == 0
+
+    assert capsys.readouterr().out == (
+        "Found 2 stale benchmark artifacts (100 B, 100 bytes).\n"
+        "- base: 2 artifacts (100 B, 100 bytes)\n"
+    )
+
+
 def test_main_rejects_paths_only_with_json() -> None:
     try:
         report_module.main(["--paths-only", "--json"])
@@ -1118,3 +1166,17 @@ def test_main_rejects_count_only_with_structured_output_modes() -> None:
         assert str(error) == "--count-only and --paths-only cannot be used together"
     else:
         raise AssertionError("count-only path output should be rejected")
+
+
+def test_main_rejects_summary_only_with_structured_output_modes() -> None:
+    for args, expected in [
+        (["--summary-only", "--json"], "--summary-only and --json cannot be used together"),
+        (["--summary-only", "--paths-only"], "--summary-only and --paths-only cannot be used together"),
+        (["--summary-only", "--count-only"], "--summary-only and --count-only cannot be used together"),
+    ]:
+        try:
+            report_module.main(args)
+        except ValueError as error:
+            assert str(error) == expected
+        else:
+            raise AssertionError(f"{args} should be rejected")
