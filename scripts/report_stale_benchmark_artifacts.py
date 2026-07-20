@@ -12,6 +12,18 @@ from typing import Any
 
 from build_benchmark_manifest import DEFAULT_RESULTS_DIR, DEFAULT_TRACKS_PATH, build_manifest
 
+SUMMARY_GROUPS = (
+    "slug",
+    "status",
+    "backend",
+    "model",
+    "label",
+    "current-artifact",
+    "track-state",
+    "detail-page",
+    "measured-month",
+)
+
 
 def format_bytes(size_bytes: int | None) -> str:
     if not size_bytes:
@@ -263,6 +275,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--summary-only",
         action="store_true",
         help="Print only stale artifact totals grouped by track slug",
+    )
+    parser.add_argument(
+        "--summary-group",
+        action="append",
+        choices=SUMMARY_GROUPS,
+        default=None,
+        help="With --summary-only, only print this grouping; repeat to include multiple groups",
     )
     return parser.parse_args(argv)
 
@@ -926,7 +945,13 @@ def render_paths(
     return separator.join(paths)
 
 
-def render_summary(stale: list[dict[str, Any]]) -> str:
+def render_summary(stale: list[dict[str, Any]], *, groups: list[str] | None = None) -> str:
+    allowed_groups = set(SUMMARY_GROUPS)
+    selected_groups = set(SUMMARY_GROUPS if groups is None else groups)
+    unknown_groups = sorted(selected_groups - allowed_groups)
+    if unknown_groups:
+        raise ValueError(f"summary groups must be one of: {', '.join(SUMMARY_GROUPS)}")
+
     summary = stale_summary(stale)
     total_noun = "artifact" if summary["count"] == 1 else "artifacts"
     lines = [
@@ -937,20 +962,21 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
             bytes=summary["total_size_bytes"],
         )
     ]
-    for bucket in summary["by_slug"]:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {slug}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                slug=bucket["slug"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "slug" in selected_groups:
+        for bucket in summary["by_slug"]:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {slug}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    slug=bucket["slug"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
-    if summary["by_status"]:
+    if "status" in selected_groups and summary["by_status"]:
         lines.append("By status:")
-    for bucket in summary["by_status"]:
+    for bucket in summary["by_status"] if "status" in selected_groups else []:
         bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
         lines.append(
             "- {status}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -961,9 +987,9 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
                 bytes=bucket["total_size_bytes"],
             )
         )
-    if summary["by_backend"]:
+    if "backend" in selected_groups and summary["by_backend"]:
         lines.append("By backend:")
-    for bucket in summary["by_backend"]:
+    for bucket in summary["by_backend"] if "backend" in selected_groups else []:
         bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
         lines.append(
             "- {backend}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -974,9 +1000,9 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
                 bytes=bucket["total_size_bytes"],
             )
         )
-    if summary["by_model"]:
+    if "model" in selected_groups and summary["by_model"]:
         lines.append("By model:")
-    for bucket in summary["by_model"]:
+    for bucket in summary["by_model"] if "model" in selected_groups else []:
         bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
         lines.append(
             "- {model}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -987,7 +1013,7 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
                 bytes=bucket["total_size_bytes"],
             )
         )
-    if any(bucket["label"] != "unknown" for bucket in summary["by_label"]):
+    if "label" in selected_groups and any(bucket["label"] != "unknown" for bucket in summary["by_label"]):
         lines.append("By label:")
         for bucket in summary["by_label"]:
             bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
@@ -1000,9 +1026,9 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
                     bytes=bucket["total_size_bytes"],
                 )
             )
-    if summary["by_current_artifact_path"]:
+    if "current-artifact" in selected_groups and summary["by_current_artifact_path"]:
         lines.append("By current artifact:")
-    for bucket in summary["by_current_artifact_path"]:
+    for bucket in summary["by_current_artifact_path"] if "current-artifact" in selected_groups else []:
         bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
         lines.append(
             "- {current_artifact_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -1013,9 +1039,9 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
                 bytes=bucket["total_size_bytes"],
             )
         )
-    if summary["by_track_state"]:
+    if "track-state" in selected_groups and summary["by_track_state"]:
         lines.append("By track state:")
-    for bucket in summary["by_track_state"]:
+    for bucket in summary["by_track_state"] if "track-state" in selected_groups else []:
         bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
         lines.append(
             "- {track_state}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -1026,9 +1052,9 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
                 bytes=bucket["total_size_bytes"],
             )
         )
-    if summary["by_detail_page_path"]:
+    if "detail-page" in selected_groups and summary["by_detail_page_path"]:
         lines.append("By detail page:")
-    for bucket in summary["by_detail_page_path"]:
+    for bucket in summary["by_detail_page_path"] if "detail-page" in selected_groups else []:
         bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
         lines.append(
             "- {detail_page_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -1039,9 +1065,9 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
                 bytes=bucket["total_size_bytes"],
             )
         )
-    if summary["by_measured_month"]:
+    if "measured-month" in selected_groups and summary["by_measured_month"]:
         lines.append("By measured month:")
-    for bucket in summary["by_measured_month"]:
+    for bucket in summary["by_measured_month"] if "measured-month" in selected_groups else []:
         bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
         lines.append(
             "- {measured_month}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -1069,6 +1095,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-only and --paths-only cannot be used together")
     if args.summary_only and args.count_only:
         raise ValueError("--summary-only and --count-only cannot be used together")
+    if args.summary_group and not args.summary_only:
+        raise ValueError("--summary-group requires --summary-only")
     if args.include_detail_pages and not args.paths_only:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
@@ -1118,7 +1146,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.count_only:
         print(len(stale))
     elif args.summary_only:
-        print(render_summary(stale))
+        print(render_summary(stale, groups=args.summary_group))
     elif args.paths_only:
         rendered_paths = render_paths(
             limited_stale,
