@@ -259,6 +259,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Print one stale artifact path per line for cleanup scripts",
     )
     parser.add_argument(
+        "--absolute-paths",
+        action="store_true",
+        help=(
+            "With --paths-only, print paths resolved under the docs directory "
+            "so cleanup scripts can run from any working directory"
+        ),
+    )
+    parser.add_argument(
         "-0",
         "--null",
         action="store_true",
@@ -1121,11 +1129,14 @@ def render_paths(
     detail_pages_only: bool = False,
     existing_root: Path | None = None,
     missing_root: Path | None = None,
+    output_root: Path | None = None,
     separator: str = "\n",
 ) -> str:
     paths = []
 
     def append_path_once(path: str) -> None:
+        if output_root is not None:
+            path = str((output_root / path).resolve())
         if path not in paths:
             paths.append(path)
 
@@ -1491,6 +1502,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
         raise ValueError("--detail-pages-only requires --paths-only")
+    if args.absolute_paths and not args.paths_only:
+        raise ValueError("--absolute-paths requires --paths-only")
     if args.null and not args.paths_only:
         raise ValueError("--null requires --paths-only")
     if args.existing_paths_only and not args.paths_only:
@@ -1545,6 +1558,7 @@ def main(argv: list[str] | None = None) -> int:
             detail_pages_only=args.detail_pages_only,
             existing_root=args.results_dir.parent if args.existing_paths_only else None,
             missing_root=args.results_dir.parent if args.missing_paths_only else None,
+            output_root=args.results_dir.parent if args.absolute_paths else None,
             separator="\0" if args.null else "\n",
         )
         if args.null:
