@@ -136,6 +136,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose current track artifact path contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
+        "--current-path-name",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose current track artifact file name matches this name; repeat to include multiple names",
+    )
+    parser.add_argument(
+        "--current-path-name-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose current track artifact file name contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
         "--track-state",
         choices=("any", "tracked", "untracked"),
         default="any",
@@ -291,6 +303,8 @@ def stale_artifacts(
     models: list[str] | None = None,
     current_paths: list[str] | None = None,
     current_path_contains: list[str] | None = None,
+    current_path_names: list[str] | None = None,
+    current_path_name_contains: list[str] | None = None,
     track_state: str = "any",
     artifact_paths: list[str] | None = None,
     artifact_path_contains: list[str] | None = None,
@@ -350,6 +364,12 @@ def stale_artifacts(
     allowed_backends = None if backends is None else {backend.lower() for backend in backends}
     allowed_current_paths = None if current_paths is None else set(current_paths)
     current_path_needles = None if current_path_contains is None else [needle.lower() for needle in current_path_contains]
+    allowed_current_path_names = (
+        None if current_path_names is None else {Path(name).name for name in current_path_names}
+    )
+    current_path_name_needles = (
+        None if current_path_name_contains is None else [needle.lower() for needle in current_path_name_contains]
+    )
     allowed_artifact_paths = None if artifact_paths is None else set(artifact_paths)
     slug_needles = None if slug_contains is None else [needle.lower() for needle in slug_contains]
     artifact_path_needles = (
@@ -419,6 +439,12 @@ def stale_artifacts(
         if current_path_needles is not None:
             current_path_text = str(current_artifact_path or "").lower()
             if not any(needle in current_path_text for needle in current_path_needles):
+                continue
+        current_path_name = Path(current_artifact_path or "").name
+        if allowed_current_path_names is not None and current_path_name not in allowed_current_path_names:
+            continue
+        if current_path_name_needles is not None:
+            if not any(needle in current_path_name.lower() for needle in current_path_name_needles):
                 continue
         if track_state == "tracked" and current_artifact_path is None:
             continue
@@ -842,6 +868,8 @@ def main(argv: list[str] | None = None) -> int:
         models=args.model,
         current_paths=args.current_path,
         current_path_contains=args.current_path_contains,
+        current_path_names=args.current_path_name,
+        current_path_name_contains=args.current_path_name_contains,
         track_state=args.track_state,
         artifact_paths=args.artifact_path,
         artifact_path_contains=args.artifact_path_contains,
