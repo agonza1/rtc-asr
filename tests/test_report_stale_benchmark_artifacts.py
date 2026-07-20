@@ -2416,6 +2416,35 @@ def test_render_summary_includes_known_label_totals() -> None:
     ) in rendered
 
 
+def test_render_summary_can_focus_on_selected_groups() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "slug": "base",
+                "status": "legacy",
+                "backend": "faster-whisper",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "slug": "qwen",
+                "status": "blocked",
+                "backend": "qwen-asr",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["status"],
+    )
+
+    assert rendered == (
+        "Found 2 stale benchmark artifacts (30 B, 30 bytes).\n"
+        "By status:\n"
+        "- legacy: 1 artifact (20 B, 20 bytes)\n"
+        "- blocked: 1 artifact (10 B, 10 bytes)"
+    )
+
+
 def test_limit_artifacts_rejects_negative_limits() -> None:
     try:
         limit_artifacts([], -1)
@@ -3175,6 +3204,40 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
     )
 
 
+def test_main_summary_only_accepts_selected_groups(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "model": "base.en",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "model": "base.en",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--summary-only", "--summary-group", "model"]) == 0
+
+    assert capsys.readouterr().out == (
+        "Found 2 stale benchmark artifacts (100 B, 100 bytes).\n"
+        "By model:\n"
+        "- base.en: 2 artifacts (100 B, 100 bytes)\n"
+    )
+
+
 def test_main_rejects_paths_only_with_json() -> None:
     try:
         report_module.main(["--paths-only", "--json"])
@@ -3212,3 +3275,12 @@ def test_main_rejects_summary_only_with_structured_output_modes() -> None:
             assert str(error) == expected
         else:
             raise AssertionError(f"{args} should be rejected")
+
+
+def test_main_rejects_summary_group_without_summary_only() -> None:
+    try:
+        report_module.main(["--summary-group", "model"])
+    except ValueError as error:
+        assert str(error) == "--summary-group requires --summary-only"
+    else:
+        raise AssertionError("--summary-group without --summary-only should be rejected")
