@@ -647,6 +647,36 @@ def test_stale_artifacts_artifact_file_name_filter_accepts_paths() -> None:
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
 
 
+def test_stale_artifacts_can_filter_by_artifact_file_name_text() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-15.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/faster-whisper-small.en-int8-2026-06-10.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-mps-2026-06-20.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, artifact_name_contains=["WHISPER"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/faster-whisper-base.en-int8-2026-06-15.json",
+        "benchmark-results/archive/faster-whisper-small.en-int8-2026-06-10.json",
+    ]
+
+
 def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, sort_by="unknown")
@@ -1996,6 +2026,26 @@ def test_main_fail_on_stale_honors_artifact_path_filter(monkeypatch) -> None:
         report_module.main(["--fail-on-stale", "--artifact-path", "benchmark-results/base-old.json"])
         == 1
     )
+
+
+def test_main_fail_on_stale_honors_artifact_name_text_filter(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/faster-whisper-base-old.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale", "--artifact-name-contains", "qwen"]) == 0
+    assert report_module.main(["--fail-on-stale", "--artifact-name-contains", "whisper"]) == 1
 
 
 def test_main_fail_on_stale_honors_status_filter(monkeypatch) -> None:

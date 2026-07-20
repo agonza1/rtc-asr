@@ -142,6 +142,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts with this file name; repeat to include multiple names",
     )
     parser.add_argument(
+        "--artifact-name-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose file name contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
         "--status",
         action="append",
         default=None,
@@ -244,6 +250,7 @@ def stale_artifacts(
     track_state: str = "any",
     artifact_paths: list[str] | None = None,
     artifact_names: list[str] | None = None,
+    artifact_name_contains: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
@@ -295,6 +302,9 @@ def stale_artifacts(
     allowed_current_paths = None if current_paths is None else set(current_paths)
     allowed_artifact_paths = None if artifact_paths is None else set(artifact_paths)
     allowed_artifact_names = None if artifact_names is None else {Path(name).name for name in artifact_names}
+    artifact_name_needles = (
+        None if artifact_name_contains is None else [needle.lower() for needle in artifact_name_contains]
+    )
     allowed_statuses = normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
@@ -303,7 +313,12 @@ def stale_artifacts(
             continue
         if allowed_artifact_paths is not None and artifact_path not in allowed_artifact_paths:
             continue
-        if allowed_artifact_names is not None and Path(artifact_path).name not in allowed_artifact_names:
+        artifact_name = Path(artifact_path).name
+        if allowed_artifact_names is not None and artifact_name not in allowed_artifact_names:
+            continue
+        if artifact_name_needles is not None and not any(
+            needle in artifact_name.lower() for needle in artifact_name_needles
+        ):
             continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
@@ -743,6 +758,7 @@ def main(argv: list[str] | None = None) -> int:
         track_state=args.track_state,
         artifact_paths=args.artifact_path,
         artifact_names=args.artifact_name,
+        artifact_name_contains=args.artifact_name_contains,
         statuses=args.status,
         sort_by=args.sort,
     )
