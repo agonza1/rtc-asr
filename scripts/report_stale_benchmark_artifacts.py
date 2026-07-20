@@ -151,6 +151,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Print one stale artifact path per line for cleanup scripts",
     )
     parser.add_argument(
+        "-0",
+        "--null",
+        action="store_true",
+        help="With --paths-only, separate paths with NUL bytes for safe xargs -0 cleanup",
+    )
+    parser.add_argument(
         "--include-detail-pages",
         action="store_true",
         help="With --paths-only, also print matching prerendered detail page paths",
@@ -585,6 +591,7 @@ def render_paths(
     detail_pages_only: bool = False,
     existing_root: Path | None = None,
     missing_root: Path | None = None,
+    separator: str = "\n",
 ) -> str:
     paths = []
     for entry in stale:
@@ -600,7 +607,7 @@ def render_paths(
             if missing_root is not None and (missing_root / detail_path).exists():
                 continue
             paths.append(detail_path)
-    return "\n".join(paths)
+    return separator.join(paths)
 
 
 def render_summary(stale: list[dict[str, Any]]) -> str:
@@ -698,6 +705,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
         raise ValueError("--detail-pages-only requires --paths-only")
+    if args.null and not args.paths_only:
+        raise ValueError("--null requires --paths-only")
     if args.existing_paths_only and not args.paths_only:
         raise ValueError("--existing-paths-only requires --paths-only")
     if args.missing_paths_only and not args.paths_only:
@@ -738,6 +747,7 @@ def main(argv: list[str] | None = None) -> int:
                 detail_pages_only=args.detail_pages_only,
                 existing_root=args.results_dir.parent if args.existing_paths_only else None,
                 missing_root=args.results_dir.parent if args.missing_paths_only else None,
+                separator="\0" if args.null else "\n",
             )
         )
     elif args.json:
