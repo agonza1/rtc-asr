@@ -74,6 +74,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "backend": None,
             "status": "legacy",
             "measured_at": "2026-06-10T00:00:00Z",
+            "measured_month": "2026-06",
             "current_artifact_path": "benchmark-results/current.json",
             "track_state": "tracked",
             "detail_page_path": "benchmark-results/pages/older.html",
@@ -566,6 +567,46 @@ def test_stale_artifacts_can_sort_newest_measured_first() -> None:
     assert [entry["artifact_path"] for entry in stale] == [
         "benchmark-results/newer.json",
         "benchmark-results/older.json",
+        "benchmark-results/unknown.json",
+    ]
+
+
+def test_stale_artifacts_can_sort_by_measured_month_then_path() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/july-b.json",
+                "status": "legacy",
+                "measured_at": "2026-07-10T00:00:00Z",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 40,
+            },
+            {
+                "artifact_path": "benchmark-results/june.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/july-a.json",
+                "status": "legacy",
+                "measured_at": "2026-07-01T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="measured-month")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/june.json",
+        "benchmark-results/july-a.json",
+        "benchmark-results/july-b.json",
         "benchmark-results/unknown.json",
     ]
 
@@ -1306,7 +1347,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name"
+            == "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
@@ -1441,6 +1482,47 @@ def test_stale_artifacts_can_filter_by_measured_window() -> None:
     )
 
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/window.json"]
+
+
+def test_stale_artifacts_can_filter_by_measured_month() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/june.json",
+                "status": "legacy",
+                "measured_at": "2026-06-30T23:30:00-02:00",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/july.json",
+                "status": "legacy",
+                "measured_at": "2026-07-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, measured_months=["2026-07"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/june.json",
+        "benchmark-results/july.json",
+    ]
+
+
+def test_stale_artifacts_rejects_invalid_measured_month_filter() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, measured_months=["2026"])
+    except ValueError as error:
+        assert str(error) == "measured_month values must use YYYY-MM"
+    else:
+        raise AssertionError("invalid measured-month filters should fail")
 
 
 def test_stale_artifacts_uses_stricter_cutoff_when_age_and_measured_before_are_set() -> None:

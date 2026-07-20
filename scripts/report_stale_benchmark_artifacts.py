@@ -84,6 +84,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "track-state",
             "current-path",
             "current-path-name",
+            "measured-month",
         ),
         default="size",
         help="Sort stale artifacts before applying --limit",
@@ -129,6 +130,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Only include stale artifacts whose model contains this text; repeat to include multiple models",
+    )
+    parser.add_argument(
+        "--measured-month",
+        action="append",
+        default=None,
+        help="Only include stale artifacts measured in this UTC YYYY-MM month; repeat to include multiple months",
     )
     parser.add_argument(
         "--current-path",
@@ -325,6 +332,7 @@ def stale_artifacts(
     current_path_names: list[str] | None = None,
     current_path_name_contains: list[str] | None = None,
     track_state: str = "any",
+    measured_months: list[str] | None = None,
     artifact_paths: list[str] | None = None,
     artifact_path_contains: list[str] | None = None,
     artifact_names: list[str] | None = None,
@@ -345,6 +353,12 @@ def stale_artifacts(
         raise ValueError("min_size_bytes cannot exceed max_size_bytes")
     if track_state not in {"any", "tracked", "untracked"}:
         raise ValueError("track_state must be one of: any, tracked, untracked")
+    allowed_measured_months = None
+    if measured_months is not None:
+        allowed_measured_months = {month.strip() for month in measured_months if month.strip()}
+        invalid_months = [month for month in allowed_measured_months if len(month) != 7 or month[4] != "-"]
+        if invalid_months:
+            raise ValueError("measured_month values must use YYYY-MM")
 
     cutoff = None
     if older_than_days is not None:
@@ -475,6 +489,9 @@ def stale_artifacts(
                 continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
+        artifact_measured_month = measured_month(measured_at)
+        if allowed_measured_months is not None and artifact_measured_month not in allowed_measured_months:
+            continue
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
             continue
         if lower_cutoff is not None and (measured_timestamp is None or measured_timestamp <= lower_cutoff):
@@ -493,6 +510,7 @@ def stale_artifacts(
                 "model": artifact.get("model"),
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
+                "measured_month": artifact_measured_month,
                 "current_artifact_path": current_artifact_path,
                 "track_state": "tracked" if current_artifact_path is not None else "untracked",
                 "detail_page_path": artifact_detail_page_path,
@@ -622,8 +640,16 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "measured-month":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                entry.get("measured_month") or "unknown",
+                entry.get("artifact_path") or "",
+            ),
+        )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name"
+        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
     )
 
 
@@ -1071,6 +1097,7 @@ def main(argv: list[str] | None = None) -> int:
         labels=args.label,
         backends=args.backend,
         models=args.model,
+        measured_months=args.measured_month,
         current_paths=args.current_path,
         current_path_contains=args.current_path_contains,
         current_path_names=args.current_path_name,
