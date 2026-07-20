@@ -146,6 +146,52 @@ def test_stale_artifacts_accepts_comma_separated_repeated_filters() -> None:
     ]
 
 
+def test_stale_artifacts_path_filters_accept_comma_separated_values() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "base", "artifact_path": "benchmark-results/current/base-current.json"},
+            {"slug": "qwen", "artifact_path": "benchmark-results/current/qwen-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "slug": "base",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/qwen-old.json",
+                "slug": "qwen",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/parakeet-old.json",
+                "slug": "parakeet",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        artifact_paths=["benchmark-results/archive/base-old.json, benchmark-results/archive/qwen-old.json"],
+        artifact_path_contains=["base, qwen"],
+        current_paths=["benchmark-results/current/base-current.json, benchmark-results/current/qwen-current.json"],
+        current_path_contains=["base, qwen"],
+        current_path_name_contains=["base, qwen"],
+        detail_pages=["benchmark-results/pages/base-old.html, benchmark-results/pages/qwen-old.html"],
+        detail_page_contains=["base, qwen"],
+        detail_page_name_contains=["base, qwen"],
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/archive/base-old.json",
+        "benchmark-results/archive/qwen-old.json",
+    ]
+
+
 def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
     manifest = {
         "tracks": [],
