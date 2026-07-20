@@ -142,6 +142,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include this stale artifact path; repeat to include multiple paths",
     )
     parser.add_argument(
+        "--artifact-path-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose artifact path contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
         "--artifact-name",
         action="append",
         default=None,
@@ -274,6 +280,7 @@ def stale_artifacts(
     current_path_contains: list[str] | None = None,
     track_state: str = "any",
     artifact_paths: list[str] | None = None,
+    artifact_path_contains: list[str] | None = None,
     artifact_names: list[str] | None = None,
     artifact_name_contains: list[str] | None = None,
     detail_pages: list[str] | None = None,
@@ -330,6 +337,9 @@ def stale_artifacts(
     allowed_current_paths = None if current_paths is None else set(current_paths)
     current_path_needles = None if current_path_contains is None else [needle.lower() for needle in current_path_contains]
     allowed_artifact_paths = None if artifact_paths is None else set(artifact_paths)
+    artifact_path_needles = (
+        None if artifact_path_contains is None else [needle.lower() for needle in artifact_path_contains]
+    )
     allowed_artifact_names = None if artifact_names is None else {Path(name).name for name in artifact_names}
     artifact_name_needles = (
         None if artifact_name_contains is None else [needle.lower() for needle in artifact_name_contains]
@@ -347,6 +357,10 @@ def stale_artifacts(
             continue
         if allowed_artifact_paths is not None and artifact_path not in allowed_artifact_paths:
             continue
+        if artifact_path_needles is not None:
+            artifact_path_text = artifact_path.lower()
+            if not any(needle in artifact_path_text for needle in artifact_path_needles):
+                continue
         artifact_name = Path(artifact_path).name
         if allowed_artifact_names is not None and artifact_name not in allowed_artifact_names:
             continue
@@ -805,6 +819,7 @@ def main(argv: list[str] | None = None) -> int:
         current_path_contains=args.current_path_contains,
         track_state=args.track_state,
         artifact_paths=args.artifact_path,
+        artifact_path_contains=args.artifact_path_contains,
         artifact_names=args.artifact_name,
         artifact_name_contains=args.artifact_name_contains,
         detail_pages=args.detail_page,
