@@ -595,6 +595,70 @@ def test_stale_artifacts_can_sort_by_current_path_then_artifact_path() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_current_artifact_file_name() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/archive/base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, current_path_names=["tmp/base-current.json"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
+def test_stale_artifacts_can_filter_by_current_artifact_file_name_text() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/faster-whisper-base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, current_path_name_contains=["WHISPER"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
 def test_stale_artifacts_can_filter_by_artifact_file_name() -> None:
     manifest = {
         "tracks": [],
