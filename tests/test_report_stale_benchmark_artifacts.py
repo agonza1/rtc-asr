@@ -83,14 +83,15 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
     }
 
     assert stale_artifacts(manifest) == [
-            {
-                "artifact_path": "benchmark-results/older.json",
-                "artifact_name": "older.json",
-                "artifact_stem": "older",
-                "artifact_dir": "benchmark-results",
-                "slug": "demo",
-                "label": "Demo",
-                "model": None,
+        {
+            "artifact_path": "benchmark-results/older.json",
+            "artifact_name": "older.json",
+            "artifact_stem": "older",
+            "artifact_dir": "benchmark-results",
+            "artifact_extension": ".json",
+            "slug": "demo",
+            "label": "Demo",
+            "model": None,
             "backend": None,
             "status": "legacy",
             "measured_at": "2026-06-10T00:00:00Z",
@@ -529,13 +530,14 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
                 "detail_page_path": "benchmark-results/pages/large.html",
                 "artifact_size_bytes": 90,
                 "artifact_size": "90 B",
+                "artifact_extension": ".json",
             }
         ]
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,slug,label,backend,model,status,measured_at,measured_month,current_artifact_path,track_state,detail_page_path,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,benchmark-results/current.json,tracked,benchmark-results/pages/large.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,current_artifact_path,track_state,detail_page_path,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,benchmark-results/current.json,tracked,benchmark-results/pages/large.html,90,90 B',
     ]
 
 
@@ -1918,6 +1920,7 @@ def test_stale_artifacts_can_filter_by_artifact_extension() -> None:
         "benchmark-results/base-old.json",
         "benchmark-results/README",
     ]
+    assert [entry["artifact_extension"] for entry in stale] == [".json", "none"]
 
 
 def test_stale_artifacts_can_filter_by_detail_page_path() -> None:
@@ -4244,8 +4247,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,slug,label,backend,model,status,measured_at,measured_month,current_artifact_path,track_state,detail_page_path,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,base,"Faster, Whisper",,,legacy,,unknown,benchmark-results/base-current.json,tracked,benchmark-results/pages/large.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,current_artifact_path,track_state,detail_page_path,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,benchmark-results/base-current.json,tracked,benchmark-results/pages/large.html,90,90 B\r\n'
     )
 
 
