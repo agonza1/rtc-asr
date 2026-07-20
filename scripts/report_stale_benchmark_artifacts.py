@@ -300,6 +300,13 @@ def normalize_status_filters(statuses: list[str] | None) -> set[str] | None:
     return None if "any" in normalized else normalized
 
 
+def measured_month(value: Any) -> str:
+    parsed = parse_timestamp(value)
+    if parsed is None:
+        return "unknown"
+    return parsed.strftime("%Y-%m")
+
+
 def stale_artifacts(
     manifest: dict[str, Any],
     *,
@@ -630,6 +637,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_current_artifact_path: dict[str, dict[str, Any]] = {}
     by_track_state: dict[str, dict[str, Any]] = {}
     by_detail_page_path: dict[str, dict[str, Any]] = {}
+    by_measured_month: dict[str, dict[str, Any]] = {}
     for entry in stale:
         slug = str(entry.get("slug") or "untracked")
         bucket = by_slug.setdefault(
@@ -743,6 +751,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         detail_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         detail_bucket["total_size"] = format_bytes(detail_bucket["total_size_bytes"])
 
+        month = measured_month(entry.get("measured_at"))
+        month_bucket = by_measured_month.setdefault(
+            month,
+            {
+                "measured_month": month,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        month_bucket["count"] += 1
+        month_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        month_bucket["total_size"] = format_bytes(month_bucket["total_size_bytes"])
+
     return {
         "count": len(stale),
         "total_size_bytes": total_size_bytes,
@@ -778,6 +800,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_detail_page_path": sorted(
             by_detail_page_path.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_path"]),
+        ),
+        "by_measured_month": sorted(
+            by_measured_month.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["measured_month"]),
         ),
         "artifacts": stale,
     }
@@ -981,6 +1007,19 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
         lines.append(
             "- {detail_page_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
                 detail_page_path=bucket["detail_page_path"],
+                count=bucket["count"],
+                bucket_noun=bucket_noun,
+                size=bucket["total_size"],
+                bytes=bucket["total_size_bytes"],
+            )
+        )
+    if summary["by_measured_month"]:
+        lines.append("By measured month:")
+    for bucket in summary["by_measured_month"]:
+        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+        lines.append(
+            "- {measured_month}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                measured_month=bucket["measured_month"],
                 count=bucket["count"],
                 bucket_noun=bucket_noun,
                 size=bucket["total_size"],

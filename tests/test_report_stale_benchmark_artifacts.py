@@ -22,6 +22,7 @@ stale_summary = report_module.stale_summary
 detail_page_path = report_module.detail_page_path
 limit_artifacts = report_module.limit_artifacts
 normalize_status_filters = report_module.normalize_status_filters
+measured_month = report_module.measured_month
 
 
 def test_status_filters_accept_comma_separated_values() -> None:
@@ -30,6 +31,11 @@ def test_status_filters_accept_comma_separated_values() -> None:
         "blocked",
         "validated",
     }
+
+
+def test_measured_month_uses_utc_month_or_unknown() -> None:
+    assert measured_month("2026-06-30T23:30:00-02:00") == "2026-07"
+    assert measured_month(None) == "unknown"
 
 
 def test_stale_artifacts_excludes_current_track_artifact() -> None:
@@ -447,6 +453,50 @@ def test_stale_summary_groups_artifact_size_by_detail_page_path() -> None:
         },
         {
             "detail_page_path": "benchmark-results/pages/qwen-old.html",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
+def test_stale_summary_groups_artifact_size_by_measured_month() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/june-large.json",
+            "measured_at": "2026-06-15T00:00:00Z",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/july.json",
+            "measured_at": "2026-07-01T00:00:00Z",
+            "artifact_size_bytes": 30,
+        },
+        {
+            "artifact_path": "benchmark-results/june-small.json",
+            "measured_at": "2026-06-20",
+            "artifact_size_bytes": 10,
+        },
+        {"artifact_path": "benchmark-results/unknown.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_measured_month"] == [
+        {
+            "measured_month": "2026-06",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "measured_month": "2026-07",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "measured_month": "unknown",
             "count": 1,
             "total_size_bytes": 5,
             "total_size": "5 B",
@@ -2256,7 +2306,9 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "By track state:\n"
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page:\n"
-        "- missing: 3 artifacts (65 B, 65 bytes)"
+        "- missing: 3 artifacts (65 B, 65 bytes)\n"
+        "By measured month:\n"
+        "- unknown: 3 artifacts (65 B, 65 bytes)"
     )
 
 
@@ -3036,6 +3088,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "By detail page:\n"
         "- benchmark-results/pages/large.html: 1 artifact (90 B, 90 bytes)\n"
         "- benchmark-results/pages/small.html: 1 artifact (10 B, 10 bytes)\n"
+        "By measured month:\n"
+        "- unknown: 2 artifacts (100 B, 100 bytes)\n"
     )
 
 
