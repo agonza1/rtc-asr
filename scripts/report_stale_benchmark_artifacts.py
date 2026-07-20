@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import json
 import sys
 from datetime import UTC, datetime, timedelta
@@ -287,6 +289,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--json-lines",
         action="store_true",
         help="Emit one machine-readable stale artifact JSON object per line",
+    )
+    parser.add_argument(
+        "--csv",
+        action="store_true",
+        help="Emit matching stale artifacts as CSV for spreadsheet cleanup review",
     )
     parser.add_argument("--count-only", action="store_true", help="Print only the matching stale artifact count")
     parser.add_argument(
@@ -1142,6 +1149,30 @@ def render_json_lines(stale: list[dict[str, Any]]) -> str:
     return "\n".join(json.dumps(entry, sort_keys=True) for entry in stale)
 
 
+def render_csv(stale: list[dict[str, Any]]) -> str:
+    output = io.StringIO()
+    fieldnames = [
+        "artifact_path",
+        "slug",
+        "label",
+        "backend",
+        "model",
+        "status",
+        "measured_at",
+        "measured_month",
+        "current_artifact_path",
+        "track_state",
+        "detail_page_path",
+        "artifact_size_bytes",
+        "artifact_size",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    for entry in stale:
+        writer.writerow(entry)
+    return output.getvalue()
+
+
 def limit_summary_buckets(buckets: list[dict[str, Any]], limit: int | None) -> list[dict[str, Any]]:
     if limit is None:
         return buckets
@@ -1428,16 +1459,26 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--json-lines and --json cannot be used together")
     if args.json_lines and args.paths_only:
         raise ValueError("--json-lines and --paths-only cannot be used together")
+    if args.csv and args.json:
+        raise ValueError("--csv and --json cannot be used together")
+    if args.csv and args.json_lines:
+        raise ValueError("--csv and --json-lines cannot be used together")
+    if args.csv and args.paths_only:
+        raise ValueError("--csv and --paths-only cannot be used together")
     if args.count_only and args.json:
         raise ValueError("--count-only and --json cannot be used together")
     if args.count_only and args.json_lines:
         raise ValueError("--count-only and --json-lines cannot be used together")
+    if args.count_only and args.csv:
+        raise ValueError("--count-only and --csv cannot be used together")
     if args.count_only and args.paths_only:
         raise ValueError("--count-only and --paths-only cannot be used together")
     if args.summary_only and args.json:
         raise ValueError("--summary-only and --json cannot be used together")
     if args.summary_only and args.json_lines:
         raise ValueError("--summary-only and --json-lines cannot be used together")
+    if args.summary_only and args.csv:
+        raise ValueError("--summary-only and --csv cannot be used together")
     if args.summary_only and args.paths_only:
         raise ValueError("--summary-only and --paths-only cannot be used together")
     if args.summary_only and args.count_only:
@@ -1519,6 +1560,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(summary, indent=2))
     elif args.json_lines:
         print(render_json_lines(limited_stale))
+    elif args.csv:
+        sys.stdout.write(render_csv(limited_stale))
     else:
         matching_summary = stale_summary(stale)
         print(
