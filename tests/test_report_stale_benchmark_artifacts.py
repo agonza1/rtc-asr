@@ -197,6 +197,66 @@ def test_stale_artifacts_path_filters_accept_comma_separated_values() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_artifact_directory() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, artifact_dirs=["benchmark-results/archive"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/archive/base-old.json",
+        "benchmark-results/archive/qwen-old.json",
+    ]
+
+
+def test_stale_artifacts_can_filter_by_artifact_directory_text() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/current/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, artifact_dir_contains=["ARCHIVE"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/archive/base-old.json",
+        "benchmark-results/archive/qwen-old.json",
+    ]
+
+
 def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
     manifest = {
         "tracks": [],
@@ -3728,6 +3788,32 @@ def test_main_paths_only_honors_filters_and_limits(monkeypatch, capsys) -> None:
     assert report_module.main(["--paths-only", "--label", "whisper", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == "benchmark-results/large.json\n"
+
+
+def test_main_paths_only_can_filter_by_artifact_directory(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/archive/base.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 20,
+                },
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--paths-only", "--artifact-dir", "benchmark-results/archive"]) == 0
+
+    assert capsys.readouterr().out == "benchmark-results/archive/base.json\n"
 
 
 def test_main_count_only_reports_total_matches_before_limit(monkeypatch, capsys) -> None:
