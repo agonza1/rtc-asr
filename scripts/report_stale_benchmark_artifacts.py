@@ -290,7 +290,12 @@ def detail_page_path(artifact_path: str | None) -> str | None:
 def normalize_status_filters(statuses: list[str] | None) -> set[str] | None:
     if statuses is None:
         return {"legacy"}
-    normalized = {status.lower() for status in statuses}
+    normalized = {
+        status.strip().lower()
+        for value in statuses
+        for status in value.split(",")
+        if status.strip()
+    }
     return None if "any" in normalized else normalized
 
 

@@ -24,6 +24,14 @@ limit_artifacts = report_module.limit_artifacts
 normalize_status_filters = report_module.normalize_status_filters
 
 
+def test_status_filters_accept_comma_separated_values() -> None:
+    assert normalize_status_filters(["legacy, blocked", "validated"]) == {
+        "legacy",
+        "blocked",
+        "validated",
+    }
+
+
 def test_stale_artifacts_excludes_current_track_artifact() -> None:
     manifest = {
         "tracks": [{"artifact_path": "benchmark-results/current.json", "slug": "demo"}],
@@ -2775,6 +2783,7 @@ def test_main_fail_on_stale_honors_status_filter(monkeypatch) -> None:
 
     assert report_module.main(["--fail-on-stale"]) == 0
     assert report_module.main(["--fail-on-stale", "--status", "blocked"]) == 1
+    assert report_module.main(["--fail-on-stale", "--status", "legacy,blocked"]) == 1
 
 
 def test_main_json_reports_total_matching_size_when_limited(monkeypatch, capsys) -> None:
