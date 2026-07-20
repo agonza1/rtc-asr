@@ -638,6 +638,50 @@ def test_stale_summary_groups_artifact_size_by_detail_page_path() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_detail_page_name() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "detail_page_path": "benchmark-results/pages/base-old.html",
+            "artifact_size_bytes": 20,
+        },
+        {
+            "artifact_path": "benchmark-results/archive/base-old.json",
+            "detail_page_path": "benchmark-results/archive/pages/base-old.html",
+            "artifact_size_bytes": 15,
+        },
+        {"artifact_path": "benchmark-results/raw-audio.wav", "artifact_size_bytes": 30},
+        {
+            "artifact_path": "benchmark-results/qwen-old.json",
+            "detail_page_path": "benchmark-results/pages/qwen-old.html",
+            "artifact_size_bytes": 5,
+        },
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_detail_page_name"] == [
+        {
+            "detail_page_name": "base-old.html",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "detail_page_name": "missing",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "detail_page_name": "qwen-old.html",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_summary_groups_artifact_size_by_measured_month() -> None:
     stale = [
         {
@@ -2572,6 +2616,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page:\n"
         "- missing: 3 artifacts (65 B, 65 bytes)\n"
+        "By detail page name:\n"
+        "- missing: 3 artifacts (65 B, 65 bytes)\n"
         "By measured month:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)"
     )
@@ -3387,6 +3433,9 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "By detail page:\n"
         "- benchmark-results/pages/large.html: 1 artifact (90 B, 90 bytes)\n"
         "- benchmark-results/pages/small.html: 1 artifact (10 B, 10 bytes)\n"
+        "By detail page name:\n"
+        "- large.html: 1 artifact (90 B, 90 bytes)\n"
+        "- small.html: 1 artifact (10 B, 10 bytes)\n"
         "By measured month:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
     )
@@ -3417,12 +3466,15 @@ def test_main_summary_only_accepts_selected_groups(monkeypatch, capsys) -> None:
         },
     )
 
-    assert report_module.main(["--summary-only", "--summary-group", "model"]) == 0
+    assert report_module.main(["--summary-only", "--summary-group", "model,detail-page-name"]) == 0
 
     assert capsys.readouterr().out == (
         "Found 2 stale benchmark artifacts (100 B, 100 bytes).\n"
         "By model:\n"
         "- base.en: 2 artifacts (100 B, 100 bytes)\n"
+        "By detail page name:\n"
+        "- large.html: 1 artifact (90 B, 90 bytes)\n"
+        "- small.html: 1 artifact (10 B, 10 bytes)\n"
     )
 
 
