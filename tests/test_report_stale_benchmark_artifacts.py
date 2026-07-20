@@ -2019,6 +2019,28 @@ def test_render_paths_can_include_detail_pages() -> None:
     )
 
 
+def test_render_paths_deduplicates_repeated_detail_pages() -> None:
+    rendered = render_paths(
+        [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "detail_page_path": "benchmark-results/pages/base-old.html",
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "detail_page_path": "benchmark-results/pages/base-old.html",
+            },
+        ],
+        include_detail_pages=True,
+    )
+
+    assert rendered == (
+        "benchmark-results/archive/base-old.json\n"
+        "benchmark-results/pages/base-old.html\n"
+        "benchmark-results/base-old.json"
+    )
+
+
 def test_render_paths_can_output_detail_pages_only() -> None:
     rendered = render_paths(
         [
@@ -2032,6 +2054,24 @@ def test_render_paths_can_output_detail_pages_only() -> None:
     )
 
     assert rendered == "benchmark-results/pages/oldest.html"
+
+
+def test_render_paths_deduplicates_detail_pages_only() -> None:
+    rendered = render_paths(
+        [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "detail_page_path": "benchmark-results/pages/base-old.html",
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "detail_page_path": "benchmark-results/pages/base-old.html",
+            },
+        ],
+        detail_pages_only=True,
+    )
+
+    assert rendered == "benchmark-results/pages/base-old.html"
 
 
 def test_render_paths_can_filter_to_existing_paths(tmp_path) -> None:

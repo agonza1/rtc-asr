@@ -818,19 +818,24 @@ def render_paths(
     separator: str = "\n",
 ) -> str:
     paths = []
+
+    def append_path_once(path: str) -> None:
+        if path not in paths:
+            paths.append(path)
+
     for entry in stale:
         if not detail_pages_only:
             artifact_path = entry["artifact_path"]
             if existing_root is None or (existing_root / artifact_path).exists():
                 if missing_root is None or not (missing_root / artifact_path).exists():
-                    paths.append(artifact_path)
+                    append_path_once(artifact_path)
         detail_path = entry.get("detail_page_path")
         if (include_detail_pages or detail_pages_only) and detail_path:
             if existing_root is not None and not (existing_root / detail_path).exists():
                 continue
             if missing_root is not None and (missing_root / detail_path).exists():
                 continue
-            paths.append(detail_path)
+            append_path_once(detail_path)
     return separator.join(paths)
 
 
