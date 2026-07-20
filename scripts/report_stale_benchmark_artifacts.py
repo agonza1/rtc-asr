@@ -23,6 +23,7 @@ SUMMARY_GROUPS = (
     "current-artifact-name",
     "track-state",
     "detail-page",
+    "detail-page-name",
     "measured-month",
 )
 
@@ -723,6 +724,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_current_artifact_name: dict[str, dict[str, Any]] = {}
     by_track_state: dict[str, dict[str, Any]] = {}
     by_detail_page_path: dict[str, dict[str, Any]] = {}
+    by_detail_page_name: dict[str, dict[str, Any]] = {}
     by_measured_month: dict[str, dict[str, Any]] = {}
     for entry in stale:
         slug = str(entry.get("slug") or "untracked")
@@ -865,6 +867,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         detail_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         detail_bucket["total_size"] = format_bytes(detail_bucket["total_size_bytes"])
 
+        detail_page_name = Path(entry.get("detail_page_path") or "").name or "missing"
+        detail_name_bucket = by_detail_page_name.setdefault(
+            detail_page_name,
+            {
+                "detail_page_name": detail_page_name,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        detail_name_bucket["count"] += 1
+        detail_name_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        detail_name_bucket["total_size"] = format_bytes(detail_name_bucket["total_size_bytes"])
+
         month = measured_month(entry.get("measured_at"))
         month_bucket = by_measured_month.setdefault(
             month,
@@ -922,6 +938,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_detail_page_path": sorted(
             by_detail_page_path.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_path"]),
+        ),
+        "by_detail_page_name": sorted(
+            by_detail_page_name.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_name"]),
         ),
         "by_measured_month": sorted(
             by_measured_month.values(),
@@ -1162,6 +1182,19 @@ def render_summary(stale: list[dict[str, Any]], *, groups: list[str] | None = No
         lines.append(
             "- {detail_page_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
                 detail_page_path=bucket["detail_page_path"],
+                count=bucket["count"],
+                bucket_noun=bucket_noun,
+                size=bucket["total_size"],
+                bytes=bucket["total_size_bytes"],
+            )
+        )
+    if "detail-page-name" in selected_groups and summary["by_detail_page_name"]:
+        lines.append("By detail page name:")
+    for bucket in summary["by_detail_page_name"] if "detail-page-name" in selected_groups else []:
+        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+        lines.append(
+            "- {detail_page_name}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                detail_page_name=bucket["detail_page_name"],
                 count=bucket["count"],
                 bucket_noun=bucket_noun,
                 size=bucket["total_size"],
