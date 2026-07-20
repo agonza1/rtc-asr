@@ -17,6 +17,7 @@ format_bytes = report_module.format_bytes
 render_text = report_module.render_text
 render_paths = report_module.render_paths
 render_json_lines = report_module.render_json_lines
+render_csv = report_module.render_csv
 render_summary = report_module.render_summary
 stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
@@ -245,6 +246,31 @@ def test_render_json_lines_emits_one_sorted_object_per_artifact() -> None:
         "benchmark-results/small.json",
     ]
     assert lines[0].startswith('{"artifact_path":')
+
+
+def test_render_csv_emits_header_and_artifact_rows() -> None:
+    rendered = render_csv(
+        [
+            {
+                "artifact_path": "benchmark-results/large.json",
+                "slug": "base",
+                "label": "Faster, Whisper",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "measured_month": "2026-06",
+                "current_artifact_path": "benchmark-results/current.json",
+                "track_state": "tracked",
+                "detail_page_path": "benchmark-results/pages/large.html",
+                "artifact_size_bytes": 90,
+                "artifact_size": "90 B",
+            }
+        ]
+    )
+
+    assert rendered.splitlines() == [
+        "artifact_path,slug,label,backend,model,status,measured_at,measured_month,current_artifact_path,track_state,detail_page_path,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,benchmark-results/current.json,tracked,benchmark-results/pages/large.html,90,90 B',
+    ]
 
 
 def test_stale_artifacts_can_sort_smallest_first() -> None:
@@ -3773,6 +3799,40 @@ def test_main_summary_only_can_limit_rows_per_group(monkeypatch, capsys) -> None
     )
 
 
+def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [
+                {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+            ],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "label": "Faster, Whisper",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--csv", "--limit", "1"]) == 0
+
+    assert capsys.readouterr().out == (
+        "artifact_path,slug,label,backend,model,status,measured_at,measured_month,current_artifact_path,track_state,detail_page_path,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,base,"Faster, Whisper",,,legacy,,unknown,benchmark-results/base-current.json,tracked,benchmark-results/pages/large.html,90,90 B\r\n'
+    )
+
+
 def test_main_rejects_paths_only_with_json() -> None:
     try:
         report_module.main(["--paths-only", "--json"])
@@ -3788,6 +3848,22 @@ def test_main_rejects_json_lines_with_other_output_modes() -> None:
         (["--json-lines", "--paths-only"], "--json-lines and --paths-only cannot be used together"),
         (["--json-lines", "--count-only"], "--count-only and --json-lines cannot be used together"),
         (["--json-lines", "--summary-only"], "--summary-only and --json-lines cannot be used together"),
+    ]:
+        try:
+            report_module.main(args)
+        except ValueError as error:
+            assert str(error) == expected
+        else:
+            raise AssertionError(f"{args} should be rejected")
+
+
+def test_main_rejects_csv_with_other_output_modes() -> None:
+    for args, expected in [
+        (["--csv", "--json"], "--csv and --json cannot be used together"),
+        (["--csv", "--json-lines"], "--csv and --json-lines cannot be used together"),
+        (["--csv", "--paths-only"], "--csv and --paths-only cannot be used together"),
+        (["--csv", "--count-only"], "--count-only and --csv cannot be used together"),
+        (["--csv", "--summary-only"], "--summary-only and --csv cannot be used together"),
     ]:
         try:
             report_module.main(args)
