@@ -2639,6 +2639,26 @@ def test_render_paths_can_use_null_separators_for_safe_cleanup() -> None:
     assert rendered == "benchmark-results/oldest.json\0benchmark-results/old.json"
 
 
+def test_render_paths_can_output_absolute_paths(tmp_path) -> None:
+    docs_root = tmp_path / "docs"
+
+    rendered = render_paths(
+        [
+            {
+                "artifact_path": "benchmark-results/oldest.json",
+                "detail_page_path": "benchmark-results/pages/oldest.html",
+            }
+        ],
+        include_detail_pages=True,
+        output_root=docs_root,
+    )
+
+    assert rendered == (
+        f"{docs_root / 'benchmark-results' / 'oldest.json'}\n"
+        f"{docs_root / 'benchmark-results' / 'pages' / 'oldest.html'}"
+    )
+
+
 def test_render_paths_can_include_detail_pages() -> None:
     rendered = render_paths(
         [
@@ -3062,6 +3082,29 @@ def test_main_paths_only_can_use_null_separators(monkeypatch, capsys) -> None:
     assert capsys.readouterr().out == "benchmark-results/old-a.json\0benchmark-results/old-b.json"
 
 
+def test_main_paths_only_can_output_absolute_paths(monkeypatch, tmp_path, capsys) -> None:
+    results_dir = tmp_path / "docs" / "benchmark-results"
+    results_dir.mkdir(parents=True)
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/old.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--results-dir", str(results_dir), "--paths-only", "--absolute-paths"]) == 0
+
+    assert capsys.readouterr().out == f"{results_dir / 'old.json'}\n"
+
+
 def test_main_null_paths_only_does_not_emit_newline_for_no_matches(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         report_module,
@@ -3189,6 +3232,15 @@ def test_main_rejects_detail_page_path_modes_together() -> None:
         assert str(error) == "--detail-pages-only cannot be combined with --include-detail-pages"
     else:
         raise AssertionError("detail page path modes should be mutually exclusive")
+
+
+def test_main_rejects_absolute_paths_without_paths_only() -> None:
+    try:
+        report_module.main(["--absolute-paths"])
+    except ValueError as error:
+        assert str(error) == "--absolute-paths requires --paths-only"
+    else:
+        raise AssertionError("--absolute-paths should require --paths-only")
 
 
 def test_main_rejects_null_separator_without_paths_only() -> None:
