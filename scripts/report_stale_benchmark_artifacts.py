@@ -641,6 +641,8 @@ def stale_artifacts(
         stale.append(
             {
                 "artifact_path": artifact_path,
+                "artifact_name": artifact_name,
+                "artifact_dir": str(Path(artifact_path).parent),
                 "slug": artifact.get("slug"),
                 "label": artifact.get("label"),
                 "backend": artifact.get("backend"),
@@ -1214,6 +1216,8 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
     output = io.StringIO()
     fieldnames = [
         "artifact_path",
+        "artifact_name",
+        "artifact_dir",
         "slug",
         "label",
         "backend",
@@ -1230,7 +1234,12 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
     writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction="ignore")
     writer.writeheader()
     for entry in stale:
-        writer.writerow(entry)
+        row = {
+            **entry,
+            "artifact_name": entry.get("artifact_name") or Path(entry.get("artifact_path") or "").name,
+            "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
+        }
+        writer.writerow(row)
     return output.getvalue()
 
 
