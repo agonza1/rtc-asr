@@ -17,6 +17,7 @@ format_bytes = report_module.format_bytes
 render_text = report_module.render_text
 render_paths = report_module.render_paths
 render_json_lines = report_module.render_json_lines
+render_json_summary = report_module.render_json_summary
 render_csv = report_module.render_csv
 render_summary = report_module.render_summary
 stale_artifacts = report_module.stale_artifacts
@@ -246,6 +247,51 @@ def test_render_json_lines_emits_one_sorted_object_per_artifact() -> None:
         "benchmark-results/small.json",
     ]
     assert lines[0].startswith('{"artifact_path":')
+
+
+def test_render_json_summary_can_select_and_limit_groups() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["slug, status"],
+        summary_limit=1,
+    )
+
+    summary = json.loads(rendered)
+
+    assert summary == {
+        "count": 2,
+        "total_size_bytes": 100,
+        "total_size": "100 B",
+        "by_slug": [
+            {
+                "slug": "base",
+                "count": 1,
+                "total_size_bytes": 90,
+                "total_size": "90 B",
+            }
+        ],
+        "by_status": [
+            {
+                "status": "legacy",
+                "count": 2,
+                "total_size_bytes": 100,
+                "total_size": "100 B",
+            }
+        ],
+    }
 
 
 def test_render_csv_emits_header_and_artifact_rows() -> None:
@@ -3851,6 +3897,46 @@ def test_main_summary_only_can_limit_rows_per_group(monkeypatch, capsys) -> None
     )
 
 
+def test_main_json_summary_reports_selected_groups(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/qwen.json",
+                    "status": "legacy",
+                    "slug": "qwen",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--json-summary", "--summary-group", "slug", "--summary-limit", "1"]) == 0
+
+    assert json.loads(capsys.readouterr().out) == {
+        "count": 2,
+        "total_size_bytes": 100,
+        "total_size": "100 B",
+        "by_slug": [
+            {
+                "slug": "base",
+                "count": 1,
+                "total_size_bytes": 90,
+                "total_size": "90 B",
+            }
+        ],
+    }
+
+
 def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         report_module,
@@ -3897,6 +3983,7 @@ def test_main_rejects_paths_only_with_json() -> None:
 def test_main_rejects_json_lines_with_other_output_modes() -> None:
     for args, expected in [
         (["--json-lines", "--json"], "--json-lines and --json cannot be used together"),
+        (["--json-lines", "--json-summary"], "--json-lines and --json-summary cannot be used together"),
         (["--json-lines", "--paths-only"], "--json-lines and --paths-only cannot be used together"),
         (["--json-lines", "--count-only"], "--count-only and --json-lines cannot be used together"),
         (["--json-lines", "--summary-only"], "--summary-only and --json-lines cannot be used together"),
@@ -3912,6 +3999,7 @@ def test_main_rejects_json_lines_with_other_output_modes() -> None:
 def test_main_rejects_csv_with_other_output_modes() -> None:
     for args, expected in [
         (["--csv", "--json"], "--csv and --json cannot be used together"),
+        (["--csv", "--json-summary"], "--csv and --json-summary cannot be used together"),
         (["--csv", "--json-lines"], "--csv and --json-lines cannot be used together"),
         (["--csv", "--paths-only"], "--csv and --paths-only cannot be used together"),
         (["--csv", "--count-only"], "--count-only and --csv cannot be used together"),
@@ -3934,6 +4022,13 @@ def test_main_rejects_count_only_with_structured_output_modes() -> None:
         raise AssertionError("count-only JSON output should be rejected")
 
     try:
+        report_module.main(["--count-only", "--json-summary"])
+    except ValueError as error:
+        assert str(error) == "--count-only and --json-summary cannot be used together"
+    else:
+        raise AssertionError("count-only JSON summary output should be rejected")
+
+    try:
         report_module.main(["--count-only", "--paths-only"])
     except ValueError as error:
         assert str(error) == "--count-only and --paths-only cannot be used together"
@@ -3944,6 +4039,7 @@ def test_main_rejects_count_only_with_structured_output_modes() -> None:
 def test_main_rejects_summary_only_with_structured_output_modes() -> None:
     for args, expected in [
         (["--summary-only", "--json"], "--summary-only and --json cannot be used together"),
+        (["--summary-only", "--json-summary"], "--summary-only and --json-summary cannot be used together"),
         (["--summary-only", "--paths-only"], "--summary-only and --paths-only cannot be used together"),
         (["--summary-only", "--count-only"], "--summary-only and --count-only cannot be used together"),
     ]:
@@ -3959,7 +4055,7 @@ def test_main_rejects_summary_group_without_summary_only() -> None:
     try:
         report_module.main(["--summary-group", "model"])
     except ValueError as error:
-        assert str(error) == "--summary-group requires --summary-only"
+        assert str(error) == "--summary-group requires --summary-only or --json-summary"
     else:
         raise AssertionError("--summary-group without --summary-only should be rejected")
 
@@ -3968,6 +4064,6 @@ def test_main_rejects_summary_limit_without_summary_only() -> None:
     try:
         report_module.main(["--summary-limit", "1"])
     except ValueError as error:
-        assert str(error) == "--summary-limit requires --summary-only"
+        assert str(error) == "--summary-limit requires --summary-only or --json-summary"
     else:
         raise AssertionError("--summary-limit without --summary-only should be rejected")

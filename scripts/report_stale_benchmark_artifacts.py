@@ -31,6 +31,23 @@ SUMMARY_GROUPS = (
     "measured-month",
 )
 
+SUMMARY_GROUP_KEYS = {
+    "slug": "by_slug",
+    "artifact-name": "by_artifact_name",
+    "artifact-dir": "by_artifact_dir",
+    "artifact-extension": "by_artifact_extension",
+    "status": "by_status",
+    "backend": "by_backend",
+    "model": "by_model",
+    "label": "by_label",
+    "current-artifact": "by_current_artifact_path",
+    "current-artifact-name": "by_current_artifact_name",
+    "track-state": "by_track_state",
+    "detail-page": "by_detail_page_path",
+    "detail-page-name": "by_detail_page_name",
+    "measured-month": "by_measured_month",
+}
+
 
 def format_bytes(size_bytes: int | None) -> str:
     if not size_bytes:
@@ -293,6 +310,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="With --paths-only, only print artifact or detail page paths that are missing on disk",
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    parser.add_argument(
+        "--json-summary",
+        action="store_true",
+        help="Emit machine-readable stale artifact totals and summary groups",
+    )
     parser.add_argument(
         "--json-lines",
         action="store_true",
@@ -1160,6 +1182,34 @@ def render_json_lines(stale: list[dict[str, Any]]) -> str:
     return "\n".join(json.dumps(entry, sort_keys=True) for entry in stale)
 
 
+def render_json_summary(
+    stale: list[dict[str, Any]],
+    *,
+    groups: list[str] | None = None,
+    summary_limit: int | None = None,
+) -> str:
+    if summary_limit is not None and summary_limit < 0:
+        raise ValueError("summary_limit must be non-negative")
+    allowed_groups = set(SUMMARY_GROUPS)
+    selected_groups = normalize_summary_groups(groups)
+    unknown_groups = sorted(selected_groups - allowed_groups)
+    if unknown_groups:
+        raise ValueError(f"summary groups must be one of: {', '.join(SUMMARY_GROUPS)}")
+
+    summary = stale_summary(stale)
+    rendered: dict[str, Any] = {
+        "count": summary["count"],
+        "total_size_bytes": summary["total_size_bytes"],
+        "total_size": summary["total_size"],
+    }
+    for group in SUMMARY_GROUPS:
+        if group not in selected_groups:
+            continue
+        summary_key = SUMMARY_GROUP_KEYS[group]
+        rendered[summary_key] = limit_summary_buckets(summary[summary_key], summary_limit)
+    return json.dumps(rendered, indent=2)
+
+
 def render_csv(stale: list[dict[str, Any]]) -> str:
     output = io.StringIO()
     fieldnames = [
@@ -1466,18 +1516,28 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.json and args.paths_only:
         raise ValueError("--json and --paths-only cannot be used together")
+    if args.json_summary and args.json:
+        raise ValueError("--json-summary and --json cannot be used together")
+    if args.json_summary and args.paths_only:
+        raise ValueError("--json-summary and --paths-only cannot be used together")
     if args.json_lines and args.json:
         raise ValueError("--json-lines and --json cannot be used together")
+    if args.json_lines and args.json_summary:
+        raise ValueError("--json-lines and --json-summary cannot be used together")
     if args.json_lines and args.paths_only:
         raise ValueError("--json-lines and --paths-only cannot be used together")
     if args.csv and args.json:
         raise ValueError("--csv and --json cannot be used together")
+    if args.csv and args.json_summary:
+        raise ValueError("--csv and --json-summary cannot be used together")
     if args.csv and args.json_lines:
         raise ValueError("--csv and --json-lines cannot be used together")
     if args.csv and args.paths_only:
         raise ValueError("--csv and --paths-only cannot be used together")
     if args.count_only and args.json:
         raise ValueError("--count-only and --json cannot be used together")
+    if args.count_only and args.json_summary:
+        raise ValueError("--count-only and --json-summary cannot be used together")
     if args.count_only and args.json_lines:
         raise ValueError("--count-only and --json-lines cannot be used together")
     if args.count_only and args.csv:
@@ -1486,6 +1546,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--count-only and --paths-only cannot be used together")
     if args.summary_only and args.json:
         raise ValueError("--summary-only and --json cannot be used together")
+    if args.summary_only and args.json_summary:
+        raise ValueError("--summary-only and --json-summary cannot be used together")
     if args.summary_only and args.json_lines:
         raise ValueError("--summary-only and --json-lines cannot be used together")
     if args.summary_only and args.csv:
@@ -1494,10 +1556,10 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-only and --paths-only cannot be used together")
     if args.summary_only and args.count_only:
         raise ValueError("--summary-only and --count-only cannot be used together")
-    if args.summary_group and not args.summary_only:
-        raise ValueError("--summary-group requires --summary-only")
-    if args.summary_limit is not None and not args.summary_only:
-        raise ValueError("--summary-limit requires --summary-only")
+    if args.summary_group and not (args.summary_only or args.json_summary):
+        raise ValueError("--summary-group requires --summary-only or --json-summary")
+    if args.summary_limit is not None and not (args.summary_only or args.json_summary):
+        raise ValueError("--summary-limit requires --summary-only or --json-summary")
     if args.include_detail_pages and not args.paths_only:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
@@ -1551,6 +1613,8 @@ def main(argv: list[str] | None = None) -> int:
         print(len(stale))
     elif args.summary_only:
         print(render_summary(stale, groups=args.summary_group, summary_limit=args.summary_limit))
+    elif args.json_summary:
+        print(render_json_summary(stale, groups=args.summary_group, summary_limit=args.summary_limit))
     elif args.paths_only:
         rendered_paths = render_paths(
             limited_stale,
