@@ -1587,7 +1587,19 @@ def test_main_paths_only_can_use_null_separators(monkeypatch, capsys) -> None:
 
     assert report_module.main(["--paths-only", "--null"]) == 0
 
-    assert capsys.readouterr().out == "benchmark-results/old-a.json\0benchmark-results/old-b.json\n"
+    assert capsys.readouterr().out == "benchmark-results/old-a.json\0benchmark-results/old-b.json"
+
+
+def test_main_null_paths_only_does_not_emit_newline_for_no_matches(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {"tracks": [], "artifacts": []},
+    )
+
+    assert report_module.main(["--paths-only", "--null"]) == 0
+
+    assert capsys.readouterr().out == ""
 
 
 def test_main_paths_only_can_filter_to_existing_paths(monkeypatch, tmp_path, capsys) -> None:

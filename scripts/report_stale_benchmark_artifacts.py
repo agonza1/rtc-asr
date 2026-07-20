@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -740,16 +741,18 @@ def main(argv: list[str] | None = None) -> int:
     elif args.summary_only:
         print(render_summary(stale))
     elif args.paths_only:
-        print(
-            render_paths(
-                limited_stale,
-                include_detail_pages=args.include_detail_pages,
-                detail_pages_only=args.detail_pages_only,
-                existing_root=args.results_dir.parent if args.existing_paths_only else None,
-                missing_root=args.results_dir.parent if args.missing_paths_only else None,
-                separator="\0" if args.null else "\n",
-            )
+        rendered_paths = render_paths(
+            limited_stale,
+            include_detail_pages=args.include_detail_pages,
+            detail_pages_only=args.detail_pages_only,
+            existing_root=args.results_dir.parent if args.existing_paths_only else None,
+            missing_root=args.results_dir.parent if args.missing_paths_only else None,
+            separator="\0" if args.null else "\n",
         )
+        if args.null:
+            sys.stdout.write(rendered_paths)
+        else:
+            print(rendered_paths)
     elif args.json:
         summary = stale_summary(limited_stale)
         summary["total_matching_count"] = len(stale)
