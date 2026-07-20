@@ -368,6 +368,50 @@ def test_stale_summary_groups_artifact_size_by_current_artifact_path() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_detail_page_path() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "detail_page_path": "benchmark-results/pages/base-old.html",
+            "artifact_size_bytes": 20,
+        },
+        {
+            "artifact_path": "benchmark-results/archive/base-old.json",
+            "detail_page_path": "benchmark-results/pages/base-old.html",
+            "artifact_size_bytes": 15,
+        },
+        {"artifact_path": "benchmark-results/raw-audio.wav", "artifact_size_bytes": 30},
+        {
+            "artifact_path": "benchmark-results/qwen-old.json",
+            "detail_page_path": "benchmark-results/pages/qwen-old.html",
+            "artifact_size_bytes": 5,
+        },
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_detail_page_path"] == [
+        {
+            "detail_page_path": "benchmark-results/pages/base-old.html",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "detail_page_path": "missing",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "detail_page_path": "benchmark-results/pages/qwen-old.html",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
     manifest = {
         "tracks": [],
@@ -2083,7 +2127,9 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- base.en: 2 artifacts (35 B, 35 bytes)\n"
         "- Qwen/Qwen3-ASR-0.6B: 1 artifact (30 B, 30 bytes)\n"
         "By current artifact:\n"
-        "- untracked: 3 artifacts (65 B, 65 bytes)"
+        "- untracked: 3 artifacts (65 B, 65 bytes)\n"
+        "By detail page:\n"
+        "- missing: 3 artifacts (65 B, 65 bytes)"
     )
 
 
@@ -2857,6 +2903,9 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- base.en: 2 artifacts (100 B, 100 bytes)\n"
         "By current artifact:\n"
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
+        "By detail page:\n"
+        "- benchmark-results/pages/large.html: 1 artifact (90 B, 90 bytes)\n"
+        "- benchmark-results/pages/small.html: 1 artifact (10 B, 10 bytes)\n"
     )
 
 

@@ -612,6 +612,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_model: dict[str, dict[str, Any]] = {}
     by_label: dict[str, dict[str, Any]] = {}
     by_current_artifact_path: dict[str, dict[str, Any]] = {}
+    by_detail_page_path: dict[str, dict[str, Any]] = {}
     for entry in stale:
         slug = str(entry.get("slug") or "untracked")
         bucket = by_slug.setdefault(
@@ -697,6 +698,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         current_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         current_bucket["total_size"] = format_bytes(current_bucket["total_size_bytes"])
 
+        detail_page = str(entry.get("detail_page_path") or "missing")
+        detail_bucket = by_detail_page_path.setdefault(
+            detail_page,
+            {
+                "detail_page_path": detail_page,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        detail_bucket["count"] += 1
+        detail_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        detail_bucket["total_size"] = format_bytes(detail_bucket["total_size_bytes"])
+
     return {
         "count": len(stale),
         "total_size_bytes": total_size_bytes,
@@ -724,6 +739,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_current_artifact_path": sorted(
             by_current_artifact_path.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["current_artifact_path"]),
+        ),
+        "by_detail_page_path": sorted(
+            by_detail_page_path.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_path"]),
         ),
         "artifacts": stale,
     }
@@ -896,6 +915,19 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
         lines.append(
             "- {current_artifact_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
                 current_artifact_path=bucket["current_artifact_path"],
+                count=bucket["count"],
+                bucket_noun=bucket_noun,
+                size=bucket["total_size"],
+                bytes=bucket["total_size_bytes"],
+            )
+        )
+    if summary["by_detail_page_path"]:
+        lines.append("By detail page:")
+    for bucket in summary["by_detail_page_path"]:
+        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+        lines.append(
+            "- {detail_page_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                detail_page_path=bucket["detail_page_path"],
                 count=bucket["count"],
                 bucket_noun=bucket_noun,
                 size=bucket["total_size"],
