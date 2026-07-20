@@ -16,6 +16,7 @@ SUMMARY_GROUPS = (
     "slug",
     "artifact-name",
     "artifact-dir",
+    "artifact-extension",
     "status",
     "backend",
     "model",
@@ -91,6 +92,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "path",
             "artifact-name",
             "artifact-dir",
+            "artifact-extension",
             "detail-page",
             "detail-page-name",
             "status",
@@ -636,6 +638,14 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "artifact-extension":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("artifact_path") or "").suffix.lower(),
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "detail-page":
         return sorted(stale, key=lambda entry: entry.get("detail_page_path") or "")
     if sort_by == "detail-page-name":
@@ -725,7 +735,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-dir, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
     )
 
 
@@ -734,6 +744,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_slug: dict[str, dict[str, Any]] = {}
     by_artifact_name: dict[str, dict[str, Any]] = {}
     by_artifact_dir: dict[str, dict[str, Any]] = {}
+    by_artifact_extension: dict[str, dict[str, Any]] = {}
     by_status: dict[str, dict[str, Any]] = {}
     by_backend: dict[str, dict[str, Any]] = {}
     by_model: dict[str, dict[str, Any]] = {}
@@ -786,6 +797,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         artifact_dir_bucket["count"] += 1
         artifact_dir_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         artifact_dir_bucket["total_size"] = format_bytes(artifact_dir_bucket["total_size_bytes"])
+
+        artifact_extension = Path(entry.get("artifact_path") or "").suffix.lower() or "none"
+        artifact_extension_bucket = by_artifact_extension.setdefault(
+            artifact_extension,
+            {
+                "artifact_extension": artifact_extension,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        artifact_extension_bucket["count"] += 1
+        artifact_extension_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        artifact_extension_bucket["total_size"] = format_bytes(artifact_extension_bucket["total_size_bytes"])
 
         status = str(entry.get("status") or "unknown")
         status_bucket = by_status.setdefault(
@@ -942,6 +967,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_artifact_dir": sorted(
             by_artifact_dir.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["artifact_dir"]),
+        ),
+        "by_artifact_extension": sorted(
+            by_artifact_extension.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["artifact_extension"]),
         ),
         "by_status": sorted(
             by_status.values(),
@@ -1178,6 +1207,22 @@ def render_summary(
                 )
             )
         append_omitted_summary_buckets(lines, summary["by_artifact_dir"], shown_buckets, limit=summary_limit)
+    if "artifact-extension" in selected_groups and summary["by_artifact_extension"]:
+        lines.append("By artifact extension:")
+    if "artifact-extension" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_artifact_extension"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {artifact_extension}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    artifact_extension=bucket["artifact_extension"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(lines, summary["by_artifact_extension"], shown_buckets, limit=summary_limit)
     if "status" in selected_groups and summary["by_status"]:
         lines.append("By status:")
     if "status" in selected_groups:
