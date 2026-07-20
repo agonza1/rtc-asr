@@ -356,6 +356,74 @@ def test_render_json_summary_can_select_and_limit_groups() -> None:
     }
 
 
+def test_render_json_summary_can_filter_group_rows_by_min_count() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/base-small.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 5,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 5,
+            },
+        ],
+        groups=["slug"],
+        summary_min_count=2,
+    )
+
+    summary = json.loads(rendered)
+
+    assert summary["by_slug"] == [
+        {
+            "slug": "base",
+            "count": 2,
+            "total_size_bytes": 95,
+            "total_size": "95 B",
+        }
+    ]
+
+
+def test_render_summary_can_filter_group_rows_by_min_count() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/base-small.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 5,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 5,
+            },
+        ],
+        groups=["slug"],
+        summary_min_count=2,
+    )
+
+    assert "- base: 2 artifacts (95 B, 95 bytes)" in rendered
+    assert "- qwen:" not in rendered
+
+
 def test_render_csv_emits_header_and_artifact_rows() -> None:
     rendered = render_csv(
         [
