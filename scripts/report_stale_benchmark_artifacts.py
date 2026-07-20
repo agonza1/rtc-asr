@@ -393,13 +393,23 @@ def stale_artifacts(
     if track_state not in {"any", "tracked", "untracked"}:
         raise ValueError("track_state must be one of: any, tracked, untracked")
     slugs = normalize_filter_values(slugs)
+    slug_contains = normalize_filter_values(slug_contains)
     labels = normalize_filter_values(labels)
     backends = normalize_filter_values(backends)
     models = normalize_filter_values(models)
     measured_months = normalize_filter_values(measured_months)
+    current_paths = normalize_filter_values(current_paths)
+    current_path_contains = normalize_filter_values(current_path_contains)
     current_path_names = normalize_filter_values(current_path_names)
+    current_path_name_contains = normalize_filter_values(current_path_name_contains)
+    artifact_paths = normalize_filter_values(artifact_paths)
+    artifact_path_contains = normalize_filter_values(artifact_path_contains)
     artifact_names = normalize_filter_values(artifact_names)
+    artifact_name_contains = normalize_filter_values(artifact_name_contains)
+    detail_pages = normalize_filter_values(detail_pages)
+    detail_page_contains = normalize_filter_values(detail_page_contains)
     detail_page_names = normalize_filter_values(detail_page_names)
+    detail_page_name_contains = normalize_filter_values(detail_page_name_contains)
     allowed_measured_months = None
     if measured_months is not None:
         allowed_measured_months = {month.strip() for month in measured_months if month.strip()}
