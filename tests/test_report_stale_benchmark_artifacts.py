@@ -702,6 +702,58 @@ def test_stale_artifacts_can_filter_by_detail_page_path() -> None:
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
 
 
+def test_stale_artifacts_can_filter_by_detail_page_file_name() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, detail_page_names=["base-old.html"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/archive/base-old.json",
+        "benchmark-results/base-old.json",
+    ]
+
+
+def test_stale_artifacts_detail_page_file_name_filter_accepts_paths() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, detail_page_names=["tmp/base-old.html"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
 def test_stale_artifacts_can_filter_by_detail_page_file_name_text() -> None:
     manifest = {
         "tracks": [],

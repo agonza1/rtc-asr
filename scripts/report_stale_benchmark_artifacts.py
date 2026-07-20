@@ -160,6 +160,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose generated detail page path matches this path; repeat to include multiple paths",
     )
     parser.add_argument(
+        "--detail-page-name",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page file name matches this name; repeat to include multiple names",
+    )
+    parser.add_argument(
         "--detail-page-name-contains",
         action="append",
         default=None,
@@ -271,6 +277,7 @@ def stale_artifacts(
     artifact_names: list[str] | None = None,
     artifact_name_contains: list[str] | None = None,
     detail_pages: list[str] | None = None,
+    detail_page_names: list[str] | None = None,
     detail_page_name_contains: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
@@ -328,6 +335,7 @@ def stale_artifacts(
         None if artifact_name_contains is None else [needle.lower() for needle in artifact_name_contains]
     )
     allowed_detail_pages = None if detail_pages is None else set(detail_pages)
+    allowed_detail_page_names = None if detail_page_names is None else {Path(name).name for name in detail_page_names}
     detail_page_name_needles = (
         None if detail_page_name_contains is None else [needle.lower() for needle in detail_page_name_contains]
     )
@@ -349,9 +357,11 @@ def stale_artifacts(
         artifact_detail_page_path = detail_page_path(artifact_path)
         if allowed_detail_pages is not None and artifact_detail_page_path not in allowed_detail_pages:
             continue
+        detail_page_name = Path(artifact_detail_page_path or "").name
+        if allowed_detail_page_names is not None and detail_page_name not in allowed_detail_page_names:
+            continue
         if detail_page_name_needles is not None:
-            detail_page_name = Path(artifact_detail_page_path or "").name.lower()
-            if not any(needle in detail_page_name for needle in detail_page_name_needles):
+            if not any(needle in detail_page_name.lower() for needle in detail_page_name_needles):
                 continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
@@ -798,6 +808,7 @@ def main(argv: list[str] | None = None) -> int:
         artifact_names=args.artifact_name,
         artifact_name_contains=args.artifact_name_contains,
         detail_pages=args.detail_page,
+        detail_page_names=args.detail_page_name,
         detail_page_name_contains=args.detail_page_name_contains,
         statuses=args.status,
         sort_by=args.sort,
