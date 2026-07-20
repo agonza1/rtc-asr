@@ -702,6 +702,33 @@ def test_stale_artifacts_can_filter_by_detail_page_path() -> None:
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
 
 
+def test_stale_artifacts_can_filter_by_detail_page_path_text() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/faster-whisper/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        detail_page_contains=["PAGES/BASE"],
+    )
+
+    assert [entry["detail_page_path"] for entry in stale] == [
+        "benchmark-results/pages/base-old.html"
+    ]
+
+
 def test_stale_artifacts_can_filter_by_detail_page_file_name() -> None:
     manifest = {
         "tracks": [],
