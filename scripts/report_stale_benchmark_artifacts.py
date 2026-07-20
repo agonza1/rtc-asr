@@ -218,6 +218,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose artifact path contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
+        "--artifact-dir",
+        action="append",
+        default=None,
+        help=(
+            "Only include stale artifacts whose artifact directory matches this path; "
+            "repeat to include multiple paths"
+        ),
+    )
+    parser.add_argument(
+        "--artifact-dir-contains",
+        action="append",
+        default=None,
+        help=(
+            "Only include stale artifacts whose artifact directory contains this text; "
+            "repeat to include multiple matches"
+        ),
+    )
+    parser.add_argument(
         "--artifact-name",
         action="append",
         default=None,
@@ -434,6 +452,8 @@ def stale_artifacts(
     measured_months: list[str] | None = None,
     artifact_paths: list[str] | None = None,
     artifact_path_contains: list[str] | None = None,
+    artifact_dirs: list[str] | None = None,
+    artifact_dir_contains: list[str] | None = None,
     artifact_names: list[str] | None = None,
     artifact_name_contains: list[str] | None = None,
     artifact_extensions: list[str] | None = None,
@@ -465,6 +485,8 @@ def stale_artifacts(
     current_path_name_contains = normalize_filter_values(current_path_name_contains)
     artifact_paths = normalize_filter_values(artifact_paths)
     artifact_path_contains = normalize_filter_values(artifact_path_contains)
+    artifact_dirs = normalize_filter_values(artifact_dirs)
+    artifact_dir_contains = normalize_filter_values(artifact_dir_contains)
     artifact_names = normalize_filter_values(artifact_names)
     artifact_name_contains = normalize_filter_values(artifact_name_contains)
     artifact_extensions = normalize_filter_values(artifact_extensions)
@@ -527,6 +549,10 @@ def stale_artifacts(
     artifact_path_needles = (
         None if artifact_path_contains is None else [needle.lower() for needle in artifact_path_contains]
     )
+    allowed_artifact_dirs = None if artifact_dirs is None else {str(Path(path)) for path in artifact_dirs}
+    artifact_dir_needles = (
+        None if artifact_dir_contains is None else [needle.lower() for needle in artifact_dir_contains]
+    )
     allowed_artifact_names = None if artifact_names is None else {Path(name).name for name in artifact_names}
     artifact_name_needles = (
         None if artifact_name_contains is None else [needle.lower() for needle in artifact_name_contains]
@@ -560,6 +586,12 @@ def stale_artifacts(
         if artifact_path_needles is not None:
             artifact_path_text = artifact_path.lower()
             if not any(needle in artifact_path_text for needle in artifact_path_needles):
+                continue
+        artifact_dir = str(Path(artifact_path).parent)
+        if allowed_artifact_dirs is not None and artifact_dir not in allowed_artifact_dirs:
+            continue
+        if artifact_dir_needles is not None:
+            if not any(needle in artifact_dir.lower() for needle in artifact_dir_needles):
                 continue
         artifact_name = Path(artifact_path).name
         if allowed_artifact_names is not None and artifact_name not in allowed_artifact_names:
@@ -642,7 +674,7 @@ def stale_artifacts(
             {
                 "artifact_path": artifact_path,
                 "artifact_name": artifact_name,
-                "artifact_dir": str(Path(artifact_path).parent),
+                "artifact_dir": artifact_dir,
                 "slug": artifact.get("slug"),
                 "label": artifact.get("label"),
                 "backend": artifact.get("backend"),
@@ -1607,6 +1639,8 @@ def main(argv: list[str] | None = None) -> int:
         track_state=args.track_state,
         artifact_paths=args.artifact_path,
         artifact_path_contains=args.artifact_path_contains,
+        artifact_dirs=args.artifact_dir,
+        artifact_dir_contains=args.artifact_dir_contains,
         artifact_names=args.artifact_name,
         artifact_name_contains=args.artifact_name_contains,
         artifact_extensions=args.artifact_extension,
