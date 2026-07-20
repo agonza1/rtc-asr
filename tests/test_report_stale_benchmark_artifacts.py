@@ -22,8 +22,13 @@ stale_summary = report_module.stale_summary
 detail_page_path = report_module.detail_page_path
 limit_artifacts = report_module.limit_artifacts
 normalize_status_filters = report_module.normalize_status_filters
+normalize_filter_values = report_module.normalize_filter_values
 normalize_summary_groups = report_module.normalize_summary_groups
 measured_month = report_module.measured_month
+
+
+def test_filter_values_accept_comma_separated_values() -> None:
+    assert normalize_filter_values(["base, qwen", "parakeet"]) == ["base", "qwen", "parakeet"]
 
 
 def test_status_filters_accept_comma_separated_values() -> None:
@@ -90,6 +95,54 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "artifact_size_bytes": 75,
             "artifact_size": "75 B",
         }
+    ]
+
+
+def test_stale_artifacts_accepts_comma_separated_repeated_filters() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "slug": "base",
+                "backend": "faster-whisper",
+                "model": "base.en",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "slug": "qwen",
+                "backend": "qwen-asr",
+                "model": "Qwen/Qwen3-ASR-0.6B",
+                "status": "legacy",
+                "measured_at": "2026-07-01T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/parakeet.json",
+                "slug": "parakeet",
+                "backend": "parakeet-mlx",
+                "model": "parakeet-tdt-0.6b-v2",
+                "status": "legacy",
+                "measured_at": "2026-07-01T00:00:00Z",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        slugs=["base, qwen"],
+        backends=["faster-whisper, qwen-asr"],
+        models=["base.en, Qwen"],
+        measured_months=["2026-06, 2026-07"],
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/qwen.json",
+        "benchmark-results/base.json",
     ]
 
 

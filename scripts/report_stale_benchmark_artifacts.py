@@ -326,6 +326,17 @@ def normalize_status_filters(statuses: list[str] | None) -> set[str] | None:
     return None if "any" in normalized else normalized
 
 
+def normalize_filter_values(values: list[str] | None) -> list[str] | None:
+    if values is None:
+        return None
+    return [
+        item.strip()
+        for value in values
+        for item in value.split(",")
+        if item.strip()
+    ]
+
+
 def measured_month(value: Any) -> str:
     parsed = parse_timestamp(value)
     if parsed is None:
@@ -381,6 +392,14 @@ def stale_artifacts(
         raise ValueError("min_size_bytes cannot exceed max_size_bytes")
     if track_state not in {"any", "tracked", "untracked"}:
         raise ValueError("track_state must be one of: any, tracked, untracked")
+    slugs = normalize_filter_values(slugs)
+    labels = normalize_filter_values(labels)
+    backends = normalize_filter_values(backends)
+    models = normalize_filter_values(models)
+    measured_months = normalize_filter_values(measured_months)
+    current_path_names = normalize_filter_values(current_path_names)
+    artifact_names = normalize_filter_values(artifact_names)
+    detail_page_names = normalize_filter_values(detail_page_names)
     allowed_measured_months = None
     if measured_months is not None:
         allowed_measured_months = {month.strip() for month in measured_months if month.strip()}
