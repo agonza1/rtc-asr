@@ -136,6 +136,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include this stale artifact path; repeat to include multiple paths",
     )
     parser.add_argument(
+        "--artifact-name",
+        action="append",
+        default=None,
+        help="Only include stale artifacts with this file name; repeat to include multiple names",
+    )
+    parser.add_argument(
         "--status",
         action="append",
         default=None,
@@ -237,6 +243,7 @@ def stale_artifacts(
     current_paths: list[str] | None = None,
     track_state: str = "any",
     artifact_paths: list[str] | None = None,
+    artifact_names: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
@@ -287,6 +294,7 @@ def stale_artifacts(
     allowed_backends = None if backends is None else {backend.lower() for backend in backends}
     allowed_current_paths = None if current_paths is None else set(current_paths)
     allowed_artifact_paths = None if artifact_paths is None else set(artifact_paths)
+    allowed_artifact_names = None if artifact_names is None else {Path(name).name for name in artifact_names}
     allowed_statuses = normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
@@ -294,6 +302,8 @@ def stale_artifacts(
         if not artifact_path or artifact_path in current_artifact_paths:
             continue
         if allowed_artifact_paths is not None and artifact_path not in allowed_artifact_paths:
+            continue
+        if allowed_artifact_names is not None and Path(artifact_path).name not in allowed_artifact_names:
             continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
@@ -732,6 +742,7 @@ def main(argv: list[str] | None = None) -> int:
         current_paths=args.current_path,
         track_state=args.track_state,
         artifact_paths=args.artifact_path,
+        artifact_names=args.artifact_name,
         statuses=args.status,
         sort_by=args.sort,
     )
