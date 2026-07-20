@@ -552,6 +552,46 @@ def test_stale_artifacts_can_sort_by_label_backend_and_path() -> None:
     ]
 
 
+def test_stale_artifacts_can_sort_by_slug_and_path() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/z-preview.json",
+                "status": "legacy",
+                "slug": "zeta",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-b.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/base-a.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 40,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="slug")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/base-a.json",
+        "benchmark-results/base-b.json",
+        "benchmark-results/untracked.json",
+        "benchmark-results/z-preview.json",
+    ]
+
+
 def test_stale_artifacts_can_sort_by_current_path_then_artifact_path() -> None:
     manifest = {
         "tracks": [
@@ -881,7 +921,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, measured-at, measured-at-desc, path, status, backend, model, label, current-path"
+            == "sort_by must be one of: size, measured-at, measured-at-desc, path, status, backend, model, label, slug, current-path"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
