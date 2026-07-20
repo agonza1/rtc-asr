@@ -427,6 +427,37 @@ def test_render_json_summary_can_filter_group_rows_by_min_count() -> None:
     ]
 
 
+def test_render_json_summary_can_sort_group_rows_by_count() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-a.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-b.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="count",
+    )
+
+    summary = json.loads(rendered)
+
+    assert [bucket["slug"] for bucket in summary["by_slug"]] == ["qwen", "base"]
+
+
 def test_render_summary_can_filter_group_rows_by_min_count() -> None:
     rendered = render_summary(
         [
@@ -455,6 +486,32 @@ def test_render_summary_can_filter_group_rows_by_min_count() -> None:
 
     assert "- base: 2 artifacts (95 B, 95 bytes)" in rendered
     assert "- qwen:" not in rendered
+
+
+def test_render_summary_can_sort_group_rows_by_name() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/zeta.json",
+                "status": "legacy",
+                "slug": "zeta",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="name",
+    )
+
+    assert rendered.splitlines()[1:3] == [
+        "- base: 1 artifact (10 B, 10 bytes)",
+        "- zeta: 1 artifact (90 B, 90 bytes)",
+    ]
 
 
 def test_render_csv_emits_header_and_artifact_rows() -> None:
