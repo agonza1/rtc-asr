@@ -76,6 +76,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "backend",
             "model",
             "label",
+            "slug",
             "current-path",
         ),
         default="size",
@@ -542,6 +543,14 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "slug":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                str(entry.get("slug") or "untracked").lower(),
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "current-path":
         return sorted(
             stale,
@@ -551,7 +560,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, measured-at, measured-at-desc, path, status, backend, model, label, current-path"
+        "sort_by must be one of: size, measured-at, measured-at-desc, path, status, backend, model, label, slug, current-path"
     )
 
 
