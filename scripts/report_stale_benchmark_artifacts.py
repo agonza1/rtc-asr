@@ -154,6 +154,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose file name contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
+        "--detail-page",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page path matches this path; repeat to include multiple paths",
+    )
+    parser.add_argument(
+        "--detail-page-name-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page file name contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
         "--status",
         action="append",
         default=None,
@@ -258,6 +270,8 @@ def stale_artifacts(
     artifact_paths: list[str] | None = None,
     artifact_names: list[str] | None = None,
     artifact_name_contains: list[str] | None = None,
+    detail_pages: list[str] | None = None,
+    detail_page_name_contains: list[str] | None = None,
     statuses: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
@@ -313,6 +327,10 @@ def stale_artifacts(
     artifact_name_needles = (
         None if artifact_name_contains is None else [needle.lower() for needle in artifact_name_contains]
     )
+    allowed_detail_pages = None if detail_pages is None else set(detail_pages)
+    detail_page_name_needles = (
+        None if detail_page_name_contains is None else [needle.lower() for needle in detail_page_name_contains]
+    )
     allowed_statuses = normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
@@ -328,6 +346,13 @@ def stale_artifacts(
             needle in artifact_name.lower() for needle in artifact_name_needles
         ):
             continue
+        artifact_detail_page_path = detail_page_path(artifact_path)
+        if allowed_detail_pages is not None and artifact_detail_page_path not in allowed_detail_pages:
+            continue
+        if detail_page_name_needles is not None:
+            detail_page_name = Path(artifact_detail_page_path or "").name.lower()
+            if not any(needle in detail_page_name for needle in detail_page_name_needles):
+                continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
             continue
@@ -376,7 +401,7 @@ def stale_artifacts(
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
                 "current_artifact_path": current_artifact_path,
-                "detail_page_path": detail_page_path(artifact_path),
+                "detail_page_path": artifact_detail_page_path,
                 "artifact_size_bytes": artifact_size_bytes,
                 "artifact_size": format_bytes(artifact_size_bytes),
             }
@@ -772,6 +797,8 @@ def main(argv: list[str] | None = None) -> int:
         artifact_paths=args.artifact_path,
         artifact_names=args.artifact_name,
         artifact_name_contains=args.artifact_name_contains,
+        detail_pages=args.detail_page,
+        detail_page_name_contains=args.detail_page_name_contains,
         statuses=args.status,
         sort_by=args.sort,
     )
