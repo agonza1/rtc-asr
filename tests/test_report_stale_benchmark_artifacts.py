@@ -280,6 +280,50 @@ def test_stale_summary_groups_artifact_size_by_model() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_label() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-large.json",
+            "label": "Faster Whisper",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "label": "Qwen MPS",
+            "artifact_size_bytes": 30,
+        },
+        {
+            "artifact_path": "benchmark-results/base-small.json",
+            "label": "Faster Whisper",
+            "artifact_size_bytes": 10,
+        },
+        {"artifact_path": "benchmark-results/unknown.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_label"] == [
+        {
+            "label": "Faster Whisper",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "label": "Qwen MPS",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "label": "unknown",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_summary_groups_artifact_size_by_current_artifact_path() -> None:
     stale = [
         {
@@ -2041,6 +2085,28 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "By current artifact:\n"
         "- untracked: 3 artifacts (65 B, 65 bytes)"
     )
+
+
+def test_render_summary_includes_known_label_totals() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "label": "Faster Whisper",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/base-older.json",
+                "label": "Faster Whisper",
+                "artifact_size_bytes": 15,
+            },
+        ]
+    )
+
+    assert (
+        "By label:\n"
+        "- Faster Whisper: 2 artifacts (35 B, 35 bytes)"
+    ) in rendered
 
 
 def test_limit_artifacts_rejects_negative_limits() -> None:
