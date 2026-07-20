@@ -280,9 +280,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--summary-group",
         action="append",
-        choices=SUMMARY_GROUPS,
         default=None,
-        help="With --summary-only, only print this grouping; repeat to include multiple groups",
+        help="With --summary-only, only print this grouping; repeat or comma-separate to include multiple groups",
     )
     return parser.parse_args(argv)
 
@@ -332,6 +331,15 @@ def measured_month(value: Any) -> str:
     if parsed is None:
         return "unknown"
     return parsed.strftime("%Y-%m")
+
+
+def normalize_summary_groups(groups: list[str] | None) -> set[str]:
+    return {
+        group.strip()
+        for value in (groups or list(SUMMARY_GROUPS))
+        for group in value.split(",")
+        if group.strip()
+    }
 
 
 def stale_artifacts(
@@ -967,7 +975,7 @@ def render_paths(
 
 def render_summary(stale: list[dict[str, Any]], *, groups: list[str] | None = None) -> str:
     allowed_groups = set(SUMMARY_GROUPS)
-    selected_groups = set(SUMMARY_GROUPS if groups is None else groups)
+    selected_groups = normalize_summary_groups(groups)
     unknown_groups = sorted(selected_groups - allowed_groups)
     if unknown_groups:
         raise ValueError(f"summary groups must be one of: {', '.join(SUMMARY_GROUPS)}")

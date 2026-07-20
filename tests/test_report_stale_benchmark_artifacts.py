@@ -22,6 +22,7 @@ stale_summary = report_module.stale_summary
 detail_page_path = report_module.detail_page_path
 limit_artifacts = report_module.limit_artifacts
 normalize_status_filters = report_module.normalize_status_filters
+normalize_summary_groups = report_module.normalize_summary_groups
 measured_month = report_module.measured_month
 
 
@@ -30,6 +31,14 @@ def test_status_filters_accept_comma_separated_values() -> None:
         "legacy",
         "blocked",
         "validated",
+    }
+
+
+def test_summary_groups_accept_comma_separated_values() -> None:
+    assert normalize_summary_groups(["status, backend", "measured-month"]) == {
+        "status",
+        "backend",
+        "measured-month",
     }
 
 
