@@ -334,6 +334,38 @@ def test_stale_summary_groups_artifact_size_by_artifact_directory() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_artifact_extension() -> None:
+    stale = [
+        {"artifact_path": "benchmark-results/base-old.json", "artifact_size_bytes": 20},
+        {"artifact_path": "benchmark-results/archive/qwen-old.json", "artifact_size_bytes": 30},
+        {"artifact_path": "benchmark-results/raw-audio.wav", "artifact_size_bytes": 15},
+        {"artifact_path": "benchmark-results/README", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_artifact_extension"] == [
+        {
+            "artifact_extension": ".json",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "artifact_extension": ".wav",
+            "count": 1,
+            "total_size_bytes": 15,
+            "total_size": "15 B",
+        },
+        {
+            "artifact_extension": "none",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_summary_groups_artifact_size_by_status() -> None:
     stale = [
         {"artifact_path": "benchmark-results/legacy-large.json", "status": "legacy", "artifact_size_bytes": 40},
@@ -941,6 +973,37 @@ def test_stale_artifacts_can_sort_by_artifact_directory_then_name() -> None:
         "benchmark-results/z.json",
         "benchmark-results/archive/a.json",
         "benchmark-results/archive/b.json",
+    ]
+
+
+def test_stale_artifacts_can_sort_by_artifact_extension_then_path() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/audio.wav",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/z.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/a.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="artifact-extension")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/a.json",
+        "benchmark-results/z.json",
+        "benchmark-results/audio.wav",
     ]
 
 
@@ -1624,7 +1687,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-dir, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+            == "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
@@ -2658,6 +2721,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- base-older.json: 1 artifact (15 B, 15 bytes)\n"
         "By artifact directory:\n"
         "- benchmark-results: 3 artifacts (65 B, 65 bytes)\n"
+        "By artifact extension:\n"
+        "- .json: 3 artifacts (65 B, 65 bytes)\n"
         "By status:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By backend:\n"
@@ -2752,6 +2817,29 @@ def test_render_summary_can_focus_on_artifact_directory() -> None:
         "By artifact directory:\n"
         "- benchmark-results/archive: 1 artifact (20 B, 20 bytes)\n"
         "- benchmark-results: 1 artifact (10 B, 10 bytes)"
+    )
+
+
+def test_render_summary_can_focus_on_artifact_extension() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/raw-audio.wav",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["artifact-extension"],
+    )
+
+    assert rendered == (
+        "Found 2 stale benchmark artifacts (30 B, 30 bytes).\n"
+        "By artifact extension:\n"
+        "- .json: 1 artifact (20 B, 20 bytes)\n"
+        "- .wav: 1 artifact (10 B, 10 bytes)"
     )
 
 
@@ -3501,6 +3589,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- small.json: 1 artifact (10 B, 10 bytes)\n"
         "By artifact directory:\n"
         "- benchmark-results: 2 artifacts (100 B, 100 bytes)\n"
+        "By artifact extension:\n"
+        "- .json: 2 artifacts (100 B, 100 bytes)\n"
         "By status:\n"
         "- legacy: 2 artifacts (100 B, 100 bytes)\n"
         "By backend:\n"
