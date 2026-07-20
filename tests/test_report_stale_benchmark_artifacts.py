@@ -176,6 +176,31 @@ def test_stale_summary_groups_artifact_size_by_slug() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_artifact_name() -> None:
+    stale = [
+        {"artifact_path": "benchmark-results/archive/base-old.json", "artifact_size_bytes": 20},
+        {"artifact_path": "benchmark-results/base-old.json", "artifact_size_bytes": 30},
+        {"artifact_path": "benchmark-results/qwen.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_artifact_name"] == [
+        {
+            "artifact_name": "base-old.json",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "artifact_name": "qwen.json",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_summary_groups_artifact_size_by_status() -> None:
     stale = [
         {"artifact_path": "benchmark-results/legacy-large.json", "status": "legacy", "artifact_size_bytes": 40},
@@ -2375,6 +2400,10 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "Found 3 stale benchmark artifacts (65 B, 65 bytes).\n"
         "- base: 2 artifacts (35 B, 35 bytes)\n"
         "- untracked: 1 artifact (30 B, 30 bytes)\n"
+        "By artifact name:\n"
+        "- untracked.json: 1 artifact (30 B, 30 bytes)\n"
+        "- base-old.json: 1 artifact (20 B, 20 bytes)\n"
+        "- base-older.json: 1 artifact (15 B, 15 bytes)\n"
         "By status:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By backend:\n"
@@ -3186,6 +3215,9 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
     assert capsys.readouterr().out == (
         "Found 2 stale benchmark artifacts (100 B, 100 bytes).\n"
         "- base: 2 artifacts (100 B, 100 bytes)\n"
+        "By artifact name:\n"
+        "- large.json: 1 artifact (90 B, 90 bytes)\n"
+        "- small.json: 1 artifact (10 B, 10 bytes)\n"
         "By status:\n"
         "- legacy: 2 artifacts (100 B, 100 bytes)\n"
         "By backend:\n"
