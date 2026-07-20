@@ -277,6 +277,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="With --paths-only, only print artifact or detail page paths that are missing on disk",
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    parser.add_argument(
+        "--json-lines",
+        action="store_true",
+        help="Emit one machine-readable stale artifact JSON object per line",
+    )
     parser.add_argument("--count-only", action="store_true", help="Print only the matching stale artifact count")
     parser.add_argument(
         "--summary-only",
@@ -1107,6 +1112,10 @@ def render_paths(
     return separator.join(paths)
 
 
+def render_json_lines(stale: list[dict[str, Any]]) -> str:
+    return "\n".join(json.dumps(entry, sort_keys=True) for entry in stale)
+
+
 def limit_summary_buckets(buckets: list[dict[str, Any]], limit: int | None) -> list[dict[str, Any]]:
     if limit is None:
         return buckets
@@ -1389,12 +1398,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     if args.json and args.paths_only:
         raise ValueError("--json and --paths-only cannot be used together")
+    if args.json_lines and args.json:
+        raise ValueError("--json-lines and --json cannot be used together")
+    if args.json_lines and args.paths_only:
+        raise ValueError("--json-lines and --paths-only cannot be used together")
     if args.count_only and args.json:
         raise ValueError("--count-only and --json cannot be used together")
+    if args.count_only and args.json_lines:
+        raise ValueError("--count-only and --json-lines cannot be used together")
     if args.count_only and args.paths_only:
         raise ValueError("--count-only and --paths-only cannot be used together")
     if args.summary_only and args.json:
         raise ValueError("--summary-only and --json cannot be used together")
+    if args.summary_only and args.json_lines:
+        raise ValueError("--summary-only and --json-lines cannot be used together")
     if args.summary_only and args.paths_only:
         raise ValueError("--summary-only and --paths-only cannot be used together")
     if args.summary_only and args.count_only:
@@ -1473,6 +1490,8 @@ def main(argv: list[str] | None = None) -> int:
         summary["total_matching_size_bytes"] = matching_summary["total_size_bytes"]
         summary["total_matching_size"] = matching_summary["total_size"]
         print(json.dumps(summary, indent=2))
+    elif args.json_lines:
+        print(render_json_lines(limited_stale))
     else:
         matching_summary = stale_summary(stale)
         print(

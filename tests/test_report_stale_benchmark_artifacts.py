@@ -16,6 +16,7 @@ SPEC.loader.exec_module(report_module)
 format_bytes = report_module.format_bytes
 render_text = report_module.render_text
 render_paths = report_module.render_paths
+render_json_lines = report_module.render_json_lines
 render_summary = report_module.render_summary
 stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
@@ -219,6 +220,31 @@ def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
 
     assert summary["total_size_bytes"] == 100
     assert summary["total_size"] == "100 B"
+
+
+def test_render_json_lines_emits_one_sorted_object_per_artifact() -> None:
+    rendered = render_json_lines(
+        [
+            {
+                "artifact_path": "benchmark-results/large.json",
+                "status": "legacy",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/small.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ]
+    )
+
+    lines = rendered.splitlines()
+
+    assert [json.loads(line)["artifact_path"] for line in lines] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
+    assert lines[0].startswith('{"artifact_path":')
 
 
 def test_stale_artifacts_can_sort_smallest_first() -> None:
@@ -3457,6 +3483,34 @@ def test_main_json_reports_total_matching_size_when_limited(monkeypatch, capsys)
     assert payload["total_matching_size"] == "100 B"
 
 
+def test_main_json_lines_honors_limit(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--json-lines", "--limit", "1"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0])["artifact_path"] == "benchmark-results/large.json"
+
+
 def test_main_text_reports_total_matching_size_when_limited(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         report_module,
@@ -3696,6 +3750,21 @@ def test_main_rejects_paths_only_with_json() -> None:
         assert str(error) == "--json and --paths-only cannot be used together"
     else:
         raise AssertionError("paths-only JSON output should be rejected")
+
+
+def test_main_rejects_json_lines_with_other_output_modes() -> None:
+    for args, expected in [
+        (["--json-lines", "--json"], "--json-lines and --json cannot be used together"),
+        (["--json-lines", "--paths-only"], "--json-lines and --paths-only cannot be used together"),
+        (["--json-lines", "--count-only"], "--count-only and --json-lines cannot be used together"),
+        (["--json-lines", "--summary-only"], "--summary-only and --json-lines cannot be used together"),
+    ]:
+        try:
+            report_module.main(args)
+        except ValueError as error:
+            assert str(error) == expected
+        else:
+            raise AssertionError(f"{args} should be rejected")
 
 
 def test_main_rejects_count_only_with_structured_output_modes() -> None:
