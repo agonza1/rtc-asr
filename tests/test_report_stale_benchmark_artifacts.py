@@ -595,6 +595,58 @@ def test_stale_artifacts_can_sort_by_current_path_then_artifact_path() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_artifact_file_name() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, artifact_names=["base-old.json"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/archive/base-old.json",
+        "benchmark-results/base-old.json",
+    ]
+
+
+def test_stale_artifacts_artifact_file_name_filter_accepts_paths() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, artifact_names=["tmp/base-old.json"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
 def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, sort_by="unknown")
