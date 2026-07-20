@@ -610,6 +610,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_status: dict[str, dict[str, Any]] = {}
     by_backend: dict[str, dict[str, Any]] = {}
     by_model: dict[str, dict[str, Any]] = {}
+    by_label: dict[str, dict[str, Any]] = {}
     by_current_artifact_path: dict[str, dict[str, Any]] = {}
     for entry in stale:
         slug = str(entry.get("slug") or "untracked")
@@ -668,6 +669,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         model_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         model_bucket["total_size"] = format_bytes(model_bucket["total_size_bytes"])
 
+        label = str(entry.get("label") or "unknown")
+        label_bucket = by_label.setdefault(
+            label,
+            {
+                "label": label,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        label_bucket["count"] += 1
+        label_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        label_bucket["total_size"] = format_bytes(label_bucket["total_size_bytes"])
+
         current_artifact_path = str(entry.get("current_artifact_path") or "untracked")
         current_bucket = by_current_artifact_path.setdefault(
             current_artifact_path,
@@ -701,6 +716,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_model": sorted(
             by_model.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["model"]),
+        ),
+        "by_label": sorted(
+            by_label.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["label"]),
         ),
         "by_current_artifact_path": sorted(
             by_current_artifact_path.values(),
@@ -857,6 +876,19 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
                 bytes=bucket["total_size_bytes"],
             )
         )
+    if any(bucket["label"] != "unknown" for bucket in summary["by_label"]):
+        lines.append("By label:")
+        for bucket in summary["by_label"]:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {label}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    label=bucket["label"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
     if summary["by_current_artifact_path"]:
         lines.append("By current artifact:")
     for bucket in summary["by_current_artifact_path"]:
