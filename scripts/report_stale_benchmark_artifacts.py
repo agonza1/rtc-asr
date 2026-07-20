@@ -124,6 +124,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose track currently points at this artifact path; repeat to include multiple paths",
     )
     parser.add_argument(
+        "--current-path-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose current track artifact path contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
         "--track-state",
         choices=("any", "tracked", "untracked"),
         default="any",
@@ -247,6 +253,7 @@ def stale_artifacts(
     backends: list[str] | None = None,
     models: list[str] | None = None,
     current_paths: list[str] | None = None,
+    current_path_contains: list[str] | None = None,
     track_state: str = "any",
     artifact_paths: list[str] | None = None,
     artifact_names: list[str] | None = None,
@@ -300,6 +307,7 @@ def stale_artifacts(
     current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
     allowed_backends = None if backends is None else {backend.lower() for backend in backends}
     allowed_current_paths = None if current_paths is None else set(current_paths)
+    current_path_needles = None if current_path_contains is None else [needle.lower() for needle in current_path_contains]
     allowed_artifact_paths = None if artifact_paths is None else set(artifact_paths)
     allowed_artifact_names = None if artifact_names is None else {Path(name).name for name in artifact_names}
     artifact_name_needles = (
@@ -339,6 +347,10 @@ def stale_artifacts(
         current_artifact_path = current_path_by_slug.get(artifact.get("slug"))
         if allowed_current_paths is not None and current_artifact_path not in allowed_current_paths:
             continue
+        if current_path_needles is not None:
+            current_path_text = str(current_artifact_path or "").lower()
+            if not any(needle in current_path_text for needle in current_path_needles):
+                continue
         if track_state == "tracked" and current_artifact_path is None:
             continue
         if track_state == "untracked" and current_artifact_path is not None:
@@ -755,6 +767,7 @@ def main(argv: list[str] | None = None) -> int:
         backends=args.backend,
         models=args.model,
         current_paths=args.current_path,
+        current_path_contains=args.current_path_contains,
         track_state=args.track_state,
         artifact_paths=args.artifact_path,
         artifact_names=args.artifact_name,
