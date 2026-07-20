@@ -1101,6 +1101,44 @@ def test_stale_artifacts_can_filter_by_track_slug() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_track_slug_text() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/faster-whisper-base.json",
+                "status": "legacy",
+                "slug": "faster-whisper-base",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/faster-whisper-small.json",
+                "status": "legacy",
+                "slug": "faster-whisper-small",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen-mps",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 40,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, slug_contains=["WHISPER"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/faster-whisper-small.json",
+        "benchmark-results/faster-whisper-base.json",
+    ]
+
+
 def test_stale_artifacts_can_filter_by_label_text() -> None:
     manifest = {
         "tracks": [],

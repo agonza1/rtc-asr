@@ -100,6 +100,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts for this benchmark track slug; repeat to include multiple slugs",
     )
     parser.add_argument(
+        "--slug-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose track slug contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
         "--label",
         action="append",
         default=None,
@@ -279,6 +285,7 @@ def stale_artifacts(
     min_size_bytes: int | None = None,
     max_size_bytes: int | None = None,
     slugs: list[str] | None = None,
+    slug_contains: list[str] | None = None,
     labels: list[str] | None = None,
     backends: list[str] | None = None,
     models: list[str] | None = None,
@@ -344,6 +351,7 @@ def stale_artifacts(
     allowed_current_paths = None if current_paths is None else set(current_paths)
     current_path_needles = None if current_path_contains is None else [needle.lower() for needle in current_path_contains]
     allowed_artifact_paths = None if artifact_paths is None else set(artifact_paths)
+    slug_needles = None if slug_contains is None else [needle.lower() for needle in slug_contains]
     artifact_path_needles = (
         None if artifact_path_contains is None else [needle.lower() for needle in artifact_path_contains]
     )
@@ -416,6 +424,10 @@ def stale_artifacts(
             continue
         if track_state == "untracked" and current_artifact_path is not None:
             continue
+        if slug_needles is not None:
+            artifact_slug = str(artifact.get("slug") or "").lower()
+            if not any(needle in artifact_slug for needle in slug_needles):
+                continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
@@ -824,6 +836,7 @@ def main(argv: list[str] | None = None) -> int:
         min_size_bytes=args.min_size_bytes,
         max_size_bytes=args.max_size_bytes,
         slugs=args.slug,
+        slug_contains=args.slug_contains,
         labels=args.label,
         backends=args.backend,
         models=args.model,
