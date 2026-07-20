@@ -17,6 +17,7 @@ from build_benchmark_manifest import DEFAULT_RESULTS_DIR, DEFAULT_TRACKS_PATH, b
 SUMMARY_GROUPS = (
     "slug",
     "artifact-name",
+    "artifact-stem",
     "artifact-dir",
     "artifact-extension",
     "status",
@@ -34,6 +35,7 @@ SUMMARY_GROUPS = (
 SUMMARY_GROUP_KEYS = {
     "slug": "by_slug",
     "artifact-name": "by_artifact_name",
+    "artifact-stem": "by_artifact_stem",
     "artifact-dir": "by_artifact_dir",
     "artifact-extension": "by_artifact_extension",
     "status": "by_status",
@@ -114,6 +116,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "artifact-extension",
             "detail-page",
             "detail-page-name",
+            "artifact-stem",
             "status",
             "backend",
             "model",
@@ -246,6 +249,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Only include stale artifacts whose file name contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
+        "--artifact-stem",
+        action="append",
+        default=None,
+        help="Only include stale artifacts with this file name without extension; repeat to include multiple stems",
+    )
+    parser.add_argument(
+        "--artifact-stem-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose file name without extension contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--artifact-extension",
@@ -462,6 +477,8 @@ def stale_artifacts(
     artifact_dir_contains: list[str] | None = None,
     artifact_names: list[str] | None = None,
     artifact_name_contains: list[str] | None = None,
+    artifact_stems: list[str] | None = None,
+    artifact_stem_contains: list[str] | None = None,
     artifact_extensions: list[str] | None = None,
     detail_pages: list[str] | None = None,
     detail_page_contains: list[str] | None = None,
@@ -495,6 +512,8 @@ def stale_artifacts(
     artifact_dir_contains = normalize_filter_values(artifact_dir_contains)
     artifact_names = normalize_filter_values(artifact_names)
     artifact_name_contains = normalize_filter_values(artifact_name_contains)
+    artifact_stems = normalize_filter_values(artifact_stems)
+    artifact_stem_contains = normalize_filter_values(artifact_stem_contains)
     artifact_extensions = normalize_filter_values(artifact_extensions)
     detail_pages = normalize_filter_values(detail_pages)
     detail_page_contains = normalize_filter_values(detail_page_contains)
@@ -563,6 +582,10 @@ def stale_artifacts(
     artifact_name_needles = (
         None if artifact_name_contains is None else [needle.lower() for needle in artifact_name_contains]
     )
+    allowed_artifact_stems = None if artifact_stems is None else {Path(stem).stem for stem in artifact_stems}
+    artifact_stem_needles = (
+        None if artifact_stem_contains is None else [needle.lower() for needle in artifact_stem_contains]
+    )
     allowed_artifact_extensions = (
         None
         if artifact_extensions is None
@@ -604,6 +627,13 @@ def stale_artifacts(
             continue
         if artifact_name_needles is not None and not any(
             needle in artifact_name.lower() for needle in artifact_name_needles
+        ):
+            continue
+        artifact_stem = Path(artifact_path).stem
+        if allowed_artifact_stems is not None and artifact_stem not in allowed_artifact_stems:
+            continue
+        if artifact_stem_needles is not None and not any(
+            needle in artifact_stem.lower() for needle in artifact_stem_needles
         ):
             continue
         artifact_extension = Path(artifact_path).suffix.lower()
@@ -680,6 +710,7 @@ def stale_artifacts(
             {
                 "artifact_path": artifact_path,
                 "artifact_name": artifact_name,
+                "artifact_stem": artifact_stem,
                 "artifact_dir": artifact_dir,
                 "slug": artifact.get("slug"),
                 "label": artifact.get("label"),
@@ -734,6 +765,14 @@ def stale_artifacts(
             stale,
             key=lambda entry: (
                 Path(entry.get("artifact_path") or "").name,
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "artifact-stem":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("artifact_path") or "").stem,
                 entry.get("artifact_path") or "",
             ),
         )
@@ -843,7 +882,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
     )
 
 
@@ -851,6 +890,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     total_size_bytes = sum(entry.get("artifact_size_bytes") or 0 for entry in stale)
     by_slug: dict[str, dict[str, Any]] = {}
     by_artifact_name: dict[str, dict[str, Any]] = {}
+    by_artifact_stem: dict[str, dict[str, Any]] = {}
     by_artifact_dir: dict[str, dict[str, Any]] = {}
     by_artifact_extension: dict[str, dict[str, Any]] = {}
     by_status: dict[str, dict[str, Any]] = {}
@@ -891,6 +931,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         artifact_name_bucket["count"] += 1
         artifact_name_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         artifact_name_bucket["total_size"] = format_bytes(artifact_name_bucket["total_size_bytes"])
+
+        artifact_stem = Path(entry.get("artifact_path") or "").stem or "unknown"
+        artifact_stem_bucket = by_artifact_stem.setdefault(
+            artifact_stem,
+            {
+                "artifact_stem": artifact_stem,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        artifact_stem_bucket["count"] += 1
+        artifact_stem_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        artifact_stem_bucket["total_size"] = format_bytes(artifact_stem_bucket["total_size_bytes"])
 
         artifact_dir = str(Path(entry.get("artifact_path") or "").parent) or "."
         artifact_dir_bucket = by_artifact_dir.setdefault(
@@ -1071,6 +1125,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_artifact_name": sorted(
             by_artifact_name.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["artifact_name"]),
+        ),
+        "by_artifact_stem": sorted(
+            by_artifact_stem.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["artifact_stem"]),
         ),
         "by_artifact_dir": sorted(
             by_artifact_dir.values(),
@@ -1262,6 +1320,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
     fieldnames = [
         "artifact_path",
         "artifact_name",
+        "artifact_stem",
         "artifact_dir",
         "slug",
         "label",
@@ -1282,6 +1341,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         row = {
             **entry,
             "artifact_name": entry.get("artifact_name") or Path(entry.get("artifact_path") or "").name,
+            "artifact_stem": entry.get("artifact_stem") or Path(entry.get("artifact_path") or "").stem,
             "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
         }
         writer.writerow(row)
@@ -1396,6 +1456,22 @@ def render_summary(
                 )
             )
         append_omitted_summary_buckets(lines, summary["by_artifact_name"], shown_buckets, limit=summary_limit, min_count=summary_min_count)
+    if "artifact-stem" in selected_groups and summary["by_artifact_stem"]:
+        lines.append("By artifact stem:")
+    if "artifact-stem" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_artifact_stem"], summary_limit, min_count=summary_min_count)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {artifact_stem}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    artifact_stem=bucket["artifact_stem"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(lines, summary["by_artifact_stem"], shown_buckets, limit=summary_limit, min_count=summary_min_count)
     if "artifact-dir" in selected_groups and summary["by_artifact_dir"]:
         lines.append("By artifact directory:")
     if "artifact-dir" in selected_groups:
@@ -1682,6 +1758,8 @@ def main(argv: list[str] | None = None) -> int:
         artifact_dir_contains=args.artifact_dir_contains,
         artifact_names=args.artifact_name,
         artifact_name_contains=args.artifact_name_contains,
+        artifact_stems=args.artifact_stem,
+        artifact_stem_contains=args.artifact_stem_contains,
         artifact_extensions=args.artifact_extension,
         detail_pages=args.detail_page,
         detail_page_contains=args.detail_page_contains,
