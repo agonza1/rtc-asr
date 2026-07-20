@@ -3530,6 +3530,44 @@ def test_main_summary_only_accepts_selected_groups(monkeypatch, capsys) -> None:
     )
 
 
+def test_main_summary_only_can_limit_rows_per_group(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/qwen.json",
+                    "status": "legacy",
+                    "slug": "qwen",
+                    "artifact_size_bytes": 20,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "slug": "small",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--summary-only", "--summary-group", "slug", "--summary-limit", "1"]) == 0
+
+    assert capsys.readouterr().out == (
+        "Found 3 stale benchmark artifacts (120 B, 120 bytes).\n"
+        "- base: 1 artifact (90 B, 90 bytes)\n"
+        "... 2 more buckets (30 B, 30 bytes) omitted by --summary-limit.\n"
+    )
+
+
 def test_main_rejects_paths_only_with_json() -> None:
     try:
         report_module.main(["--paths-only", "--json"])
@@ -3576,3 +3614,12 @@ def test_main_rejects_summary_group_without_summary_only() -> None:
         assert str(error) == "--summary-group requires --summary-only"
     else:
         raise AssertionError("--summary-group without --summary-only should be rejected")
+
+
+def test_main_rejects_summary_limit_without_summary_only() -> None:
+    try:
+        report_module.main(["--summary-limit", "1"])
+    except ValueError as error:
+        assert str(error) == "--summary-limit requires --summary-only"
+    else:
+        raise AssertionError("--summary-limit without --summary-only should be rejected")
