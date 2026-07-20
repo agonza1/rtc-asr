@@ -97,6 +97,37 @@ def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
     assert summary["total_size"] == "100 B"
 
 
+def test_stale_artifacts_can_sort_smallest_first() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/medium.json",
+                "status": "legacy",
+                "artifact_size_bytes": 50,
+            },
+            {
+                "artifact_path": "benchmark-results/small.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/large.json",
+                "status": "legacy",
+                "artifact_size_bytes": 90,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="size-asc")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/small.json",
+        "benchmark-results/medium.json",
+        "benchmark-results/large.json",
+    ]
+
+
 def test_stale_summary_groups_artifact_size_by_slug() -> None:
     stale = [
         {"artifact_path": "benchmark-results/base-old.json", "slug": "base", "artifact_size_bytes": 20},
@@ -1008,7 +1039,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, current-path"
+            == "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, current-path"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
