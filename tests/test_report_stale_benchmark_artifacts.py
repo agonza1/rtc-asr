@@ -1573,6 +1573,36 @@ def test_stale_artifacts_can_filter_by_artifact_file_name_text() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_artifact_extension() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/raw-audio.wav",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/README",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, artifact_extensions=["json, none"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/base-old.json",
+        "benchmark-results/README",
+    ]
+
+
 def test_stale_artifacts_can_filter_by_detail_page_path() -> None:
     manifest = {
         "tracks": [],

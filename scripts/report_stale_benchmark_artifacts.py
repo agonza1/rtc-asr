@@ -211,6 +211,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose file name contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
+        "--artifact-extension",
+        action="append",
+        default=None,
+        help="Only include stale artifacts with this file extension; repeat or comma-separate; use 'none' for extensionless paths",
+    )
+    parser.add_argument(
         "--detail-page",
         action="append",
         default=None,
@@ -393,6 +399,7 @@ def stale_artifacts(
     artifact_path_contains: list[str] | None = None,
     artifact_names: list[str] | None = None,
     artifact_name_contains: list[str] | None = None,
+    artifact_extensions: list[str] | None = None,
     detail_pages: list[str] | None = None,
     detail_page_contains: list[str] | None = None,
     detail_page_names: list[str] | None = None,
@@ -423,6 +430,7 @@ def stale_artifacts(
     artifact_path_contains = normalize_filter_values(artifact_path_contains)
     artifact_names = normalize_filter_values(artifact_names)
     artifact_name_contains = normalize_filter_values(artifact_name_contains)
+    artifact_extensions = normalize_filter_values(artifact_extensions)
     detail_pages = normalize_filter_values(detail_pages)
     detail_page_contains = normalize_filter_values(detail_page_contains)
     detail_page_names = normalize_filter_values(detail_page_names)
@@ -486,6 +494,18 @@ def stale_artifacts(
     artifact_name_needles = (
         None if artifact_name_contains is None else [needle.lower() for needle in artifact_name_contains]
     )
+    allowed_artifact_extensions = (
+        None
+        if artifact_extensions is None
+        else {
+            extension.lower() if extension.startswith(".") else f".{extension.lower()}"
+            for extension in artifact_extensions
+            if extension.lower() != "none"
+        }
+    )
+    allow_extensionless_artifacts = artifact_extensions is not None and any(
+        extension.lower() == "none" for extension in artifact_extensions
+    )
     allowed_detail_pages = None if detail_pages is None else set(detail_pages)
     detail_page_needles = None if detail_page_contains is None else [needle.lower() for needle in detail_page_contains]
     allowed_detail_page_names = None if detail_page_names is None else {Path(name).name for name in detail_page_names}
@@ -511,6 +531,12 @@ def stale_artifacts(
             needle in artifact_name.lower() for needle in artifact_name_needles
         ):
             continue
+        artifact_extension = Path(artifact_path).suffix.lower()
+        if allowed_artifact_extensions is not None or allow_extensionless_artifacts:
+            extension_matches = artifact_extension in (allowed_artifact_extensions or set())
+            extensionless_matches = allow_extensionless_artifacts and artifact_extension == ""
+            if not extension_matches and not extensionless_matches:
+                continue
         artifact_detail_page_path = detail_page_path(artifact_path)
         if allowed_detail_pages is not None and artifact_detail_page_path not in allowed_detail_pages:
             continue
@@ -1458,6 +1484,7 @@ def main(argv: list[str] | None = None) -> int:
         artifact_path_contains=args.artifact_path_contains,
         artifact_names=args.artifact_name,
         artifact_name_contains=args.artifact_name_contains,
+        artifact_extensions=args.artifact_extension,
         detail_pages=args.detail_page,
         detail_page_contains=args.detail_page_contains,
         detail_page_names=args.detail_page_name,
