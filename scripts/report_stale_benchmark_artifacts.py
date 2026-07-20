@@ -286,6 +286,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="With --summary-only, only print this grouping; repeat or comma-separate to include multiple groups",
     )
+    parser.add_argument(
+        "--summary-limit",
+        type=int,
+        default=None,
+        help="With --summary-only, print at most this many rows per grouping",
+    )
     return parser.parse_args(argv)
 
 
@@ -1062,7 +1068,44 @@ def render_paths(
     return separator.join(paths)
 
 
-def render_summary(stale: list[dict[str, Any]], *, groups: list[str] | None = None) -> str:
+def limit_summary_buckets(buckets: list[dict[str, Any]], limit: int | None) -> list[dict[str, Any]]:
+    if limit is None:
+        return buckets
+    if limit < 0:
+        raise ValueError("summary_limit must be non-negative")
+    return buckets[:limit]
+
+
+def append_omitted_summary_buckets(
+    lines: list[str],
+    buckets: list[dict[str, Any]],
+    shown_buckets: list[dict[str, Any]],
+    *,
+    limit: int | None,
+) -> None:
+    if limit is None or len(buckets) <= len(shown_buckets):
+        return
+    omitted_count = len(buckets) - len(shown_buckets)
+    omitted_size_bytes = sum(bucket["total_size_bytes"] for bucket in buckets[len(shown_buckets) :])
+    noun = "bucket" if omitted_count == 1 else "buckets"
+    lines.append(
+        "... {count} more {noun} ({size}, {bytes} bytes) omitted by --summary-limit.".format(
+            count=omitted_count,
+            noun=noun,
+            size=format_bytes(omitted_size_bytes),
+            bytes=omitted_size_bytes,
+        )
+    )
+
+
+def render_summary(
+    stale: list[dict[str, Any]],
+    *,
+    groups: list[str] | None = None,
+    summary_limit: int | None = None,
+) -> str:
+    if summary_limit is not None and summary_limit < 0:
+        raise ValueError("summary_limit must be non-negative")
     allowed_groups = set(SUMMARY_GROUPS)
     selected_groups = normalize_summary_groups(groups)
     unknown_groups = sorted(selected_groups - allowed_groups)
@@ -1080,7 +1123,8 @@ def render_summary(stale: list[dict[str, Any]], *, groups: list[str] | None = No
         )
     ]
     if "slug" in selected_groups:
-        for bucket in summary["by_slug"]:
+        shown_buckets = limit_summary_buckets(summary["by_slug"], summary_limit)
+        for bucket in shown_buckets:
             bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
             lines.append(
                 "- {slug}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -1091,74 +1135,91 @@ def render_summary(stale: list[dict[str, Any]], *, groups: list[str] | None = No
                     bytes=bucket["total_size_bytes"],
                 )
             )
+        append_omitted_summary_buckets(lines, summary["by_slug"], shown_buckets, limit=summary_limit)
     if "artifact-name" in selected_groups and summary["by_artifact_name"]:
         lines.append("By artifact name:")
-    for bucket in summary["by_artifact_name"] if "artifact-name" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {artifact_name}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                artifact_name=bucket["artifact_name"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "artifact-name" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_artifact_name"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {artifact_name}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    artifact_name=bucket["artifact_name"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_artifact_name"], shown_buckets, limit=summary_limit)
     if "artifact-dir" in selected_groups and summary["by_artifact_dir"]:
         lines.append("By artifact directory:")
-    for bucket in summary["by_artifact_dir"] if "artifact-dir" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {artifact_dir}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                artifact_dir=bucket["artifact_dir"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "artifact-dir" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_artifact_dir"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {artifact_dir}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    artifact_dir=bucket["artifact_dir"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_artifact_dir"], shown_buckets, limit=summary_limit)
     if "status" in selected_groups and summary["by_status"]:
         lines.append("By status:")
-    for bucket in summary["by_status"] if "status" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {status}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                status=bucket["status"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "status" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_status"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {status}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    status=bucket["status"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_status"], shown_buckets, limit=summary_limit)
     if "backend" in selected_groups and summary["by_backend"]:
         lines.append("By backend:")
-    for bucket in summary["by_backend"] if "backend" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {backend}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                backend=bucket["backend"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "backend" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_backend"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {backend}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    backend=bucket["backend"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_backend"], shown_buckets, limit=summary_limit)
     if "model" in selected_groups and summary["by_model"]:
         lines.append("By model:")
-    for bucket in summary["by_model"] if "model" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {model}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                model=bucket["model"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "model" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_model"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {model}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    model=bucket["model"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_model"], shown_buckets, limit=summary_limit)
     if "label" in selected_groups and any(bucket["label"] != "unknown" for bucket in summary["by_label"]):
         lines.append("By label:")
-        for bucket in summary["by_label"]:
+        shown_buckets = limit_summary_buckets(summary["by_label"], summary_limit)
+        for bucket in shown_buckets:
             bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
             lines.append(
                 "- {label}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
@@ -1169,84 +1230,103 @@ def render_summary(stale: list[dict[str, Any]], *, groups: list[str] | None = No
                     bytes=bucket["total_size_bytes"],
                 )
             )
+        append_omitted_summary_buckets(lines, summary["by_label"], shown_buckets, limit=summary_limit)
     if "current-artifact" in selected_groups and summary["by_current_artifact_path"]:
         lines.append("By current artifact:")
-    for bucket in summary["by_current_artifact_path"] if "current-artifact" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {current_artifact_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                current_artifact_path=bucket["current_artifact_path"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "current-artifact" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_current_artifact_path"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {current_artifact_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    current_artifact_path=bucket["current_artifact_path"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_current_artifact_path"], shown_buckets, limit=summary_limit)
     if "current-artifact-name" in selected_groups and summary["by_current_artifact_name"]:
         lines.append("By current artifact name:")
-    for bucket in summary["by_current_artifact_name"] if "current-artifact-name" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {current_artifact_name}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                current_artifact_name=bucket["current_artifact_name"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "current-artifact-name" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_current_artifact_name"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {current_artifact_name}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    current_artifact_name=bucket["current_artifact_name"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_current_artifact_name"], shown_buckets, limit=summary_limit)
     if "track-state" in selected_groups and summary["by_track_state"]:
         lines.append("By track state:")
-    for bucket in summary["by_track_state"] if "track-state" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {track_state}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                track_state=bucket["track_state"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "track-state" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_track_state"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {track_state}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    track_state=bucket["track_state"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_track_state"], shown_buckets, limit=summary_limit)
     if "detail-page" in selected_groups and summary["by_detail_page_path"]:
         lines.append("By detail page:")
-    for bucket in summary["by_detail_page_path"] if "detail-page" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {detail_page_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                detail_page_path=bucket["detail_page_path"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "detail-page" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_detail_page_path"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {detail_page_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    detail_page_path=bucket["detail_page_path"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_detail_page_path"], shown_buckets, limit=summary_limit)
     if "detail-page-name" in selected_groups and summary["by_detail_page_name"]:
         lines.append("By detail page name:")
-    for bucket in summary["by_detail_page_name"] if "detail-page-name" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {detail_page_name}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                detail_page_name=bucket["detail_page_name"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "detail-page-name" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_detail_page_name"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {detail_page_name}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    detail_page_name=bucket["detail_page_name"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_detail_page_name"], shown_buckets, limit=summary_limit)
     if "measured-month" in selected_groups and summary["by_measured_month"]:
         lines.append("By measured month:")
-    for bucket in summary["by_measured_month"] if "measured-month" in selected_groups else []:
-        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
-        lines.append(
-            "- {measured_month}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
-                measured_month=bucket["measured_month"],
-                count=bucket["count"],
-                bucket_noun=bucket_noun,
-                size=bucket["total_size"],
-                bytes=bucket["total_size_bytes"],
+    if "measured-month" in selected_groups:
+        shown_buckets = limit_summary_buckets(summary["by_measured_month"], summary_limit)
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {measured_month}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    measured_month=bucket["measured_month"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
             )
-        )
+        append_omitted_summary_buckets(lines, summary["by_measured_month"], shown_buckets, limit=summary_limit)
     return "\n".join(lines)
 
 
@@ -1266,6 +1346,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-only and --count-only cannot be used together")
     if args.summary_group and not args.summary_only:
         raise ValueError("--summary-group requires --summary-only")
+    if args.summary_limit is not None and not args.summary_only:
+        raise ValueError("--summary-limit requires --summary-only")
     if args.include_detail_pages and not args.paths_only:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
@@ -1315,7 +1397,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.count_only:
         print(len(stale))
     elif args.summary_only:
-        print(render_summary(stale, groups=args.summary_group))
+        print(render_summary(stale, groups=args.summary_group, summary_limit=args.summary_limit))
     elif args.paths_only:
         rendered_paths = render_paths(
             limited_stale,
