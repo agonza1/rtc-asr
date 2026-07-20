@@ -753,6 +753,50 @@ def test_stale_artifacts_can_sort_by_current_path_then_artifact_path() -> None:
     ]
 
 
+def test_stale_artifacts_can_sort_by_current_artifact_file_name_then_path() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/tracks/z-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/archive/base-current.json"},
+            {"slug": "small", "artifact_path": "benchmark-results/tracks/base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 40,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/small-old.json",
+                "status": "legacy",
+                "slug": "small",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="current-path-name")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/untracked.json",
+        "benchmark-results/base-old.json",
+        "benchmark-results/small-old.json",
+        "benchmark-results/qwen-old.json",
+    ]
+
+
 def test_stale_artifacts_can_filter_by_current_artifact_file_name() -> None:
     manifest = {
         "tracks": [
@@ -1039,7 +1083,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, current-path"
+            == "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, current-path, current-path-name"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")

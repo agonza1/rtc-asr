@@ -82,6 +82,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "label",
             "slug",
             "current-path",
+            "current-path-name",
         ),
         default="size",
         help="Sort stale artifacts before applying --limit",
@@ -589,8 +590,17 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "current-path-name":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("current_artifact_path") or "").name,
+                entry.get("current_artifact_path") or "",
+                entry.get("artifact_path") or "",
+            ),
+        )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, current-path"
+        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, current-path, current-path-name"
     )
 
 
