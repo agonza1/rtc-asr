@@ -14,6 +14,7 @@ from build_benchmark_manifest import DEFAULT_RESULTS_DIR, DEFAULT_TRACKS_PATH, b
 
 SUMMARY_GROUPS = (
     "slug",
+    "artifact-name",
     "status",
     "backend",
     "model",
@@ -675,6 +676,7 @@ def stale_artifacts(
 def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     total_size_bytes = sum(entry.get("artifact_size_bytes") or 0 for entry in stale)
     by_slug: dict[str, dict[str, Any]] = {}
+    by_artifact_name: dict[str, dict[str, Any]] = {}
     by_status: dict[str, dict[str, Any]] = {}
     by_backend: dict[str, dict[str, Any]] = {}
     by_model: dict[str, dict[str, Any]] = {}
@@ -697,6 +699,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         bucket["count"] += 1
         bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         bucket["total_size"] = format_bytes(bucket["total_size_bytes"])
+
+        artifact_name = Path(entry.get("artifact_path") or "").name or "unknown"
+        artifact_name_bucket = by_artifact_name.setdefault(
+            artifact_name,
+            {
+                "artifact_name": artifact_name,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        artifact_name_bucket["count"] += 1
+        artifact_name_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        artifact_name_bucket["total_size"] = format_bytes(artifact_name_bucket["total_size_bytes"])
 
         status = str(entry.get("status") or "unknown")
         status_bucket = by_status.setdefault(
@@ -817,6 +833,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_slug": sorted(
             by_slug.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["slug"]),
+        ),
+        "by_artifact_name": sorted(
+            by_artifact_name.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["artifact_name"]),
         ),
         "by_status": sorted(
             by_status.values(),
@@ -974,6 +994,19 @@ def render_summary(stale: list[dict[str, Any]], *, groups: list[str] | None = No
                     bytes=bucket["total_size_bytes"],
                 )
             )
+    if "artifact-name" in selected_groups and summary["by_artifact_name"]:
+        lines.append("By artifact name:")
+    for bucket in summary["by_artifact_name"] if "artifact-name" in selected_groups else []:
+        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+        lines.append(
+            "- {artifact_name}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                artifact_name=bucket["artifact_name"],
+                count=bucket["count"],
+                bucket_noun=bucket_noun,
+                size=bucket["total_size"],
+                bytes=bucket["total_size_bytes"],
+            )
+        )
     if "status" in selected_groups and summary["by_status"]:
         lines.append("By status:")
     for bucket in summary["by_status"] if "status" in selected_groups else []:
