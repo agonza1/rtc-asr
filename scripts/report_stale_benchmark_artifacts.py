@@ -486,6 +486,7 @@ def stale_artifacts(
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
                 "current_artifact_path": current_artifact_path,
+                "track_state": "tracked" if current_artifact_path is not None else "untracked",
                 "detail_page_path": artifact_detail_page_path,
                 "artifact_size_bytes": artifact_size_bytes,
                 "artifact_size": format_bytes(artifact_size_bytes),
@@ -617,6 +618,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_model: dict[str, dict[str, Any]] = {}
     by_label: dict[str, dict[str, Any]] = {}
     by_current_artifact_path: dict[str, dict[str, Any]] = {}
+    by_track_state: dict[str, dict[str, Any]] = {}
     by_detail_page_path: dict[str, dict[str, Any]] = {}
     for entry in stale:
         slug = str(entry.get("slug") or "untracked")
@@ -703,6 +705,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         current_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         current_bucket["total_size"] = format_bytes(current_bucket["total_size_bytes"])
 
+        track_state = str(entry.get("track_state") or "untracked")
+        track_state_bucket = by_track_state.setdefault(
+            track_state,
+            {
+                "track_state": track_state,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        track_state_bucket["count"] += 1
+        track_state_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        track_state_bucket["total_size"] = format_bytes(track_state_bucket["total_size_bytes"])
+
         detail_page = str(entry.get("detail_page_path") or "missing")
         detail_bucket = by_detail_page_path.setdefault(
             detail_page,
@@ -744,6 +760,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_current_artifact_path": sorted(
             by_current_artifact_path.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["current_artifact_path"]),
+        ),
+        "by_track_state": sorted(
+            by_track_state.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["track_state"]),
         ),
         "by_detail_page_path": sorted(
             by_detail_page_path.values(),
@@ -925,6 +945,19 @@ def render_summary(stale: list[dict[str, Any]]) -> str:
         lines.append(
             "- {current_artifact_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
                 current_artifact_path=bucket["current_artifact_path"],
+                count=bucket["count"],
+                bucket_noun=bucket_noun,
+                size=bucket["total_size"],
+                bytes=bucket["total_size_bytes"],
+            )
+        )
+    if summary["by_track_state"]:
+        lines.append("By track state:")
+    for bucket in summary["by_track_state"]:
+        bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+        lines.append(
+            "- {track_state}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                track_state=bucket["track_state"],
                 count=bucket["count"],
                 bucket_noun=bucket_noun,
                 size=bucket["total_size"],

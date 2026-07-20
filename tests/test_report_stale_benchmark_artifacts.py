@@ -69,6 +69,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "status": "legacy",
             "measured_at": "2026-06-10T00:00:00Z",
             "current_artifact_path": "benchmark-results/current.json",
+            "track_state": "tracked",
             "detail_page_path": "benchmark-results/pages/older.html",
             "artifact_size_bytes": 75,
             "artifact_size": "75 B",
@@ -372,6 +373,39 @@ def test_stale_summary_groups_artifact_size_by_current_artifact_path() -> None:
             "count": 1,
             "total_size_bytes": 5,
             "total_size": "5 B",
+        },
+    ]
+
+
+def test_stale_summary_groups_artifact_size_by_track_state() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "track_state": "tracked",
+            "artifact_size_bytes": 20,
+        },
+        {"artifact_path": "benchmark-results/untracked.json", "artifact_size_bytes": 30},
+        {
+            "artifact_path": "benchmark-results/base-older.json",
+            "track_state": "tracked",
+            "artifact_size_bytes": 15,
+        },
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_track_state"] == [
+        {
+            "track_state": "tracked",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "track_state": "untracked",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
         },
     ]
 
@@ -2176,6 +2210,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- Qwen/Qwen3-ASR-0.6B: 1 artifact (30 B, 30 bytes)\n"
         "By current artifact:\n"
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
+        "By track state:\n"
+        "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page:\n"
         "- missing: 3 artifacts (65 B, 65 bytes)"
     )
@@ -2951,6 +2987,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "By model:\n"
         "- base.en: 2 artifacts (100 B, 100 bytes)\n"
         "By current artifact:\n"
+        "- untracked: 2 artifacts (100 B, 100 bytes)\n"
+        "By track state:\n"
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
         "By detail page:\n"
         "- benchmark-results/pages/large.html: 1 artifact (90 B, 90 bytes)\n"
