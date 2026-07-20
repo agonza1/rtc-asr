@@ -69,6 +69,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--sort",
         choices=(
             "size",
+            "size-asc",
             "measured-at",
             "measured-at-desc",
             "path",
@@ -492,6 +493,14 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "size-asc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                entry.get("artifact_size_bytes") or 0,
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "measured-at":
         return sorted(
             stale,
@@ -581,7 +590,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, current-path"
+        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, detail-page, detail-page-name, status, backend, model, label, slug, current-path"
     )
 
 
