@@ -376,6 +376,7 @@ def test_manifest_preserves_system_signals_for_homepage_cards() -> None:
     coverage = manifest["summary"]["system_coverage"]
     assert coverage["memory_total_mb_count"] == 17
     assert coverage["process_rss_mb_count"] == 10
+    assert coverage["process_metrics_pid_count"] == 0
     assert coverage["peak_rss_mb_count"] == 10
     assert coverage["accelerator_count"] == 0
     assert coverage["cpu_utilization_percent_count"] == 5
@@ -639,6 +640,13 @@ def test_manifest_preserves_process_metrics_pid() -> None:
 
     assert system["process_metrics_pid"] == 4321
     assert nested_system["process_metrics_pid"] == 8765
+
+
+def test_system_coverage_counts_process_metrics_pid() -> None:
+    assert manifest_module.build_system_coverage([
+        {"system": {"process_metrics_pid": 4321}},
+        {"system": {"process_metrics_pid": None}},
+    ])["process_metrics_pid_count"] == 1
 
 
 def test_manifest_preserves_nested_cpu_metadata_aliases() -> None:
