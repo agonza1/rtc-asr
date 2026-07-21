@@ -458,6 +458,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="With --summary-only or --json-summary, only print grouping rows with at least this many artifacts",
     )
     parser.add_argument(
+        "--summary-max-count",
+        type=int,
+        default=None,
+        help="With --summary-only or --json-summary, only print grouping rows with no more than this many artifacts",
+    )
+    parser.add_argument(
         "--summary-min-size-bytes",
         type=int,
         default=None,
@@ -1670,6 +1676,7 @@ def render_json_summary(
     summary_limit: int | None = None,
     summary_sort: str = "size",
     summary_min_count: int | None = None,
+    summary_max_count: int | None = None,
     summary_min_size_bytes: int | None = None,
 ) -> str:
     if summary_limit is not None and summary_limit < 0:
@@ -1678,6 +1685,10 @@ def render_json_summary(
         raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-desc")
     if summary_min_count is not None and summary_min_count < 0:
         raise ValueError("summary_min_count must be non-negative")
+    if summary_max_count is not None and summary_max_count < 0:
+        raise ValueError("summary_max_count must be non-negative")
+    if summary_min_count is not None and summary_max_count is not None and summary_min_count > summary_max_count:
+        raise ValueError("summary_min_count cannot exceed summary_max_count")
     if summary_min_size_bytes is not None and summary_min_size_bytes < 0:
         raise ValueError("summary_min_size_bytes must be non-negative")
     allowed_groups = set(SUMMARY_GROUPS)
@@ -1701,6 +1712,7 @@ def render_json_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     return json.dumps(rendered, indent=2)
@@ -1761,10 +1773,15 @@ def limit_summary_buckets(
     *,
     sort_by: str = "size",
     min_count: int | None = None,
+    max_count: int | None = None,
     min_size_bytes: int | None = None,
 ) -> list[dict[str, Any]]:
     if min_count is not None and min_count < 0:
         raise ValueError("summary_min_count must be non-negative")
+    if max_count is not None and max_count < 0:
+        raise ValueError("summary_max_count must be non-negative")
+    if min_count is not None and max_count is not None and min_count > max_count:
+        raise ValueError("summary_min_count cannot exceed summary_max_count")
     if min_size_bytes is not None and min_size_bytes < 0:
         raise ValueError("summary_min_size_bytes must be non-negative")
     if sort_by not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-desc"}:
@@ -1772,6 +1789,8 @@ def limit_summary_buckets(
     filtered_buckets = buckets
     if min_count is not None:
         filtered_buckets = [bucket for bucket in filtered_buckets if bucket["count"] >= min_count]
+    if max_count is not None:
+        filtered_buckets = [bucket for bucket in filtered_buckets if bucket["count"] <= max_count]
     if min_size_bytes is not None:
         filtered_buckets = [
             bucket for bucket in filtered_buckets if bucket["total_size_bytes"] >= min_size_bytes
@@ -1808,6 +1827,7 @@ def append_omitted_summary_buckets(
     limit: int | None,
     sort_by: str = "size",
     min_count: int | None = None,
+    max_count: int | None = None,
     min_size_bytes: int | None = None,
 ) -> None:
     buckets = limit_summary_buckets(
@@ -1815,6 +1835,7 @@ def append_omitted_summary_buckets(
         None,
         sort_by=sort_by,
         min_count=min_count,
+        max_count=max_count,
         min_size_bytes=min_size_bytes,
     )
     if limit is None or len(buckets) <= len(shown_buckets):
@@ -1839,6 +1860,7 @@ def render_summary(
     summary_limit: int | None = None,
     summary_sort: str = "size",
     summary_min_count: int | None = None,
+    summary_max_count: int | None = None,
     summary_min_size_bytes: int | None = None,
 ) -> str:
     if summary_limit is not None and summary_limit < 0:
@@ -1847,6 +1869,10 @@ def render_summary(
         raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-desc")
     if summary_min_count is not None and summary_min_count < 0:
         raise ValueError("summary_min_count must be non-negative")
+    if summary_max_count is not None and summary_max_count < 0:
+        raise ValueError("summary_max_count must be non-negative")
+    if summary_min_count is not None and summary_max_count is not None and summary_min_count > summary_max_count:
+        raise ValueError("summary_min_count cannot exceed summary_max_count")
     if summary_min_size_bytes is not None and summary_min_size_bytes < 0:
         raise ValueError("summary_min_size_bytes must be non-negative")
     allowed_groups = set(SUMMARY_GROUPS)
@@ -1871,6 +1897,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -1891,6 +1918,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "artifact-name" in selected_groups and summary["by_artifact_name"]:
@@ -1901,6 +1929,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -1921,6 +1950,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "artifact-stem" in selected_groups and summary["by_artifact_stem"]:
@@ -1931,6 +1961,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -1951,6 +1982,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "artifact-dir" in selected_groups and summary["by_artifact_dir"]:
@@ -1961,6 +1993,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -1981,6 +2014,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "artifact-extension" in selected_groups and summary["by_artifact_extension"]:
@@ -1991,6 +2025,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2011,6 +2046,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "status" in selected_groups and summary["by_status"]:
@@ -2021,6 +2057,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2041,6 +2078,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "backend" in selected_groups and summary["by_backend"]:
@@ -2051,6 +2089,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2071,6 +2110,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "model" in selected_groups and summary["by_model"]:
@@ -2081,6 +2121,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2101,6 +2142,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "label" in selected_groups and any(bucket["label"] != "unknown" for bucket in summary["by_label"]):
@@ -2110,6 +2152,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2130,6 +2173,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "current-artifact" in selected_groups and summary["by_current_artifact_path"]:
@@ -2140,6 +2184,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2160,6 +2205,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "current-artifact-name" in selected_groups and summary["by_current_artifact_name"]:
@@ -2170,6 +2216,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2190,6 +2237,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "current-artifact-stem" in selected_groups and summary["by_current_artifact_stem"]:
@@ -2200,6 +2248,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2220,6 +2269,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "current-artifact-extension" in selected_groups and summary["by_current_artifact_extension"]:
@@ -2230,6 +2280,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2250,6 +2301,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "track-state" in selected_groups and summary["by_track_state"]:
@@ -2260,6 +2312,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2280,6 +2333,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "detail-page" in selected_groups and summary["by_detail_page_path"]:
@@ -2290,6 +2344,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2310,6 +2365,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "detail-page-name" in selected_groups and summary["by_detail_page_name"]:
@@ -2320,6 +2376,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2340,6 +2397,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     if "measured-month" in selected_groups and summary["by_measured_month"]:
@@ -2350,6 +2408,7 @@ def render_summary(
             summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
         for bucket in shown_buckets:
@@ -2370,6 +2429,7 @@ def render_summary(
             limit=summary_limit,
             sort_by=summary_sort,
             min_count=summary_min_count,
+            max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
         )
     return "\n".join(lines)
@@ -2425,6 +2485,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-limit requires --summary-only or --json-summary")
     if args.summary_min_count is not None and not (args.summary_only or args.json_summary):
         raise ValueError("--summary-min-count requires --summary-only or --json-summary")
+    if args.summary_max_count is not None and not (args.summary_only or args.json_summary):
+        raise ValueError("--summary-max-count requires --summary-only or --json-summary")
     if args.summary_min_size_bytes is not None and not (args.summary_only or args.json_summary):
         raise ValueError("--summary-min-size-bytes requires --summary-only or --json-summary")
     if args.include_detail_pages and not args.paths_only:
@@ -2496,6 +2558,7 @@ def main(argv: list[str] | None = None) -> int:
                 summary_limit=args.summary_limit,
                 summary_sort=args.summary_sort,
                 summary_min_count=args.summary_min_count,
+                summary_max_count=args.summary_max_count,
                 summary_min_size_bytes=args.summary_min_size_bytes,
             )
         )
@@ -2507,6 +2570,7 @@ def main(argv: list[str] | None = None) -> int:
                 summary_limit=args.summary_limit,
                 summary_sort=args.summary_sort,
                 summary_min_count=args.summary_min_count,
+                summary_max_count=args.summary_max_count,
                 summary_min_size_bytes=args.summary_min_size_bytes,
             )
         )
