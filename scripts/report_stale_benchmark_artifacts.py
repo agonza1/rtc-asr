@@ -26,6 +26,7 @@ SUMMARY_GROUPS = (
     "label",
     "current-artifact",
     "current-artifact-name",
+    "current-artifact-extension",
     "track-state",
     "detail-page",
     "detail-page-name",
@@ -44,6 +45,7 @@ SUMMARY_GROUP_KEYS = {
     "label": "by_label",
     "current-artifact": "by_current_artifact_path",
     "current-artifact-name": "by_current_artifact_name",
+    "current-artifact-extension": "by_current_artifact_extension",
     "track-state": "by_track_state",
     "detail-page": "by_detail_page_path",
     "detail-page-name": "by_detail_page_name",
@@ -149,6 +151,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "current-path-desc",
             "current-path-name",
             "current-path-name-desc",
+            "current-path-extension",
+            "current-path-extension-desc",
             "measured-month",
             "measured-month-desc",
         ),
@@ -226,6 +230,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact file name contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
+        "--current-path-extension",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose current track artifact extension matches this value; repeat or comma-separate; use 'none' for extensionless or untracked paths",
+    )
+    parser.add_argument(
+        "--current-path-extension-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose current track artifact extension contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--track-state",
@@ -522,6 +538,8 @@ def stale_artifacts(
     current_path_contains: list[str] | None = None,
     current_path_names: list[str] | None = None,
     current_path_name_contains: list[str] | None = None,
+    current_path_extensions: list[str] | None = None,
+    current_path_extension_contains: list[str] | None = None,
     track_state: str = "any",
     measured_months: list[str] | None = None,
     artifact_paths: list[str] | None = None,
@@ -561,6 +579,8 @@ def stale_artifacts(
     current_path_contains = normalize_filter_values(current_path_contains)
     current_path_names = normalize_filter_values(current_path_names)
     current_path_name_contains = normalize_filter_values(current_path_name_contains)
+    current_path_extensions = normalize_filter_values(current_path_extensions)
+    current_path_extension_contains = normalize_filter_values(current_path_extension_contains)
     artifact_paths = normalize_filter_values(artifact_paths)
     artifact_path_contains = normalize_filter_values(artifact_path_contains)
     artifact_dirs = normalize_filter_values(artifact_dirs)
@@ -630,6 +650,23 @@ def stale_artifacts(
     )
     current_path_name_needles = (
         None if current_path_name_contains is None else [needle.lower() for needle in current_path_name_contains]
+    )
+    allowed_current_path_extensions = (
+        None
+        if current_path_extensions is None
+        else {
+            extension.lower() if extension.startswith(".") else f".{extension.lower()}"
+            for extension in current_path_extensions
+            if extension.lower() != "none"
+        }
+    )
+    allow_extensionless_current_paths = current_path_extensions is not None and any(
+        extension.lower() == "none" for extension in current_path_extensions
+    )
+    current_path_extension_needles = (
+        None
+        if current_path_extension_contains is None
+        else [needle.lower() for needle in current_path_extension_contains]
     )
     allowed_artifact_paths = None if artifact_paths is None else set(artifact_paths)
     slug_needles = None if slug_contains is None else [needle.lower() for needle in slug_contains]
@@ -756,6 +793,16 @@ def stale_artifacts(
         if current_path_name_needles is not None:
             if not any(needle in current_path_name.lower() for needle in current_path_name_needles):
                 continue
+        current_path_extension = Path(current_artifact_path or "").suffix.lower()
+        if allowed_current_path_extensions is not None or allow_extensionless_current_paths:
+            current_extension_matches = current_path_extension in (allowed_current_path_extensions or set())
+            current_extensionless_matches = allow_extensionless_current_paths and current_path_extension == ""
+            if not current_extension_matches and not current_extensionless_matches:
+                continue
+        if current_path_extension_needles is not None:
+            current_path_extension_text = current_path_extension or "none"
+            if not any(needle in current_path_extension_text for needle in current_path_extension_needles):
+                continue
         if track_state == "tracked" and current_artifact_path is None:
             continue
         if track_state == "untracked" and current_artifact_path is not None:
@@ -801,6 +848,7 @@ def stale_artifacts(
                 "age": format_age_days(artifact_age_days),
                 "current_artifact_path": current_artifact_path,
                 "current_artifact_name": current_artifact_name,
+                "current_artifact_extension": current_path_extension or "none",
                 "track_state": "tracked" if current_artifact_path is not None else "untracked",
                 "detail_page_path": artifact_detail_page_path,
                 "detail_page_name": detail_page_name,
@@ -1089,6 +1137,25 @@ def stale_artifacts(
             ),
             reverse=True,
         )
+    if sort_by == "current-path-extension":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("current_artifact_path") or "").suffix.lower(),
+                entry.get("current_artifact_path") or "",
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "current-path-extension-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("current_artifact_path") or "").suffix.lower() == "",
+                descending_text_key(Path(entry.get("current_artifact_path") or "").suffix.lower()),
+                entry.get("current_artifact_path") or "",
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "measured-month":
         return sorted(
             stale,
@@ -1106,7 +1173,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, measured-month, measured-month-desc"
+        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc"
     )
 
 
@@ -1123,6 +1190,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_label: dict[str, dict[str, Any]] = {}
     by_current_artifact_path: dict[str, dict[str, Any]] = {}
     by_current_artifact_name: dict[str, dict[str, Any]] = {}
+    by_current_artifact_extension: dict[str, dict[str, Any]] = {}
     by_track_state: dict[str, dict[str, Any]] = {}
     by_detail_page_path: dict[str, dict[str, Any]] = {}
     by_detail_page_name: dict[str, dict[str, Any]] = {}
@@ -1282,6 +1350,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         current_name_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         current_name_bucket["total_size"] = format_bytes(current_name_bucket["total_size_bytes"])
 
+        current_artifact_extension = Path(entry.get("current_artifact_path") or "").suffix.lower() or "none"
+        current_extension_bucket = by_current_artifact_extension.setdefault(
+            current_artifact_extension,
+            {
+                "current_artifact_extension": current_artifact_extension,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        current_extension_bucket["count"] += 1
+        current_extension_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        current_extension_bucket["total_size"] = format_bytes(current_extension_bucket["total_size_bytes"])
+
         track_state = str(entry.get("track_state") or "untracked")
         track_state_bucket = by_track_state.setdefault(
             track_state,
@@ -1385,6 +1467,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_current_artifact_name": sorted(
             by_current_artifact_name.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["current_artifact_name"]),
+        ),
+        "by_current_artifact_extension": sorted(
+            by_current_artifact_extension.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["current_artifact_extension"]),
         ),
         "by_track_state": sorted(
             by_track_state.values(),
@@ -1567,6 +1653,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "age",
         "current_artifact_path",
         "current_artifact_name",
+        "current_artifact_extension",
         "track_state",
         "detail_page_path",
         "detail_page_name",
@@ -1583,6 +1670,9 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
             "current_artifact_name": entry.get("current_artifact_name")
             or Path(entry.get("current_artifact_path") or "").name,
+            "current_artifact_extension": entry.get("current_artifact_extension")
+            or Path(entry.get("current_artifact_path") or "").suffix.lower()
+            or "none",
             "detail_page_name": entry.get("detail_page_name")
             or Path(entry.get("detail_page_path") or "").name,
         }
@@ -2027,6 +2117,36 @@ def render_summary(
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
+    if "current-artifact-extension" in selected_groups and summary["by_current_artifact_extension"]:
+        lines.append("By current artifact extension:")
+    if "current-artifact-extension" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_current_artifact_extension"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            min_size_bytes=summary_min_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {current_artifact_extension}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    current_artifact_extension=bucket["current_artifact_extension"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_current_artifact_extension"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            min_size_bytes=summary_min_size_bytes,
+        )
     if "track-state" in selected_groups and summary["by_track_state"]:
         lines.append("By track state:")
     if "track-state" in selected_groups:
@@ -2237,6 +2357,8 @@ def main(argv: list[str] | None = None) -> int:
         current_path_contains=args.current_path_contains,
         current_path_names=args.current_path_name,
         current_path_name_contains=args.current_path_name_contains,
+        current_path_extensions=args.current_path_extension,
+        current_path_extension_contains=args.current_path_extension_contains,
         track_state=args.track_state,
         artifact_paths=args.artifact_path,
         artifact_path_contains=args.artifact_path_contains,
