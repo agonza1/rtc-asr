@@ -704,6 +704,64 @@ def test_render_summary_can_sort_group_rows_by_name() -> None:
     ]
 
 
+def test_render_summary_can_sort_group_rows_by_name_descending() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/alpha-short.json",
+                "status": "legacy",
+                "slug": "alpha",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/alpha-long.json",
+                "status": "legacy",
+                "slug": "alpha-long",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/zeta.json",
+                "status": "legacy",
+                "slug": "zeta",
+                "artifact_size_bytes": 90,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="name-desc",
+    )
+
+    assert rendered.splitlines()[1:4] == [
+        "- zeta: 1 artifact (90 B, 90 bytes)",
+        "- alpha-long: 1 artifact (20 B, 20 bytes)",
+        "- alpha: 1 artifact (10 B, 10 bytes)",
+    ]
+
+
+def test_render_json_summary_can_sort_group_rows_by_name_descending() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="name-desc",
+    )
+
+    summary = json.loads(rendered)
+
+    assert [bucket["slug"] for bucket in summary["by_slug"]] == ["qwen", "base"]
+
+
 def test_render_summary_omitted_size_follows_summary_sort() -> None:
     rendered = render_summary(
         [
