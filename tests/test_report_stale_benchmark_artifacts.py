@@ -803,6 +803,80 @@ def test_stale_artifacts_can_sort_smallest_first() -> None:
     ]
 
 
+def test_stale_artifacts_can_sort_by_age() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/recent.json",
+                "status": "legacy",
+                "measured_at": "2026-06-18T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/oldest.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        now=datetime(2026, 6, 20, tzinfo=UTC),
+        sort_by="age",
+    )
+
+    assert [(entry["artifact_path"], entry["age_days"]) for entry in stale] == [
+        ("benchmark-results/oldest.json", 10),
+        ("benchmark-results/recent.json", 2),
+        ("benchmark-results/unknown.json", None),
+    ]
+
+
+def test_stale_artifacts_can_sort_by_age_ascending() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/oldest.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/recent.json",
+                "status": "legacy",
+                "measured_at": "2026-06-18T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        now=datetime(2026, 6, 20, tzinfo=UTC),
+        sort_by="age-asc",
+    )
+
+    assert [(entry["artifact_path"], entry["age_days"]) for entry in stale] == [
+        ("benchmark-results/recent.json", 2),
+        ("benchmark-results/oldest.json", 10),
+        ("benchmark-results/unknown.json", None),
+    ]
+
+
 def test_stale_summary_groups_artifact_size_by_slug() -> None:
     stale = [
         {"artifact_path": "benchmark-results/base-old.json", "slug": "base", "artifact_size_bytes": 20},
@@ -2294,7 +2368,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")

@@ -115,6 +115,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=(
             "size",
             "size-asc",
+            "age",
+            "age-asc",
             "measured-at",
             "measured-at-desc",
             "path",
@@ -787,6 +789,22 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "age":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                -(entry.get("age_days") if entry.get("age_days") is not None else -1),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "age-asc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                entry.get("age_days") if entry.get("age_days") is not None else sys.maxsize,
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "measured-at":
         return sorted(
             stale,
@@ -927,7 +945,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
     )
 
 
