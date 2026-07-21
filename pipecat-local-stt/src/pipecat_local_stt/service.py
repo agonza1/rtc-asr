@@ -271,6 +271,7 @@ class LocalStreamingSTTService(STTService):
                 self._ready_event.clear()
             self._suppress_transcripts = False
             metadata = {"local_stt_generation": self._generation}
+            ready_started_at = asyncio.get_running_loop().time()
             await self._send_ws(
                 json.dumps(
                     build_start_message(
@@ -286,6 +287,10 @@ class LocalStreamingSTTService(STTService):
             except asyncio.TimeoutError:
                 self.metrics.local_stt_ready_timeouts_total += 1
                 raise
+            self.metrics.local_stt_ready_latency_ms = round(
+                (asyncio.get_running_loop().time() - ready_started_at) * 1000,
+                3,
+            )
             self._utterance_active = True
 
     async def _send_loop(self) -> None:

@@ -142,6 +142,7 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     assert final_frames[-1].finalized is True
     assert service.metrics.local_stt_audio_frames_sent_total == 1
     assert service.metrics.local_stt_ready_events_total == 1
+    assert service.metrics.local_stt_ready_latency_ms >= 0
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
 
