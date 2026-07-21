@@ -107,6 +107,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "age": "10 days",
             "current_artifact_path": "benchmark-results/current.json",
             "current_artifact_name": "current.json",
+            "current_artifact_stem": "current",
             "current_artifact_extension": ".json",
             "track_state": "tracked",
             "detail_page_path": "benchmark-results/pages/older.html",
@@ -1091,8 +1092,8 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,10 days,benchmark-results/current.json,current.json,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,10 days,benchmark-results/current.json,current.json,current,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
     ]
 
 
@@ -2558,6 +2559,100 @@ def test_stale_artifacts_can_sort_by_current_artifact_file_name_descending_then_
     ]
 
 
+def test_stale_artifacts_can_sort_by_current_artifact_file_stem_then_path() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/tracks/z-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/archive/base-current.json"},
+            {"slug": "small", "artifact_path": "benchmark-results/tracks/base-current.wav"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 40,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/small-old.json",
+                "status": "legacy",
+                "slug": "small",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="current-path-stem")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/untracked.json",
+        "benchmark-results/base-old.json",
+        "benchmark-results/small-old.json",
+        "benchmark-results/qwen-old.json",
+    ]
+    assert [entry["current_artifact_stem"] for entry in stale] == [
+        None,
+        "base-current",
+        "base-current",
+        "z-current",
+    ]
+
+
+def test_stale_artifacts_can_sort_by_current_artifact_file_stem_descending_then_path() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/tracks/z-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/archive/base-current.json"},
+            {"slug": "small", "artifact_path": "benchmark-results/tracks/base-current.wav"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 40,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/small-old.json",
+                "status": "legacy",
+                "slug": "small",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="current-path-stem-desc")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/qwen-old.json",
+        "benchmark-results/small-old.json",
+        "benchmark-results/base-old.json",
+        "benchmark-results/untracked.json",
+    ]
+
+
 def test_stale_artifacts_can_sort_by_current_artifact_extension_then_path() -> None:
     manifest = {
         "tracks": [
@@ -2695,6 +2790,70 @@ def test_stale_artifacts_can_filter_by_current_artifact_file_name_text() -> None
     }
 
     stale = stale_artifacts(manifest, current_path_name_contains=["WHISPER"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
+def test_stale_artifacts_can_filter_by_current_artifact_file_stem() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/archive/base-current.wav"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, current_path_stems=["tmp/base-current.json"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
+def test_stale_artifacts_can_filter_by_current_artifact_file_stem_text() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/faster-whisper-base-current.wav"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/untracked.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, current_path_stem_contains=["WHISPER"])
 
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
 
@@ -5279,8 +5438,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,benchmark-results/base-current.json,base-current.json,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,benchmark-results/base-current.json,base-current.json,base-current,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B\r\n'
     )
 
 

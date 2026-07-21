@@ -151,6 +151,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "current-path-desc",
             "current-path-name",
             "current-path-name-desc",
+            "current-path-stem",
+            "current-path-stem-desc",
             "current-path-extension",
             "current-path-extension-desc",
             "measured-month",
@@ -230,6 +232,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact file name contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
+        "--current-path-stem",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose current track artifact file stem matches this value; repeat to include multiple stems",
+    )
+    parser.add_argument(
+        "--current-path-stem-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose current track artifact file stem contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--current-path-extension",
@@ -538,6 +552,8 @@ def stale_artifacts(
     current_path_contains: list[str] | None = None,
     current_path_names: list[str] | None = None,
     current_path_name_contains: list[str] | None = None,
+    current_path_stems: list[str] | None = None,
+    current_path_stem_contains: list[str] | None = None,
     current_path_extensions: list[str] | None = None,
     current_path_extension_contains: list[str] | None = None,
     track_state: str = "any",
@@ -579,6 +595,8 @@ def stale_artifacts(
     current_path_contains = normalize_filter_values(current_path_contains)
     current_path_names = normalize_filter_values(current_path_names)
     current_path_name_contains = normalize_filter_values(current_path_name_contains)
+    current_path_stems = normalize_filter_values(current_path_stems)
+    current_path_stem_contains = normalize_filter_values(current_path_stem_contains)
     current_path_extensions = normalize_filter_values(current_path_extensions)
     current_path_extension_contains = normalize_filter_values(current_path_extension_contains)
     artifact_paths = normalize_filter_values(artifact_paths)
@@ -650,6 +668,12 @@ def stale_artifacts(
     )
     current_path_name_needles = (
         None if current_path_name_contains is None else [needle.lower() for needle in current_path_name_contains]
+    )
+    allowed_current_path_stems = (
+        None if current_path_stems is None else {Path(stem).stem for stem in current_path_stems}
+    )
+    current_path_stem_needles = (
+        None if current_path_stem_contains is None else [needle.lower() for needle in current_path_stem_contains]
     )
     allowed_current_path_extensions = (
         None
@@ -793,6 +817,12 @@ def stale_artifacts(
         if current_path_name_needles is not None:
             if not any(needle in current_path_name.lower() for needle in current_path_name_needles):
                 continue
+        current_path_stem = Path(current_artifact_path or "").stem
+        if allowed_current_path_stems is not None and current_path_stem not in allowed_current_path_stems:
+            continue
+        if current_path_stem_needles is not None:
+            if not any(needle in current_path_stem.lower() for needle in current_path_stem_needles):
+                continue
         current_path_extension = Path(current_artifact_path or "").suffix.lower()
         if allowed_current_path_extensions is not None or allow_extensionless_current_paths:
             current_extension_matches = current_path_extension in (allowed_current_path_extensions or set())
@@ -829,6 +859,7 @@ def stale_artifacts(
         if max_size_bytes is not None and (artifact_size_bytes or 0) > max_size_bytes:
             continue
         current_artifact_name = Path(current_artifact_path or "").name or None
+        current_artifact_stem = Path(current_artifact_path or "").stem or None
         detail_page_name = Path(artifact_detail_page_path or "").name or None
         stale.append(
             {
@@ -848,6 +879,7 @@ def stale_artifacts(
                 "age": format_age_days(artifact_age_days),
                 "current_artifact_path": current_artifact_path,
                 "current_artifact_name": current_artifact_name,
+                "current_artifact_stem": current_artifact_stem,
                 "current_artifact_extension": current_path_extension or "none",
                 "track_state": "tracked" if current_artifact_path is not None else "untracked",
                 "detail_page_path": artifact_detail_page_path,
@@ -1132,6 +1164,25 @@ def stale_artifacts(
             stale,
             key=lambda entry: (
                 Path(entry.get("current_artifact_path") or "").name,
+                entry.get("current_artifact_path") or "",
+                entry.get("artifact_path") or "",
+            ),
+            reverse=True,
+        )
+    if sort_by == "current-path-stem":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("current_artifact_path") or "").stem,
+                entry.get("current_artifact_path") or "",
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "current-path-stem-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("current_artifact_path") or "").stem,
                 entry.get("current_artifact_path") or "",
                 entry.get("artifact_path") or "",
             ),
@@ -1653,6 +1704,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "age",
         "current_artifact_path",
         "current_artifact_name",
+        "current_artifact_stem",
         "current_artifact_extension",
         "track_state",
         "detail_page_path",
@@ -1670,6 +1722,8 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
             "current_artifact_name": entry.get("current_artifact_name")
             or Path(entry.get("current_artifact_path") or "").name,
+            "current_artifact_stem": entry.get("current_artifact_stem")
+            or Path(entry.get("current_artifact_path") or "").stem,
             "current_artifact_extension": entry.get("current_artifact_extension")
             or Path(entry.get("current_artifact_path") or "").suffix.lower()
             or "none",
@@ -2357,6 +2411,8 @@ def main(argv: list[str] | None = None) -> int:
         current_path_contains=args.current_path_contains,
         current_path_names=args.current_path_name,
         current_path_name_contains=args.current_path_name_contains,
+        current_path_stems=args.current_path_stem,
+        current_path_stem_contains=args.current_path_stem_contains,
         current_path_extensions=args.current_path_extension,
         current_path_extension_contains=args.current_path_extension_contains,
         track_state=args.track_state,
