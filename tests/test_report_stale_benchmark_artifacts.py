@@ -155,6 +155,40 @@ def test_stale_artifacts_accepts_comma_separated_repeated_filters() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_status_text() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "status": "legacy-candidate",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "blocked",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/parakeet.json",
+                "status": "validated",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        statuses=["any"],
+        status_contains=["legacy, block"],
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/qwen.json",
+        "benchmark-results/base.json",
+    ]
+
+
 def test_stale_artifacts_path_filters_accept_comma_separated_values() -> None:
     manifest = {
         "tracks": [
@@ -3715,6 +3749,26 @@ def test_main_fail_on_stale_honors_slug_filter(monkeypatch) -> None:
 
     assert report_module.main(["--fail-on-stale", "--slug", "small"]) == 0
     assert report_module.main(["--fail-on-stale", "--slug", "base"]) == 1
+
+
+def test_main_fail_on_stale_honors_status_contains_filter(monkeypatch) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/blocked.json",
+                    "status": "blocked-manual-review",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--fail-on-stale", "--status", "any", "--status-contains", "legacy"]) == 0
+    assert report_module.main(["--fail-on-stale", "--status", "any", "--status-contains", "review"]) == 1
 
 
 def test_main_fail_on_stale_honors_label_filter(monkeypatch) -> None:
