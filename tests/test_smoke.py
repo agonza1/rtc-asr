@@ -2230,6 +2230,28 @@ def test_stream_max_buffer_bytes_must_be_positive(
         AppConfig.from_env()
 
 
+@pytest.mark.parametrize(
+    ("env_name", "invalid_value"),
+    [
+        ("PORT", "0"),
+        ("PORT", "-1"),
+        ("SAMPLE_RATE", "0"),
+        ("SAMPLE_RATE", "-1"),
+        ("AUDIO_SAMPLE_RATE", "0"),
+        ("AUDIO_SAMPLE_RATE", "-1"),
+    ],
+)
+def test_positive_integer_env_values_reject_nonpositive_values(
+    monkeypatch: pytest.MonkeyPatch,
+    env_name: str,
+    invalid_value: str,
+) -> None:
+    monkeypatch.delenv("SAMPLE_RATE", raising=False)
+    monkeypatch.delenv("AUDIO_SAMPLE_RATE", raising=False)
+    monkeypatch.setenv(env_name, invalid_value)
+
+    with pytest.raises(ValueError, match=f"{env_name} must be a positive integer"):
+        AppConfig.from_env()
 
 
 def test_local_stt_socket_mode_env_defaults_to_tcp(monkeypatch: pytest.MonkeyPatch) -> None:
