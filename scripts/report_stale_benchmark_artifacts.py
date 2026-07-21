@@ -134,11 +134,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "artifact-stem",
             "artifact-stem-desc",
             "status",
+            "status-desc",
             "backend",
+            "backend-desc",
             "model",
+            "model-desc",
             "label",
+            "label-desc",
             "slug",
+            "slug-desc",
             "track-state",
+            "track-state-desc",
             "current-path",
             "current-path-desc",
             "current-path-name",
@@ -478,6 +484,10 @@ def measured_month(value: Any) -> str:
     if parsed is None:
         return "unknown"
     return parsed.strftime("%Y-%m")
+
+
+def descending_text_key(value: Any) -> tuple[int, ...]:
+    return tuple(-ord(character) for character in str(value))
 
 
 def normalize_summary_groups(groups: list[str] | None) -> set[str]:
@@ -931,12 +941,30 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "status-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                descending_text_key(str(entry.get("status") or "unknown").lower()),
+                entry.get("slug") or "untracked",
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "backend":
         return sorted(
             stale,
             key=lambda entry: (
                 str(entry.get("backend") or "unknown").lower(),
                 str(entry.get("model") or "unknown").lower(),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "backend-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                descending_text_key(str(entry.get("backend") or "unknown").lower()),
+                descending_text_key(str(entry.get("model") or "unknown").lower()),
                 entry.get("artifact_path") or "",
             ),
         )
@@ -949,12 +977,30 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "model-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                descending_text_key(str(entry.get("model") or "unknown").lower()),
+                descending_text_key(str(entry.get("backend") or "unknown").lower()),
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "label":
         return sorted(
             stale,
             key=lambda entry: (
                 str(entry.get("label") or "unknown").lower(),
                 str(entry.get("backend") or "unknown").lower(),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "label-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                descending_text_key(str(entry.get("label") or "unknown").lower()),
+                descending_text_key(str(entry.get("backend") or "unknown").lower()),
                 entry.get("artifact_path") or "",
             ),
         )
@@ -966,12 +1012,29 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "slug-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                descending_text_key(str(entry.get("slug") or "untracked").lower()),
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "track-state":
         return sorted(
             stale,
             key=lambda entry: (
                 str(entry.get("track_state") or "untracked").lower(),
                 str(entry.get("slug") or "untracked").lower(),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "track-state-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                descending_text_key(str(entry.get("track_state") or "untracked").lower()),
+                descending_text_key(str(entry.get("slug") or "untracked").lower()),
                 entry.get("artifact_path") or "",
             ),
         )
@@ -1028,7 +1091,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, backend, model, label, slug, track-state, current-path, current-path-desc, current-path-name, current-path-name-desc, measured-month, measured-month-desc"
+        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, measured-month, measured-month-desc"
     )
 
 
