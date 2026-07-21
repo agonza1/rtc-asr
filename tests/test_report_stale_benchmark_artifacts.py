@@ -1593,6 +1593,50 @@ def test_stale_summary_groups_artifact_size_by_current_artifact_name() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_current_artifact_stem() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "current_artifact_path": "benchmark-results/archive/base-current.json",
+            "artifact_size_bytes": 20,
+        },
+        {"artifact_path": "benchmark-results/untracked.json", "artifact_size_bytes": 30},
+        {
+            "artifact_path": "benchmark-results/base-older.json",
+            "current_artifact_path": "benchmark-results/base-current.json",
+            "artifact_size_bytes": 15,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen-old.json",
+            "current_artifact_path": "benchmark-results/qwen-current.json",
+            "artifact_size_bytes": 5,
+        },
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_current_artifact_stem"] == [
+        {
+            "current_artifact_stem": "base-current",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "current_artifact_stem": "untracked",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "current_artifact_stem": "qwen-current",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_summary_groups_artifact_size_by_track_state() -> None:
     stale = [
         {
@@ -4277,6 +4321,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By current artifact name:\n"
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
+        "By current artifact stem:\n"
+        "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By current artifact extension:\n"
         "- none: 3 artifacts (65 B, 65 bytes)\n"
         "By track state:\n"
@@ -4409,6 +4455,31 @@ def test_render_summary_can_focus_on_current_artifact_extension() -> None:
         "By current artifact extension:\n"
         "- .json: 1 artifact (20 B, 20 bytes)\n"
         "- .wav: 1 artifact (10 B, 10 bytes)"
+    )
+
+
+def test_render_summary_can_focus_on_current_artifact_stem() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "current_artifact_path": "benchmark-results/base-current.json",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/raw-audio-old.json",
+                "current_artifact_path": "benchmark-results/raw-audio-current.wav",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["current-artifact-stem"],
+    )
+
+    assert rendered == (
+        "Found 2 stale benchmark artifacts (30 B, 30 bytes).\n"
+        "By current artifact stem:\n"
+        "- base-current: 1 artifact (20 B, 20 bytes)\n"
+        "- raw-audio-current: 1 artifact (10 B, 10 bytes)"
     )
 
 
@@ -5278,6 +5349,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "By current artifact:\n"
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
         "By current artifact name:\n"
+        "- untracked: 2 artifacts (100 B, 100 bytes)\n"
+        "By current artifact stem:\n"
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
         "By current artifact extension:\n"
         "- none: 2 artifacts (100 B, 100 bytes)\n"
