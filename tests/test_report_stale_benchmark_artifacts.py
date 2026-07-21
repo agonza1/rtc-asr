@@ -428,6 +428,38 @@ def test_render_json_summary_can_filter_group_rows_by_min_count() -> None:
     ]
 
 
+def test_render_json_summary_can_filter_group_rows_by_min_size() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 5,
+            },
+        ],
+        groups=["slug"],
+        summary_min_size_bytes=50,
+    )
+
+    summary = json.loads(rendered)
+
+    assert summary["by_slug"] == [
+        {
+            "slug": "base",
+            "count": 1,
+            "total_size_bytes": 90,
+            "total_size": "90 B",
+        }
+    ]
+
+
 def test_render_json_summary_can_sort_group_rows_by_count() -> None:
     rendered = render_json_summary(
         [
@@ -486,6 +518,30 @@ def test_render_summary_can_filter_group_rows_by_min_count() -> None:
     )
 
     assert "- base: 2 artifacts (95 B, 95 bytes)" in rendered
+    assert "- qwen:" not in rendered
+
+
+def test_render_summary_can_filter_group_rows_by_min_size() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 5,
+            },
+        ],
+        groups=["slug"],
+        summary_min_size_bytes=50,
+    )
+
+    assert "- base: 1 artifact (90 B, 90 bytes)" in rendered
     assert "- qwen:" not in rendered
 
 
