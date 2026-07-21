@@ -29,6 +29,7 @@ normalize_status_filters = report_module.normalize_status_filters
 normalize_filter_values = report_module.normalize_filter_values
 normalize_summary_groups = report_module.normalize_summary_groups
 measured_month = report_module.measured_month
+age_bucket = report_module.age_bucket
 
 
 def test_filter_values_accept_comma_separated_values() -> None:
@@ -54,6 +55,14 @@ def test_summary_groups_accept_comma_separated_values() -> None:
 def test_measured_month_uses_utc_month_or_unknown() -> None:
     assert measured_month("2026-06-30T23:30:00-02:00") == "2026-07"
     assert measured_month(None) == "unknown"
+
+
+def test_age_bucket_uses_cleanup_review_ranges() -> None:
+    assert age_bucket(None) == "unknown"
+    assert age_bucket(6) == "0-6d"
+    assert age_bucket(7) == "7-29d"
+    assert age_bucket(30) == "30-89d"
+    assert age_bucket(90) == "90d+"
 
 
 def test_format_age_days_handles_plural_and_unknown() -> None:
@@ -104,6 +113,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "measured_at": "2026-06-10T00:00:00Z",
             "measured_month": "2026-06",
             "age_days": 10,
+            "age_bucket": "7-29d",
             "age": "10 days",
             "current_artifact_path": "benchmark-results/current.json",
             "current_artifact_name": "current.json",
@@ -1128,6 +1138,30 @@ def test_render_summary_can_sort_group_rows_by_name_descending() -> None:
     ]
 
 
+def test_render_summary_can_group_by_age_bucket() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/recent.json",
+                "status": "legacy",
+                "age_days": 3,
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/older.json",
+                "status": "legacy",
+                "age_days": 45,
+                "artifact_size_bytes": 90,
+            },
+        ],
+        groups=["age-bucket"],
+    )
+
+    assert "By age bucket:" in rendered
+    assert "- 30-89d: 1 artifact (90 B, 90 bytes)" in rendered
+    assert "- 0-6d: 1 artifact (10 B, 10 bytes)" in rendered
+
+
 def test_render_json_summary_can_sort_group_rows_by_name_descending() -> None:
     rendered = render_json_summary(
         [
@@ -1204,6 +1238,7 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
                 "measured_at": "2026-06-10T00:00:00Z",
                 "measured_month": "2026-06",
                 "age_days": 10,
+                "age_bucket": "7-29d",
                 "age": "10 days",
                 "current_artifact_path": "benchmark-results/current.json",
                 "track_state": "tracked",
@@ -1216,8 +1251,8 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,10 days,benchmark-results/current.json,current.json,current,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,7-29d,10 days,benchmark-results/current.json,current.json,current,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
     ]
 
 
@@ -4456,6 +4491,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "By detail page name:\n"
         "- missing: 3 artifacts (65 B, 65 bytes)\n"
         "By measured month:\n"
+        "- unknown: 3 artifacts (65 B, 65 bytes)\n"
+        "By age bucket:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)"
     )
 
@@ -5488,6 +5525,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- small.html: 1 artifact (10 B, 10 bytes)\n"
         "By measured month:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
+        "By age bucket:\n"
+        "- unknown: 2 artifacts (100 B, 100 bytes)\n"
     )
 
 
@@ -5635,8 +5674,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,benchmark-results/base-current.json,base-current.json,base-current,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B\r\n'
     )
 
 

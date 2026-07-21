@@ -32,6 +32,7 @@ SUMMARY_GROUPS = (
     "detail-page",
     "detail-page-name",
     "measured-month",
+    "age-bucket",
 )
 
 SUMMARY_GROUP_KEYS = {
@@ -52,6 +53,7 @@ SUMMARY_GROUP_KEYS = {
     "detail-page": "by_detail_page_path",
     "detail-page-name": "by_detail_page_name",
     "measured-month": "by_measured_month",
+    "age-bucket": "by_age_bucket",
 }
 
 
@@ -536,6 +538,18 @@ def measured_month(value: Any) -> str:
     return parsed.strftime("%Y-%m")
 
 
+def age_bucket(age_days: int | None) -> str:
+    if age_days is None:
+        return "unknown"
+    if age_days < 7:
+        return "0-6d"
+    if age_days < 30:
+        return "7-29d"
+    if age_days < 90:
+        return "30-89d"
+    return "90d+"
+
+
 def descending_text_key(value: Any) -> tuple[int, ...]:
     return tuple(-ord(character) for character in str(value))
 
@@ -890,6 +904,7 @@ def stale_artifacts(
                 "measured_at": measured_at,
                 "measured_month": artifact_measured_month,
                 "age_days": artifact_age_days,
+                "age_bucket": age_bucket(artifact_age_days),
                 "age": format_age_days(artifact_age_days),
                 "current_artifact_path": current_artifact_path,
                 "current_artifact_name": current_artifact_name,
@@ -1261,6 +1276,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_detail_page_path: dict[str, dict[str, Any]] = {}
     by_detail_page_name: dict[str, dict[str, Any]] = {}
     by_measured_month: dict[str, dict[str, Any]] = {}
+    by_age_bucket: dict[str, dict[str, Any]] = {}
     for entry in stale:
         slug = str(entry.get("slug") or "untracked")
         bucket = by_slug.setdefault(
@@ -1500,6 +1516,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         month_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         month_bucket["total_size"] = format_bytes(month_bucket["total_size_bytes"])
 
+        age_bucket_name = str(entry.get("age_bucket") or age_bucket(entry.get("age_days")))
+        age_bucket_entry = by_age_bucket.setdefault(
+            age_bucket_name,
+            {
+                "age_bucket": age_bucket_name,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        age_bucket_entry["count"] += 1
+        age_bucket_entry["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        age_bucket_entry["total_size"] = format_bytes(age_bucket_entry["total_size_bytes"])
+
     return {
         "count": len(stale),
         "total_size_bytes": total_size_bytes,
@@ -1571,6 +1601,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_measured_month": sorted(
             by_measured_month.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["measured_month"]),
+        ),
+        "by_age_bucket": sorted(
+            by_age_bucket.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["age_bucket"]),
         ),
         "artifacts": stale,
     }
@@ -1750,6 +1784,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "measured_at",
         "measured_month",
         "age_days",
+        "age_bucket",
         "age",
         "current_artifact_path",
         "current_artifact_name",
@@ -2494,6 +2529,40 @@ def render_summary(
         append_omitted_summary_buckets(
             lines,
             summary["by_measured_month"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+    if "age-bucket" in selected_groups and summary["by_age_bucket"]:
+        lines.append("By age bucket:")
+    if "age-bucket" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_age_bucket"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {age_bucket}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    age_bucket=bucket["age_bucket"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_age_bucket"],
             shown_buckets,
             limit=summary_limit,
             sort_by=summary_sort,
