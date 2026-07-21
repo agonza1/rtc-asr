@@ -131,6 +131,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "detail-page-name",
             "detail-page-name-desc",
             "artifact-stem",
+            "artifact-stem-desc",
             "status",
             "backend",
             "model",
@@ -855,6 +856,14 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "artifact-stem-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                tuple(-ord(character) for character in Path(entry.get("artifact_path") or "").stem),
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by == "artifact-dir":
         return sorted(
             stale,
@@ -1016,7 +1025,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-name-desc, artifact-stem, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, backend, model, label, slug, track-state, current-path, current-path-desc, current-path-name, current-path-name-desc, measured-month, measured-month-desc"
+        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, backend, model, label, slug, track-state, current-path, current-path-desc, current-path-name, current-path-name-desc, measured-month, measured-month-desc"
     )
 
 
