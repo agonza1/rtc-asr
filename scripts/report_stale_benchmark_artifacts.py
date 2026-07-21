@@ -299,6 +299,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts with this status; repeat to include multiple statuses; use 'any' for all statuses (default: legacy)",
     )
     parser.add_argument(
+        "--status-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose status contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
         "--fail-on-stale",
         action="store_true",
         help="Exit non-zero when matching stale artifacts are found",
@@ -497,6 +503,7 @@ def stale_artifacts(
     detail_page_names: list[str] | None = None,
     detail_page_name_contains: list[str] | None = None,
     statuses: list[str] | None = None,
+    status_contains: list[str] | None = None,
     now: datetime | None = None,
     sort_by: str = "size",
 ) -> list[dict[str, Any]]:
@@ -531,6 +538,7 @@ def stale_artifacts(
     detail_page_contains = normalize_filter_values(detail_page_contains)
     detail_page_names = normalize_filter_values(detail_page_names)
     detail_page_name_contains = normalize_filter_values(detail_page_name_contains)
+    status_contains = normalize_filter_values(status_contains)
     allowed_measured_months = None
     if measured_months is not None:
         allowed_measured_months = {month.strip() for month in measured_months if month.strip()}
@@ -617,6 +625,7 @@ def stale_artifacts(
         None if detail_page_name_contains is None else [needle.lower() for needle in detail_page_name_contains]
     )
     allowed_statuses = normalize_status_filters(statuses)
+    status_needles = None if status_contains is None else [needle.lower() for needle in status_contains]
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
         artifact_path = artifact.get("artifact_path")
@@ -669,6 +678,8 @@ def stale_artifacts(
                 continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
+            continue
+        if status_needles is not None and not any(needle in artifact_status for needle in status_needles):
             continue
         if slugs is not None and artifact.get("slug") not in slugs:
             continue
@@ -2036,6 +2047,7 @@ def main(argv: list[str] | None = None) -> int:
         detail_page_names=args.detail_page_name,
         detail_page_name_contains=args.detail_page_name_contains,
         statuses=args.status,
+        status_contains=args.status_contains,
         sort_by=args.sort,
     )
     limited_stale = limit_artifacts(stale, args.limit)
