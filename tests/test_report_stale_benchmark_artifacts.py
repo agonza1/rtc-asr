@@ -398,6 +398,37 @@ def test_stale_artifacts_can_sort_by_detail_page_name_descending() -> None:
     ]
 
 
+def test_stale_artifacts_can_sort_by_artifact_directory_descending() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/current/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/parakeet-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="artifact-dir-desc")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/current/qwen-old.json",
+        "benchmark-results/archive/base-old.json",
+        "benchmark-results/parakeet-old.json",
+    ]
+
+
 def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
     manifest = {
         "tracks": [],
@@ -2519,7 +2550,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-name-desc, artifact-stem, artifact-dir, artifact-extension, artifact-extension-desc, detail-page, detail-page-name, detail-page-name-desc, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-name-desc, artifact-stem, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-name, detail-page-name-desc, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
