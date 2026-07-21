@@ -130,6 +130,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--sort",
         choices=(
             "size",
+            "size-desc",
             "size-asc",
             "age",
             "age-asc",
@@ -987,7 +988,7 @@ def stale_artifacts(
                 "artifact_size": format_bytes(artifact_size_bytes),
             }
         )
-    if sort_by == "size":
+    if sort_by in {"size", "size-desc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1360,7 +1361,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
+        "sort_by must be one of: size, size-desc, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
     )
 
 
