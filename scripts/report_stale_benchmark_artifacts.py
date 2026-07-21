@@ -1425,13 +1425,17 @@ def append_omitted_summary_buckets(
     shown_buckets: list[dict[str, Any]],
     *,
     limit: int | None,
+    sort_by: str = "size",
     min_count: int | None = None,
     min_size_bytes: int | None = None,
 ) -> None:
-    if min_count is not None:
-        buckets = [bucket for bucket in buckets if bucket["count"] >= min_count]
-    if min_size_bytes is not None:
-        buckets = [bucket for bucket in buckets if bucket["total_size_bytes"] >= min_size_bytes]
+    buckets = limit_summary_buckets(
+        buckets,
+        None,
+        sort_by=sort_by,
+        min_count=min_count,
+        min_size_bytes=min_size_bytes,
+    )
     if limit is None or len(buckets) <= len(shown_buckets):
         return
     omitted_count = len(buckets) - len(shown_buckets)
@@ -1504,6 +1508,7 @@ def render_summary(
             summary["by_slug"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1533,6 +1538,7 @@ def render_summary(
             summary["by_artifact_name"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1562,6 +1568,7 @@ def render_summary(
             summary["by_artifact_stem"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1591,6 +1598,7 @@ def render_summary(
             summary["by_artifact_dir"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1620,6 +1628,7 @@ def render_summary(
             summary["by_artifact_extension"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1649,6 +1658,7 @@ def render_summary(
             summary["by_status"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1678,6 +1688,7 @@ def render_summary(
             summary["by_backend"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1707,6 +1718,7 @@ def render_summary(
             summary["by_model"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1735,6 +1747,7 @@ def render_summary(
             summary["by_label"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1764,6 +1777,7 @@ def render_summary(
             summary["by_current_artifact_path"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1793,6 +1807,7 @@ def render_summary(
             summary["by_current_artifact_name"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1822,6 +1837,7 @@ def render_summary(
             summary["by_track_state"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1851,6 +1867,7 @@ def render_summary(
             summary["by_detail_page_path"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1880,6 +1897,7 @@ def render_summary(
             summary["by_detail_page_name"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
@@ -1909,6 +1927,7 @@ def render_summary(
             summary["by_measured_month"],
             shown_buckets,
             limit=summary_limit,
+            sort_by=summary_sort,
             min_count=summary_min_count,
             min_size_bytes=summary_min_size_bytes,
         )
