@@ -79,6 +79,7 @@ def describe_environment() -> dict[str, Any]:
         "cpu_logical_cores": os.cpu_count(),
         "memory_total_mb": memory_total_mb,
         "process_rss_mb": process_rss_mb,
+        "process_metrics_pid": os.getpid(),
         "peak_rss_mb": process_rss_mb,
     }
 
