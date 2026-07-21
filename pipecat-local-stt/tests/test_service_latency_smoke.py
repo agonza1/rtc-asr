@@ -52,6 +52,7 @@ async def _test_fake_server_latency_smoke_records_plugin_metrics_without_rtc_asr
     assert final_frames[-1].text == "latency smoke final"
     assert metrics["local_stt_audio_frames_received_total"] == 4
     assert metrics["local_stt_audio_frames_sent_total"] == 4
+    assert metrics["local_stt_ready_events_total"] == 1
     assert metrics["local_stt_interim_events_total"] >= 1
     assert metrics["local_stt_final_events_total"] == 1
     assert metrics["local_stt_protocol_errors_total"] == 0

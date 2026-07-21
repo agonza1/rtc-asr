@@ -331,6 +331,7 @@ class LocalStreamingSTTService(STTService):
         if event_type in {"ping", "pong"}:
             return
         if event_type == "ready":
+            self.metrics.local_stt_ready_events_total += 1
             if self._ready_event is not None:
                 self._ready_event.set()
             return

@@ -10,6 +10,7 @@ class LocalSTTMetrics:
     local_stt_audio_frames_dropped_total: int = 0
     local_stt_send_queue_depth_ms: float = 0.0
     local_stt_reconnects_total: int = 0
+    local_stt_ready_events_total: int = 0
     local_stt_interim_events_total: int = 0
     local_stt_final_events_total: int = 0
     local_stt_final_timeouts_total: int = 0
