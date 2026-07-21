@@ -56,6 +56,14 @@ SUMMARY_GROUP_KEYS = {
     "age-bucket": "by_age_bucket",
 }
 
+AGE_BUCKET_ORDER = {
+    "0-6d": 0,
+    "7-29d": 1,
+    "30-89d": 2,
+    "90d+": 3,
+    "unknown": 4,
+}
+
 
 def format_bytes(size_bytes: int | None) -> str:
     if not size_bytes:
@@ -161,6 +169,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "current-path-extension-desc",
             "measured-month",
             "measured-month-desc",
+            "age-bucket",
+            "age-bucket-desc",
         ),
         default="size",
         help="Sort stale artifacts before applying --limit",
@@ -212,6 +222,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Only include stale artifacts measured in this UTC YYYY-MM month; repeat to include multiple months",
+    )
+    parser.add_argument(
+        "--age-bucket",
+        action="append",
+        default=None,
+        help="Only include stale artifacts in this age bucket; repeat or comma-separate values like 0-6d, 7-29d, 30-89d, 90d+, or unknown",
     )
     parser.add_argument(
         "--current-path",
@@ -586,6 +602,7 @@ def stale_artifacts(
     current_path_extension_contains: list[str] | None = None,
     track_state: str = "any",
     measured_months: list[str] | None = None,
+    age_buckets: list[str] | None = None,
     artifact_paths: list[str] | None = None,
     artifact_path_contains: list[str] | None = None,
     artifact_dirs: list[str] | None = None,
@@ -619,6 +636,7 @@ def stale_artifacts(
     backends = normalize_filter_values(backends)
     models = normalize_filter_values(models)
     measured_months = normalize_filter_values(measured_months)
+    age_buckets = normalize_filter_values(age_buckets)
     current_paths = normalize_filter_values(current_paths)
     current_path_contains = normalize_filter_values(current_path_contains)
     current_path_names = normalize_filter_values(current_path_names)
@@ -648,6 +666,12 @@ def stale_artifacts(
         invalid_months = [month for month in allowed_measured_months if len(month) != 7 or month[4] != "-"]
         if invalid_months:
             raise ValueError("measured_month values must use YYYY-MM")
+    allowed_age_buckets = None
+    if age_buckets is not None:
+        allowed_age_buckets = {bucket.lower() for bucket in age_buckets}
+        invalid_age_buckets = sorted(allowed_age_buckets - {bucket.lower() for bucket in AGE_BUCKET_ORDER})
+        if invalid_age_buckets:
+            raise ValueError("age_bucket values must be one of: 0-6d, 7-29d, 30-89d, 90d+, unknown")
 
     cutoff = None
     if older_than_days is not None:
@@ -875,7 +899,10 @@ def stale_artifacts(
         artifact_age_days = None
         if measured_timestamp is not None:
             artifact_age_days = max((age_reference - measured_timestamp).days, 0)
+        artifact_age_bucket = age_bucket(artifact_age_days)
         if allowed_measured_months is not None and artifact_measured_month not in allowed_measured_months:
+            continue
+        if allowed_age_buckets is not None and artifact_age_bucket.lower() not in allowed_age_buckets:
             continue
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
             continue
@@ -904,7 +931,7 @@ def stale_artifacts(
                 "measured_at": measured_at,
                 "measured_month": artifact_measured_month,
                 "age_days": artifact_age_days,
-                "age_bucket": age_bucket(artifact_age_days),
+                "age_bucket": artifact_age_bucket,
                 "age": format_age_days(artifact_age_days),
                 "current_artifact_path": current_artifact_path,
                 "current_artifact_name": current_artifact_name,
@@ -1252,8 +1279,26 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "age-bucket":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                AGE_BUCKET_ORDER.get(str(entry.get("age_bucket") or "unknown"), sys.maxsize),
+                entry.get("age_days") if entry.get("age_days") is not None else sys.maxsize,
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "age-bucket-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                -AGE_BUCKET_ORDER.get(str(entry.get("age_bucket") or "unknown"), sys.maxsize),
+                -(entry.get("age_days") if entry.get("age_days") is not None else -1),
+                entry.get("artifact_path") or "",
+            ),
+        )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc"
+        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
     )
 
 
@@ -2661,6 +2706,7 @@ def main(argv: list[str] | None = None) -> int:
         backends=args.backend,
         models=args.model,
         measured_months=args.measured_month,
+        age_buckets=args.age_bucket,
         current_paths=args.current_path,
         current_path_contains=args.current_path_contains,
         current_path_names=args.current_path_name,
