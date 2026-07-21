@@ -321,6 +321,7 @@ class LocalStreamingSTTService(STTService):
                 self.metrics.local_stt_protocol_errors_total += 1
                 logger.warning("Local STT receive loop error: %s", exc)
                 if not self.config.reconnect_on_error or self._closed:
+                    await self._disconnect()
                     return
                 await self._reconnect()
                 return
