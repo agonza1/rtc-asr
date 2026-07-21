@@ -1715,6 +1715,37 @@ def test_stale_artifacts_can_sort_by_artifact_extension_then_path() -> None:
     ]
 
 
+def test_stale_artifacts_can_sort_by_artifact_extension_descending_then_path() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/z.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/audio.wav",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/a.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="artifact-extension-desc")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/audio.wav",
+        "benchmark-results/a.json",
+        "benchmark-results/z.json",
+    ]
+
+
 def test_stale_artifacts_can_sort_by_detail_page_path() -> None:
     manifest = {
         "tracks": [],
@@ -2426,7 +2457,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, artifact-extension-desc, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
