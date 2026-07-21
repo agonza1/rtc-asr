@@ -118,6 +118,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "current_artifact_path": "benchmark-results/current.json",
             "current_artifact_name": "current.json",
             "current_artifact_stem": "current",
+            "current_artifact_dir": "benchmark-results",
             "current_artifact_extension": ".json",
             "track_state": "tracked",
             "detail_page_path": "benchmark-results/pages/older.html",
@@ -254,6 +255,49 @@ def test_stale_artifacts_path_filters_accept_comma_separated_values() -> None:
         "benchmark-results/archive/base-old.json",
         "benchmark-results/archive/qwen-old.json",
     ]
+
+
+def test_stale_artifacts_can_filter_by_current_artifact_directory() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "base", "artifact_path": "benchmark-results/current/base-current.json"},
+            {"slug": "qwen", "artifact_path": "benchmark-results/published/qwen-current.json"},
+            {"slug": "parakeet", "artifact_path": "benchmark-results/current/parakeet-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "slug": "base",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/qwen-old.json",
+                "slug": "qwen",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/parakeet-old.json",
+                "slug": "parakeet",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        current_path_dirs=["benchmark-results/current"],
+        current_path_dir_contains=["current"],
+        sort_by="current-path-dir",
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/archive/base-old.json",
+        "benchmark-results/archive/parakeet-old.json",
+    ]
+    assert stale[0]["current_artifact_dir"] == "benchmark-results/current"
 
 
 def test_stale_artifacts_can_filter_by_artifact_directory() -> None:
@@ -1251,8 +1295,8 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,7-29d,10 days,benchmark-results/current.json,current.json,current,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
     ]
 
 
@@ -3488,7 +3532,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
+            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
@@ -4562,6 +4606,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By current artifact stem:\n"
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
+        "By current artifact directory:\n"
+        "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By current artifact extension:\n"
         "- none: 3 artifacts (65 B, 65 bytes)\n"
         "By track state:\n"
@@ -5593,6 +5639,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
         "By current artifact stem:\n"
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
+        "By current artifact directory:\n"
+        "- untracked: 2 artifacts (100 B, 100 bytes)\n"
         "By current artifact extension:\n"
         "- none: 2 artifacts (100 B, 100 bytes)\n"
         "By track state:\n"
@@ -5754,8 +5802,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B\r\n'
     )
 
 
