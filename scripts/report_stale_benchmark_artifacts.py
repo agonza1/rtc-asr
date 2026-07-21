@@ -384,9 +384,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-sort",
-        choices=("size", "size-asc", "count", "count-asc", "name"),
+        choices=("size", "size-desc", "size-asc", "count", "count-asc", "name"),
         default="size",
-        help="With --summary-only or --json-summary, sort grouping rows by total size, count, or bucket name; use *-asc for ascending size/count",
+        help="With --summary-only or --json-summary, sort grouping rows by total size, count, or bucket name; use *-asc or *-desc for explicit direction",
     )
     parser.add_argument(
         "--summary-min-count",
@@ -1319,8 +1319,8 @@ def render_json_summary(
 ) -> str:
     if summary_limit is not None and summary_limit < 0:
         raise ValueError("summary_limit must be non-negative")
-    if summary_sort not in {"size", "size-asc", "count", "count-asc", "name"}:
-        raise ValueError("summary_sort must be one of: size, size-asc, count, count-asc, name")
+    if summary_sort not in {"size", "size-desc", "size-asc", "count", "count-asc", "name"}:
+        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-asc, name")
     if summary_min_count is not None and summary_min_count < 0:
         raise ValueError("summary_min_count must be non-negative")
     if summary_min_size_bytes is not None and summary_min_size_bytes < 0:
@@ -1403,8 +1403,8 @@ def limit_summary_buckets(
         raise ValueError("summary_min_count must be non-negative")
     if min_size_bytes is not None and min_size_bytes < 0:
         raise ValueError("summary_min_size_bytes must be non-negative")
-    if sort_by not in {"size", "size-asc", "count", "count-asc", "name"}:
-        raise ValueError("summary_sort must be one of: size, size-asc, count, count-asc, name")
+    if sort_by not in {"size", "size-desc", "size-asc", "count", "count-asc", "name"}:
+        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-asc, name")
     filtered_buckets = buckets
     if min_count is not None:
         filtered_buckets = [bucket for bucket in filtered_buckets if bucket["count"] >= min_count]
@@ -1477,8 +1477,8 @@ def render_summary(
 ) -> str:
     if summary_limit is not None and summary_limit < 0:
         raise ValueError("summary_limit must be non-negative")
-    if summary_sort not in {"size", "size-asc", "count", "count-asc", "name"}:
-        raise ValueError("summary_sort must be one of: size, size-asc, count, count-asc, name")
+    if summary_sort not in {"size", "size-desc", "size-asc", "count", "count-asc", "name"}:
+        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-asc, name")
     if summary_min_count is not None and summary_min_count < 0:
         raise ValueError("summary_min_count must be non-negative")
     if summary_min_size_bytes is not None and summary_min_size_bytes < 0:

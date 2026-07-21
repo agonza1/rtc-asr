@@ -558,6 +558,31 @@ def test_render_json_summary_can_sort_group_rows_ascending() -> None:
     assert [bucket["slug"] for bucket in summary["by_slug"]] == ["qwen", "base"]
 
 
+def test_render_json_summary_accepts_explicit_size_desc_sort() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="size-desc",
+    )
+
+    summary = json.loads(rendered)
+
+    assert [bucket["slug"] for bucket in summary["by_slug"]] == ["base", "qwen"]
+
+
 def test_render_summary_can_sort_group_rows_by_count_ascending() -> None:
     rendered = render_summary(
         [
