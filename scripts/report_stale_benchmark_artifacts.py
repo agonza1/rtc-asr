@@ -26,6 +26,7 @@ SUMMARY_GROUPS = (
     "label",
     "current-artifact",
     "current-artifact-name",
+    "current-artifact-stem",
     "current-artifact-extension",
     "track-state",
     "detail-page",
@@ -45,6 +46,7 @@ SUMMARY_GROUP_KEYS = {
     "label": "by_label",
     "current-artifact": "by_current_artifact_path",
     "current-artifact-name": "by_current_artifact_name",
+    "current-artifact-stem": "by_current_artifact_stem",
     "current-artifact-extension": "by_current_artifact_extension",
     "track-state": "by_track_state",
     "detail-page": "by_detail_page_path",
@@ -1241,6 +1243,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_label: dict[str, dict[str, Any]] = {}
     by_current_artifact_path: dict[str, dict[str, Any]] = {}
     by_current_artifact_name: dict[str, dict[str, Any]] = {}
+    by_current_artifact_stem: dict[str, dict[str, Any]] = {}
     by_current_artifact_extension: dict[str, dict[str, Any]] = {}
     by_track_state: dict[str, dict[str, Any]] = {}
     by_detail_page_path: dict[str, dict[str, Any]] = {}
@@ -1401,6 +1404,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         current_name_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         current_name_bucket["total_size"] = format_bytes(current_name_bucket["total_size_bytes"])
 
+        current_artifact_stem = Path(entry.get("current_artifact_path") or "").stem or "untracked"
+        current_stem_bucket = by_current_artifact_stem.setdefault(
+            current_artifact_stem,
+            {
+                "current_artifact_stem": current_artifact_stem,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        current_stem_bucket["count"] += 1
+        current_stem_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        current_stem_bucket["total_size"] = format_bytes(current_stem_bucket["total_size_bytes"])
+
         current_artifact_extension = Path(entry.get("current_artifact_path") or "").suffix.lower() or "none"
         current_extension_bucket = by_current_artifact_extension.setdefault(
             current_artifact_extension,
@@ -1518,6 +1535,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_current_artifact_name": sorted(
             by_current_artifact_name.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["current_artifact_name"]),
+        ),
+        "by_current_artifact_stem": sorted(
+            by_current_artifact_stem.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["current_artifact_stem"]),
         ),
         "by_current_artifact_extension": sorted(
             by_current_artifact_extension.values(),
@@ -2165,6 +2186,36 @@ def render_summary(
         append_omitted_summary_buckets(
             lines,
             summary["by_current_artifact_name"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            min_size_bytes=summary_min_size_bytes,
+        )
+    if "current-artifact-stem" in selected_groups and summary["by_current_artifact_stem"]:
+        lines.append("By current artifact stem:")
+    if "current-artifact-stem" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_current_artifact_stem"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            min_size_bytes=summary_min_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {current_artifact_stem}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    current_artifact_stem=bucket["current_artifact_stem"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_current_artifact_stem"],
             shown_buckets,
             limit=summary_limit,
             sort_by=summary_sort,
