@@ -281,7 +281,11 @@ class LocalStreamingSTTService(STTService):
                 ),
                 start_after_reconnect=False,
             )
-            await asyncio.wait_for(self._ready_event.wait(), timeout=self.config.connect_timeout_s)
+            try:
+                await asyncio.wait_for(self._ready_event.wait(), timeout=self.config.connect_timeout_s)
+            except asyncio.TimeoutError:
+                self.metrics.local_stt_ready_timeouts_total += 1
+                raise
             self._utterance_active = True
 
     async def _send_loop(self) -> None:

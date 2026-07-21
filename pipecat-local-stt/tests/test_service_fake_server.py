@@ -112,6 +112,10 @@ def test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping
     asyncio.run(_test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping())
 
 
+def test_service_counts_ready_timeout() -> None:
+    asyncio.run(_test_service_counts_ready_timeout())
+
+
 async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping() -> None:
     websocket = FakeLocalSTTWebSocket()
     service = LocalStreamingSTTService(LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20), connect_fn=lambda _url: asyncio.sleep(0, websocket))
@@ -140,6 +144,26 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     assert service.metrics.local_stt_ready_events_total == 1
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
+
+
+async def _test_service_counts_ready_timeout() -> None:
+    websocket = FakeLocalSTTWebSocket()
+
+    async def send_without_ready(data: str | bytes) -> None:
+        websocket.sent.append(data)
+
+    websocket.send = send_without_ready  # type: ignore[method-assign]
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", connect_timeout_s=0.01),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    with pytest.raises(asyncio.TimeoutError):
+        await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.cleanup()
+
+    assert service.metrics.local_stt_ready_timeouts_total == 1
 
 
 def test_raw_uds_public_api_verifies_start_audio_finalize_and_transcript_mapping(tmp_path: Path) -> None:
