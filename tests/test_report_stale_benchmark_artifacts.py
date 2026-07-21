@@ -573,6 +573,46 @@ def test_render_summary_can_sort_group_rows_by_name() -> None:
     ]
 
 
+def test_render_summary_omitted_size_follows_summary_sort() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-a.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-b.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/tiny.json",
+                "status": "legacy",
+                "slug": "tiny",
+                "artifact_size_bytes": 1,
+            },
+        ],
+        groups=["slug"],
+        summary_limit=1,
+        summary_sort="count",
+    )
+
+    assert rendered.splitlines() == [
+        "Found 4 stale benchmark artifacts (111 B, 111 bytes).",
+        "- qwen: 2 artifacts (20 B, 20 bytes)",
+        "... 2 more buckets (91 B, 91 bytes) omitted by --summary-limit.",
+    ]
+
+
 def test_render_csv_emits_header_and_artifact_rows() -> None:
     rendered = render_csv(
         [
