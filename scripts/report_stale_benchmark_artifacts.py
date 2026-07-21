@@ -67,6 +67,13 @@ def format_bytes(size_bytes: int | None) -> str:
     return f"{size:.1f} {unit}"
 
 
+def format_age_days(age_days: int | None) -> str:
+    if age_days is None:
+        return "unknown"
+    noun = "day" if age_days == 1 else "days"
+    return f"{age_days} {noun}"
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Report stale benchmark artifacts")
     parser.add_argument(
@@ -108,6 +115,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=(
             "size",
             "size-asc",
+            "age",
+            "age-asc",
             "measured-at",
             "measured-at-desc",
             "path",
@@ -577,6 +586,11 @@ def stale_artifacts(
     if cutoff is not None and lower_cutoff is not None and lower_cutoff >= cutoff:
         raise ValueError("measured_after must be earlier than the effective measured-before cutoff")
 
+    age_reference = now or datetime.now(UTC)
+    if age_reference.tzinfo is None:
+        age_reference = age_reference.replace(tzinfo=UTC)
+    age_reference = age_reference.astimezone(UTC)
+
     tracks = [track for track in manifest.get("tracks", []) if track.get("artifact_path")]
     current_artifact_paths = {track["artifact_path"] for track in tracks}
     current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
@@ -718,6 +732,9 @@ def stale_artifacts(
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
         artifact_measured_month = measured_month(measured_at)
+        artifact_age_days = None
+        if measured_timestamp is not None:
+            artifact_age_days = max((age_reference - measured_timestamp).days, 0)
         if allowed_measured_months is not None and artifact_measured_month not in allowed_measured_months:
             continue
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
@@ -745,6 +762,8 @@ def stale_artifacts(
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
                 "measured_month": artifact_measured_month,
+                "age_days": artifact_age_days,
+                "age": format_age_days(artifact_age_days),
                 "current_artifact_path": current_artifact_path,
                 "current_artifact_name": current_artifact_name,
                 "track_state": "tracked" if current_artifact_path is not None else "untracked",
@@ -767,6 +786,22 @@ def stale_artifacts(
             stale,
             key=lambda entry: (
                 entry.get("artifact_size_bytes") or 0,
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "age":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                -(entry.get("age_days") if entry.get("age_days") is not None else -1),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "age-asc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                entry.get("age_days") if entry.get("age_days") is not None else sys.maxsize,
                 entry.get("artifact_path") or "",
             ),
         )
@@ -910,7 +945,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-stem, artifact-dir, artifact-extension, detail-page, detail-page-name, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
     )
 
 
@@ -1249,11 +1284,12 @@ def render_text(
         detail_suffix = f"; detail: {detail_page_path}" if detail_page_path else ""
         status = entry.get("status") or "unknown"
         lines.append(
-            "- {artifact_path} [{slug}] status {status} measured {measured_at} ({artifact_size}){current_suffix}{detail_suffix}".format(
+            "- {artifact_path} [{slug}] status {status} measured {measured_at} ({age}; {artifact_size}){current_suffix}{detail_suffix}".format(
                 artifact_path=entry["artifact_path"],
                 slug=entry.get("slug") or "untracked",
                 status=status,
                 measured_at=entry.get("measured_at") or "unknown",
+                age=entry.get("age") or format_age_days(entry.get("age_days")),
                 artifact_size=entry.get("artifact_size") or format_bytes(entry.get("artifact_size_bytes")),
                 current_suffix=current_suffix,
                 detail_suffix=detail_suffix,
@@ -1366,6 +1402,8 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "status",
         "measured_at",
         "measured_month",
+        "age_days",
+        "age",
         "current_artifact_path",
         "current_artifact_name",
         "track_state",
