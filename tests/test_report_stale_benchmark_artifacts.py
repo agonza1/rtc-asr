@@ -1220,6 +1220,102 @@ def test_render_summary_can_group_by_age_bucket() -> None:
     assert "- 0-6d: 1 artifact (10 B, 10 bytes)" in rendered
 
 
+def test_render_summary_sorts_age_bucket_names_by_bucket_order() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/month-old.json",
+                "status": "legacy",
+                "age_bucket": "30-89d",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/week-old.json",
+                "status": "legacy",
+                "age_bucket": "7-29d",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/recent.json",
+                "status": "legacy",
+                "age_bucket": "0-6d",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/oldest.json",
+                "status": "legacy",
+                "age_bucket": "90d+",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "age_bucket": "unknown",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["age-bucket"],
+        summary_sort="name",
+    )
+
+    assert rendered.splitlines()[2:7] == [
+        "- 0-6d: 1 artifact (10 B, 10 bytes)",
+        "- 7-29d: 1 artifact (10 B, 10 bytes)",
+        "- 30-89d: 1 artifact (10 B, 10 bytes)",
+        "- 90d+: 1 artifact (10 B, 10 bytes)",
+        "- unknown: 1 artifact (10 B, 10 bytes)",
+    ]
+
+
+def test_render_json_summary_sorts_age_bucket_names_descending_by_bucket_order() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/month-old.json",
+                "status": "legacy",
+                "age_bucket": "30-89d",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/week-old.json",
+                "status": "legacy",
+                "age_bucket": "7-29d",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/recent.json",
+                "status": "legacy",
+                "age_bucket": "0-6d",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/oldest.json",
+                "status": "legacy",
+                "age_bucket": "90d+",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "age_bucket": "unknown",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["age-bucket"],
+        summary_sort="name-desc",
+    )
+
+    summary = json.loads(rendered)
+
+    assert [bucket["age_bucket"] for bucket in summary["by_age_bucket"]] == [
+        "unknown",
+        "90d+",
+        "30-89d",
+        "7-29d",
+        "0-6d",
+    ]
+
+
 def test_render_json_summary_can_sort_group_rows_by_name_descending() -> None:
     rendered = render_json_summary(
         [

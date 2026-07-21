@@ -1994,7 +1994,12 @@ def limit_summary_buckets(
 
 
 def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, ...]:
-    name = str(next((value for key, value in bucket.items() if key not in {"count", "total_size_bytes", "total_size"}), ""))
+    bucket_key = next((key for key in bucket if key not in {"count", "total_size_bytes", "total_size"}), "")
+    name = str(bucket.get(bucket_key, ""))
+    if bucket_key == "age_bucket" and sort_by == "name":
+        return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
+    if bucket_key == "age_bucket" and sort_by == "name-desc":
+        return (-AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
     if sort_by in {"count", "count-desc"}:
         return (-bucket["count"], -bucket["total_size_bytes"], name)
     if sort_by == "count-asc":
