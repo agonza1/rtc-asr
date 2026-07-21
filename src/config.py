@@ -50,6 +50,17 @@ def _positive_int_env(name: str, default: int) -> int:
     return value
 
 
+def _positive_int_first_env(*names: str, default: int) -> int:
+    for name in names:
+        value = os.getenv(name)
+        if value:
+            parsed = int(value)
+            if parsed <= 0:
+                raise ValueError(f"{name} must be a positive integer")
+            return parsed
+    return default
+
+
 @dataclass(slots=True)
 class AppConfig:
     """Runtime configuration loaded from environment variables."""
@@ -112,9 +123,13 @@ class AppConfig:
             app_name=os.getenv("APP_NAME", defaults.app_name),
             app_version=os.getenv("APP_VERSION", defaults.app_version),
             host=os.getenv("HOST", defaults.host),
-            port=int(os.getenv("PORT", str(defaults.port))),
+            port=_positive_int_env("PORT", defaults.port),
             cors_origins=_cors_origins(os.getenv("CORS_ORIGINS"), defaults.cors_origins),
-            sample_rate=int(_first_env("SAMPLE_RATE", "AUDIO_SAMPLE_RATE") or str(defaults.sample_rate)),
+            sample_rate=_positive_int_first_env(
+                "SAMPLE_RATE",
+                "AUDIO_SAMPLE_RATE",
+                default=defaults.sample_rate,
+            ),
             stream_max_buffer_bytes=stream_max_buffer_bytes,
             local_stt_enable_pcm16_fast_path=_env_flag(
                 "LOCAL_STT_ENABLE_PCM16_FAST_PATH",
