@@ -471,7 +471,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--summary-group",
         action="append",
         default=None,
-        help="With --summary-only, only print this grouping; repeat or comma-separate to include multiple groups",
+        help="With --summary-only, only print this grouping; repeat or comma-separate to include multiple groups; use 'all' for every grouping",
     )
     parser.add_argument(
         "--summary-limit",
@@ -593,6 +593,9 @@ def normalize_summary_groups(groups: list[str] | None) -> set[str]:
         for group in value.split(",")
         if group.strip()
     }
+    if "all" in selected_groups:
+        selected_groups.remove("all")
+        selected_groups.update(SUMMARY_GROUPS)
     invalid_groups = sorted(selected_groups - set(SUMMARY_GROUPS))
     if invalid_groups:
         valid_groups = ", ".join(SUMMARY_GROUPS)
