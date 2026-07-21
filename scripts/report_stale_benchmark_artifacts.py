@@ -587,12 +587,18 @@ def descending_text_key(value: Any) -> tuple[int, ...]:
 
 
 def normalize_summary_groups(groups: list[str] | None) -> set[str]:
-    return {
+    selected_groups = {
         group.strip()
         for value in (groups or list(SUMMARY_GROUPS))
         for group in value.split(",")
         if group.strip()
     }
+    invalid_groups = sorted(selected_groups - set(SUMMARY_GROUPS))
+    if invalid_groups:
+        valid_groups = ", ".join(SUMMARY_GROUPS)
+        invalid_group_list = ", ".join(invalid_groups)
+        raise ValueError(f"Unsupported summary group: {invalid_group_list}. Valid groups: {valid_groups}")
+    return selected_groups
 
 
 def stale_artifacts(
