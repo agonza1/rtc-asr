@@ -718,6 +718,8 @@ def stale_artifacts(
             continue
         if max_size_bytes is not None and (artifact_size_bytes or 0) > max_size_bytes:
             continue
+        current_artifact_name = Path(current_artifact_path or "").name or None
+        detail_page_name = Path(artifact_detail_page_path or "").name or None
         stale.append(
             {
                 "artifact_path": artifact_path,
@@ -733,8 +735,10 @@ def stale_artifacts(
                 "measured_at": measured_at,
                 "measured_month": artifact_measured_month,
                 "current_artifact_path": current_artifact_path,
+                "current_artifact_name": current_artifact_name,
                 "track_state": "tracked" if current_artifact_path is not None else "untracked",
                 "detail_page_path": artifact_detail_page_path,
+                "detail_page_name": detail_page_name,
                 "artifact_size_bytes": artifact_size_bytes,
                 "artifact_size": format_bytes(artifact_size_bytes),
             }
@@ -1352,8 +1356,10 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "measured_at",
         "measured_month",
         "current_artifact_path",
+        "current_artifact_name",
         "track_state",
         "detail_page_path",
+        "detail_page_name",
         "artifact_size_bytes",
         "artifact_size",
     ]
@@ -1365,6 +1371,10 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             "artifact_name": entry.get("artifact_name") or Path(entry.get("artifact_path") or "").name,
             "artifact_stem": entry.get("artifact_stem") or Path(entry.get("artifact_path") or "").stem,
             "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
+            "current_artifact_name": entry.get("current_artifact_name")
+            or Path(entry.get("current_artifact_path") or "").name,
+            "detail_page_name": entry.get("detail_page_name")
+            or Path(entry.get("detail_page_path") or "").name,
         }
         writer.writerow(row)
     return output.getvalue()
