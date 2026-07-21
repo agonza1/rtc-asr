@@ -26,8 +26,11 @@ def _env_flag(name: str, default: bool) -> bool:
 def _first_env(*names: str) -> str | None:
     for name in names:
         value = os.getenv(name)
-        if value:
-            return value
+        if value is None:
+            continue
+        normalized = value.strip()
+        if normalized:
+            return normalized
     return None
 
 
