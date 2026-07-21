@@ -107,6 +107,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "age": "10 days",
             "current_artifact_path": "benchmark-results/current.json",
             "current_artifact_name": "current.json",
+            "current_artifact_extension": ".json",
             "track_state": "tracked",
             "detail_page_path": "benchmark-results/pages/older.html",
             "detail_page_name": "older.html",
@@ -1090,8 +1091,8 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,10 days,benchmark-results/current.json,current.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,10 days,benchmark-results/current.json,current.json,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
     ]
 
 
@@ -2557,6 +2558,83 @@ def test_stale_artifacts_can_sort_by_current_artifact_file_name_descending_then_
     ]
 
 
+def test_stale_artifacts_can_sort_by_current_artifact_extension_then_path() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.wav"},
+            {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+            {"slug": "small", "artifact_path": "benchmark-results/current"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/small-old.json",
+                "status": "legacy",
+                "slug": "small",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="current-path-extension")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/small-old.json",
+        "benchmark-results/base-old.json",
+        "benchmark-results/qwen-old.json",
+    ]
+    assert [entry["current_artifact_extension"] for entry in stale] == ["none", ".json", ".wav"]
+
+
+def test_stale_artifacts_can_sort_by_current_artifact_extension_descending_then_path() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.wav"},
+            {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+            {"slug": "small", "artifact_path": "benchmark-results/current"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/small-old.json",
+                "status": "legacy",
+                "slug": "small",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="current-path-extension-desc")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/qwen-old.json",
+        "benchmark-results/base-old.json",
+        "benchmark-results/small-old.json",
+    ]
+
+
 def test_stale_artifacts_can_filter_by_current_artifact_file_name() -> None:
     manifest = {
         "tracks": [
@@ -2619,6 +2697,70 @@ def test_stale_artifacts_can_filter_by_current_artifact_file_name_text() -> None
     stale = stale_artifacts(manifest, current_path_name_contains=["WHISPER"])
 
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
+def test_stale_artifacts_can_filter_by_current_artifact_extension() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.wav"},
+            {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+            {"slug": "small", "artifact_path": "benchmark-results/current"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/small-old.json",
+                "status": "legacy",
+                "slug": "small",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, current_path_extensions=["wav, none"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/qwen-old.json",
+        "benchmark-results/small-old.json",
+    ]
+
+
+def test_stale_artifacts_can_filter_by_current_artifact_extension_text() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.wav"},
+            {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, current_path_extension_contains=["WA"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/qwen-old.json"]
 
 
 def test_stale_artifacts_can_filter_by_artifact_file_name() -> None:
@@ -2904,7 +3046,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, measured-month, measured-month-desc"
+            == "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
@@ -3976,6 +4118,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By current artifact name:\n"
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
+        "By current artifact extension:\n"
+        "- none: 3 artifacts (65 B, 65 bytes)\n"
         "By track state:\n"
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page:\n"
@@ -4079,6 +4223,31 @@ def test_render_summary_can_focus_on_artifact_extension() -> None:
     assert rendered == (
         "Found 2 stale benchmark artifacts (30 B, 30 bytes).\n"
         "By artifact extension:\n"
+        "- .json: 1 artifact (20 B, 20 bytes)\n"
+        "- .wav: 1 artifact (10 B, 10 bytes)"
+    )
+
+
+def test_render_summary_can_focus_on_current_artifact_extension() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "current_artifact_path": "benchmark-results/base-current.json",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/raw-audio-old.json",
+                "current_artifact_path": "benchmark-results/raw-audio-current.wav",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["current-artifact-extension"],
+    )
+
+    assert rendered == (
+        "Found 2 stale benchmark artifacts (30 B, 30 bytes).\n"
+        "By current artifact extension:\n"
         "- .json: 1 artifact (20 B, 20 bytes)\n"
         "- .wav: 1 artifact (10 B, 10 bytes)"
     )
@@ -4951,6 +5120,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
         "By current artifact name:\n"
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
+        "By current artifact extension:\n"
+        "- none: 2 artifacts (100 B, 100 bytes)\n"
         "By track state:\n"
         "- untracked: 2 artifacts (100 B, 100 bytes)\n"
         "By detail page:\n"
@@ -5108,8 +5279,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,benchmark-results/base-current.json,base-current.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age,current_artifact_path,current_artifact_name,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,benchmark-results/base-current.json,base-current.json,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B\r\n'
     )
 
 
