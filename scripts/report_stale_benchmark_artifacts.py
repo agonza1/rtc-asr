@@ -139,6 +139,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "current-path",
             "current-path-name",
             "measured-month",
+            "measured-month-desc",
         ),
         default="size",
         help="Sort stale artifacts before applying --limit",
@@ -982,8 +983,16 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by == "measured-month-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                tuple(-ord(character) for character in str(entry.get("measured_month") or "unknown")),
+                entry.get("artifact_path") or "",
+            ),
+        )
     raise ValueError(
-        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-name-desc, artifact-stem, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-name, detail-page-name-desc, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month"
+        "sort_by must be one of: size, size-asc, age, age-asc, measured-at, measured-at-desc, path, artifact-name, artifact-name-desc, artifact-stem, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-name, detail-page-name-desc, status, backend, model, label, slug, track-state, current-path, current-path-name, measured-month, measured-month-desc"
     )
 
 
