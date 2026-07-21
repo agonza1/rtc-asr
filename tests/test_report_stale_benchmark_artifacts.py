@@ -4,6 +4,8 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 MODULE_PATH = SCRIPTS_DIR / "report_stale_benchmark_artifacts.py"
@@ -50,6 +52,14 @@ def test_summary_groups_accept_comma_separated_values() -> None:
         "backend",
         "measured-month",
     }
+
+
+def test_summary_groups_reject_unknown_values() -> None:
+    with pytest.raises(ValueError) as exc_info:
+        normalize_summary_groups(["status, typo"])
+
+    assert "Unsupported summary group: typo." in str(exc_info.value)
+    assert "Valid groups: slug, artifact-name" in str(exc_info.value)
 
 
 def test_measured_month_uses_utc_month_or_unknown() -> None:
