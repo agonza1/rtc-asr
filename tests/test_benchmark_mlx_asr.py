@@ -121,6 +121,7 @@ def test_describe_environment_reports_mlx_host_capacity(monkeypatch) -> None:
     monkeypatch.setattr(benchmark_module.platform, "processor", lambda: "TestCPU")
     monkeypatch.setattr(benchmark_module.platform, "machine", lambda: "arm64")
     monkeypatch.setattr(benchmark_module.os, "cpu_count", lambda: 10)
+    monkeypatch.setattr(benchmark_module.os, "getpid", lambda: 4321)
 
     payload = benchmark_module.describe_environment()
 
@@ -130,6 +131,7 @@ def test_describe_environment_reports_mlx_host_capacity(monkeypatch) -> None:
     assert payload["cpu_logical_cores"] == 10
     assert payload["memory_total_mb"] == 32768.0
     assert payload["process_rss_mb"] == 512.0
+    assert payload["process_metrics_pid"] == 4321
     assert payload["peak_rss_mb"] == 512.0
 
 
