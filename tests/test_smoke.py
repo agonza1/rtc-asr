@@ -2219,6 +2219,18 @@ def test_legacy_env_aliases_and_cuda_detection(monkeypatch: pytest.MonkeyPatch) 
     assert config.asr_device == "cuda"
 
 
+def test_blank_env_aliases_are_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MODEL_NAME", "   ")
+    monkeypatch.delenv("ASR_MODEL_SIZE", raising=False)
+    monkeypatch.setenv("ASR_DEVICE", "   ")
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0")
+
+    config = AppConfig.from_env()
+
+    assert config.asr_model_size == AppConfig().asr_model_size
+    assert config.asr_device == "cuda"
+
+
 @pytest.mark.parametrize("invalid_value", ["0", "-1"])
 def test_stream_max_buffer_bytes_must_be_positive(
     monkeypatch: pytest.MonkeyPatch,
