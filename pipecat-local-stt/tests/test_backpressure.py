@@ -368,6 +368,35 @@ async def _test_receive_loop_reconnect_exits_old_reader() -> None:
     await service.cleanup()
 
 
+def test_receive_loop_terminal_failure_disconnects_and_allows_reconnect() -> None:
+    asyncio.run(_test_receive_loop_terminal_failure_disconnects_and_allows_reconnect())
+
+
+async def _test_receive_loop_terminal_failure_disconnects_and_allows_reconnect() -> None:
+    first = ReconnectWebSocket(fail_after_ready=True)
+    second = HealthySendWebSocket()
+    websockets = [first, second]
+
+    async def connect(_url: str) -> ReconnectWebSocket | HealthySendWebSocket:
+        return websockets.pop(0)
+
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, reconnect_on_error=False),
+        connect_fn=connect,
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: service._websocket is None)
+
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: any(isinstance(item, bytes) for item in second.sent))
+
+    assert service.metrics.local_stt_protocol_errors_total == 1
+    await service.cleanup()
+
+
 def test_finalize_waits_for_queued_audio_before_control_message() -> None:
     asyncio.run(_test_finalize_waits_for_queued_audio_before_control_message())
 
