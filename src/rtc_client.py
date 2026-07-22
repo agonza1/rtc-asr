@@ -572,7 +572,7 @@ class AsyncRawUdsLocalSttClient:
         frame = decode_raw_uds_frame(header + frame_payload)
         payload = parse_raw_uds_server_frame(frame).model_dump(exclude_none=True)
         if payload.get("type") == "error" and not allow_error:
-            raise RuntimeError(str(payload.get("message", "Unknown Local STT raw UDS error")))
+            raise _local_stt_protocol_error_from_payload(payload)
         return payload
 
     async def _recv_json_with_timeout(self, timeout: float, *, allow_error: bool = False) -> dict[str, Any] | None:
@@ -612,3 +612,14 @@ def _validate_positive_number(value: Any, *, field_name: str) -> None:
         return
     if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0 or not math.isfinite(value):
         raise ValueError(f"{field_name} must be a positive finite number")
+
+
+def _local_stt_protocol_error_from_payload(payload: dict[str, Any]) -> LocalSttProtocolError:
+    metadata = payload.get("metadata")
+    return LocalSttProtocolError(
+        str(payload.get("message", "Unknown Local STT raw UDS error")),
+        code=str(payload.get("code", "local_stt_error")),
+        fatal=bool(payload.get("fatal", True)),
+        retryable=bool(payload.get("retryable", False)),
+        metadata=dict(metadata) if isinstance(metadata, dict) else {},
+    )

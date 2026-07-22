@@ -593,6 +593,52 @@ def test_async_raw_uds_client_uses_empty_ping_frame_for_bare_ping() -> None:
     assert writer.sent == [bytes([RawUdsFrameType.PING]) + (0).to_bytes(4, "little")]
 
 
+def test_async_raw_uds_client_preserves_error_frame_details() -> None:
+    class ErrorFrameReader:
+        def __init__(self) -> None:
+            self.frame = encode_raw_uds_json_frame(
+                RawUdsFrameType.ERROR,
+                {
+                    "code": "raw_uds_malformed_json_control",
+                    "message": "bad control frame",
+                    "fatal": False,
+                    "retryable": True,
+                    "metadata": {"original_code": "raw_uds_invalid_json"},
+                },
+            )
+            self.offset = 0
+
+        async def readexactly(self, size: int) -> bytes:
+            chunk = self.frame[self.offset : self.offset + size]
+            self.offset += size
+            return chunk
+
+    class NoopWriter:
+        def write(self, data: bytes) -> None:
+            pass
+
+        async def drain(self) -> None:
+            pass
+
+    async def connect_fn(_path: str):
+        return ErrorFrameReader(), NoopWriter()
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=connect_fn)
+
+        with pytest.raises(LocalSttProtocolError) as excinfo:
+            await client.ping(ping_id="bad-control")
+
+        error = excinfo.value.as_event()
+        assert error.code == "raw_uds_malformed_json_control"
+        assert error.message == "bad control frame"
+        assert error.fatal is False
+        assert error.retryable is True
+        assert error.metadata == {"original_code": "raw_uds_invalid_json"}
+
+    asyncio.run(scenario())
+
+
 def test_async_raw_uds_client_clears_connection_after_close_wait_failure() -> None:
     class NoopReader:
         pass
