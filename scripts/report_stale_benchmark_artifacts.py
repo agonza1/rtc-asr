@@ -502,6 +502,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Emit matching stale artifacts as CSV for spreadsheet cleanup review",
     )
+    parser.add_argument(
+        "--markdown",
+        action="store_true",
+        help="Emit matching stale artifacts as a Markdown table for issues and PRs",
+    )
     parser.add_argument("--count-only", action="store_true", help="Print only the matching stale artifact count")
     parser.add_argument(
         "--total-bytes-only",
@@ -2029,6 +2034,61 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
     return output.getvalue()
 
 
+def markdown_cell(value: Any) -> str:
+    text = "unknown" if value is None or value == "" else str(value)
+    return text.replace("|", "\\|").replace("\n", " ")
+
+
+def render_markdown(
+    stale: list[dict[str, Any]],
+    *,
+    total_count: int | None = None,
+    total_size_bytes: int | None = None,
+) -> str:
+    if not stale:
+        if total_count:
+            return (
+                f"Found {total_count} stale benchmark artifacts, but 0 are shown "
+                "because --limit omitted all matches."
+            )
+        return "No stale benchmark artifacts found."
+
+    summary = stale_summary(stale)
+    total_count = total_count if total_count is not None else summary["count"]
+    lines = [
+        "Found {count} stale benchmark {noun} ({size}, {bytes} bytes).".format(
+            count=summary["count"],
+            noun="artifact" if summary["count"] == 1 else "artifacts",
+            size=summary["total_size"],
+            bytes=summary["total_size_bytes"],
+        ),
+        "",
+        "| Artifact | Status | Age | Size | Current artifact | Detail page |",
+        "| --- | --- | ---: | ---: | --- | --- |",
+    ]
+    for entry in stale:
+        lines.append(
+            "| {artifact_path} | {status} | {age} | {size} | {current} | {detail} |".format(
+                artifact_path=markdown_cell(entry.get("artifact_path")),
+                status=markdown_cell(entry.get("status")),
+                age=markdown_cell(entry.get("age") or format_age_days(entry.get("age_days"))),
+                size=markdown_cell(entry.get("artifact_size") or format_bytes(entry.get("artifact_size_bytes"))),
+                current=markdown_cell(entry.get("current_artifact_path") or "untracked"),
+                detail=markdown_cell(entry.get("detail_page_path") or "none"),
+            )
+        )
+    if total_count > summary["count"]:
+        suffix = ""
+        if total_size_bytes is not None:
+            omitted_size_bytes = max(total_size_bytes - summary["total_size_bytes"], 0)
+            suffix = f" ({format_bytes(omitted_size_bytes)}, {omitted_size_bytes} bytes)"
+        omitted_count = total_count - summary["count"]
+        omitted_noun = "artifact" if omitted_count == 1 else "artifacts"
+        lines.append("")
+        lines.append(f"... {omitted_count} more stale {omitted_noun}{suffix} omitted by --limit.")
+    return "\n".join(lines)
+
+
 def limit_summary_buckets(
     buckets: list[dict[str, Any]],
     limit: int | None,
@@ -2992,6 +3052,15 @@ def main(argv: list[str] | None = None) -> int:
         print(render_json_lines(limited_stale))
     elif args.csv:
         sys.stdout.write(render_csv(limited_stale))
+    elif args.markdown:
+        matching_summary = stale_summary(stale)
+        print(
+            render_markdown(
+                limited_stale,
+                total_count=len(stale),
+                total_size_bytes=matching_summary["total_size_bytes"],
+            )
+        )
     else:
         matching_summary = stale_summary(stale)
         print(
