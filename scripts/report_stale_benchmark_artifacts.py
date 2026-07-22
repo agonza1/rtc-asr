@@ -32,6 +32,8 @@ SUMMARY_GROUPS = (
     "track-state",
     "detail-page",
     "detail-page-name",
+    "detail-page-dir",
+    "detail-page-extension",
     "measured-month",
     "age-bucket",
 )
@@ -54,6 +56,8 @@ SUMMARY_GROUP_KEYS = {
     "track-state": "by_track_state",
     "detail-page": "by_detail_page_path",
     "detail-page-name": "by_detail_page_name",
+    "detail-page-dir": "by_detail_page_dir",
+    "detail-page-extension": "by_detail_page_extension",
     "measured-month": "by_measured_month",
     "age-bucket": "by_age_bucket",
 }
@@ -1461,6 +1465,8 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_track_state: dict[str, dict[str, Any]] = {}
     by_detail_page_path: dict[str, dict[str, Any]] = {}
     by_detail_page_name: dict[str, dict[str, Any]] = {}
+    by_detail_page_dir: dict[str, dict[str, Any]] = {}
+    by_detail_page_extension: dict[str, dict[str, Any]] = {}
     by_measured_month: dict[str, dict[str, Any]] = {}
     by_age_bucket: dict[str, dict[str, Any]] = {}
     for entry in stale:
@@ -1702,6 +1708,38 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         detail_name_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         detail_name_bucket["total_size"] = format_bytes(detail_name_bucket["total_size_bytes"])
 
+        detail_page_dir = (
+            str(Path(entry.get("detail_page_path") or "").parent)
+            if entry.get("detail_page_path")
+            else "missing"
+        )
+        detail_dir_bucket = by_detail_page_dir.setdefault(
+            detail_page_dir,
+            {
+                "detail_page_dir": detail_page_dir,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        detail_dir_bucket["count"] += 1
+        detail_dir_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        detail_dir_bucket["total_size"] = format_bytes(detail_dir_bucket["total_size_bytes"])
+
+        detail_page_extension = Path(entry.get("detail_page_path") or "").suffix.lower() or "none"
+        detail_extension_bucket = by_detail_page_extension.setdefault(
+            detail_page_extension,
+            {
+                "detail_page_extension": detail_page_extension,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        detail_extension_bucket["count"] += 1
+        detail_extension_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        detail_extension_bucket["total_size"] = format_bytes(detail_extension_bucket["total_size_bytes"])
+
         month = measured_month(entry.get("measured_at"))
         month_bucket = by_measured_month.setdefault(
             month,
@@ -1801,6 +1839,14 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_detail_page_name": sorted(
             by_detail_page_name.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_name"]),
+        ),
+        "by_detail_page_dir": sorted(
+            by_detail_page_dir.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_dir"]),
+        ),
+        "by_detail_page_extension": sorted(
+            by_detail_page_extension.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_extension"]),
         ),
         "by_measured_month": sorted(
             by_measured_month.values(),
@@ -2893,6 +2939,74 @@ def render_summary(
         append_omitted_summary_buckets(
             lines,
             summary["by_detail_page_name"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+    if "detail-page-dir" in selected_groups and summary["by_detail_page_dir"]:
+        lines.append("By detail page directory:")
+    if "detail-page-dir" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_detail_page_dir"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {detail_page_dir}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    detail_page_dir=bucket["detail_page_dir"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_detail_page_dir"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+    if "detail-page-extension" in selected_groups and summary["by_detail_page_extension"]:
+        lines.append("By detail page extension:")
+    if "detail-page-extension" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_detail_page_extension"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {detail_page_extension}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    detail_page_extension=bucket["detail_page_extension"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_detail_page_extension"],
             shown_buckets,
             limit=summary_limit,
             sort_by=summary_sort,
