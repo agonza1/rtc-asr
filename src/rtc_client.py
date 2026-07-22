@@ -350,6 +350,15 @@ class AsyncLocalSttClient:
             raise RuntimeError(f"Expected pong event, got: {pong_event}")
         return pong_event
 
+    async def pong(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> None:
+        websocket = self._require_websocket()
+        payload: dict[str, Any] = {"type": "pong"}
+        if ping_id is not None:
+            payload["ping_id"] = ping_id
+        if timestamp_ms is not None:
+            payload["timestamp_ms"] = timestamp_ms
+        await websocket.send(json.dumps(payload))
+
     async def recv_event(
         self,
         *,
@@ -488,6 +497,14 @@ class AsyncRawUdsLocalSttClient:
         if pong_event.get("type") != "pong":
             raise RuntimeError(f"Expected pong event, got: {pong_event}")
         return pong_event
+
+    async def pong(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> None:
+        payload: dict[str, Any] = {"type": "pong"}
+        if ping_id is not None:
+            payload["ping_id"] = ping_id
+        if timestamp_ms is not None:
+            payload["timestamp_ms"] = timestamp_ms
+        await self._send_client_message(payload)
 
     async def recv_event(
         self,
