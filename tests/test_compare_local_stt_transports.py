@@ -60,6 +60,7 @@ def write_artifact(
                             "error_handling": [
                                 "bad_frame_type",
                                 "malformed_json_control",
+                                "invalid_json_payload",
                                 "oversized_payload",
                                 "incomplete_frame",
                                 "frame_length_mismatch",
@@ -68,6 +69,7 @@ def write_artifact(
                             "error_codes": [
                                 "raw_uds_unsupported_frame_type",
                                 "raw_uds_malformed_json_control",
+                                "raw_uds_invalid_json",
                                 "raw_uds_payload_too_large",
                                 "raw_uds_incomplete_frame",
                                 "raw_uds_frame_length_mismatch",
@@ -844,6 +846,7 @@ def test_compare_artifacts_accepts_raw_uds_contract_aliases(tmp_path: Path) -> N
         "error_handling": [
             "bad_frame_type",
             "malformed_json_control",
+            "invalid_json_payload",
             "oversized_payload",
             "incomplete_frame",
             "frame_length_mismatch",
@@ -1238,11 +1241,11 @@ def test_compare_artifacts_requires_raw_uds_error_handling_coverage(tmp_path: Pa
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["raw_uds_error_handling_gaps"] == [
-        "raw_uds missing protocol-error handling coverage: malformed_json_control,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type"
+        "raw_uds missing protocol-error handling coverage: malformed_json_control,invalid_json_payload,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type"
     ]
     assert comparison["blocking_gaps"] == comparison["raw_uds_error_handling_gaps"]
     assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
-        "error_handling:raw_uds missing protocol-error handling coverage: malformed_json_control,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type"
+        "error_handling:raw_uds missing protocol-error handling coverage: malformed_json_control,invalid_json_payload,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type"
     ]
     assert comparison["recommendation"] == (
         "Re-run raw UDS benchmarks with protocol-error handling coverage before recommending raw UDS."
@@ -1259,6 +1262,7 @@ def test_compare_artifacts_accepts_raw_uds_error_handling_from_benchmark_contrac
         "error_handling": [
             "bad_frame_type",
             "malformed_json_control",
+            "invalid_json_payload",
             "oversized_payload",
             "incomplete_frame",
             "frame_length_mismatch",
@@ -1273,6 +1277,7 @@ def test_compare_artifacts_accepts_raw_uds_error_handling_from_benchmark_contrac
     assert comparison["transports"]["raw_uds"]["error_handling"] == [
         "bad_frame_type",
         "malformed_json_control",
+        "invalid_json_payload",
         "oversized_payload",
         "incomplete_frame",
         "frame_length_mismatch",
@@ -1291,11 +1296,11 @@ def test_compare_artifacts_requires_raw_uds_error_code_coverage(tmp_path: Path) 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
 
     assert comparison["raw_uds_error_code_gaps"] == [
-        "raw_uds missing protocol-error code coverage: raw_uds_malformed_json_control,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type"
+        "raw_uds missing protocol-error code coverage: raw_uds_malformed_json_control,raw_uds_invalid_json,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type"
     ]
     assert comparison["blocking_gaps"] == comparison["raw_uds_error_code_gaps"]
     assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
-        "error_codes:raw_uds missing protocol-error code coverage: raw_uds_malformed_json_control,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type"
+        "error_codes:raw_uds missing protocol-error code coverage: raw_uds_malformed_json_control,raw_uds_invalid_json,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type"
     ]
     assert comparison["recommendation"] == (
         "Re-run raw UDS benchmarks with protocol-error code coverage before recommending raw UDS."
@@ -2182,7 +2187,7 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| Raw UDS | -5.0 ms | missing | baseline |" in markdown
     assert "| tcp_ws | ws://localhost/v1/stt/stream | missing | missing | missing | missing | missing | missing |" in markdown
     assert "| uds_ws | missing | missing | missing | missing | missing | missing | missing | missing |" in markdown
-    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | 8388608 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type | raw_uds_unsupported_frame_type,raw_uds_malformed_json_control,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type | True |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | 8388608 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,invalid_json_payload,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type | raw_uds_unsupported_frame_type,raw_uds_malformed_json_control,raw_uds_invalid_json,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type | True |" in markdown
     assert "Benchmark inputs:" in markdown
     assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
@@ -2220,7 +2225,7 @@ def test_main_writes_markdown_summary(tmp_path: Path) -> None:
     assert "- Complete: True" in markdown
     assert "- Minimum observed runs: 3" in markdown
     assert "- Recorded runs: raw_uds=3,tcp_ws=3,uds_ws=3" in markdown
-    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | 8388608 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type | raw_uds_unsupported_frame_type,raw_uds_malformed_json_control,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type | True |" in markdown
+    assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | 8388608 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,invalid_json_payload,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type | raw_uds_unsupported_frame_type,raw_uds_malformed_json_control,raw_uds_invalid_json,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type | True |" in markdown
     assert "Minimum required win: 5 ms" in markdown
 
 
@@ -2276,6 +2281,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "error_codes": [
                     "raw_uds_unsupported_frame_type",
                     "raw_uds_malformed_json_control",
+                    "raw_uds_invalid_json",
                     "raw_uds_payload_too_large",
                     "raw_uds_incomplete_frame",
                     "raw_uds_frame_length_mismatch",
@@ -2284,6 +2290,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "error_handling": [
                     "bad_frame_type",
                     "malformed_json_control",
+                    "invalid_json_payload",
                     "oversized_payload",
                     "incomplete_frame",
                     "frame_length_mismatch",
