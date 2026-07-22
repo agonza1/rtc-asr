@@ -1,449 +1,357 @@
 # Deployment Guide
 
-This guide covers deploying the Realtime ASR Service to production environments.
+This guide describes the deployment paths that `rtc-asr` supports today and the additional controls required before exposing it in production.
+
+`rtc-asr` is a model-serving sidecar: it accepts normalized audio over HTTP or WebSocket and runs one configured ASR backend. It does not provide TLS, authentication, rate limiting, a model registry, or a WebRTC media edge. Put those responsibilities in the surrounding platform.
+
+## Deployment status
+
+The repository currently ships:
+
+- a Python 3.11 application entrypoint;
+- a CPU-oriented Dockerfile;
+- a Docker Compose stack for the ASR service and optional browser Pipecat demo;
+- liveness and readiness endpoints;
+- persistent Hugging Face cache mounting in Compose;
+- native local paths for Apple Silicon MLX backends.
+
+The repository does **not** currently publish an official production image, Kubernetes/Helm manifests, Prometheus metrics, or an authenticated public API. Treat the checked-in Compose stack as a local/reference deployment rather than a complete internet-facing production platform.
+
+## Choose a runtime
+
+| Target | Recommended backend | Deployment path | Notes |
+| --- | --- | --- | --- |
+| General CPU | `faster-whisper` with `base.en` and `int8` | Python or Docker Compose | Best default production-style baseline |
+| CPU comparison | `qwen-asr`, `parakeet`, or `parakeet-nemo` | Backend-specific Compose build | Higher memory/startup cost; validate on the intended host |
+| Apple Silicon | `parakeet-mlx` or `voxtral-mlx` | Native Python MLX environment | The checked-in Linux container is not the MLX deployment path |
+| NVIDIA GPU | Backend-specific | Custom CUDA image | The checked-in Dockerfile installs CPU-only PyTorch and is not GPU-ready |
+
+Resource requirements vary by backend and model. Do not use a single CPU, RAM, or GPU recommendation for every profile. Benchmark the exact backend, model, device, concurrency, and audio cadence before setting production limits.
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
-- GPU-enabled host (recommended) or CPU-only environment
-- 16GB+ RAM
-- Port 8080 available
+For the default CPU Compose path:
 
-## Quick Deployment
+- Docker Engine with the Compose plugin;
+- enough disk space for the image and model cache;
+- outbound access to the selected model registry during initial download, unless weights are pre-baked;
+- port `8080` for the ASR service;
+- port `8090` only when running the optional browser demo.
+
+For local Python, use Python 3.11 or newer and install `requirements.txt` in a virtual environment.
+
+## Quick start: CPU Compose
 
 ```bash
-# Build image
-docker compose build
-
-# Start service
-docker compose up -d
-
-# Check status
-docker compose ps
-docker compose logs -f
+git clone https://github.com/agonza1/rtc-asr.git
+cd rtc-asr
+make setup
 ```
 
-## Production Configuration
-
-### Environment Variables
-
-Create `.env.production`:
+`make setup` creates `.env` from `config.example` when it does not already exist. For a warmed production-style CPU baseline, set:
 
 ```env
-# Model Configuration
-MODEL_NAME=Qwen3-ASR-1.7B
-USE_WHISPER_FALLBACK=true
-
-# Service Configuration
-HOST=0.0.0.0
-PORT=8080
-
-# Audio Configuration
-SAMPLE_RATE=16000
-CHUNK_SIZE=1024
-BUFFER_SIZE=2
-
-# GPU Configuration
-CUDA_VISIBLE_DEVICES=0
-GPU_MEMORY_FRACTION=0.8
-
-# Security
-ASR_API_KEY=your-api-key
-ASR_API_SECRET=your-api-secret
-
-# CORS
-CORS_ORIGINS=https://yourdomain.com,*
-
-# Logging
-LOG_LEVEL=info
-LOG_FORMAT=json
+ASR_BACKEND=faster-whisper
+ASR_MODEL_SIZE=base.en
+ASR_DEVICE=cpu
+ASR_COMPUTE_TYPE=int8
+ASR_PRELOAD_MODEL=true
+ASR_FAIL_FAST=true
 ```
 
-### Docker Compose Production
-
-Create `docker-compose.prod.yml`:
-
-```yaml
-version: '3.8'
-
-services:
-  asr:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        MODEL_NAME: ${MODEL_NAME}
-    image: realtime-asr:latest
-    container_name: realtime-asr
-    environment:
-      - MODEL_NAME=${MODEL_NAME}
-      - USE_WHISPER_FALLBACK=${USE_WHISPER_FALLBACK:-false}
-      - ASR_API_KEY=${ASR_API_KEY}
-      - ASR_API_SECRET=${ASR_API_SECRET}
-    ports:
-      - "8080:8080"
-    volumes:
-      - asr-models:/models
-      - ./config:/config:ro
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-        limits:
-          cpus: ${CPU_LIMIT:-4}
-          memory: ${MEMORY_LIMIT:-8G}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    restart: unless-stopped
-
-volumes:
-  asr-models:
-```
-
-## Cloud Deployment
-
-### AWS EC2
+Start only the ASR service:
 
 ```bash
-# SSH to instance
-ssh -i key.pem ec2-user@instance.ip
-
-# Install Docker
-sudo yum install docker
-sudo systemctl start docker
-sudo systemctl enable docker
-
-# Clone repository
-git clone https://github.com/qwen/realtime-asr.git
-cd realtime-asr
-
-# Configure
-cp .env.example .env.production
-vim .env.production
-
-# Build and run
-docker compose -f docker-compose.prod.yml up -d
-
-# Verify
-curl http://instance.ip:8080/health
+docker compose up -d --build asr-service
+docker compose ps
+docker compose logs -f asr-service
 ```
 
-### AWS Lambda (Serverless)
-
-```python
-# lambda_function.py
-import json
-import base64
-import boto3
-import requests
-
-def lambda_handler(event, context):
-    # Invoke ASR service
-    response = requests.post(
-        'http://your-asr-service:8080/api/transcribe',
-        json=event['body']
-    )
-    
-    return {
-        'statusCode': 200,
-        'body': json.dumps(response.json())
-    }
-```
-
-### Kubernetes
-
-```yaml
-# deployment.yml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: realtime-asr
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: realtime-asr
-  template:
-    metadata:
-      labels:
-        app: realtime-asr
-    spec:
-      containers:
-      - name: asr
-        image: realtime-asr:latest
-        ports:
-        - containerPort: 8080
-        env:
-        - name: MODEL_NAME
-          value: "Qwen3-ASR-1.7B"
-        resources:
-          limits:
-            memory: "4Gi"
-            cpu: "1"
-          requests:
-            memory: "2Gi"
-            cpu: "500m"
-        volumeMounts:
-        - name: models
-          mountPath: /models
-      volumes:
-      - name: models
-        emptyDir: {}
-```
-
-## Monitoring Setup
-
-### Prometheus
-
-```yaml
-# prometheus.yml
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'asr'
-    static_configs:
-      - targets: ['asr:8080']
-```
-
-### Grafana Dashboard
-
-```json
-{
-  "dashboard": {
-    "title": "Realtime ASR Metrics",
-    "panels": [
-      {
-        "title": "Request Latency",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(asr_latency_bucket[5m]))"
-          }
-        ]
-      },
-      {
-        "title": "Active Connections",
-        "targets": [
-          {
-            "expr": "asr_connections_active"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-## Security Hardening
-
-### 1. Network Policies
-
-```yaml
-# k8s network-policy.yml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-asr-traffic
-spec:
-  podSelector:
-    matchLabels:
-      app: realtime-asr
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: frontend
-    ports:
-    - protocol: TCP
-      port: 8080
-```
-
-### 2. Rate Limiting
-
-```python
-# In FastAPI app
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(CORSMiddleware, allow_origins=["*"])
-
-# Rate limiter
-from slowapi import RateLimiter
-from slowapi.util import get_remote_address
-
-app.state.rate_limiter = RateLimiter(
-    allowed_requests=100,
-    period=60,
-    key_func=get_remote_address
-)
-```
-
-### 3. Secrets Management
+Validate liveness, readiness, and the active model:
 
 ```bash
-# Use env vars or Kubernetes Secrets
-kubectl create secret generic asr-secrets \
-  --from-literal=api-key=your-key \
-  --from-literal=api-secret=your-secret
+curl -f http://127.0.0.1:8080/health
+curl -f http://127.0.0.1:8080/ready
+curl -f http://127.0.0.1:8080/api/models
 ```
 
-## Backup Strategy
+`docker compose up -d --build` without a service name also starts the browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr`. That demo is intended for local validation, not as a production frontend.
 
-### 1. Model Backup
+## Local Python
 
 ```bash
-# Backup models
-docker save realtime-asr > asr-model.tar.gz
-
-# Restore
-docker load < asr-model.tar.gz
+python3 -m venv .venv
+. .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+cp config.example .env
+ASR_PRELOAD_MODEL=true ASR_FAIL_FAST=true \
+  uvicorn src.main:app --host 0.0.0.0 --port 8080
 ```
 
-### 2. Configuration Backup
+The default dependency set is pinned for the Qwen-compatible runtime. The Transformers Parakeet path needs the documented newer Hugging Face pair:
 
 ```bash
-# Backup configuration
-tar -czf config-backup.tar.gz config/
+pip install --upgrade --no-deps huggingface-hub==1.18.0 transformers==5.10.2
 ```
 
-### 3. Automated Backup
+See `README.md` and `docs/troubleshooting.md` before selecting a non-default backend.
+
+## Configuration
+
+Copy `config.example` to `.env` for Compose. Docker Compose reads `.env` automatically; if you use a differently named file, pass it explicitly with `--env-file`.
+
+### Core service settings
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `HOST` | `0.0.0.0` | Application listen address outside the Compose override |
+| `PORT` | `8080` | Application listen port |
+| `CORS_ORIGINS` | `*` | Comma-separated browser origins; restrict this when browser access is required |
+| `SAMPLE_RATE` | `16000` | Default audio sample rate |
+| `STREAM_MAX_BUFFER_BYTES` | `1048576` | Maximum buffered audio per stream |
+| `ASR_PRELOAD_MODEL` | `false` | Load and validate the model during startup |
+| `ASR_FAIL_FAST` | `false` | Exit startup when preload fails |
+
+Use both preload settings in production so a pod/container cannot receive traffic before its model is usable.
+
+### Default faster-whisper settings
+
+| Variable | Default |
+| --- | --- |
+| `ASR_BACKEND` | `faster-whisper` |
+| `ASR_MODEL_SIZE` | `base.en` |
+| `ASR_DEVICE` | `cpu` |
+| `ASR_COMPUTE_TYPE` | `int8` |
+| `ASR_VAD_FILTER` | `true` |
+
+`MODEL_NAME` remains a compatibility alias for `ASR_MODEL_SIZE`, and `AUDIO_SAMPLE_RATE` remains an alias for `SAMPLE_RATE`. New deployments should use the primary names.
+
+### Local STT transport
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `LOCAL_STT_SOCKET_MODE` | `tcp` | `tcp` or colocated `uds` WebSocket serving |
+| `LOCAL_STT_UDS_PATH` | `/run/rtc-asr/stt.sock` | Unix socket path when `LOCAL_STT_SOCKET_MODE=uds` |
+| `LOCAL_STT_RAW_UDS_ENABLED` | `false` | Enables the experimental raw UDS listener |
+| `LOCAL_STT_RAW_UDS_PATH` | `/run/rtc-asr/stt.raw.sock` | Experimental raw UDS socket path |
+| `LOCAL_STT_TARGET_SAMPLE_RATE` | `16000` | Required Local STT sample rate |
+
+Keep TCP WebSocket as the default unless a colocated benchmark proves that UDS materially improves p95 latency. Keep raw UDS experimental.
+
+Backend-specific Qwen, Parakeet, NeMo, and Voxtral variables are documented in `config.example`, `README.md`, and `docs/troubleshooting.md`.
+
+## Backend-specific Compose builds
+
+The Dockerfile has optional dependency lanes controlled by build arguments.
+
+Keep `ASR_PRELOAD_MODEL=true` and `ASR_FAIL_FAST=true` in `.env` for these profiles.
+
+Transformers Parakeet:
 
 ```bash
-#!/bin/bash
-# backup.sh
-BACKUP_DIR=/backup/asr
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-
-docker save realtime-asr | gzip > ${BACKUP_DIR}/models-${TIMESTAMP}.tar.gz
-tar -czf ${BACKUP_DIR}/config-${TIMESTAMP}.tar.gz config/
-
-# Clean old backups
-find ${BACKUP_DIR} -name "*.tar.gz" -mtime +7 -delete
+ENABLE_PARAKEET_RUNTIME=1 \
+ASR_BACKEND=parakeet \
+docker compose up -d --build asr-service
 ```
 
-## Scaling Strategy
-
-### Horizontal Scaling
+NeMo Parakeet:
 
 ```bash
-# Scale replicas
-docker compose scale asr=5
-
-# Load balancer
-haproxy -f /etc/haproxy/haproxy.cfg -D
+ENABLE_NEMO_RUNTIME=1 \
+ASR_BACKEND=parakeet-nemo \
+docker compose up -d --build asr-service
 ```
 
-### Vertical Scaling
+Use the benchmark targets in the `Makefile` to reproduce the repository's known backend-specific build combinations before converting them into an environment-specific production image.
 
-```yaml
-# Increase resources
-resources:
-  limits:
-    memory: "8Gi"
-    cpu: "2"
-  requests:
-    memory: "4Gi"
-    cpu: "1"
-```
+## Apple Silicon MLX
 
-## Health Checks
+Run MLX backends natively on an Apple Silicon host:
 
 ```bash
-# Basic health check
-curl http://localhost:8080/health
-
-# Detailed health check
-curl http://localhost:8080/api/metrics
-
-# WebSocket health check
-timeout 5 bash -c 'echo | nc localhost 8080'
+make mlx-venv
+. .venv-mlx/bin/activate
+ASR_BACKEND=parakeet-mlx \
+ASR_DEVICE=apple-silicon \
+ASR_PRELOAD_MODEL=true \
+ASR_FAIL_FAST=true \
+uvicorn src.main:app --host 127.0.0.1 --port 8080
 ```
 
-## Rollback Strategy
+For experimental Voxtral MLX, use `ASR_BACKEND=voxtral-mlx` and review its model and transcription-delay settings in `config.example`.
+
+## NVIDIA GPU deployments
+
+The checked-in Dockerfile installs PyTorch from the CPU wheel index. Setting `CUDA_VISIBLE_DEVICES` or adding a Compose GPU reservation does not turn that image into a CUDA runtime.
+
+A GPU deployment needs a separately validated image that includes:
+
+- a compatible NVIDIA CUDA runtime base;
+- a CUDA-enabled PyTorch build;
+- NVIDIA Container Toolkit on the host;
+- the dependencies for the selected ASR backend;
+- an explicit GPU resource reservation and scheduling policy;
+- model-specific memory and concurrency limits.
+
+Do not document or publish a GPU profile until it is built and exercised in CI or on the target host.
+
+## Production image workflow
+
+Build and publish immutable tags to the registry used by your environment:
 
 ```bash
-# Scale back to stable version
-docker compose scale asr=0
-
-# Pull old image
-docker pull realtime-asr:v0.9.0
-
-# Scale new version
-docker compose scale asr=1
+docker build -t registry.example.com/rtc-asr:0.1.0 .
+docker push registry.example.com/rtc-asr:0.1.0
 ```
 
-## Performance Tuning
+Prefer a release tag or image digest over `latest`. The current image is CPU-oriented.
 
-### 1. GPU Optimization
+For a production Compose host, use the published image, mount a persistent model cache, and bind the application to a private interface or place it behind an authenticated proxy. Do not run the browser demo unless it is explicitly needed.
+
+## Model download, preload, and warm-up
+
+Most backends have substantial cold-start cost from downloading weights, loading the model, compiling kernels, and warming caches.
+
+Production sequence:
+
+1. Persist or pre-bake the model cache.
+2. Set `ASR_PRELOAD_MODEL=true` and `ASR_FAIL_FAST=true`.
+3. Wait for `GET /ready` to return `200` before routing traffic.
+4. Send one representative warm-up transcription before measuring latency or shifting production traffic.
+5. Keep the process resident; do not use scale-to-zero when predictable first-request latency matters.
+
+The Compose stack stores Hugging Face data under `./.cache/huggingface` on the host. Protect any `HF_TOKEN` or `HUGGINGFACE_HUB_TOKEN` through your normal secret manager; do not commit them to `.env`.
+
+## Health and readiness
+
+| Endpoint | Use | Behavior |
+| --- | --- | --- |
+| `GET /health` | Liveness and diagnostic metadata | Reports backend/model state without acting as a strict traffic gate |
+| `GET /ready` | Readiness and startup gate | Returns `503` when the configured preloaded backend is unavailable |
+| `GET /api/models` | Capability inspection | Reports the active backend, model, preload state, and protocol catalog |
+
+For Kubernetes or another orchestrator, use `/health` for liveness and `/ready` for startup/readiness. Allow enough startup time for the selected model to download and preload. The reference Compose health check allows up to ten minutes for model startup.
+
+## API and streaming endpoints
+
+- `POST /api/transcribe`: base64-encoded one-shot audio;
+- `POST /api/transcribe/file`: uploaded audio file;
+- `WebSocket /v1/stt/stream`: recommended Local STT v1 path for new integrations;
+- `WebSocket /ws/stream`: legacy buffered WebSocket path.
+
+The Local STT v1 protocol is still advertised as preview by the service. Pin client and server versions together until that status changes. See `docs/local-stt-v1.md` for the exact lifecycle and PCM16 contract.
+
+## Security boundary
+
+`rtc-asr` currently has no built-in authentication, authorization, TLS termination, or rate limiting. Do not expose port `8080` directly to the public internet.
+
+Use one or more of:
+
+- a private VPC/VNet, cluster network, or localhost-only binding;
+- an authenticated API gateway or reverse proxy;
+- mTLS between services;
+- network policies or security groups;
+- request size, connection, and rate limits at the edge;
+- `wss://` termination for remote WebSocket clients.
+
+Set `CORS_ORIGINS` to an explicit comma-separated allowlist if browsers call the service. CORS is not an authentication mechanism.
+
+For WebSocket proxies/load balancers, enable connection upgrades, set an idle timeout longer than the expected session, and drain existing connections during rollout.
+
+## Kubernetes requirements
+
+This repository does not currently ship a production Kubernetes manifest or Helm chart. A deployment maintained by the consuming environment should include:
+
+- an image pulled from a real registry using an immutable tag/digest;
+- one model-serving process per container unless multi-process memory use has been measured;
+- startup and readiness probes on `/ready`;
+- a liveness probe on `/health`;
+- model-specific CPU, memory, and optional GPU requests/limits;
+- node selectors/tolerations for accelerator workloads;
+- a persistent or pre-baked model cache when restart download time is unacceptable;
+- secrets for gated model access;
+- a Service plus TLS/authenticated ingress or an internal-only service boundary;
+- WebSocket-aware timeouts and graceful connection draining;
+- a rolling strategy sized for the memory cost of temporarily running old and new models together.
+
+Do not copy generic resource numbers across backends. Measure peak RSS/GPU memory and sustained concurrency first.
+
+## Scaling and capacity
+
+The service loads one configured backend/model per process. Adding Uvicorn workers can load another full model copy, so prefer one worker per container and scale replicas only after measuring memory and model thread-safety.
+
+Capacity planning should include:
+
+- cold and warmed startup time;
+- REST mean/p95 and Local STT first-interim/final latency;
+- concurrent streams per replica;
+- peak RSS or GPU memory;
+- CPU/GPU utilization and thermal behavior;
+- WebSocket connection duration and reconnect behavior;
+- model-download pressure during rollout.
+
+The application does not currently expose admission-control or Prometheus metrics. Use external connection/request limits and validate overload behavior before increasing replicas.
+
+## Observability
+
+Current operational signals are:
+
+- container/application logs;
+- `/health` and `/ready`;
+- `/api/models` backend and preload metadata;
+- the checked-in benchmark tooling and artifacts.
+
+There is no `/metrics` or `/api/metrics` endpoint today. Do not configure Prometheus scraping until metrics instrumentation is implemented. At the platform layer, collect container CPU, memory, GPU, restart, probe, and network metrics.
+
+## Rollback
+
+Rollback with immutable image references, not mutable `latest` tags.
+
+For Compose, restore the previous image tag in the environment-specific Compose file and run:
 
 ```bash
-# Pin GPU memory
-nvidia-smi -i 0 -pm 1 -ac 1 -ldc 0 -lc 0
-
-# Set memory fraction
-export CUDA_MEMORY_FRACTION=0.8
+docker compose pull asr-service
+docker compose up -d asr-service
+curl -f http://127.0.0.1:8080/ready
 ```
 
-### 2. Network Optimization
+For Kubernetes, use the platform's normal rollout history and verify `/ready` before restoring traffic.
+
+Model caches are rebuildable and are not a substitute for container images. Back up environment-specific configuration and secret-manager state through the surrounding platform; the ASR service itself does not own durable application data.
+
+## Troubleshooting
 
 ```bash
-# Use fast storage
-mke2fs -t xfs /dev/sdX
-
-# Enable SSD cache
-echo 1 > /proc/sys/vm/vfs_cache_pressure
-```
-
-## Troubleshooting Deployment
-
-### Service Won't Start
-
-```bash
-# Check logs
-docker logs realtime-asr
-
-# Check health
-docker inspect realtime-asr | grep Health
-
-# Verify resources
+docker compose ps
+docker compose logs -f asr-service
+curl -i http://127.0.0.1:8080/health
+curl -i http://127.0.0.1:8080/ready
+curl -i http://127.0.0.1:8080/api/models
 docker stats
 ```
 
-### High Memory Usage
+Common causes of a `503` readiness response are missing backend dependencies, incompatible runtime versions, inaccessible model weights, or an unsupported device/backend combination. The response includes `preload_error`, `backend`, and `model` fields.
 
-```bash
-# Increase memory limit
-docker update --memory=8g realtime-asr
+See:
 
-# Check model loading
-docker compose exec asr python -c "import torch; print(torch.cuda.memory_allocated())"
-```
+- [README](./README.md)
+- [API Reference](./docs/api-reference.md)
+- [Local STT v1](./docs/local-stt-v1.md)
+- [Pipecat Integration](./docs/pipecat-integration.md)
+- [LiveKit Integration](./docs/livekit-integration.md)
+- [Troubleshooting](./docs/troubleshooting.md)
 
-### WebSocket Connection Issues
+## Production readiness checklist
 
-```bash
-# Check WebSocket endpoint
-curl -v ws://localhost:8080/ws/stream
-
-# Check server logs
-docker logs | grep -i websocket
-```
-
-## Next Steps
-
-- [Setup Guide](./setup.md)
-- [API Reference](./api-reference.md)
-- [Integration Guides](./integrations.md)
-- [Monitoring Setup](./monitoring.md)
-
-## Support
-
-- Email: support@qwen.ai
-- GitHub: https://github.com/qwen/realtime-asr
-- Slack: https://qwen.ai/slack
+- [ ] Backend/model/device combination benchmarked on the target hardware
+- [ ] Immutable image published to the environment's registry
+- [ ] Model cache persistence or pre-baking strategy selected
+- [ ] Preload and fail-fast enabled
+- [ ] Startup, readiness, and liveness probes configured
+- [ ] Private network or authenticated TLS proxy in front of the service
+- [ ] CORS restricted when browser access is required
+- [ ] Request, connection, and upload limits configured externally
+- [ ] WebSocket upgrade, idle timeout, and connection draining verified
+- [ ] Platform CPU/memory/GPU/log monitoring configured
+- [ ] Load, overload, restart, and rollback behavior tested
