@@ -107,6 +107,7 @@ DEFAULT_PROTOCOLS = [
                 "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "frame_format": "uint8_type_uint32_len_le",
+                "keepalive_payloads": ["empty", "json_object"],
                 "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                 "benchmark_command": (
                     "python scripts/bench_local_stt_stream.py --transport raw_uds "
@@ -496,6 +497,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["frame_format"] == "uint8_type_uint32_len_le"
     assert raw_uds["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
     assert raw_uds["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
+    assert raw_uds["keepalive_payloads"] == ["empty", "json_object"]
     assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
     assert raw_uds["benchmark_command"] == (
         "python scripts/bench_local_stt_stream.py --transport raw_uds "
