@@ -5945,6 +5945,40 @@ def test_main_count_only_reports_total_matches_before_limit(monkeypatch, capsys)
     assert capsys.readouterr().out == "2\n"
 
 
+def test_main_total_bytes_only_reports_total_matching_bytes_before_limit(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "label": "Faster Whisper",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "label": "Faster Whisper",
+                    "artifact_size_bytes": 10,
+                },
+                {
+                    "artifact_path": "benchmark-results/qwen.json",
+                    "status": "legacy",
+                    "label": "Qwen",
+                    "artifact_size_bytes": 100,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--total-bytes-only", "--label", "whisper", "--limit", "1"]) == 0
+
+    assert capsys.readouterr().out == "100\n"
+
+
 def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         report_module,
@@ -6180,6 +6214,7 @@ def test_main_rejects_json_lines_with_other_output_modes() -> None:
         (["--json-lines", "--json-summary"], "--json-lines and --json-summary cannot be used together"),
         (["--json-lines", "--paths-only"], "--json-lines and --paths-only cannot be used together"),
         (["--json-lines", "--count-only"], "--count-only and --json-lines cannot be used together"),
+        (["--json-lines", "--total-bytes-only"], "--total-bytes-only and --json-lines cannot be used together"),
         (["--json-lines", "--summary-only"], "--summary-only and --json-lines cannot be used together"),
     ]:
         try:
@@ -6197,6 +6232,7 @@ def test_main_rejects_csv_with_other_output_modes() -> None:
         (["--csv", "--json-lines"], "--csv and --json-lines cannot be used together"),
         (["--csv", "--paths-only"], "--csv and --paths-only cannot be used together"),
         (["--csv", "--count-only"], "--count-only and --csv cannot be used together"),
+        (["--csv", "--total-bytes-only"], "--total-bytes-only and --csv cannot be used together"),
         (["--csv", "--summary-only"], "--summary-only and --csv cannot be used together"),
     ]:
         try:
@@ -6230,12 +6266,31 @@ def test_main_rejects_count_only_with_structured_output_modes() -> None:
         raise AssertionError("count-only path output should be rejected")
 
 
+def test_main_rejects_total_bytes_only_with_other_output_modes() -> None:
+    for args, expected in [
+        (["--total-bytes-only", "--json"], "--total-bytes-only and --json cannot be used together"),
+        (
+            ["--total-bytes-only", "--json-summary"],
+            "--total-bytes-only and --json-summary cannot be used together",
+        ),
+        (["--total-bytes-only", "--paths-only"], "--total-bytes-only and --paths-only cannot be used together"),
+        (["--total-bytes-only", "--count-only"], "--total-bytes-only and --count-only cannot be used together"),
+    ]:
+        try:
+            report_module.main(args)
+        except ValueError as error:
+            assert str(error) == expected
+        else:
+            raise AssertionError(f"{args} should be rejected")
+
+
 def test_main_rejects_summary_only_with_structured_output_modes() -> None:
     for args, expected in [
         (["--summary-only", "--json"], "--summary-only and --json cannot be used together"),
         (["--summary-only", "--json-summary"], "--summary-only and --json-summary cannot be used together"),
         (["--summary-only", "--paths-only"], "--summary-only and --paths-only cannot be used together"),
         (["--summary-only", "--count-only"], "--summary-only and --count-only cannot be used together"),
+        (["--summary-only", "--total-bytes-only"], "--summary-only and --total-bytes-only cannot be used together"),
     ]:
         try:
             report_module.main(args)

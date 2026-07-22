@@ -474,6 +474,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--count-only", action="store_true", help="Print only the matching stale artifact count")
     parser.add_argument(
+        "--total-bytes-only",
+        action="store_true",
+        help="Print only the total bytes across matching stale artifacts",
+    )
+    parser.add_argument(
         "--summary-only",
         action="store_true",
         help="Print only stale artifact totals grouped by track slug",
@@ -2802,6 +2807,18 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--count-only and --csv cannot be used together")
     if args.count_only and args.paths_only:
         raise ValueError("--count-only and --paths-only cannot be used together")
+    if args.total_bytes_only and args.json:
+        raise ValueError("--total-bytes-only and --json cannot be used together")
+    if args.total_bytes_only and args.json_summary:
+        raise ValueError("--total-bytes-only and --json-summary cannot be used together")
+    if args.total_bytes_only and args.json_lines:
+        raise ValueError("--total-bytes-only and --json-lines cannot be used together")
+    if args.total_bytes_only and args.csv:
+        raise ValueError("--total-bytes-only and --csv cannot be used together")
+    if args.total_bytes_only and args.paths_only:
+        raise ValueError("--total-bytes-only and --paths-only cannot be used together")
+    if args.total_bytes_only and args.count_only:
+        raise ValueError("--total-bytes-only and --count-only cannot be used together")
     if args.summary_only and args.json:
         raise ValueError("--summary-only and --json cannot be used together")
     if args.summary_only and args.json_summary:
@@ -2814,6 +2831,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-only and --paths-only cannot be used together")
     if args.summary_only and args.count_only:
         raise ValueError("--summary-only and --count-only cannot be used together")
+    if args.summary_only and args.total_bytes_only:
+        raise ValueError("--summary-only and --total-bytes-only cannot be used together")
     if args.summary_group and not (args.summary_only or args.json_summary):
         raise ValueError("--summary-group requires --summary-only or --json-summary")
     if args.summary_limit is not None and not (args.summary_only or args.json_summary):
@@ -2891,6 +2910,8 @@ def main(argv: list[str] | None = None) -> int:
     limited_stale = limit_artifacts(stale, args.limit)
     if args.count_only:
         print(len(stale))
+    elif args.total_bytes_only:
+        print(stale_summary(stale)["total_size_bytes"])
     elif args.summary_only:
         print(
             render_summary(
