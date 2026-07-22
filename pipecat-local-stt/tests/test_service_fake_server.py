@@ -449,11 +449,13 @@ def test_raw_uds_adapter_encodes_pong_as_pong_frame() -> None:
     ("payload", "expected_frame_type"),
     [
         ({"type": "ping"}, RawUdsFrameType.PING),
+        ({"type": "ping", "metadata": {}}, RawUdsFrameType.PING),
         ({"type": "pong"}, RawUdsFrameType.PONG),
+        ({"type": "pong", "metadata": {}}, RawUdsFrameType.PONG),
     ],
 )
 def test_raw_uds_adapter_encodes_empty_heartbeats_as_compact_frames(
-    payload: dict[str, str],
+    payload: dict[str, Any],
     expected_frame_type: RawUdsFrameType,
 ) -> None:
     writer = FakeRawUdsWriter()
@@ -465,6 +467,18 @@ def test_raw_uds_adapter_encodes_empty_heartbeats_as_compact_frames(
     heartbeat_frame = decode_raw_uds_frame(writer.writes[0])
     assert heartbeat_frame.frame_type == expected_frame_type
     assert heartbeat_frame.payload == b""
+
+
+def test_raw_uds_adapter_omits_empty_heartbeat_metadata() -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(b"")
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    asyncio.run(connection.send(json.dumps({"type": "ping", "ping_id": "p1", "metadata": {}})))
+
+    ping_frame = decode_raw_uds_frame(writer.writes[0])
+    assert ping_frame.frame_type == RawUdsFrameType.PING
+    assert json.loads(ping_frame.payload.decode("utf-8")) == {"type": "ping", "ping_id": "p1"}
 
 
 @pytest.mark.parametrize("payload", ["{", "[]"])
