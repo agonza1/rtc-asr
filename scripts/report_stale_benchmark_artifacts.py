@@ -145,8 +145,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "measured-at-asc",
             "measured-at-desc",
             "path",
+            "path-asc",
             "path-desc",
             "artifact-name",
+            "artifact-name-asc",
             "artifact-name-desc",
             "artifact-dir",
             "artifact-dir-desc",
@@ -1061,11 +1063,11 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "path":
+    if sort_by in {"path", "path-asc"}:
         return sorted(stale, key=lambda entry: entry.get("artifact_path") or "")
     if sort_by == "path-desc":
         return sorted(stale, key=lambda entry: entry.get("artifact_path") or "", reverse=True)
-    if sort_by == "artifact-name":
+    if sort_by in {"artifact-name", "artifact-name-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1386,7 +1388,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
+        "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
     )
 
 
