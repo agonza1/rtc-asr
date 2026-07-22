@@ -6352,3 +6352,24 @@ def test_main_rejects_summary_limit_without_summary_only() -> None:
         assert str(error) == "--summary-limit requires --summary-only or --json-summary"
     else:
         raise AssertionError("--summary-limit without --summary-only should be rejected")
+
+
+def test_main_rejects_summary_range_filters_without_summary_output() -> None:
+    for args, expected in [
+        (["--summary-min-count", "1"], "--summary-min-count requires --summary-only or --json-summary"),
+        (["--summary-max-count", "1"], "--summary-max-count requires --summary-only or --json-summary"),
+        (
+            ["--summary-min-size-bytes", "1"],
+            "--summary-min-size-bytes requires --summary-only or --json-summary",
+        ),
+        (
+            ["--summary-max-size-bytes", "1"],
+            "--summary-max-size-bytes requires --summary-only or --json-summary",
+        ),
+    ]:
+        try:
+            report_module.main(args)
+        except ValueError as error:
+            assert str(error) == expected
+        else:
+            raise AssertionError(f"{args} should require summary output")
