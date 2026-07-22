@@ -189,7 +189,12 @@ class LocalStreamingSTTService(STTService):
     async def _handle_audio(self, audio: bytes) -> None:
         if not audio:
             return
+        audio_duration_ms = self._audio_duration_ms(audio)
         self.metrics.local_stt_audio_frames_received_total += 1
+        self.metrics.local_stt_audio_received_ms_total = round(
+            self.metrics.local_stt_audio_received_ms_total + audio_duration_ms,
+            3,
+        )
         await self._ensure_connection()
         if not self._utterance_active:
             self._append_pre_roll(audio)
@@ -224,6 +229,7 @@ class LocalStreamingSTTService(STTService):
             return
         if self.config.drop_policy == "raise" and self._queued_audio_ms + chunk.duration_ms > self.config.max_send_queue_ms:
             self.metrics.local_stt_audio_frames_dropped_total += 1
+            self._record_dropped_audio_ms(chunk.duration_ms)
             self._update_queue_depth_metric()
             raise asyncio.QueueFull("Local STT send queue is full")
         while self._queued_audio_ms + chunk.duration_ms > self.config.max_send_queue_ms and not self._send_queue.empty():
@@ -231,8 +237,10 @@ class LocalStreamingSTTService(STTService):
             self._send_queue.task_done()
             self._queued_audio_ms = max(0.0, self._queued_audio_ms - dropped.duration_ms)
             self.metrics.local_stt_audio_frames_dropped_total += 1
+            self._record_dropped_audio_ms(dropped.duration_ms)
         if self._queued_audio_ms + chunk.duration_ms > self.config.max_send_queue_ms:
             self.metrics.local_stt_audio_frames_dropped_total += 1
+            self._record_dropped_audio_ms(chunk.duration_ms)
             self._update_queue_depth_metric()
             return
         await self._put_chunk(chunk)
@@ -310,6 +318,10 @@ class LocalStreamingSTTService(STTService):
                     await self._disconnect()
                     return
                 self.metrics.local_stt_audio_frames_sent_total += 1
+                self.metrics.local_stt_audio_sent_ms_total = round(
+                    self.metrics.local_stt_audio_sent_ms_total + chunk.duration_ms,
+                    3,
+                )
                 if self._send_task is not current_task:
                     return
             finally:
@@ -485,6 +497,7 @@ class LocalStreamingSTTService(STTService):
             self._send_queue.task_done()
             self._queued_audio_ms = max(0.0, self._queued_audio_ms - chunk.duration_ms)
             self.metrics.local_stt_audio_frames_dropped_total += 1
+            self._record_dropped_audio_ms(chunk.duration_ms)
         self._update_queue_depth_metric()
 
 
@@ -509,6 +522,12 @@ class LocalStreamingSTTService(STTService):
 
     def _update_queue_depth_metric(self) -> None:
         self.metrics.local_stt_send_queue_depth_ms = round(self._queued_audio_ms, 3)
+
+    def _record_dropped_audio_ms(self, duration_ms: float) -> None:
+        self.metrics.local_stt_audio_dropped_ms_total = round(
+            self.metrics.local_stt_audio_dropped_ms_total + duration_ms,
+            3,
+        )
 
     def _audio_duration_ms(self, audio: bytes) -> float:
         return (len(audio) / self.config.bytes_per_second) * 1000.0

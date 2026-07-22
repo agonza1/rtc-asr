@@ -311,6 +311,7 @@ async def _test_drop_oldest_queue_overflow_is_explicit_and_counted() -> None:
     await service.process_frame(AudioRawFrame(audio=b"d" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
 
     assert service.metrics.local_stt_audio_frames_dropped_total >= 2
+    assert service.metrics.local_stt_audio_dropped_ms_total >= 40
     assert service.metrics.local_stt_send_queue_depth_ms <= 20
     websocket.release_binary_send.set()
     await service.cleanup()
