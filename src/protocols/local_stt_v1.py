@@ -450,6 +450,8 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
     if frame.frame_type == RawUdsFrameType.PING:
         try:
             payload = {} if not frame.payload else decode_raw_uds_json_payload(frame)
+            payload.setdefault("type", "ping")
+            return parse_client_message(payload)
         except LocalSttProtocolError as exc:
             raise LocalSttProtocolError(
                 exc.message,
@@ -458,8 +460,6 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
                 retryable=exc.retryable,
                 metadata={"original_code": exc.code, **exc.metadata},
             ) from exc
-        payload.setdefault("type", "ping")
-        return parse_client_message(payload)
     raise LocalSttProtocolError(
         f"Raw UDS frame type {frame.frame_type.name} is not a client frame",
         code="raw_uds_invalid_client_frame_type",
