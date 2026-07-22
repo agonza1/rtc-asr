@@ -869,6 +869,7 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
             "incomplete_frame",
             "frame_length_mismatch",
             "invalid_client_frame_type",
+            "invalid_server_frame_type",
         ],
         "error_codes": [
             "raw_uds_unsupported_frame_type",
@@ -878,6 +879,7 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
             "raw_uds_incomplete_frame",
             "raw_uds_frame_length_mismatch",
             "raw_uds_invalid_client_frame_type",
+            "raw_uds_invalid_server_frame_type",
         ],
         "shared_stream_runtime": True,
         "benchmark_metrics": [
@@ -1016,6 +1018,7 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
             "incomplete_frame",
             "frame_length_mismatch",
             "invalid_client_frame_type",
+            "invalid_server_frame_type",
         ],
         "error_codes": [
             "raw_uds_unsupported_frame_type",
@@ -1025,6 +1028,7 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
             "raw_uds_incomplete_frame",
             "raw_uds_frame_length_mismatch",
             "raw_uds_invalid_client_frame_type",
+            "raw_uds_invalid_server_frame_type",
         ],
         "shared_stream_runtime": True,
         "benchmark_metrics": [
