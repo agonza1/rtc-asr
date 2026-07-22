@@ -116,6 +116,13 @@ def test_package_exports_raw_uds_codec_contract() -> None:
     assert decoder.feed(encoded)[0] == decoded
 
 
+def test_raw_uds_json_payload_decoder_accepts_outbound_control_frames() -> None:
+    encoded = encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "close"})
+    frame = decode_raw_uds_frame(encoded)
+
+    assert decode_raw_uds_json_payload(frame) == {"type": "close"}
+
+
 @pytest.mark.parametrize("payload", [b"{", b'["not-object"]', b"\xff"])
 def test_raw_uds_json_payload_errors_are_protocol_errors(payload: bytes) -> None:
     frame = RawUdsFrame(frame_type=RawUdsFrameType.JSON_EVENT, payload=payload)

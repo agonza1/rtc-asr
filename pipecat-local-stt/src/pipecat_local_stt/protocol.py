@@ -129,8 +129,18 @@ def decode_raw_uds_frame(data: bytes | bytearray | memoryview) -> RawUdsFrame:
 
 
 def decode_raw_uds_json_payload(frame: RawUdsFrame) -> dict[str, Any]:
-    if frame.frame_type not in {RawUdsFrameType.JSON_EVENT, RawUdsFrameType.ERROR, RawUdsFrameType.PING, RawUdsFrameType.PONG}:
-        raise LocalSTTProtocolError(f"Raw UDS frame type {frame.frame_type.name} does not carry a server JSON event")
+    json_frame_types = {
+        RawUdsFrameType.JSON_CONTROL,
+        RawUdsFrameType.JSON_EVENT,
+        RawUdsFrameType.ERROR,
+        RawUdsFrameType.PING,
+        RawUdsFrameType.PONG,
+    }
+    if frame.frame_type not in json_frame_types:
+        raise LocalSTTProtocolError(
+            f"Raw UDS frame type {frame.frame_type.name} does not carry a JSON payload",
+            code="raw_uds_invalid_json_frame_type",
+        )
     try:
         payload = json.loads(frame.payload.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
