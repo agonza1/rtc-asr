@@ -476,6 +476,8 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> ServerMessage:
             payload.setdefault("type", "ping")
         if frame.frame_type == RawUdsFrameType.PONG:
             payload.setdefault("type", "pong")
+        if frame.frame_type == RawUdsFrameType.ERROR:
+            payload.setdefault("type", "error")
         return parse_server_message(payload)
     raise LocalSttProtocolError(
         f"Raw UDS frame type {frame.frame_type.name} is not a server frame",
