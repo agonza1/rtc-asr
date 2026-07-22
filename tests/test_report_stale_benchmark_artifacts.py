@@ -2458,6 +2458,88 @@ def test_stale_summary_groups_artifact_size_by_detail_page_name() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_detail_page_directory() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "detail_page_path": "benchmark-results/pages/base-old.html",
+            "artifact_size_bytes": 20,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen-old.json",
+            "detail_page_path": "benchmark-results/pages/qwen-old.html",
+            "artifact_size_bytes": 15,
+        },
+        {
+            "artifact_path": "benchmark-results/archive/raw-audio.wav",
+            "detail_page_path": "benchmark-results/archive/pages/raw-audio.html",
+            "artifact_size_bytes": 30,
+        },
+        {"artifact_path": "benchmark-results/missing.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_detail_page_dir"] == [
+        {
+            "detail_page_dir": "benchmark-results/pages",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "detail_page_dir": "benchmark-results/archive/pages",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "detail_page_dir": "missing",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
+def test_stale_summary_groups_artifact_size_by_detail_page_extension() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "detail_page_path": "benchmark-results/pages/base-old.html",
+            "artifact_size_bytes": 20,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen-old.json",
+            "detail_page_path": "benchmark-results/pages/qwen-old.HTML",
+            "artifact_size_bytes": 15,
+        },
+        {
+            "artifact_path": "benchmark-results/report.json",
+            "detail_page_path": "benchmark-results/pages/report",
+            "artifact_size_bytes": 30,
+        },
+        {"artifact_path": "benchmark-results/missing.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_detail_page_extension"] == [
+        {
+            "detail_page_extension": ".html",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "detail_page_extension": "none",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+    ]
+
+
 def test_stale_summary_groups_artifact_size_by_measured_month() -> None:
     stale = [
         {
@@ -5122,6 +5204,10 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- missing: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page name:\n"
         "- missing: 3 artifacts (65 B, 65 bytes)\n"
+        "By detail page directory:\n"
+        "- missing: 3 artifacts (65 B, 65 bytes)\n"
+        "By detail page extension:\n"
+        "- none: 3 artifacts (65 B, 65 bytes)\n"
         "By measured month:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By age bucket:\n"
@@ -6230,6 +6316,10 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "By detail page name:\n"
         "- large.html: 1 artifact (90 B, 90 bytes)\n"
         "- small.html: 1 artifact (10 B, 10 bytes)\n"
+        "By detail page directory:\n"
+        "- benchmark-results/pages: 2 artifacts (100 B, 100 bytes)\n"
+        "By detail page extension:\n"
+        "- .html: 2 artifacts (100 B, 100 bytes)\n"
         "By measured month:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By age bucket:\n"
