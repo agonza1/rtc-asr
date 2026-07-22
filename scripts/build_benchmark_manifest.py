@@ -617,7 +617,28 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
 def load_catalog(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {"sample_contract": {}, "tracks": []}
-    return json.loads(path.read_text(encoding="utf-8"))
+    catalog = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(catalog, dict):
+        raise ValueError(f"{path} must contain a JSON object")
+    validate_catalog_tracks(catalog.get("tracks", []), path=path)
+    return catalog
+
+
+def validate_catalog_tracks(tracks: Any, *, path: Path) -> None:
+    if not isinstance(tracks, list):
+        raise ValueError(f"{path} tracks must be a list")
+
+    slug_counts: dict[str, int] = {}
+    for track in tracks:
+        if not isinstance(track, dict):
+            raise ValueError(f"{path} tracks entries must be JSON objects")
+        slug = track.get("slug")
+        if isinstance(slug, str) and slug:
+            slug_counts[slug] = slug_counts.get(slug, 0) + 1
+
+    duplicate_slugs = sorted(slug for slug, count in slug_counts.items() if count > 1)
+    if duplicate_slugs:
+        raise ValueError(f"{path} contains duplicate track slugs: {', '.join(duplicate_slugs)}")
 
 
 def is_asr_payload(payload: dict[str, Any]) -> bool:
