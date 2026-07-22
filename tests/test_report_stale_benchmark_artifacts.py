@@ -1582,6 +1582,46 @@ def test_stale_artifacts_can_filter_by_age_bucket() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_newer_than_days() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/recent.json",
+                "status": "legacy",
+                "measured_at": "2026-06-18T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/older.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        newer_than_days=7,
+        now=datetime(2026, 6, 20, tzinfo=UTC),
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/recent.json"]
+
+
+def test_stale_artifacts_rejects_negative_newer_than_days() -> None:
+    with pytest.raises(ValueError) as exc_info:
+        stale_artifacts({"tracks": [], "artifacts": []}, newer_than_days=-1)
+
+    assert str(exc_info.value) == "newer_than_days must be non-negative"
+
+
 def test_stale_artifacts_can_sort_by_age_bucket_then_age() -> None:
     manifest = {
         "tracks": [],
