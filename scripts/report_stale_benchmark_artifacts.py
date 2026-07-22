@@ -66,6 +66,18 @@ AGE_BUCKET_ORDER = {
     "unknown": 4,
 }
 
+SUMMARY_SORTS = (
+    "size",
+    "size-desc",
+    "size-asc",
+    "count",
+    "count-desc",
+    "count-asc",
+    "name",
+    "name-asc",
+    "name-desc",
+)
+
 
 def format_bytes(size_bytes: int | None) -> str:
     if not size_bytes:
@@ -1795,6 +1807,37 @@ def limit_artifacts(stale: list[dict[str, Any]], limit: int | None) -> list[dict
     return stale[:limit]
 
 
+def validate_summary_options(
+    *,
+    summary_limit: int | None = None,
+    summary_sort: str = "size",
+    summary_min_count: int | None = None,
+    summary_max_count: int | None = None,
+    summary_min_size_bytes: int | None = None,
+    summary_max_size_bytes: int | None = None,
+) -> None:
+    if summary_limit is not None and summary_limit < 0:
+        raise ValueError("summary_limit must be non-negative")
+    if summary_sort not in SUMMARY_SORTS:
+        raise ValueError(f"summary_sort must be one of: {', '.join(SUMMARY_SORTS)}")
+    if summary_min_count is not None and summary_min_count < 0:
+        raise ValueError("summary_min_count must be non-negative")
+    if summary_max_count is not None and summary_max_count < 0:
+        raise ValueError("summary_max_count must be non-negative")
+    if summary_min_count is not None and summary_max_count is not None and summary_min_count > summary_max_count:
+        raise ValueError("summary_min_count cannot exceed summary_max_count")
+    if summary_min_size_bytes is not None and summary_min_size_bytes < 0:
+        raise ValueError("summary_min_size_bytes must be non-negative")
+    if summary_max_size_bytes is not None and summary_max_size_bytes < 0:
+        raise ValueError("summary_max_size_bytes must be non-negative")
+    if (
+        summary_min_size_bytes is not None
+        and summary_max_size_bytes is not None
+        and summary_min_size_bytes > summary_max_size_bytes
+    ):
+        raise ValueError("summary_min_size_bytes cannot exceed summary_max_size_bytes")
+
+
 def render_text(
     stale: list[dict[str, Any]],
     *,
@@ -1897,26 +1940,14 @@ def render_json_summary(
     summary_min_size_bytes: int | None = None,
     summary_max_size_bytes: int | None = None,
 ) -> str:
-    if summary_limit is not None and summary_limit < 0:
-        raise ValueError("summary_limit must be non-negative")
-    if summary_sort not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-asc", "name-desc"}:
-        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-asc, name-desc")
-    if summary_min_count is not None and summary_min_count < 0:
-        raise ValueError("summary_min_count must be non-negative")
-    if summary_max_count is not None and summary_max_count < 0:
-        raise ValueError("summary_max_count must be non-negative")
-    if summary_min_count is not None and summary_max_count is not None and summary_min_count > summary_max_count:
-        raise ValueError("summary_min_count cannot exceed summary_max_count")
-    if summary_min_size_bytes is not None and summary_min_size_bytes < 0:
-        raise ValueError("summary_min_size_bytes must be non-negative")
-    if summary_max_size_bytes is not None and summary_max_size_bytes < 0:
-        raise ValueError("summary_max_size_bytes must be non-negative")
-    if (
-        summary_min_size_bytes is not None
-        and summary_max_size_bytes is not None
-        and summary_min_size_bytes > summary_max_size_bytes
-    ):
-        raise ValueError("summary_min_size_bytes cannot exceed summary_max_size_bytes")
+    validate_summary_options(
+        summary_limit=summary_limit,
+        summary_sort=summary_sort,
+        summary_min_count=summary_min_count,
+        summary_max_count=summary_max_count,
+        summary_min_size_bytes=summary_min_size_bytes,
+        summary_max_size_bytes=summary_max_size_bytes,
+    )
     allowed_groups = set(SUMMARY_GROUPS)
     selected_groups = normalize_summary_groups(groups)
     unknown_groups = sorted(selected_groups - allowed_groups)
@@ -2008,20 +2039,14 @@ def limit_summary_buckets(
     min_size_bytes: int | None = None,
     max_size_bytes: int | None = None,
 ) -> list[dict[str, Any]]:
-    if min_count is not None and min_count < 0:
-        raise ValueError("summary_min_count must be non-negative")
-    if max_count is not None and max_count < 0:
-        raise ValueError("summary_max_count must be non-negative")
-    if min_count is not None and max_count is not None and min_count > max_count:
-        raise ValueError("summary_min_count cannot exceed summary_max_count")
-    if min_size_bytes is not None and min_size_bytes < 0:
-        raise ValueError("summary_min_size_bytes must be non-negative")
-    if max_size_bytes is not None and max_size_bytes < 0:
-        raise ValueError("summary_max_size_bytes must be non-negative")
-    if min_size_bytes is not None and max_size_bytes is not None and min_size_bytes > max_size_bytes:
-        raise ValueError("summary_min_size_bytes cannot exceed summary_max_size_bytes")
-    if sort_by not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-asc", "name-desc"}:
-        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-asc, name-desc")
+    validate_summary_options(
+        summary_limit=limit,
+        summary_sort=sort_by,
+        summary_min_count=min_count,
+        summary_max_count=max_count,
+        summary_min_size_bytes=min_size_bytes,
+        summary_max_size_bytes=max_size_bytes,
+    )
     filtered_buckets = buckets
     if min_count is not None:
         filtered_buckets = [bucket for bucket in filtered_buckets if bucket["count"] >= min_count]
@@ -2039,8 +2064,6 @@ def limit_summary_buckets(
         filtered_buckets = sorted(filtered_buckets, key=lambda bucket: summary_bucket_sort_key(bucket, sort_by))
     if limit is None:
         return filtered_buckets
-    if limit < 0:
-        raise ValueError("summary_limit must be non-negative")
     return filtered_buckets[:limit]
 
 
@@ -2111,26 +2134,14 @@ def render_summary(
     summary_min_size_bytes: int | None = None,
     summary_max_size_bytes: int | None = None,
 ) -> str:
-    if summary_limit is not None and summary_limit < 0:
-        raise ValueError("summary_limit must be non-negative")
-    if summary_sort not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-asc", "name-desc"}:
-        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-asc, name-desc")
-    if summary_min_count is not None and summary_min_count < 0:
-        raise ValueError("summary_min_count must be non-negative")
-    if summary_max_count is not None and summary_max_count < 0:
-        raise ValueError("summary_max_count must be non-negative")
-    if summary_min_count is not None and summary_max_count is not None and summary_min_count > summary_max_count:
-        raise ValueError("summary_min_count cannot exceed summary_max_count")
-    if summary_min_size_bytes is not None and summary_min_size_bytes < 0:
-        raise ValueError("summary_min_size_bytes must be non-negative")
-    if summary_max_size_bytes is not None and summary_max_size_bytes < 0:
-        raise ValueError("summary_max_size_bytes must be non-negative")
-    if (
-        summary_min_size_bytes is not None
-        and summary_max_size_bytes is not None
-        and summary_min_size_bytes > summary_max_size_bytes
-    ):
-        raise ValueError("summary_min_size_bytes cannot exceed summary_max_size_bytes")
+    validate_summary_options(
+        summary_limit=summary_limit,
+        summary_sort=summary_sort,
+        summary_min_count=summary_min_count,
+        summary_max_count=summary_max_count,
+        summary_min_size_bytes=summary_min_size_bytes,
+        summary_max_size_bytes=summary_max_size_bytes,
+    )
     allowed_groups = set(SUMMARY_GROUPS)
     selected_groups = normalize_summary_groups(groups)
     unknown_groups = sorted(selected_groups - allowed_groups)
