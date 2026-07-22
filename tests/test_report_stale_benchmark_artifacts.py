@@ -1651,6 +1651,10 @@ def test_parse_args_accepts_summary_csv_output_flag() -> None:
     assert parse_args(["--summary-csv", "--summary-share"]).summary_csv is True
 
 
+def test_parse_args_accepts_output_path() -> None:
+    assert parse_args(["--output", "cleanup/report.txt"]).output == Path("cleanup/report.txt")
+
+
 def test_stale_artifacts_can_sort_smallest_first() -> None:
     manifest = {
         "tracks": [],
@@ -6636,6 +6640,61 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert capsys.readouterr().out == (
         "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
         'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B\r\n'
+    )
+
+
+def test_main_output_writes_rendered_report_without_stdout(monkeypatch, tmp_path, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 90,
+                }
+            ],
+        },
+    )
+
+    output_path = tmp_path / "cleanup" / "stale.txt"
+
+    assert report_module.main(["--paths-only", "--output", str(output_path)]) == 0
+
+    assert capsys.readouterr().out == ""
+    assert output_path.read_text(encoding="utf-8") == "benchmark-results/base.json\n"
+
+
+def test_main_null_paths_output_preserves_null_separators(monkeypatch, tmp_path, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/large.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/small.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    output_path = tmp_path / "stale.paths"
+
+    assert report_module.main(["--paths-only", "--null", "--output", str(output_path)]) == 0
+
+    assert capsys.readouterr().out == ""
+    assert output_path.read_text(encoding="utf-8") == (
+        "benchmark-results/large.json\0benchmark-results/small.json"
     )
 
 

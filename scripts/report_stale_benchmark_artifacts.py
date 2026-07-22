@@ -601,6 +601,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="With --json-summary, include count and byte share percentages for each grouping row",
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Write the rendered stale artifact report to this file instead of stdout",
+    )
     return parser.parse_args(argv)
 
 
@@ -3375,11 +3381,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     limited_stale = limit_artifacts(stale, args.limit)
     if args.count_only:
-        print(len(stale))
+        rendered_output = f"{len(stale)}\n"
     elif args.total_bytes_only:
-        print(stale_summary(stale)["total_size_bytes"])
+        rendered_output = f"{stale_summary(stale)['total_size_bytes']}\n"
     elif args.summary_only:
-        print(
+        rendered_output = (
             render_summary(
                 stale,
                 groups=args.summary_group,
@@ -3390,9 +3396,10 @@ def main(argv: list[str] | None = None) -> int:
                 summary_min_size_bytes=args.summary_min_size_bytes,
                 summary_max_size_bytes=args.summary_max_size_bytes,
             )
+            + "\n"
         )
     elif args.json_summary:
-        print(
+        rendered_output = (
             render_json_summary(
                 stale,
                 groups=args.summary_group,
@@ -3404,20 +3411,19 @@ def main(argv: list[str] | None = None) -> int:
                 summary_max_size_bytes=args.summary_max_size_bytes,
                 include_share=args.summary_share,
             )
+            + "\n"
         )
     elif args.summary_csv:
-        sys.stdout.write(
-            render_summary_csv(
-                stale,
-                groups=args.summary_group,
-                summary_limit=args.summary_limit,
-                summary_sort=args.summary_sort,
-                summary_min_count=args.summary_min_count,
-                summary_max_count=args.summary_max_count,
-                summary_min_size_bytes=args.summary_min_size_bytes,
-                summary_max_size_bytes=args.summary_max_size_bytes,
-                include_share=args.summary_share,
-            )
+        rendered_output = render_summary_csv(
+            stale,
+            groups=args.summary_group,
+            summary_limit=args.summary_limit,
+            summary_sort=args.summary_sort,
+            summary_min_count=args.summary_min_count,
+            summary_max_count=args.summary_max_count,
+            summary_min_size_bytes=args.summary_min_size_bytes,
+            summary_max_size_bytes=args.summary_max_size_bytes,
+            include_share=args.summary_share,
         )
     elif args.paths_only:
         rendered_paths = render_paths(
@@ -3430,40 +3436,47 @@ def main(argv: list[str] | None = None) -> int:
             separator="\0" if args.null else "\n",
         )
         if args.null:
-            sys.stdout.write(rendered_paths)
+            rendered_output = rendered_paths
         elif rendered_paths:
-            sys.stdout.write(f"{rendered_paths}\n")
+            rendered_output = f"{rendered_paths}\n"
         else:
-            sys.stdout.write("")
+            rendered_output = ""
     elif args.json:
         summary = stale_summary(limited_stale)
         summary["total_matching_count"] = len(stale)
         matching_summary = stale_summary(stale)
         summary["total_matching_size_bytes"] = matching_summary["total_size_bytes"]
         summary["total_matching_size"] = matching_summary["total_size"]
-        print(json.dumps(summary, indent=2))
+        rendered_output = f"{json.dumps(summary, indent=2)}\n"
     elif args.json_lines:
-        print(render_json_lines(limited_stale))
+        rendered_output = f"{render_json_lines(limited_stale)}\n"
     elif args.csv:
-        sys.stdout.write(render_csv(limited_stale))
+        rendered_output = render_csv(limited_stale)
     elif args.markdown:
         matching_summary = stale_summary(stale)
-        print(
+        rendered_output = (
             render_markdown(
                 limited_stale,
                 total_count=len(stale),
                 total_size_bytes=matching_summary["total_size_bytes"],
             )
+            + "\n"
         )
     else:
         matching_summary = stale_summary(stale)
-        print(
+        rendered_output = (
             render_text(
                 limited_stale,
                 total_count=len(stale),
                 total_size_bytes=matching_summary["total_size_bytes"],
             )
+            + "\n"
         )
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered_output, encoding="utf-8")
+    else:
+        sys.stdout.write(rendered_output)
     return 1 if args.fail_on_stale and stale else 0
 
 
