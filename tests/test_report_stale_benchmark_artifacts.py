@@ -22,6 +22,7 @@ render_paths = report_module.render_paths
 render_json_lines = report_module.render_json_lines
 render_json_summary = report_module.render_json_summary
 render_csv = report_module.render_csv
+render_markdown = report_module.render_markdown
 render_summary = report_module.render_summary
 stale_artifacts = report_module.stale_artifacts
 stale_summary = report_module.stale_summary
@@ -1474,6 +1475,38 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
         "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,artifact_size_bytes,artifact_size",
         'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,90,90 B',
     ]
+
+
+def test_render_markdown_emits_review_table_and_escapes_pipes() -> None:
+    rendered = render_markdown(
+        [
+            {
+                "artifact_path": "benchmark-results/large|old.json",
+                "status": "legacy",
+                "age": "10 days",
+                "current_artifact_path": "benchmark-results/current.json",
+                "detail_page_path": "benchmark-results/pages/large.html",
+                "artifact_size_bytes": 90,
+                "artifact_size": "90 B",
+            }
+        ],
+        total_count=2,
+        total_size_bytes=111,
+    )
+
+    assert rendered.splitlines() == [
+        "Found 1 stale benchmark artifact (90 B, 90 bytes).",
+        "",
+        "| Artifact | Status | Age | Size | Current artifact | Detail page |",
+        "| --- | --- | ---: | ---: | --- | --- |",
+        "| benchmark-results/large\\|old.json | legacy | 10 days | 90 B | benchmark-results/current.json | benchmark-results/pages/large.html |",
+        "",
+        "... 1 more stale artifact (21 B, 21 bytes) omitted by --limit.",
+    ]
+
+
+def test_parse_args_accepts_markdown_output_flag() -> None:
+    assert parse_args(["--markdown"]).markdown is True
 
 
 def test_stale_artifacts_can_sort_smallest_first() -> None:
