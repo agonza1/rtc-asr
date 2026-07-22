@@ -1305,6 +1305,9 @@ def test_container_files_keep_uds_runtime_path_writable_and_healthchecked() -> N
     assert "chown -R app:app /app /run/rtc-asr" in dockerfile_text
     assert 'CMD ["python", "-m", "src.main"]' in dockerfile_text
     assert '--unix-socket "${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}"' in dockerfile_text
+    assert '"${HOST_PORT:-8080}:8080"' in compose_text
+    assert "PORT: 8080" in compose_text
+    assert "PORT: ${PORT:-8080}" not in compose_text
     assert "LOCAL_STT_SOCKET_MODE: ${LOCAL_STT_SOCKET_MODE:-tcp}" in compose_text
     assert "LOCAL_STT_UDS_PATH: ${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}" in compose_text
     assert "LOCAL_STT_RAW_UDS_ENABLED: ${LOCAL_STT_RAW_UDS_ENABLED:-false}" in compose_text
