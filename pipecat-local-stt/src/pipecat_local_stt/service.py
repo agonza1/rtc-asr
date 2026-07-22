@@ -556,6 +556,8 @@ class RawUdsConnectionAdapter:
                 )
             heartbeat_frame_types = {"ping": RawUdsFrameType.PING, "pong": RawUdsFrameType.PONG}
             frame_type = heartbeat_frame_types.get(payload.get("type"), RawUdsFrameType.JSON_CONTROL)
+            if frame_type in heartbeat_frame_types.values():
+                payload = _compact_raw_uds_heartbeat_payload(payload)
             if frame_type in heartbeat_frame_types.values() and payload == {"type": payload.get("type")}:
                 frame = encode_raw_uds_frame(frame_type, b"")
             else:
@@ -602,6 +604,13 @@ class RawUdsConnectionAdapter:
     async def close(self, code: int = 1000) -> None:
         self._writer.close()
         await self._writer.wait_closed()
+
+
+def _compact_raw_uds_heartbeat_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    compacted = dict(payload)
+    if compacted.get("metadata") == {}:
+        compacted.pop("metadata")
+    return compacted
 
 
 async def _default_connect(config: LocalSTTConfig) -> WebSocketConnection:
