@@ -85,6 +85,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "artifact-extension-asc",
         "detail-page-asc",
         "detail-page-name-asc",
+        "detail-page-stem-asc",
         "status-asc",
         "backend-asc",
         "model-asc",
@@ -175,6 +176,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "track_state": "tracked",
             "detail_page_path": "benchmark-results/pages/older.html",
             "detail_page_name": "older.html",
+            "detail_page_stem": "older",
             "detail_page_dir": "benchmark-results/pages",
             "detail_page_extension": ".html",
             "artifact_size_bytes": 75,
@@ -325,6 +327,7 @@ def test_stale_artifacts_path_filters_accept_comma_separated_values() -> None:
         detail_pages=["benchmark-results/pages/base-old.html, benchmark-results/pages/qwen-old.html"],
         detail_page_contains=["base, qwen"],
         detail_page_name_contains=["base, qwen"],
+        detail_page_stem_contains=["base, qwen"],
     )
 
     assert [entry["artifact_path"] for entry in stale] == [
@@ -594,6 +597,37 @@ def test_stale_artifacts_can_sort_by_detail_page_name_descending() -> None:
         "qwen-old.html",
         "parakeet-old.html",
         "base-old.html",
+    ]
+
+
+def test_stale_artifacts_can_sort_by_detail_page_stem_descending() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/parakeet-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="detail-page-stem-desc")
+
+    assert [entry["detail_page_stem"] for entry in stale] == [
+        "qwen-old",
+        "parakeet-old",
+        "base-old",
     ]
 
 
@@ -1572,8 +1606,8 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,benchmark-results/pages,.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B',
     ]
 
 
@@ -2453,6 +2487,50 @@ def test_stale_summary_groups_artifact_size_by_detail_page_name() -> None:
         },
         {
             "detail_page_name": "qwen-old.html",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
+def test_stale_summary_groups_artifact_size_by_detail_page_stem() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "detail_page_path": "benchmark-results/pages/base-old.html",
+            "artifact_size_bytes": 20,
+        },
+        {
+            "artifact_path": "benchmark-results/archive/base-old.json",
+            "detail_page_path": "benchmark-results/archive/pages/base-old.html",
+            "artifact_size_bytes": 15,
+        },
+        {"artifact_path": "benchmark-results/raw-audio.wav", "artifact_size_bytes": 30},
+        {
+            "artifact_path": "benchmark-results/qwen-old.json",
+            "detail_page_path": "benchmark-results/pages/qwen-old.html",
+            "artifact_size_bytes": 5,
+        },
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_detail_page_stem"] == [
+        {
+            "detail_page_stem": "base-old",
+            "count": 2,
+            "total_size_bytes": 35,
+            "total_size": "35 B",
+        },
+        {
+            "detail_page_stem": "missing",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "detail_page_stem": "qwen-old",
             "count": 1,
             "total_size_bytes": 5,
             "total_size": "5 B",
@@ -4116,6 +4194,52 @@ def test_stale_artifacts_can_filter_by_detail_page_file_name_text() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_detail_page_file_stem() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, detail_page_stems=["tmp/base-old.html"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
+def test_stale_artifacts_can_filter_by_detail_page_file_stem_text() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/faster-whisper-base.en-int8-2026-06-15.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-mps-2026-06-20.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, detail_page_stem_contains=["WHISPER"])
+
+    assert [entry["detail_page_stem"] for entry in stale] == [
+        "faster-whisper-base.en-int8-2026-06-15"
+    ]
+
+
 def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, sort_by="unknown")
@@ -5204,9 +5328,11 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- untracked: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page:\n"
         "- missing: 3 artifacts (65 B, 65 bytes)\n"
-        "By detail page name:\n"
-        "- missing: 3 artifacts (65 B, 65 bytes)\n"
-        "By detail page directory:\n"
+            "By detail page name:\n"
+            "- missing: 3 artifacts (65 B, 65 bytes)\n"
+            "By detail page stem:\n"
+            "- missing: 3 artifacts (65 B, 65 bytes)\n"
+            "By detail page directory:\n"
         "- missing: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page extension:\n"
         "- none: 3 artifacts (65 B, 65 bytes)\n"
@@ -6315,10 +6441,13 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "By detail page:\n"
         "- benchmark-results/pages/large.html: 1 artifact (90 B, 90 bytes)\n"
         "- benchmark-results/pages/small.html: 1 artifact (10 B, 10 bytes)\n"
-        "By detail page name:\n"
-        "- large.html: 1 artifact (90 B, 90 bytes)\n"
-        "- small.html: 1 artifact (10 B, 10 bytes)\n"
-        "By detail page directory:\n"
+            "By detail page name:\n"
+            "- large.html: 1 artifact (90 B, 90 bytes)\n"
+            "- small.html: 1 artifact (10 B, 10 bytes)\n"
+            "By detail page stem:\n"
+            "- large: 1 artifact (90 B, 90 bytes)\n"
+            "- small: 1 artifact (10 B, 10 bytes)\n"
+            "By detail page directory:\n"
         "- benchmark-results/pages: 2 artifacts (100 B, 100 bytes)\n"
         "By detail page extension:\n"
         "- .html: 2 artifacts (100 B, 100 bytes)\n"
@@ -6505,8 +6634,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,benchmark-results/pages,.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B\r\n'
     )
 
 
