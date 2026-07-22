@@ -1307,10 +1307,10 @@ def stale_artifacts(
         return sorted(
             stale,
             key=lambda entry: (
-                entry.get("current_artifact_path") or "",
+                entry.get("current_artifact_path") is None,
+                descending_text_key(entry.get("current_artifact_path") or ""),
                 entry.get("artifact_path") or "",
             ),
-            reverse=True,
         )
     if sort_by in {"current-path-name", "current-path-name-asc"}:
         return sorted(

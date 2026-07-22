@@ -3159,8 +3159,8 @@ def test_stale_artifacts_can_sort_by_current_path_descending_then_artifact_path(
 
     assert [entry["artifact_path"] for entry in stale] == [
         "benchmark-results/qwen-old.json",
-        "benchmark-results/base-b.json",
         "benchmark-results/base-a.json",
+        "benchmark-results/base-b.json",
         "benchmark-results/untracked.json",
     ]
 
