@@ -730,6 +730,21 @@ def test_raw_uds_protocol_error_encoder_emits_parseable_error_frame() -> None:
     assert message.message == "Raw UDS JSON frame payload must be valid UTF-8 JSON"
 
 
+def test_raw_uds_server_frame_parser_accepts_compact_error_payload() -> None:
+    frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(
+            RawUdsFrameType.ERROR,
+            {"code": "raw_uds_malformed_json_control", "message": "bad control frame"},
+        )
+    )
+
+    message = parse_raw_uds_server_frame(frame)
+
+    assert message.type == "error"
+    assert message.code == "raw_uds_malformed_json_control"
+    assert message.message == "bad control frame"
+
+
 def test_raw_uds_server_frame_parser_maps_event_error_and_empty_pong() -> None:
     ready_frame = decode_raw_uds_frame(encode_raw_uds_server_message(build_ready_message().model_dump()))
     error_payload = ErrorMessage(type="error", code="bad", message="bad request").model_dump()
