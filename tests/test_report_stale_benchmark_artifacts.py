@@ -32,6 +32,7 @@ normalize_filter_values = report_module.normalize_filter_values
 normalize_summary_groups = report_module.normalize_summary_groups
 measured_month = report_module.measured_month
 age_bucket = report_module.age_bucket
+parse_args = report_module.parse_args
 
 
 def test_filter_values_accept_comma_separated_values() -> None:
@@ -64,6 +65,32 @@ def test_summary_groups_reject_unknown_values() -> None:
 
     assert "Unsupported summary group: typo." in str(exc_info.value)
     assert "Valid groups: slug, artifact-name" in str(exc_info.value)
+
+
+def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
+    aliases = [
+        "artifact-stem-asc",
+        "artifact-dir-asc",
+        "artifact-extension-asc",
+        "detail-page-asc",
+        "detail-page-name-asc",
+        "status-asc",
+        "backend-asc",
+        "model-asc",
+        "label-asc",
+        "slug-asc",
+        "track-state-asc",
+        "current-path-asc",
+        "current-path-name-asc",
+        "current-path-stem-asc",
+        "current-path-dir-asc",
+        "current-path-extension-asc",
+        "measured-month-asc",
+        "age-bucket-asc",
+    ]
+
+    for alias in aliases:
+        assert parse_args(["--sort", alias]).sort == alias
 
 
 def test_measured_month_uses_utc_month_or_unknown() -> None:
@@ -3861,10 +3888,10 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, sort_by="unknown")
     except ValueError as error:
-        assert (
-            str(error)
-            == "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
-        )
+        assert str(error).startswith("sort_by must be one of: size, size-desc, size-asc")
+        assert "artifact-stem-asc" in str(error)
+        assert "current-path-extension-asc" in str(error)
+        assert str(error).endswith("age-bucket, age-bucket-asc, age-bucket-desc")
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
 
