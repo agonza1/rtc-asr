@@ -2329,6 +2329,39 @@ def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
     ]
 
 
+def test_stale_artifacts_accepts_explicit_oldest_measured_first_sort_alias() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/newer.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T00:00:00Z",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/older.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 100,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="measured-at-asc")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+        "benchmark-results/unknown.json",
+    ]
+
+
 def test_stale_artifacts_can_sort_newest_measured_first() -> None:
     manifest = {
         "tracks": [],
@@ -3743,7 +3776,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-desc, size-asc, age, age-asc, measured-at, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
+            == "sort_by must be one of: size, size-desc, size-asc, age, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
