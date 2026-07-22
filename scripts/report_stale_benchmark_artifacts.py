@@ -151,40 +151,58 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "artifact-name-asc",
             "artifact-name-desc",
             "artifact-dir",
+            "artifact-dir-asc",
             "artifact-dir-desc",
             "artifact-extension",
+            "artifact-extension-asc",
             "artifact-extension-desc",
             "detail-page",
+            "detail-page-asc",
             "detail-page-desc",
             "detail-page-name",
+            "detail-page-name-asc",
             "detail-page-name-desc",
             "artifact-stem",
+            "artifact-stem-asc",
             "artifact-stem-desc",
             "status",
+            "status-asc",
             "status-desc",
             "backend",
+            "backend-asc",
             "backend-desc",
             "model",
+            "model-asc",
             "model-desc",
             "label",
+            "label-asc",
             "label-desc",
             "slug",
+            "slug-asc",
             "slug-desc",
             "track-state",
+            "track-state-asc",
             "track-state-desc",
             "current-path",
+            "current-path-asc",
             "current-path-desc",
             "current-path-name",
+            "current-path-name-asc",
             "current-path-name-desc",
             "current-path-stem",
+            "current-path-stem-asc",
             "current-path-stem-desc",
             "current-path-dir",
+            "current-path-dir-asc",
             "current-path-dir-desc",
             "current-path-extension",
+            "current-path-extension-asc",
             "current-path-extension-desc",
             "measured-month",
+            "measured-month-asc",
             "measured-month-desc",
             "age-bucket",
+            "age-bucket-asc",
             "age-bucket-desc",
         ),
         default="size",
@@ -1088,7 +1106,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "artifact-stem":
+    if sort_by in {"artifact-stem", "artifact-stem-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1104,7 +1122,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "artifact-dir":
+    if sort_by in {"artifact-dir", "artifact-dir-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1123,7 +1141,7 @@ def stale_artifacts(
             ),
             reverse=True,
         )
-    if sort_by == "artifact-extension":
+    if sort_by in {"artifact-extension", "artifact-extension-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1139,11 +1157,11 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "detail-page":
+    if sort_by in {"detail-page", "detail-page-asc"}:
         return sorted(stale, key=lambda entry: entry.get("detail_page_path") or "")
     if sort_by == "detail-page-desc":
         return sorted(stale, key=lambda entry: entry.get("detail_page_path") or "", reverse=True)
-    if sort_by == "detail-page-name":
+    if sort_by in {"detail-page-name", "detail-page-name-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1159,7 +1177,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "status":
+    if sort_by in {"status", "status-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1177,7 +1195,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "backend":
+    if sort_by in {"backend", "backend-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1195,7 +1213,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "model":
+    if sort_by in {"model", "model-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1213,7 +1231,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "label":
+    if sort_by in {"label", "label-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1231,7 +1249,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "slug":
+    if sort_by in {"slug", "slug-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1247,7 +1265,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "track-state":
+    if sort_by in {"track-state", "track-state-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1265,7 +1283,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "current-path":
+    if sort_by in {"current-path", "current-path-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1282,7 +1300,7 @@ def stale_artifacts(
             ),
             reverse=True,
         )
-    if sort_by == "current-path-name":
+    if sort_by in {"current-path-name", "current-path-name-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1301,7 +1319,7 @@ def stale_artifacts(
             ),
             reverse=True,
         )
-    if sort_by == "current-path-stem":
+    if sort_by in {"current-path-stem", "current-path-stem-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1320,7 +1338,7 @@ def stale_artifacts(
             ),
             reverse=True,
         )
-    if sort_by == "current-path-dir":
+    if sort_by in {"current-path-dir", "current-path-dir-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1339,7 +1357,7 @@ def stale_artifacts(
             ),
             reverse=True,
         )
-    if sort_by == "current-path-extension":
+    if sort_by in {"current-path-extension", "current-path-extension-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1358,7 +1376,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "measured-month":
+    if sort_by in {"measured-month", "measured-month-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1374,7 +1392,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by == "age-bucket":
+    if sort_by in {"age-bucket", "age-bucket-asc"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1393,7 +1411,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
+        "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
     )
 
 
