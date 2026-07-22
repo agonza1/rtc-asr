@@ -452,6 +452,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts whose generated detail page file stem contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
+        "--detail-page-dir",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page directory matches this path; repeat to include multiple paths",
+    )
+    parser.add_argument(
+        "--detail-page-dir-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page directory contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
         "--status",
         action="append",
         default=None,
@@ -745,6 +757,8 @@ def stale_artifacts(
     detail_page_name_contains: list[str] | None = None,
     detail_page_stems: list[str] | None = None,
     detail_page_stem_contains: list[str] | None = None,
+    detail_page_dirs: list[str] | None = None,
+    detail_page_dir_contains: list[str] | None = None,
     statuses: list[str] | None = None,
     status_contains: list[str] | None = None,
     now: datetime | None = None,
@@ -795,6 +809,8 @@ def stale_artifacts(
     detail_page_name_contains = normalize_filter_values(detail_page_name_contains)
     detail_page_stems = normalize_filter_values(detail_page_stems)
     detail_page_stem_contains = normalize_filter_values(detail_page_stem_contains)
+    detail_page_dirs = normalize_filter_values(detail_page_dirs)
+    detail_page_dir_contains = normalize_filter_values(detail_page_dir_contains)
     status_contains = normalize_filter_values(status_contains)
     allowed_measured_months = None
     if measured_months is not None:
@@ -928,6 +944,10 @@ def stale_artifacts(
     detail_page_stem_needles = (
         None if detail_page_stem_contains is None else [needle.lower() for needle in detail_page_stem_contains]
     )
+    allowed_detail_page_dirs = None if detail_page_dirs is None else {str(Path(path)) for path in detail_page_dirs}
+    detail_page_dir_needles = (
+        None if detail_page_dir_contains is None else [needle.lower() for needle in detail_page_dir_contains]
+    )
     status_needles = None if status_contains is None else [needle.lower() for needle in status_contains]
     allowed_statuses = None if statuses is None and status_needles is not None else normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
@@ -989,6 +1009,12 @@ def stale_artifacts(
             continue
         if detail_page_stem_needles is not None:
             if not any(needle in detail_page_stem.lower() for needle in detail_page_stem_needles):
+                continue
+        detail_page_dir = str(Path(artifact_detail_page_path or "").parent)
+        if allowed_detail_page_dirs is not None and detail_page_dir not in allowed_detail_page_dirs:
+            continue
+        if detail_page_dir_needles is not None:
+            if not any(needle in detail_page_dir.lower() for needle in detail_page_dir_needles):
                 continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
@@ -3375,6 +3401,8 @@ def main(argv: list[str] | None = None) -> int:
         detail_page_name_contains=args.detail_page_name_contains,
         detail_page_stems=args.detail_page_stem,
         detail_page_stem_contains=args.detail_page_stem_contains,
+        detail_page_dirs=args.detail_page_dir,
+        detail_page_dir_contains=args.detail_page_dir_contains,
         statuses=args.status,
         status_contains=args.status_contains,
         sort_by=args.sort,
