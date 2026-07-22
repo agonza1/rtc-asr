@@ -21,6 +21,7 @@ render_text = report_module.render_text
 render_paths = report_module.render_paths
 render_json_lines = report_module.render_json_lines
 render_json_summary = report_module.render_json_summary
+render_summary_csv = report_module.render_summary_csv
 render_csv = report_module.render_csv
 render_markdown = report_module.render_markdown
 render_summary = report_module.render_summary
@@ -851,6 +852,33 @@ def test_render_json_summary_can_include_group_share_percentages() -> None:
     ]
 
 
+def test_render_summary_csv_emits_selected_groups_with_shares() -> None:
+    rendered = render_summary_csv(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "blocked",
+                "slug": "qwen",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["slug"],
+        include_share=True,
+    )
+
+    assert rendered.splitlines() == [
+        "group,bucket,count,total_size_bytes,total_size,count_share_percent,size_share_percent",
+        "slug,base,1,90,90 B,50.0,90.0",
+        "slug,qwen,1,10,10 B,50.0,10.0",
+    ]
+
+
 def test_render_json_summary_can_filter_group_rows_by_min_count() -> None:
     rendered = render_json_summary(
         [
@@ -1581,6 +1609,10 @@ def test_parse_args_accepts_markdown_output_flag() -> None:
 
 def test_parse_args_accepts_json_summary_share_flag() -> None:
     assert parse_args(["--json-summary", "--summary-share"]).summary_share is True
+
+
+def test_parse_args_accepts_summary_csv_output_flag() -> None:
+    assert parse_args(["--summary-csv", "--summary-share"]).summary_csv is True
 
 
 def test_stale_artifacts_can_sort_smallest_first() -> None:
@@ -6510,7 +6542,7 @@ def test_main_rejects_summary_group_without_summary_only() -> None:
     try:
         report_module.main(["--summary-group", "model"])
     except ValueError as error:
-        assert str(error) == "--summary-group requires --summary-only or --json-summary"
+        assert str(error) == "--summary-group requires --summary-only, --json-summary, or --summary-csv"
     else:
         raise AssertionError("--summary-group without --summary-only should be rejected")
 
@@ -6519,22 +6551,28 @@ def test_main_rejects_summary_limit_without_summary_only() -> None:
     try:
         report_module.main(["--summary-limit", "1"])
     except ValueError as error:
-        assert str(error) == "--summary-limit requires --summary-only or --json-summary"
+        assert str(error) == "--summary-limit requires --summary-only, --json-summary, or --summary-csv"
     else:
         raise AssertionError("--summary-limit without --summary-only should be rejected")
 
 
 def test_main_rejects_summary_range_filters_without_summary_output() -> None:
     for args, expected in [
-        (["--summary-min-count", "1"], "--summary-min-count requires --summary-only or --json-summary"),
-        (["--summary-max-count", "1"], "--summary-max-count requires --summary-only or --json-summary"),
+        (
+            ["--summary-min-count", "1"],
+            "--summary-min-count requires --summary-only, --json-summary, or --summary-csv",
+        ),
+        (
+            ["--summary-max-count", "1"],
+            "--summary-max-count requires --summary-only, --json-summary, or --summary-csv",
+        ),
         (
             ["--summary-min-size-bytes", "1"],
-            "--summary-min-size-bytes requires --summary-only or --json-summary",
+            "--summary-min-size-bytes requires --summary-only, --json-summary, or --summary-csv",
         ),
         (
             ["--summary-max-size-bytes", "1"],
-            "--summary-max-size-bytes requires --summary-only or --json-summary",
+            "--summary-max-size-bytes requires --summary-only, --json-summary, or --summary-csv",
         ),
     ]:
         try:
