@@ -3092,8 +3092,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         if args.null:
             sys.stdout.write(rendered_paths)
+        elif rendered_paths:
+            sys.stdout.write(f"{rendered_paths}\n")
         else:
-            print(rendered_paths)
+            sys.stdout.write("")
     elif args.json:
         summary = stale_summary(limited_stale)
         summary["total_matching_count"] = len(stale)
