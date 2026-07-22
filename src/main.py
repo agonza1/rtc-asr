@@ -190,6 +190,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                     "frame_format": "uint8_type_uint32_len_le",
+                    "keepalive_payloads": ["empty", "json_object"],
                     "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                     "benchmark_command": (
                         "python scripts/bench_local_stt_stream.py --transport raw_uds "
