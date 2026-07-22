@@ -21,6 +21,7 @@ build_warning_summary = manifest_module.build_warning_summary
 comparable_manifest = manifest_module.comparable_manifest
 extract_system_signals = manifest_module.extract_system_signals
 extract_experimental_transports = manifest_module.extract_experimental_transports
+load_catalog = manifest_module.load_catalog
 render_manifest = manifest_module.render_manifest
 
 PRERENDER_MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prerender_benchmark_homepage.py"
@@ -234,6 +235,24 @@ def test_load_payload_rejects_non_object_json(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match=r"array\.json must contain a JSON object"):
         manifest_module.load_payload(artifact)
+
+
+def test_load_catalog_rejects_duplicate_track_slugs(tmp_path: Path) -> None:
+    tracks_path = tmp_path / "tracks.json"
+    tracks_path.write_text(
+        json.dumps(
+            {
+                "tracks": [
+                    {"slug": "duplicate", "label": "first"},
+                    {"slug": "duplicate", "label": "second"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=r"tracks\.json contains duplicate track slugs: duplicate"):
+        load_catalog(tracks_path)
 
 
 def test_render_detail_page_does_not_label_measured_at_as_artifact_modified() -> None:
