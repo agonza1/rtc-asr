@@ -111,6 +111,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts measured before this many days ago",
     )
     parser.add_argument(
+        "--newer-than-days",
+        type=int,
+        default=None,
+        help="Only include stale artifacts measured within this many days",
+    )
+    parser.add_argument(
         "--measured-before",
         default=None,
         help="Only include stale artifacts measured before this ISO timestamp or date",
@@ -609,6 +615,7 @@ def stale_artifacts(
     manifest: dict[str, Any],
     *,
     older_than_days: int | None = None,
+    newer_than_days: int | None = None,
     measured_before: datetime | str | None = None,
     measured_after: datetime | str | None = None,
     min_size_bytes: int | None = None,
@@ -656,6 +663,8 @@ def stale_artifacts(
         raise ValueError("max_size_bytes must be non-negative")
     if min_size_bytes is not None and max_size_bytes is not None and min_size_bytes > max_size_bytes:
         raise ValueError("min_size_bytes cannot exceed max_size_bytes")
+    if newer_than_days is not None and newer_than_days < 0:
+        raise ValueError("newer_than_days must be non-negative")
     if track_state not in {"any", "tracked", "untracked"}:
         raise ValueError("track_state must be one of: any, tracked, untracked")
     slugs = normalize_filter_values(slugs)
@@ -949,6 +958,8 @@ def stale_artifacts(
         if cutoff is not None and (measured_timestamp is None or measured_timestamp >= cutoff):
             continue
         if lower_cutoff is not None and (measured_timestamp is None or measured_timestamp <= lower_cutoff):
+            continue
+        if newer_than_days is not None and (artifact_age_days is None or artifact_age_days > newer_than_days):
             continue
         artifact_size_bytes = artifact.get("artifact_size_bytes")
         if min_size_bytes is not None and (artifact_size_bytes or 0) < min_size_bytes:
@@ -2820,6 +2831,7 @@ def main(argv: list[str] | None = None) -> int:
     stale = stale_artifacts(
         manifest,
         older_than_days=args.older_than_days,
+        newer_than_days=args.newer_than_days,
         measured_before=args.measured_before,
         measured_after=args.measured_after,
         min_size_bytes=args.min_size_bytes,
