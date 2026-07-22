@@ -64,6 +64,28 @@ DEFAULT_PROTOCOLS = [
         "docs": "/docs/local-stt-v1.md",
         "status": "preview",
         "message_format": "json-control-plus-binary-pcm16",
+        "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
+        "audio": {
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "channels": HOT_PATH_CHANNELS,
+            "format": HOT_PATH_PCM_FORMAT,
+            "frame_ms": HOT_PATH_FRAME_MS,
+            "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+        },
+        "start_control_payload": {
+            "type": "start",
+            "version": PROTOCOL_VERSION,
+            "audio": {
+                "sample_rate": HOT_PATH_SAMPLE_RATE,
+                "channels": HOT_PATH_CHANNELS,
+                "format": HOT_PATH_PCM_FORMAT,
+                "frame_ms": HOT_PATH_FRAME_MS,
+                "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+            },
+            "language": "en",
+            "interim_results": True,
+            "partial_interval_ms": 100,
+        },
         "server_transport": {
             "mode": "tcp",
             "transport": "tcp_ws",
