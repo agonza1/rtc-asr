@@ -542,7 +542,18 @@ class RawUdsConnectionAdapter:
         if isinstance(data, bytes):
             frame = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, validate_raw_uds_audio_payload(data))
         else:
-            payload = json.loads(data)
+            try:
+                payload = json.loads(data)
+            except json.JSONDecodeError as exc:
+                raise LocalSTTProtocolError(
+                    "Raw UDS JSON control payload must be valid JSON",
+                    code="raw_uds_invalid_json",
+                ) from exc
+            if not isinstance(payload, dict):
+                raise LocalSTTProtocolError(
+                    "Raw UDS JSON control payload must be an object",
+                    code="raw_uds_invalid_json",
+                )
             heartbeat_frame_types = {"ping": RawUdsFrameType.PING, "pong": RawUdsFrameType.PONG}
             frame_type = heartbeat_frame_types.get(payload.get("type"), RawUdsFrameType.JSON_CONTROL)
             frame = encode_raw_uds_json_frame(frame_type, payload)

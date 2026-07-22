@@ -445,6 +445,19 @@ def test_raw_uds_adapter_encodes_pong_as_pong_frame() -> None:
     assert json.loads(pong_frame.payload.decode("utf-8")) == {"type": "pong", "ping_id": "p1"}
 
 
+@pytest.mark.parametrize("payload", ["{", "[]"])
+def test_raw_uds_adapter_rejects_invalid_json_control_payloads_before_write(payload: str) -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(b"")
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        asyncio.run(connection.send(payload))
+
+    assert excinfo.value.code == "raw_uds_invalid_json"
+    assert writer.writes == []
+
+
 def test_raw_uds_adapter_rejects_invalid_audio_payload_before_write() -> None:
     writer = FakeRawUdsWriter()
     reader = FakeRawUdsReader(b"")
