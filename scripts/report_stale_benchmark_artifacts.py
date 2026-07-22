@@ -32,6 +32,7 @@ SUMMARY_GROUPS = (
     "track-state",
     "detail-page",
     "detail-page-name",
+    "detail-page-stem",
     "detail-page-dir",
     "detail-page-extension",
     "measured-month",
@@ -56,6 +57,7 @@ SUMMARY_GROUP_KEYS = {
     "track-state": "by_track_state",
     "detail-page": "by_detail_page_path",
     "detail-page-name": "by_detail_page_name",
+    "detail-page-stem": "by_detail_page_stem",
     "detail-page-dir": "by_detail_page_dir",
     "detail-page-extension": "by_detail_page_extension",
     "measured-month": "by_measured_month",
@@ -178,6 +180,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "detail-page-name",
             "detail-page-name-asc",
             "detail-page-name-desc",
+            "detail-page-stem",
+            "detail-page-stem-asc",
+            "detail-page-stem-desc",
             "artifact-stem",
             "artifact-stem-asc",
             "artifact-stem-desc",
@@ -433,6 +438,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page file name contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
+        "--detail-page-stem",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page file stem matches this value; repeat to include multiple stems",
+    )
+    parser.add_argument(
+        "--detail-page-stem-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page file stem contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--status",
@@ -720,6 +737,8 @@ def stale_artifacts(
     detail_page_contains: list[str] | None = None,
     detail_page_names: list[str] | None = None,
     detail_page_name_contains: list[str] | None = None,
+    detail_page_stems: list[str] | None = None,
+    detail_page_stem_contains: list[str] | None = None,
     statuses: list[str] | None = None,
     status_contains: list[str] | None = None,
     now: datetime | None = None,
@@ -768,6 +787,8 @@ def stale_artifacts(
     detail_page_contains = normalize_filter_values(detail_page_contains)
     detail_page_names = normalize_filter_values(detail_page_names)
     detail_page_name_contains = normalize_filter_values(detail_page_name_contains)
+    detail_page_stems = normalize_filter_values(detail_page_stems)
+    detail_page_stem_contains = normalize_filter_values(detail_page_stem_contains)
     status_contains = normalize_filter_values(status_contains)
     allowed_measured_months = None
     if measured_months is not None:
@@ -897,6 +918,10 @@ def stale_artifacts(
     detail_page_name_needles = (
         None if detail_page_name_contains is None else [needle.lower() for needle in detail_page_name_contains]
     )
+    allowed_detail_page_stems = None if detail_page_stems is None else {Path(stem).stem for stem in detail_page_stems}
+    detail_page_stem_needles = (
+        None if detail_page_stem_contains is None else [needle.lower() for needle in detail_page_stem_contains]
+    )
     status_needles = None if status_contains is None else [needle.lower() for needle in status_contains]
     allowed_statuses = None if statuses is None and status_needles is not None else normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
@@ -952,6 +977,12 @@ def stale_artifacts(
             continue
         if detail_page_name_needles is not None:
             if not any(needle in detail_page_name.lower() for needle in detail_page_name_needles):
+                continue
+        detail_page_stem = Path(artifact_detail_page_path or "").stem
+        if allowed_detail_page_stems is not None and detail_page_stem not in allowed_detail_page_stems:
+            continue
+        if detail_page_stem_needles is not None:
+            if not any(needle in detail_page_stem.lower() for needle in detail_page_stem_needles):
                 continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
@@ -1040,6 +1071,7 @@ def stale_artifacts(
         current_artifact_stem = Path(current_artifact_path or "").stem or None
         current_artifact_dir = str(Path(current_artifact_path).parent) if current_artifact_path else None
         detail_page_name = Path(artifact_detail_page_path or "").name or None
+        detail_page_stem = Path(artifact_detail_page_path or "").stem or None
         detail_page_dir = str(Path(artifact_detail_page_path).parent) if artifact_detail_page_path else None
         detail_page_extension = Path(artifact_detail_page_path or "").suffix.lower() or "none"
         stale.append(
@@ -1067,6 +1099,7 @@ def stale_artifacts(
                 "track_state": "tracked" if current_artifact_path is not None else "untracked",
                 "detail_page_path": artifact_detail_page_path,
                 "detail_page_name": detail_page_name,
+                "detail_page_stem": detail_page_stem,
                 "detail_page_dir": detail_page_dir,
                 "detail_page_extension": detail_page_extension,
                 "artifact_size_bytes": artifact_size_bytes,
@@ -1209,6 +1242,22 @@ def stale_artifacts(
             stale,
             key=lambda entry: (
                 tuple(-ord(character) for character in Path(entry.get("detail_page_path") or "").name),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by in {"detail-page-stem", "detail-page-stem-asc"}:
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("detail_page_path") or "").stem,
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "detail-page-stem-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                tuple(-ord(character) for character in Path(entry.get("detail_page_path") or "").stem),
                 entry.get("artifact_path") or "",
             ),
         )
@@ -1469,6 +1518,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_track_state: dict[str, dict[str, Any]] = {}
     by_detail_page_path: dict[str, dict[str, Any]] = {}
     by_detail_page_name: dict[str, dict[str, Any]] = {}
+    by_detail_page_stem: dict[str, dict[str, Any]] = {}
     by_detail_page_dir: dict[str, dict[str, Any]] = {}
     by_detail_page_extension: dict[str, dict[str, Any]] = {}
     by_measured_month: dict[str, dict[str, Any]] = {}
@@ -1712,6 +1762,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         detail_name_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         detail_name_bucket["total_size"] = format_bytes(detail_name_bucket["total_size_bytes"])
 
+        detail_page_stem = Path(entry.get("detail_page_path") or "").stem or "missing"
+        detail_stem_bucket = by_detail_page_stem.setdefault(
+            detail_page_stem,
+            {
+                "detail_page_stem": detail_page_stem,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        detail_stem_bucket["count"] += 1
+        detail_stem_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        detail_stem_bucket["total_size"] = format_bytes(detail_stem_bucket["total_size_bytes"])
+
         detail_page_dir = (
             str(Path(entry.get("detail_page_path") or "").parent)
             if entry.get("detail_page_path")
@@ -1843,6 +1907,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_detail_page_name": sorted(
             by_detail_page_name.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_name"]),
+        ),
+        "by_detail_page_stem": sorted(
+            by_detail_page_stem.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_stem"]),
         ),
         "by_detail_page_dir": sorted(
             by_detail_page_dir.values(),
@@ -2165,6 +2233,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "track_state",
         "detail_page_path",
         "detail_page_name",
+        "detail_page_stem",
         "detail_page_dir",
         "detail_page_extension",
         "artifact_size_bytes",
@@ -2189,6 +2258,8 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             or "none",
             "detail_page_name": entry.get("detail_page_name")
             or Path(entry.get("detail_page_path") or "").name,
+            "detail_page_stem": entry.get("detail_page_stem")
+            or Path(entry.get("detail_page_path") or "").stem,
             "detail_page_dir": entry.get("detail_page_dir")
             or (str(Path(entry.get("detail_page_path")).parent) if entry.get("detail_page_path") else ""),
             "detail_page_extension": entry.get("detail_page_extension")
@@ -2958,6 +3029,40 @@ def render_summary(
             min_size_bytes=summary_min_size_bytes,
             max_size_bytes=summary_max_size_bytes,
         )
+    if "detail-page-stem" in selected_groups and summary["by_detail_page_stem"]:
+        lines.append("By detail page stem:")
+    if "detail-page-stem" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_detail_page_stem"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {detail_page_stem}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    detail_page_stem=bucket["detail_page_stem"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_detail_page_stem"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
     if "detail-page-dir" in selected_groups and summary["by_detail_page_dir"]:
         lines.append("By detail page directory:")
     if "detail-page-dir" in selected_groups:
@@ -3262,6 +3367,8 @@ def main(argv: list[str] | None = None) -> int:
         detail_page_contains=args.detail_page_contains,
         detail_page_names=args.detail_page_name,
         detail_page_name_contains=args.detail_page_name_contains,
+        detail_page_stems=args.detail_page_stem,
+        detail_page_stem_contains=args.detail_page_stem_contains,
         statuses=args.status,
         status_contains=args.status_contains,
         sort_by=args.sort,
