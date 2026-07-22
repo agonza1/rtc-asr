@@ -2956,6 +2956,22 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-only and --count-only cannot be used together")
     if args.summary_only and args.total_bytes_only:
         raise ValueError("--summary-only and --total-bytes-only cannot be used together")
+    if args.markdown and args.json:
+        raise ValueError("--markdown and --json cannot be used together")
+    if args.markdown and args.json_summary:
+        raise ValueError("--markdown and --json-summary cannot be used together")
+    if args.markdown and args.json_lines:
+        raise ValueError("--markdown and --json-lines cannot be used together")
+    if args.markdown and args.csv:
+        raise ValueError("--markdown and --csv cannot be used together")
+    if args.markdown and args.paths_only:
+        raise ValueError("--markdown and --paths-only cannot be used together")
+    if args.markdown and args.count_only:
+        raise ValueError("--markdown and --count-only cannot be used together")
+    if args.markdown and args.total_bytes_only:
+        raise ValueError("--markdown and --total-bytes-only cannot be used together")
+    if args.markdown and args.summary_only:
+        raise ValueError("--markdown and --summary-only cannot be used together")
     if args.summary_group and not (args.summary_only or args.json_summary):
         raise ValueError("--summary-group requires --summary-only or --json-summary")
     if args.summary_limit is not None and not (args.summary_only or args.json_summary):
