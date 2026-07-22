@@ -6,8 +6,11 @@ from dataclasses import asdict, dataclass
 @dataclass(slots=True)
 class LocalSTTMetrics:
     local_stt_audio_frames_received_total: int = 0
+    local_stt_audio_received_ms_total: float = 0.0
     local_stt_audio_frames_sent_total: int = 0
+    local_stt_audio_sent_ms_total: float = 0.0
     local_stt_audio_frames_dropped_total: int = 0
+    local_stt_audio_dropped_ms_total: float = 0.0
     local_stt_send_queue_depth_ms: float = 0.0
     local_stt_reconnects_total: int = 0
     local_stt_ready_events_total: int = 0
