@@ -445,6 +445,28 @@ def test_raw_uds_adapter_encodes_pong_as_pong_frame() -> None:
     assert json.loads(pong_frame.payload.decode("utf-8")) == {"type": "pong", "ping_id": "p1"}
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected_frame_type"),
+    [
+        ({"type": "ping"}, RawUdsFrameType.PING),
+        ({"type": "pong"}, RawUdsFrameType.PONG),
+    ],
+)
+def test_raw_uds_adapter_encodes_empty_heartbeats_as_compact_frames(
+    payload: dict[str, str],
+    expected_frame_type: RawUdsFrameType,
+) -> None:
+    writer = FakeRawUdsWriter()
+    reader = FakeRawUdsReader(b"")
+    connection = RawUdsConnectionAdapter(reader, writer)
+
+    asyncio.run(connection.send(json.dumps(payload)))
+
+    heartbeat_frame = decode_raw_uds_frame(writer.writes[0])
+    assert heartbeat_frame.frame_type == expected_frame_type
+    assert heartbeat_frame.payload == b""
+
+
 @pytest.mark.parametrize("payload", ["{", "[]"])
 def test_raw_uds_adapter_rejects_invalid_json_control_payloads_before_write(payload: str) -> None:
     writer = FakeRawUdsWriter()
