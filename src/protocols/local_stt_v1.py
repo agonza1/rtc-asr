@@ -222,7 +222,7 @@ class ClosedMessage(LocalSttModel):
 
 
 ClientMessage: TypeAlias = Annotated[
-    StartMessage | FinalizeMessage | CancelMessage | CloseMessage | PingMessage,
+    StartMessage | FinalizeMessage | CancelMessage | CloseMessage | PingMessage | PongMessage,
     Field(discriminator="type"),
 ]
 ServerMessage: TypeAlias = Annotated[
@@ -392,9 +392,19 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, An
 def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
     normalized = _normalize_raw_uds_control_payload(dict(payload))
     message = parse_client_message(normalized)
-    if isinstance(message, PingMessage) and message.ping_id is None and message.timestamp_ms is None:
-        return encode_raw_uds_frame(RawUdsFrameType.PING, b"")
-    frame_type = RawUdsFrameType.PING if isinstance(message, PingMessage) else RawUdsFrameType.JSON_CONTROL
+    if (
+        isinstance(message, (PingMessage, PongMessage))
+        and message.ping_id is None
+        and message.timestamp_ms is None
+        and getattr(message, "metadata", {}) == {}
+    ):
+        frame_type = RawUdsFrameType.PING if isinstance(message, PingMessage) else RawUdsFrameType.PONG
+        return encode_raw_uds_frame(frame_type, b"")
+    frame_type = RawUdsFrameType.JSON_CONTROL
+    if isinstance(message, PingMessage):
+        frame_type = RawUdsFrameType.PING
+    elif isinstance(message, PongMessage):
+        frame_type = RawUdsFrameType.PONG
     return encode_raw_uds_json_frame(frame_type, _compact_raw_uds_message_payload(message))
 
 
@@ -447,10 +457,10 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
                 retryable=exc.retryable,
                 metadata={"original_code": exc.code, **exc.metadata},
             ) from exc
-    if frame.frame_type == RawUdsFrameType.PING:
+    if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG}:
         try:
             payload = {} if not frame.payload else decode_raw_uds_json_payload(frame)
-            payload.setdefault("type", "ping")
+            payload.setdefault("type", "ping" if frame.frame_type == RawUdsFrameType.PING else "pong")
             return parse_client_message(payload)
         except LocalSttProtocolError as exc:
             raise LocalSttProtocolError(

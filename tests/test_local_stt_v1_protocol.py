@@ -386,6 +386,11 @@ def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
     start = decode_raw_uds_frame(encode_raw_uds_client_message(build_start_message().model_dump()))
     bare_ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping"}))
     ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping", "ping_id": "p1"}))
+    bare_pong = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "pong"}))
+    pong = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "pong", "ping_id": "server-1"}))
+    metadata_pong = decode_raw_uds_frame(
+        encode_raw_uds_client_message({"type": "pong", "metadata": {"server_ping": "server-2"}})
+    )
     audio = decode_raw_uds_frame(encode_raw_uds_audio_frame(memoryview(b"\x00\x01")))
 
     assert start.frame_type == RawUdsFrameType.JSON_CONTROL
@@ -394,6 +399,13 @@ def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
     assert parse_raw_uds_client_frame(bare_ping).type == "ping"
     assert ping.frame_type == RawUdsFrameType.PING
     assert decode_raw_uds_json_payload(ping) == {"type": "ping", "ping_id": "p1"}
+    assert bare_pong.frame_type == RawUdsFrameType.PONG
+    assert bare_pong.payload == b""
+    assert parse_raw_uds_client_frame(bare_pong).type == "pong"
+    assert pong.frame_type == RawUdsFrameType.PONG
+    assert decode_raw_uds_json_payload(pong) == {"type": "pong", "ping_id": "server-1"}
+    assert metadata_pong.frame_type == RawUdsFrameType.PONG
+    assert decode_raw_uds_json_payload(metadata_pong) == {"type": "pong", "metadata": {"server_ping": "server-2"}}
     assert audio.frame_type == RawUdsFrameType.AUDIO_PCM16
     assert audio.payload == b"\x00\x01"
 
@@ -609,15 +621,21 @@ def test_raw_uds_client_frame_parser_maps_control_ping_and_audio() -> None:
     ping_frame = decode_raw_uds_frame(
         encode_raw_uds_json_frame(RawUdsFrameType.PING, {"ping_id": "p1"})
     )
+    pong_frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(RawUdsFrameType.PONG, {"ping_id": "server-1"})
+    )
     audio_frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, b"\x00\x01"))
 
     start = parse_raw_uds_client_frame(start_frame)
     ping = parse_raw_uds_client_frame(ping_frame)
+    pong = parse_raw_uds_client_frame(pong_frame)
     audio = parse_raw_uds_client_frame(audio_frame)
 
     assert start.type == "start"
     assert ping.type == "ping"
     assert ping.ping_id == "p1"
+    assert pong.type == "pong"
+    assert pong.ping_id == "server-1"
     assert audio == b"\x00\x01"
 
 
