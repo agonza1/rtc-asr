@@ -220,6 +220,22 @@ def test_artifact_modified_timestamp_ignores_non_object_artifact_metadata() -> N
     assert manifest_module.artifact_modified_timestamp({"artifact": ["legacy-artifact-name"]}) is None
 
 
+def test_load_payload_reports_invalid_json_path(tmp_path: Path) -> None:
+    artifact = tmp_path / "broken.json"
+    artifact.write_text("{", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"broken\.json contains invalid JSON"):
+        manifest_module.load_payload(artifact)
+
+
+def test_load_payload_rejects_non_object_json(tmp_path: Path) -> None:
+    artifact = tmp_path / "array.json"
+    artifact.write_text("[]", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"array\.json must contain a JSON object"):
+        manifest_module.load_payload(artifact)
+
+
 def test_render_detail_page_does_not_label_measured_at_as_artifact_modified() -> None:
     detail_html = render_detail_page({
         "label": "Demo artifact",

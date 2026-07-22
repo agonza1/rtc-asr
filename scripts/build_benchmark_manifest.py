@@ -99,7 +99,13 @@ def preserve_generated_at_when_unchanged(output: Path, manifest: dict[str, Any])
 
 
 def load_payload(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{path} contains invalid JSON: {error.msg}") from error
+    if not isinstance(payload, dict):
+        raise ValueError(f"{path} must contain a JSON object")
+    return payload
 
 
 def iso_now() -> str:
