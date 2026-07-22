@@ -4244,6 +4244,32 @@ def test_stale_artifacts_can_filter_by_detail_page_file_stem_text() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_detail_page_directory() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.txt",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        detail_page_dirs=["benchmark-results/pages"],
+        detail_page_dir_contains=["PAGES"],
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+
+
 def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, sort_by="unknown")
@@ -6314,6 +6340,32 @@ def test_main_paths_only_can_filter_by_artifact_directory(monkeypatch, capsys) -
     assert report_module.main(["--paths-only", "--artifact-dir", "benchmark-results/archive"]) == 0
 
     assert capsys.readouterr().out == "benchmark-results/archive/base.json\n"
+
+
+def test_main_paths_only_can_filter_by_detail_page_directory(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 20,
+                },
+                {
+                    "artifact_path": "benchmark-results/readme.txt",
+                    "status": "legacy",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--paths-only", "--detail-page-dir", "benchmark-results/pages"]) == 0
+
+    assert capsys.readouterr().out == "benchmark-results/base.json\n"
 
 
 def test_main_count_only_reports_total_matches_before_limit(monkeypatch, capsys) -> None:
