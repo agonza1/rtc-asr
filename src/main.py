@@ -35,6 +35,7 @@ from .protocols import (
     CancelMessage,
     CloseMessage,
     PingMessage,
+    PongMessage,
     AudioFormat,
     ErrorMessage,
     FinalizeMessage,
@@ -190,7 +191,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                     "frame_format": "uint8_type_uint32_len_le",
-                    "keepalive_payloads": ["empty", "json_object"],
+                    "keepalive_payloads": ["empty_ping", "json_ping", "empty_pong", "json_pong"],
                     "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                     "benchmark_command": (
                         "python scripts/bench_local_stt_stream.py --transport raw_uds "
@@ -782,6 +783,9 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         await runtime.outgoing_events.put(_local_stt_pong_event(payload))
                     continue
 
+                if event_type == "pong":
+                    continue
+
                 if event_type == "close":
                     if runtime is not None:
                         await stop_runtime()
@@ -969,6 +973,9 @@ async def _raw_uds_stream_client(
                     await runtime.outgoing_events.put(_local_stt_pong_event(payload))
                 continue
 
+            if event_type == "pong":
+                continue
+
             if event_type == "close":
                 if runtime is not None:
                     await stop_runtime()
@@ -1061,6 +1068,8 @@ async def _receive_raw_uds_event(reader: asyncio.StreamReader) -> tuple[object, 
         return payload, "close"
     if isinstance(payload, PingMessage):
         return payload, "ping"
+    if isinstance(payload, PongMessage):
+        return payload, "pong"
     raise LocalSttProtocolError(
         f"Unsupported Local STT v1 message type: {getattr(payload, 'type', type(payload).__name__)}",
         code="unsupported_message_type",

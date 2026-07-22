@@ -107,7 +107,7 @@ DEFAULT_PROTOCOLS = [
                 "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "frame_format": "uint8_type_uint32_len_le",
-                "keepalive_payloads": ["empty", "json_object"],
+                "keepalive_payloads": ["empty_ping", "json_ping", "empty_pong", "json_pong"],
                 "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                 "benchmark_command": (
                     "python scripts/bench_local_stt_stream.py --transport raw_uds "
@@ -501,7 +501,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["frame_format"] == "uint8_type_uint32_len_le"
     assert raw_uds["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
     assert raw_uds["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
-    assert raw_uds["keepalive_payloads"] == ["empty", "json_object"]
+    assert raw_uds["keepalive_payloads"] == ["empty_ping", "json_ping", "empty_pong", "json_pong"]
     assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
     assert raw_uds["benchmark_command"] == (
         "python scripts/bench_local_stt_stream.py --transport raw_uds "
@@ -783,6 +783,37 @@ def test_raw_uds_ping_and_close_do_not_start_runtime(tmp_path: Path) -> None:
 
         assert pong == {"type": "pong", "ping_id": "pre-start", "metadata": {}}
         assert closed == {"type": "closed", "reason": "client_close", "metadata": {}}
+
+    with TestClient(create_app(config=config, transcriber=transcriber)):
+        asyncio.run(scenario())
+
+    assert transcriber.calls == []
+
+
+def test_raw_uds_pong_and_close_do_not_start_runtime(tmp_path: Path) -> None:
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    transcriber = FakeTranscriber()
+    config = AppConfig(local_stt_raw_uds_enabled=True, local_stt_raw_uds_path=str(raw_socket_path))
+
+    async def scenario() -> None:
+        reader, writer = await asyncio.open_unix_connection(str(raw_socket_path))
+        try:
+            writer.write(encode_raw_uds_frame(RawUdsFrameType.PONG, b""))
+            writer.write(encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "close"}))
+            await writer.drain()
+
+            header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+            payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+            frame = decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+
+            assert parse_raw_uds_server_frame(frame).model_dump() == {
+                "type": "closed",
+                "reason": "client_close",
+                "metadata": {},
+            }
+        finally:
+            writer.close()
+            await writer.wait_closed()
 
     with TestClient(create_app(config=config, transcriber=transcriber)):
         asyncio.run(scenario())
