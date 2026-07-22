@@ -1040,6 +1040,8 @@ def stale_artifacts(
         current_artifact_stem = Path(current_artifact_path or "").stem or None
         current_artifact_dir = str(Path(current_artifact_path).parent) if current_artifact_path else None
         detail_page_name = Path(artifact_detail_page_path or "").name or None
+        detail_page_dir = str(Path(artifact_detail_page_path).parent) if artifact_detail_page_path else None
+        detail_page_extension = Path(artifact_detail_page_path or "").suffix.lower() or "none"
         stale.append(
             {
                 "artifact_path": artifact_path,
@@ -1065,6 +1067,8 @@ def stale_artifacts(
                 "track_state": "tracked" if current_artifact_path is not None else "untracked",
                 "detail_page_path": artifact_detail_page_path,
                 "detail_page_name": detail_page_name,
+                "detail_page_dir": detail_page_dir,
+                "detail_page_extension": detail_page_extension,
                 "artifact_size_bytes": artifact_size_bytes,
                 "artifact_size": format_bytes(artifact_size_bytes),
             }
@@ -2161,6 +2165,8 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "track_state",
         "detail_page_path",
         "detail_page_name",
+        "detail_page_dir",
+        "detail_page_extension",
         "artifact_size_bytes",
         "artifact_size",
     ]
@@ -2183,6 +2189,11 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             or "none",
             "detail_page_name": entry.get("detail_page_name")
             or Path(entry.get("detail_page_path") or "").name,
+            "detail_page_dir": entry.get("detail_page_dir")
+            or (str(Path(entry.get("detail_page_path")).parent) if entry.get("detail_page_path") else ""),
+            "detail_page_extension": entry.get("detail_page_extension")
+            or Path(entry.get("detail_page_path") or "").suffix.lower()
+            or "none",
         }
         writer.writerow(row)
     return output.getvalue()
