@@ -888,8 +888,8 @@ def stale_artifacts(
     detail_page_name_needles = (
         None if detail_page_name_contains is None else [needle.lower() for needle in detail_page_name_contains]
     )
-    allowed_statuses = normalize_status_filters(statuses)
     status_needles = None if status_contains is None else [needle.lower() for needle in status_contains]
+    allowed_statuses = None if statuses is None and status_needles is not None else normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
     for artifact in manifest.get("artifacts", []):
         artifact_path = artifact.get("artifact_path")
