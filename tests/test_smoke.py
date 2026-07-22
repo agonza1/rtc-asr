@@ -123,6 +123,7 @@ DEFAULT_PROTOCOLS = [
                     "incomplete_frame",
                     "frame_length_mismatch",
                     "invalid_client_frame_type",
+                    "invalid_server_frame_type",
                 ],
                 "error_codes": [
                     "raw_uds_unsupported_frame_type",
@@ -132,6 +133,7 @@ DEFAULT_PROTOCOLS = [
                     "raw_uds_incomplete_frame",
                     "raw_uds_frame_length_mismatch",
                     "raw_uds_invalid_client_frame_type",
+                    "raw_uds_invalid_server_frame_type",
                 ],
                 "shared_stream_runtime": True,
                 "benchmark_metrics": [
@@ -514,6 +516,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
         "incomplete_frame",
         "frame_length_mismatch",
         "invalid_client_frame_type",
+        "invalid_server_frame_type",
     ]
     assert raw_uds["error_codes"] == [
         "raw_uds_unsupported_frame_type",
@@ -523,6 +526,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
         "raw_uds_incomplete_frame",
         "raw_uds_frame_length_mismatch",
         "raw_uds_invalid_client_frame_type",
+        "raw_uds_invalid_server_frame_type",
     ]
     assert raw_uds["frame_type_codes"] == {
         "JSON_CONTROL": 1,

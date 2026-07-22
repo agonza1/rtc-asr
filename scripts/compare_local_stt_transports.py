@@ -68,6 +68,7 @@ RAW_UDS_REQUIRED_ERROR_HANDLING = (
     "incomplete_frame",
     "frame_length_mismatch",
     "invalid_client_frame_type",
+    "invalid_server_frame_type",
 )
 RAW_UDS_REQUIRED_ERROR_CODES = (
     "raw_uds_unsupported_frame_type",
@@ -77,6 +78,7 @@ RAW_UDS_REQUIRED_ERROR_CODES = (
     "raw_uds_incomplete_frame",
     "raw_uds_frame_length_mismatch",
     "raw_uds_invalid_client_frame_type",
+    "raw_uds_invalid_server_frame_type",
 )
 RAW_UDS_REQUIRED_START_CONTROL_PAYLOAD = {
     "type": "start",
