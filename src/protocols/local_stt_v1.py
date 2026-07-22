@@ -392,7 +392,12 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, An
 def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
     normalized = _normalize_raw_uds_control_payload(dict(payload))
     message = parse_client_message(normalized)
-    if isinstance(message, (PingMessage, PongMessage)) and message.ping_id is None and message.timestamp_ms is None:
+    if (
+        isinstance(message, (PingMessage, PongMessage))
+        and message.ping_id is None
+        and message.timestamp_ms is None
+        and getattr(message, "metadata", {}) == {}
+    ):
         frame_type = RawUdsFrameType.PING if isinstance(message, PingMessage) else RawUdsFrameType.PONG
         return encode_raw_uds_frame(frame_type, b"")
     frame_type = RawUdsFrameType.JSON_CONTROL

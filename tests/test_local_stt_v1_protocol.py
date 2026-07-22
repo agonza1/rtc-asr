@@ -388,6 +388,9 @@ def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
     ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping", "ping_id": "p1"}))
     bare_pong = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "pong"}))
     pong = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "pong", "ping_id": "server-1"}))
+    metadata_pong = decode_raw_uds_frame(
+        encode_raw_uds_client_message({"type": "pong", "metadata": {"server_ping": "server-2"}})
+    )
     audio = decode_raw_uds_frame(encode_raw_uds_audio_frame(memoryview(b"\x00\x01")))
 
     assert start.frame_type == RawUdsFrameType.JSON_CONTROL
@@ -401,6 +404,8 @@ def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
     assert parse_raw_uds_client_frame(bare_pong).type == "pong"
     assert pong.frame_type == RawUdsFrameType.PONG
     assert decode_raw_uds_json_payload(pong) == {"type": "pong", "ping_id": "server-1"}
+    assert metadata_pong.frame_type == RawUdsFrameType.PONG
+    assert decode_raw_uds_json_payload(metadata_pong) == {"type": "pong", "metadata": {"server_ping": "server-2"}}
     assert audio.frame_type == RawUdsFrameType.AUDIO_PCM16
     assert audio.payload == b"\x00\x01"
 
