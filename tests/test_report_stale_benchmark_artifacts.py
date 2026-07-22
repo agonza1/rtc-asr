@@ -781,6 +781,54 @@ def test_render_json_summary_can_select_and_limit_groups() -> None:
     }
 
 
+def test_render_json_summary_can_include_group_share_percentages() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-large.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/base-small.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 5,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 5,
+            },
+        ],
+        groups=["slug"],
+        include_share=True,
+    )
+
+    summary = json.loads(rendered)
+
+    assert summary["by_slug"] == [
+        {
+            "slug": "base",
+            "count": 2,
+            "total_size_bytes": 95,
+            "total_size": "95 B",
+            "count_share_percent": 66.7,
+            "size_share_percent": 95.0,
+        },
+        {
+            "slug": "qwen",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+            "count_share_percent": 33.3,
+            "size_share_percent": 5.0,
+        },
+    ]
+
+
 def test_render_json_summary_can_filter_group_rows_by_min_count() -> None:
     rendered = render_json_summary(
         [
@@ -1507,6 +1555,10 @@ def test_render_markdown_emits_review_table_and_escapes_pipes() -> None:
 
 def test_parse_args_accepts_markdown_output_flag() -> None:
     assert parse_args(["--markdown"]).markdown is True
+
+
+def test_parse_args_accepts_json_summary_share_flag() -> None:
+    assert parse_args(["--json-summary", "--summary-share"]).summary_share is True
 
 
 def test_stale_artifacts_can_sort_smallest_first() -> None:
@@ -6232,6 +6284,38 @@ def test_main_json_summary_reports_selected_groups(monkeypatch, capsys) -> None:
             }
         ],
     }
+
+
+def test_main_json_summary_can_include_group_share_percentages(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "slug": "base",
+                    "artifact_size_bytes": 90,
+                },
+                {
+                    "artifact_path": "benchmark-results/qwen.json",
+                    "status": "legacy",
+                    "slug": "qwen",
+                    "artifact_size_bytes": 10,
+                },
+            ],
+        },
+    )
+
+    assert report_module.main(["--json-summary", "--summary-group", "slug", "--summary-share"]) == 0
+
+    output = json.loads(capsys.readouterr().out)
+
+    assert output["by_slug"][0]["slug"] == "base"
+    assert output["by_slug"][0]["count_share_percent"] == 50.0
+    assert output["by_slug"][0]["size_share_percent"] == 90.0
 
 
 def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:

@@ -570,6 +570,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="With --summary-only or --json-summary, only print grouping rows with no more than this many bytes",
     )
+    parser.add_argument(
+        "--summary-share",
+        action="store_true",
+        help="With --json-summary, include count and byte share percentages for each grouping row",
+    )
     return parser.parse_args(argv)
 
 
@@ -1944,6 +1949,7 @@ def render_json_summary(
     summary_max_count: int | None = None,
     summary_min_size_bytes: int | None = None,
     summary_max_size_bytes: int | None = None,
+    include_share: bool = False,
 ) -> str:
     validate_summary_options(
         summary_limit=summary_limit,
@@ -1969,7 +1975,7 @@ def render_json_summary(
         if group not in selected_groups:
             continue
         summary_key = SUMMARY_GROUP_KEYS[group]
-        rendered[summary_key] = limit_summary_buckets(
+        buckets = limit_summary_buckets(
             summary[summary_key],
             summary_limit,
             sort_by=summary_sort,
@@ -1978,7 +1984,35 @@ def render_json_summary(
             min_size_bytes=summary_min_size_bytes,
             max_size_bytes=summary_max_size_bytes,
         )
+        if include_share:
+            buckets = with_summary_shares(
+                buckets,
+                total_count=summary["count"],
+                total_size_bytes=summary["total_size_bytes"],
+            )
+        rendered[summary_key] = buckets
     return json.dumps(rendered, indent=2)
+
+
+def with_summary_shares(
+    buckets: list[dict[str, Any]],
+    *,
+    total_count: int,
+    total_size_bytes: int,
+) -> list[dict[str, Any]]:
+    shared_buckets = []
+    for bucket in buckets:
+        shared_bucket = dict(bucket)
+        shared_bucket["count_share_percent"] = (
+            round((bucket["count"] / total_count) * 100, 1) if total_count else 0.0
+        )
+        shared_bucket["size_share_percent"] = (
+            round((bucket["total_size_bytes"] / total_size_bytes) * 100, 1)
+            if total_size_bytes
+            else 0.0
+        )
+        shared_buckets.append(shared_bucket)
+    return shared_buckets
 
 
 def render_csv(stale: list[dict[str, Any]]) -> str:
@@ -2934,6 +2968,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-min-size-bytes requires --summary-only or --json-summary")
     if args.summary_max_size_bytes is not None and not (args.summary_only or args.json_summary):
         raise ValueError("--summary-max-size-bytes requires --summary-only or --json-summary")
+    if args.summary_share and not args.json_summary:
+        raise ValueError("--summary-share requires --json-summary")
     if args.include_detail_pages and not args.paths_only:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
@@ -3025,6 +3061,7 @@ def main(argv: list[str] | None = None) -> int:
                 summary_max_count=args.summary_max_count,
                 summary_min_size_bytes=args.summary_min_size_bytes,
                 summary_max_size_bytes=args.summary_max_size_bytes,
+                include_share=args.summary_share,
             )
         )
     elif args.paths_only:
