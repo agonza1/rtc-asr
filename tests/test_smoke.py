@@ -118,6 +118,7 @@ DEFAULT_PROTOCOLS = [
                 "error_handling": [
                     "bad_frame_type",
                     "malformed_json_control",
+                    "invalid_json_payload",
                     "oversized_payload",
                     "incomplete_frame",
                     "frame_length_mismatch",
@@ -126,6 +127,7 @@ DEFAULT_PROTOCOLS = [
                 "error_codes": [
                     "raw_uds_unsupported_frame_type",
                     "raw_uds_malformed_json_control",
+                    "raw_uds_invalid_json",
                     "raw_uds_payload_too_large",
                     "raw_uds_incomplete_frame",
                     "raw_uds_frame_length_mismatch",
@@ -507,6 +509,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["error_handling"] == [
         "bad_frame_type",
         "malformed_json_control",
+        "invalid_json_payload",
         "oversized_payload",
         "incomplete_frame",
         "frame_length_mismatch",
@@ -515,6 +518,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["error_codes"] == [
         "raw_uds_unsupported_frame_type",
         "raw_uds_malformed_json_control",
+        "raw_uds_invalid_json",
         "raw_uds_payload_too_large",
         "raw_uds_incomplete_frame",
         "raw_uds_frame_length_mismatch",
