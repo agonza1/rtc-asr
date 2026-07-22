@@ -4,6 +4,8 @@
 # Service Settings
 HOST=0.0.0.0
 PORT=8080
+# Compose host port. The container always listens on PORT=8080.
+HOST_PORT=8080
 
 # Audio Settings
 SAMPLE_RATE=16000

@@ -86,7 +86,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 cp config.example .env
 ASR_PRELOAD_MODEL=true ASR_FAIL_FAST=true \
-  uvicorn src.main:app --host 0.0.0.0 --port 8080
+  uvicorn src.main:app --host 0.0.0.0 --port 8080 --env-file .env
 ```
 
 The default dependency set is pinned for the Qwen-compatible runtime. The Transformers Parakeet path needs the documented newer Hugging Face pair:
@@ -107,6 +107,7 @@ Copy `config.example` to `.env` for Compose. Docker Compose reads `.env` automat
 | --- | --- | --- |
 | `HOST` | `0.0.0.0` | Application listen address outside the Compose override |
 | `PORT` | `8080` | Application listen port |
+| `HOST_PORT` | `8080` | Host port published by Compose; the container still listens on `PORT=8080` |
 | `CORS_ORIGINS` | `*` | Comma-separated browser origins; restrict this when browser access is required |
 | `SAMPLE_RATE` | `16000` | Default audio sample rate |
 | `STREAM_MAX_BUFFER_BYTES` | `1048576` | Maximum buffered audio per stream |
@@ -306,15 +307,7 @@ There is no `/metrics` or `/api/metrics` endpoint today. Do not configure Promet
 
 ## Rollback
 
-Rollback with immutable image references, not mutable `latest` tags.
-
-For Compose, restore the previous image tag in the environment-specific Compose file and run:
-
-```bash
-docker compose pull asr-service
-docker compose up -d asr-service
-curl -f http://127.0.0.1:8080/ready
-```
+Rollback with immutable image references, not mutable `latest` tags. The checked-in Compose file builds locally and does not declare a pullable `image:` for `asr-service`; keep rollback conceptual until an environment-specific Compose override pins a registry image such as `image: ${RTC_ASR_IMAGE}`.
 
 For Kubernetes, use the platform's normal rollout history and verify `/ready` before restoring traffic.
 
