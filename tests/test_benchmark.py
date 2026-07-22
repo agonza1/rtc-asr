@@ -480,12 +480,24 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
     assert "benchmark-site-check:" in makefile
     phony_line = next(line for line in makefile.splitlines() if line.startswith(".PHONY:"))
     phony_targets = set(phony_line.removeprefix(".PHONY:").split())
-    assert {"benchmark-site", "benchmark-site-check", "benchmark-artifact-report"} <= phony_targets
-    assert 'make benchmark-site-check - Fail when docs/benchmark-results/manifest.json is stale' in makefile
+    assert {
+        "benchmark-site",
+        "benchmark-site-check",
+        "benchmark-artifact-report",
+        "benchmark-artifact-cleanup-plan",
+    } <= phony_targets
+    assert "BENCHMARK_ARTIFACT_CLEANUP_DAYS ?= 30" in makefile
+    assert "BENCHMARK_ARTIFACT_REPORT_FLAGS ?=" in makefile
+    assert "make benchmark-site-check - Fail when benchmark manifest, homepage, detail pages, sitemap, robots.txt, or llms.txt are stale" in makefile
+    assert "make benchmark-artifact-cleanup-plan - Print existing stale benchmark artifact/detail paths older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days" in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
-    assert "scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --check" in block
+    assert "scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --site-base-url $(BENCHMARK_SITE_BASE_URL) --check" in block
     assert '@echo "  ✓ Benchmark site manifest is up to date"' in block
+    cleanup_block = makefile.split("benchmark-artifact-cleanup-plan:\n", 1)[1].split("\n\n", 1)[0]
+    assert "--older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS)" in cleanup_block
+    assert "--paths-only --include-detail-pages --existing-paths-only" in cleanup_block
+    assert "$(BENCHMARK_ARTIFACT_REPORT_FLAGS)" in cleanup_block
 
 
 def test_makefile_exposes_local_stt_transport_compare_target() -> None:
@@ -507,7 +519,10 @@ def test_makefile_exposes_local_stt_transport_compare_target() -> None:
     assert "--raw-uds-min-win-ms $(LOCAL_STT_RAW_UDS_MIN_WIN_MS)" in block
     assert "$(if $(LOCAL_STT_TRANSPORT_MIN_RUNS),--min-runs $(LOCAL_STT_TRANSPORT_MIN_RUNS),)" in block
     assert "$(LOCAL_STT_TRANSPORT_COMPARE_FLAGS) $(LOCAL_STT_TRANSPORT_ARTIFACTS)" in block
-    assert "Wrote $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT) and $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN)" in block
+    assert (
+        "Wrote $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT), "
+        "$(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN), and $(LOCAL_STT_RAW_UDS_DECISION_OUTPUT)"
+    ) in block
 
 
 def test_makefile_qwen_mps_target_forces_runtime_env() -> None:
@@ -759,6 +774,7 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         "parakeet-mlx-service-110m",
         "qwen-mps",
         "qwen-compose",
+        "voxtral-mlx-4bit-service",
     ]
     assert [track["artifact"] for track in validated_tracks] == [
         "faster-whisper-base.en-int8-2026-06-20.json",
@@ -768,6 +784,7 @@ def test_benchmark_tracks_publish_v1_contract_and_legacy_ws_lanes() -> None:
         "parakeet-mlx-110m-service-2026-06-21.json",
         "qwen-mps-2026-06-21.json",
         "qwen-compose-2026-06-21.json",
+        "voxtral-mlx-4bit-service-2026-07-06.json",
     ]
     for track in validated_tracks:
         assert "/v1/stt/stream" in track["status_detail"]
