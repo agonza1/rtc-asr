@@ -262,6 +262,28 @@ def test_stale_artifacts_can_filter_by_status_text() -> None:
     ]
 
 
+def test_stale_artifacts_status_text_searches_all_statuses_by_default() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "status": "legacy-candidate",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen.json",
+                "status": "blocked",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, status_contains=["block"])
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/qwen.json"]
+
+
 def test_stale_artifacts_path_filters_accept_comma_separated_values() -> None:
     manifest = {
         "tracks": [
