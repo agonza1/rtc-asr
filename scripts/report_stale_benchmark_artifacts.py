@@ -665,6 +665,8 @@ def stale_artifacts(
         raise ValueError("min_size_bytes cannot exceed max_size_bytes")
     if newer_than_days is not None and newer_than_days < 0:
         raise ValueError("newer_than_days must be non-negative")
+    if older_than_days is not None and newer_than_days is not None and newer_than_days < older_than_days:
+        raise ValueError("newer_than_days cannot be less than older_than_days")
     if track_state not in {"any", "tracked", "untracked"}:
         raise ValueError("track_state must be one of: any, tracked, untracked")
     slugs = normalize_filter_values(slugs)

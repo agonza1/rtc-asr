@@ -314,6 +314,11 @@ def test_stale_artifacts_can_filter_by_current_artifact_directory() -> None:
     assert stale[0]["current_artifact_dir"] == "benchmark-results/current"
 
 
+def test_stale_artifacts_rejects_impossible_age_window() -> None:
+    with pytest.raises(ValueError, match="newer_than_days cannot be less than older_than_days"):
+        stale_artifacts({"tracks": [], "artifacts": []}, older_than_days=30, newer_than_days=7)
+
+
 def test_stale_artifacts_can_filter_by_artifact_directory() -> None:
     manifest = {
         "tracks": [],
