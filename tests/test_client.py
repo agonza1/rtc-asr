@@ -14,6 +14,7 @@ from src.protocols.local_stt_v1 import (
     RawUdsFrameType,
     decode_raw_uds_json_payload,
     decode_raw_uds_frame,
+    encode_raw_uds_frame,
     encode_raw_uds_json_frame,
     LocalSttProtocolError,
 )
@@ -255,6 +256,7 @@ def test_async_local_stt_client_stream_flow() -> None:
             metadata={"turn_id": "turn-1", "tenant": "demo"},
         )
         pong_event = await client.ping(ping_id="heartbeat-1", timestamp_ms=1234)
+        await client.pong(ping_id="server-heartbeat-1")
         await client.send_audio(b"hel")
         partial_event = await client.recv_event()
         await client.send_audio(b"lo")
@@ -301,6 +303,7 @@ def test_async_local_stt_client_stream_flow() -> None:
                 "metadata": {"turn_id": "turn-1", "tenant": "demo"},
             },
             {"type": "ping", "ping_id": "heartbeat-1", "timestamp_ms": 1234},
+            {"type": "pong", "ping_id": "server-heartbeat-1"},
             b"hel",
             b"lo",
             {"type": "cancel"},
@@ -455,6 +458,12 @@ def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
         received_frames.append((ping_frame.frame_type, decode_raw_uds_json_payload(ping_frame)))
         await send_json(writer, RawUdsFrameType.PONG, {"type": "pong", "ping_id": "raw-1", "metadata": {}})
 
+        json_pong_frame = await read_raw_frame(reader)
+        received_frames.append((json_pong_frame.frame_type, decode_raw_uds_json_payload(json_pong_frame)))
+
+        empty_pong_frame = await read_raw_frame(reader)
+        received_frames.append((empty_pong_frame.frame_type, empty_pong_frame.payload))
+
         audio_frame = await read_raw_frame(reader)
         received_frames.append((audio_frame.frame_type, audio_frame.payload))
 
@@ -487,6 +496,8 @@ def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
             client = AsyncRawUdsLocalSttClient(str(socket_path))
             ready_event = await client.start(client_stream_id="turn-raw", partial_interval_ms=100)
             pong_event = await client.ping(ping_id="raw-1")
+            await client.pong(ping_id="server-raw-1")
+            await client.pong()
             await client.send_audio(b"\x00\x01")
             await client.finalize()
             final_event = await client.recv_event()
@@ -523,10 +534,48 @@ def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
             },
         ),
         (RawUdsFrameType.PING, {"type": "ping", "ping_id": "raw-1"}),
+        (RawUdsFrameType.PONG, {"type": "pong", "ping_id": "server-raw-1"}),
+        (RawUdsFrameType.PONG, b""),
         (RawUdsFrameType.AUDIO_PCM16, b"\x00\x01"),
         (RawUdsFrameType.JSON_CONTROL, {"type": "finalize"}),
         (RawUdsFrameType.JSON_CONTROL, {"type": "close"}),
     ]
+
+
+def test_async_raw_uds_local_stt_client_decodes_server_ping_for_acknowledgement(tmp_path) -> None:
+    socket_path = tmp_path / "stt.raw.sock"
+
+    async def read_raw_frame(reader: asyncio.StreamReader):
+        header = await reader.readexactly(RAW_UDS_HEADER_BYTES)
+        payload_length = int.from_bytes(header[1:RAW_UDS_HEADER_BYTES], "little")
+        return decode_raw_uds_frame(header + await reader.readexactly(payload_length))
+
+    async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        writer.write(encode_raw_uds_frame(RawUdsFrameType.PING, b""))
+        await writer.drain()
+
+        ack_frame = await read_raw_frame(reader)
+        assert ack_frame.frame_type == RawUdsFrameType.PONG
+        assert ack_frame.payload == b""
+
+        writer.close()
+        await writer.wait_closed()
+
+    async def scenario() -> None:
+        server = await asyncio.start_unix_server(handle_client, path=str(socket_path))
+        async with server:
+            client = AsyncRawUdsLocalSttClient(str(socket_path))
+            ping_event = await client.recv_event()
+            await client.pong()
+            await client.close(graceful=False)
+            server.close()
+            await server.wait_closed()
+
+        assert ping_event is not None
+        assert ping_event.type == "ping"
+        assert ping_event.raw == {"type": "ping"}
+
+    asyncio.run(scenario())
 
 
 def test_async_raw_uds_client_rejects_invalid_pcm16_without_connecting() -> None:
