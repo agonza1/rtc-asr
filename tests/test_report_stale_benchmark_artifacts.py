@@ -5306,6 +5306,33 @@ def test_main_fail_on_stale_honors_measured_before_filter(monkeypatch) -> None:
     assert report_module.main(["--fail-on-stale", "--measured-before", "2026-06-21"]) == 1
 
 
+def test_main_fail_on_stale_honors_newer_than_days_filter(monkeypatch) -> None:
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 6, 20, tzinfo=tz)
+
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/old.json",
+                    "status": "legacy",
+                    "measured_at": "2026-06-01T00:00:00Z",
+                    "artifact_size_bytes": 10,
+                }
+            ],
+        },
+    )
+    monkeypatch.setattr(report_module, "datetime", FixedDateTime)
+
+    assert report_module.main(["--fail-on-stale", "--newer-than-days", "7"]) == 0
+    assert report_module.main(["--fail-on-stale", "--newer-than-days", "30"]) == 1
+
+
 def test_main_fail_on_stale_honors_slug_filter(monkeypatch) -> None:
     monkeypatch.setattr(
         report_module,
