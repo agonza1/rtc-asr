@@ -401,15 +401,16 @@ def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
 def test_raw_uds_server_helpers_support_server_initiated_ping_frames() -> None:
     encoded = encode_raw_uds_server_message({"type": "ping", "ping_id": "server-1"})
     frame = decode_raw_uds_frame(encoded)
+    bare_ping = decode_raw_uds_frame(encode_raw_uds_server_message({"type": "ping", "metadata": {}}))
 
     assert frame.frame_type == RawUdsFrameType.PING
     assert parse_raw_uds_server_frame(frame).model_dump(exclude_none=True) == {
         "type": "ping",
         "ping_id": "server-1",
     }
-    assert parse_raw_uds_server_frame(decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.PING, b""))).model_dump(
-        exclude_none=True
-    ) == {"type": "ping"}
+    assert bare_ping.frame_type == RawUdsFrameType.PING
+    assert bare_ping.payload == b""
+    assert parse_raw_uds_server_frame(bare_ping).model_dump(exclude_none=True) == {"type": "ping"}
 
 
 def test_raw_uds_client_encoder_accepts_issue_88_flat_start_payload() -> None:
@@ -689,9 +690,15 @@ def test_raw_uds_server_encoder_omits_empty_optional_fields() -> None:
     pong = decode_raw_uds_frame(
         encode_raw_uds_server_message({"type": "pong", "ping_id": "p1", "metadata": {}})
     )
+    bare_pong = decode_raw_uds_frame(encode_raw_uds_server_message({"type": "pong", "metadata": {}}))
 
     assert pong.payload == b'{"type":"pong","ping_id":"p1"}'
     assert parse_raw_uds_server_frame(pong).ping_id == "p1"
+    assert bare_pong.frame_type == RawUdsFrameType.PONG
+    assert bare_pong.payload == b""
+    parsed_bare_pong = parse_raw_uds_server_frame(bare_pong)
+    assert parsed_bare_pong.type == "pong"
+    assert parsed_bare_pong.ping_id is None
 
 
 def test_raw_uds_protocol_error_encoder_emits_parseable_error_frame() -> None:
