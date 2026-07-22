@@ -30,6 +30,7 @@ limit_artifacts = report_module.limit_artifacts
 normalize_status_filters = report_module.normalize_status_filters
 normalize_filter_values = report_module.normalize_filter_values
 normalize_summary_groups = report_module.normalize_summary_groups
+validate_summary_options = report_module.validate_summary_options
 measured_month = report_module.measured_month
 age_bucket = report_module.age_bucket
 parse_args = report_module.parse_args
@@ -65,6 +66,14 @@ def test_summary_groups_reject_unknown_values() -> None:
 
     assert "Unsupported summary group: typo." in str(exc_info.value)
     assert "Valid groups: slug, artifact-name" in str(exc_info.value)
+
+
+def test_validate_summary_options_rejects_invalid_ranges() -> None:
+    with pytest.raises(ValueError, match="summary_min_count cannot exceed summary_max_count"):
+        validate_summary_options(summary_min_count=2, summary_max_count=1)
+
+    with pytest.raises(ValueError, match="summary_min_size_bytes cannot exceed summary_max_size_bytes"):
+        validate_summary_options(summary_min_size_bytes=20, summary_max_size_bytes=10)
 
 
 def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
