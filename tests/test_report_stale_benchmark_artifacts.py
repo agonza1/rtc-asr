@@ -1168,6 +1168,31 @@ def test_render_summary_can_sort_group_rows_by_name() -> None:
     ]
 
 
+def test_render_json_summary_accepts_explicit_name_ascending_sort() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/zeta.json",
+                "status": "legacy",
+                "slug": "zeta",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="name-asc",
+    )
+
+    summary = json.loads(rendered)
+
+    assert [bucket["slug"] for bucket in summary["by_slug"]] == ["base", "zeta"]
+
+
 def test_render_summary_can_sort_group_rows_by_name_descending() -> None:
     rendered = render_summary(
         [

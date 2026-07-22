@@ -488,7 +488,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-sort",
-        choices=("size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-desc"),
+        choices=(
+            "size",
+            "size-desc",
+            "size-asc",
+            "count",
+            "count-desc",
+            "count-asc",
+            "name",
+            "name-asc",
+            "name-desc",
+        ),
         default="size",
         help="With --summary-only or --json-summary, sort grouping rows by total size, count, or bucket name; use *-asc or *-desc for explicit direction",
     )
@@ -1862,8 +1872,8 @@ def render_json_summary(
 ) -> str:
     if summary_limit is not None and summary_limit < 0:
         raise ValueError("summary_limit must be non-negative")
-    if summary_sort not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-desc"}:
-        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-desc")
+    if summary_sort not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-asc", "name-desc"}:
+        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-asc, name-desc")
     if summary_min_count is not None and summary_min_count < 0:
         raise ValueError("summary_min_count must be non-negative")
     if summary_max_count is not None and summary_max_count < 0:
@@ -1983,8 +1993,8 @@ def limit_summary_buckets(
         raise ValueError("summary_max_size_bytes must be non-negative")
     if min_size_bytes is not None and max_size_bytes is not None and min_size_bytes > max_size_bytes:
         raise ValueError("summary_min_size_bytes cannot exceed summary_max_size_bytes")
-    if sort_by not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-desc"}:
-        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-desc")
+    if sort_by not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-asc", "name-desc"}:
+        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-asc, name-desc")
     filtered_buckets = buckets
     if min_count is not None:
         filtered_buckets = [bucket for bucket in filtered_buckets if bucket["count"] >= min_count]
@@ -2010,7 +2020,7 @@ def limit_summary_buckets(
 def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, ...]:
     bucket_key = next((key for key in bucket if key not in {"count", "total_size_bytes", "total_size"}), "")
     name = str(bucket.get(bucket_key, ""))
-    if bucket_key == "age_bucket" and sort_by == "name":
+    if bucket_key == "age_bucket" and sort_by in {"name", "name-asc"}:
         return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
     if bucket_key == "age_bucket" and sort_by == "name-desc":
         return (-AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
@@ -2020,7 +2030,7 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
         return (bucket["count"], bucket["total_size_bytes"], name)
     if sort_by == "name-desc":
         return (*(-ord(character) for character in name), -len(name))
-    if sort_by == "name":
+    if sort_by in {"name", "name-asc"}:
         return (name,)
     if sort_by == "size-asc":
         return (bucket["total_size_bytes"], name)
@@ -2076,8 +2086,8 @@ def render_summary(
 ) -> str:
     if summary_limit is not None and summary_limit < 0:
         raise ValueError("summary_limit must be non-negative")
-    if summary_sort not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-desc"}:
-        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-desc")
+    if summary_sort not in {"size", "size-desc", "size-asc", "count", "count-desc", "count-asc", "name", "name-asc", "name-desc"}:
+        raise ValueError("summary_sort must be one of: size, size-desc, size-asc, count, count-desc, count-asc, name, name-asc, name-desc")
     if summary_min_count is not None and summary_min_count < 0:
         raise ValueError("summary_min_count must be non-negative")
     if summary_max_count is not None and summary_max_count < 0:
