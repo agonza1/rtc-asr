@@ -2531,6 +2531,31 @@ def test_stale_artifacts_can_sort_by_path() -> None:
     ]
 
 
+def test_stale_artifacts_accepts_explicit_path_ascending_sort_alias() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/z.json",
+                "status": "legacy",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/a.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="path-asc")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/a.json",
+        "benchmark-results/z.json",
+    ]
+
+
 def test_stale_artifacts_can_sort_by_artifact_file_name_then_path() -> None:
     manifest = {
         "tracks": [],
@@ -2554,6 +2579,37 @@ def test_stale_artifacts_can_sort_by_artifact_file_name_then_path() -> None:
     }
 
     stale = stale_artifacts(manifest, sort_by="artifact-name")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/archive/base-old.json",
+        "benchmark-results/base-old.json",
+        "benchmark-results/archive/qwen-old.json",
+    ]
+
+
+def test_stale_artifacts_accepts_explicit_artifact_name_ascending_sort_alias() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="artifact-name-asc")
 
     assert [entry["artifact_path"] for entry in stale] == [
         "benchmark-results/archive/base-old.json",
@@ -3807,7 +3863,7 @@ def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     except ValueError as error:
         assert (
             str(error)
-            == "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-desc, artifact-name, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
+            == "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-desc, artifact-dir, artifact-dir-desc, artifact-extension, artifact-extension-desc, detail-page, detail-page-desc, detail-page-name, detail-page-name-desc, status, status-desc, backend, backend-desc, model, model-desc, label, label-desc, slug, slug-desc, track-state, track-state-desc, current-path, current-path-desc, current-path-name, current-path-name-desc, current-path-stem, current-path-stem-desc, current-path-dir, current-path-dir-desc, current-path-extension, current-path-extension-desc, measured-month, measured-month-desc, age-bucket, age-bucket-desc"
         )
     else:
         raise AssertionError("unknown stale artifact sort orders should fail")
