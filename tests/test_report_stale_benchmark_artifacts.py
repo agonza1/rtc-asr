@@ -5394,6 +5394,18 @@ def test_main_null_paths_only_does_not_emit_newline_for_no_matches(monkeypatch, 
     assert capsys.readouterr().out == ""
 
 
+def test_main_paths_only_does_not_emit_newline_for_no_matches(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {"tracks": [], "artifacts": []},
+    )
+
+    assert report_module.main(["--paths-only"]) == 0
+
+    assert capsys.readouterr().out == ""
+
+
 def test_main_paths_only_can_filter_to_existing_paths(monkeypatch, tmp_path, capsys) -> None:
     results_dir = tmp_path / "docs" / "benchmark-results"
     pages_dir = results_dir / "pages"
