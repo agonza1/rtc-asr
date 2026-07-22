@@ -6453,6 +6453,25 @@ def test_main_rejects_summary_only_with_structured_output_modes() -> None:
             raise AssertionError(f"{args} should be rejected")
 
 
+def test_main_rejects_markdown_with_other_output_modes() -> None:
+    for args, expected in [
+        (["--markdown", "--json"], "--markdown and --json cannot be used together"),
+        (["--markdown", "--json-summary"], "--markdown and --json-summary cannot be used together"),
+        (["--markdown", "--json-lines"], "--markdown and --json-lines cannot be used together"),
+        (["--markdown", "--csv"], "--markdown and --csv cannot be used together"),
+        (["--markdown", "--paths-only"], "--markdown and --paths-only cannot be used together"),
+        (["--markdown", "--count-only"], "--markdown and --count-only cannot be used together"),
+        (["--markdown", "--total-bytes-only"], "--markdown and --total-bytes-only cannot be used together"),
+        (["--markdown", "--summary-only"], "--markdown and --summary-only cannot be used together"),
+    ]:
+        try:
+            report_module.main(args)
+        except ValueError as error:
+            assert str(error) == expected
+        else:
+            raise AssertionError(f"{args} should be rejected")
+
+
 def test_main_rejects_summary_group_without_summary_only() -> None:
     try:
         report_module.main(["--summary-group", "model"])
