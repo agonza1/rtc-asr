@@ -385,6 +385,24 @@ def test_raw_uds_frame_codec_round_trips_binary_audio_payload() -> None:
     assert decoded.payload == b"\x00\x01\x02\x03"
 
 
+@pytest.mark.parametrize("payload", [2, "not-bytes"])
+def test_raw_uds_frame_codec_rejects_non_bytes_like_payloads(payload: object) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, payload)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_bytes"
+    assert "Raw UDS frame payload must be bytes-like" in excinfo.value.message
+
+
+@pytest.mark.parametrize("frame_bytes", [2, "not-bytes"])
+def test_raw_uds_frame_decoder_rejects_non_bytes_like_frames(frame_bytes: object) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        decode_raw_uds_frame(frame_bytes)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_bytes"
+    assert "Raw UDS frame must be bytes-like" in excinfo.value.message
+
+
 def test_raw_uds_json_frame_codec_uses_compact_object_payload() -> None:
     encoded = encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "p1"})
     decoded = decode_raw_uds_frame(encoded)
@@ -522,6 +540,18 @@ def test_raw_uds_frame_decoder_rejects_oversized_payload_before_body_arrives() -
         decoder.feed(header)
 
     assert excinfo.value.as_event().code == "raw_uds_payload_too_large"
+
+
+@pytest.mark.parametrize("chunk", [2, "not-bytes"])
+def test_raw_uds_frame_decoder_feed_rejects_non_bytes_like_socket_chunks(chunk: object) -> None:
+    decoder = RawUdsFrameDecoder()
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        decoder.feed(chunk)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_bytes"
+    assert "Raw UDS socket chunks must be bytes-like" in excinfo.value.message
+    assert decoder.buffered_bytes == 0
 
 
 def test_raw_uds_frame_decoder_clears_oversized_frame_after_error() -> None:
