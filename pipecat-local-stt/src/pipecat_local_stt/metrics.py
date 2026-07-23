@@ -13,6 +13,8 @@ class LocalSTTMetrics:
     local_stt_audio_dropped_ms_total: float = 0.0
     local_stt_send_queue_depth_ms: float = 0.0
     local_stt_send_queue_depth_high_water_ms: float = 0.0
+    local_stt_send_queue_utilization_ratio: float = 0.0
+    local_stt_send_queue_utilization_high_water_ratio: float = 0.0
     local_stt_reconnects_total: int = 0
     local_stt_ready_events_total: int = 0
     local_stt_ready_latency_ms: float = 0.0
