@@ -183,6 +183,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "detail-page-stem",
             "detail-page-stem-asc",
             "detail-page-stem-desc",
+            "detail-page-dir",
+            "detail-page-dir-asc",
+            "detail-page-dir-desc",
+            "detail-page-extension",
+            "detail-page-extension-asc",
+            "detail-page-extension-desc",
             "artifact-stem",
             "artifact-stem-asc",
             "artifact-stem-desc",
@@ -462,6 +468,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page directory contains this text; repeat to include multiple matches",
+    )
+    parser.add_argument(
+        "--detail-page-extension",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page extension matches this value; repeat or comma-separate; use 'none' for artifacts without a detail page",
+    )
+    parser.add_argument(
+        "--detail-page-extension-contains",
+        action="append",
+        default=None,
+        help="Only include stale artifacts whose generated detail page extension contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--status",
@@ -767,6 +785,8 @@ def stale_artifacts(
     detail_page_stem_contains: list[str] | None = None,
     detail_page_dirs: list[str] | None = None,
     detail_page_dir_contains: list[str] | None = None,
+    detail_page_extensions: list[str] | None = None,
+    detail_page_extension_contains: list[str] | None = None,
     statuses: list[str] | None = None,
     status_contains: list[str] | None = None,
     now: datetime | None = None,
@@ -819,6 +839,8 @@ def stale_artifacts(
     detail_page_stem_contains = normalize_filter_values(detail_page_stem_contains)
     detail_page_dirs = normalize_filter_values(detail_page_dirs)
     detail_page_dir_contains = normalize_filter_values(detail_page_dir_contains)
+    detail_page_extensions = normalize_filter_values(detail_page_extensions)
+    detail_page_extension_contains = normalize_filter_values(detail_page_extension_contains)
     status_contains = normalize_filter_values(status_contains)
     allowed_measured_months = None
     if measured_months is not None:
@@ -956,6 +978,23 @@ def stale_artifacts(
     detail_page_dir_needles = (
         None if detail_page_dir_contains is None else [needle.lower() for needle in detail_page_dir_contains]
     )
+    allowed_detail_page_extensions = (
+        None
+        if detail_page_extensions is None
+        else {
+            extension.lower() if extension.startswith(".") else f".{extension.lower()}"
+            for extension in detail_page_extensions
+            if extension.lower() != "none"
+        }
+    )
+    allow_extensionless_detail_pages = detail_page_extensions is not None and any(
+        extension.lower() == "none" for extension in detail_page_extensions
+    )
+    detail_page_extension_needles = (
+        None
+        if detail_page_extension_contains is None
+        else [needle.lower() for needle in detail_page_extension_contains]
+    )
     status_needles = None if status_contains is None else [needle.lower() for needle in status_contains]
     allowed_statuses = None if statuses is None and status_needles is not None else normalize_status_filters(statuses)
     stale: list[dict[str, Any]] = []
@@ -1023,6 +1062,16 @@ def stale_artifacts(
             continue
         if detail_page_dir_needles is not None:
             if not any(needle in detail_page_dir.lower() for needle in detail_page_dir_needles):
+                continue
+        detail_page_extension = Path(artifact_detail_page_path or "").suffix.lower()
+        if allowed_detail_page_extensions is not None or allow_extensionless_detail_pages:
+            extension_matches = detail_page_extension in (allowed_detail_page_extensions or set())
+            extensionless_matches = allow_extensionless_detail_pages and detail_page_extension == ""
+            if not extension_matches and not extensionless_matches:
+                continue
+        if detail_page_extension_needles is not None:
+            detail_page_extension_text = detail_page_extension or "none"
+            if not any(needle in detail_page_extension_text for needle in detail_page_extension_needles):
                 continue
         artifact_status = str(artifact.get("status") or "").lower()
         if allowed_statuses is not None and artifact_status not in allowed_statuses:
@@ -1301,6 +1350,44 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by in {"detail-page-dir", "detail-page-dir-asc"}:
+        return sorted(
+            stale,
+            key=lambda entry: (
+                str(Path(entry.get("detail_page_path") or "").parent),
+                Path(entry.get("detail_page_path") or "").name,
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "detail-page-dir-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                str(Path(entry.get("detail_page_path") or "").parent),
+                Path(entry.get("detail_page_path") or "").name,
+                entry.get("artifact_path") or "",
+            ),
+            reverse=True,
+        )
+    if sort_by in {"detail-page-extension", "detail-page-extension-asc"}:
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("detail_page_path") or "").suffix.lower(),
+                entry.get("detail_page_path") or "",
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "detail-page-extension-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                Path(entry.get("detail_page_path") or "").suffix.lower() == "",
+                descending_text_key(Path(entry.get("detail_page_path") or "").suffix.lower()),
+                entry.get("detail_page_path") or "",
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by in {"status", "status-asc"}:
         return sorted(
             stale,
@@ -1535,7 +1622,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
+        "sort_by must be one of: size, size-desc, size-asc, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, detail-page-stem, detail-page-stem-asc, detail-page-stem-desc, detail-page-dir, detail-page-dir-asc, detail-page-dir-desc, detail-page-extension, detail-page-extension-asc, detail-page-extension-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
     )
 
 
@@ -3418,6 +3505,8 @@ def main(argv: list[str] | None = None) -> int:
         detail_page_stem_contains=args.detail_page_stem_contains,
         detail_page_dirs=args.detail_page_dir,
         detail_page_dir_contains=args.detail_page_dir_contains,
+        detail_page_extensions=args.detail_page_extension,
+        detail_page_extension_contains=args.detail_page_extension_contains,
         statuses=args.status,
         status_contains=args.status_contains,
         sort_by=args.sort,
