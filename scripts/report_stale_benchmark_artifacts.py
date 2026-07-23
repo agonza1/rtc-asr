@@ -3343,6 +3343,8 @@ def render_summary(
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    if args.limit is not None and args.limit < 0:
+        raise ValueError("limit must be non-negative")
     if args.json and args.paths_only:
         raise ValueError("--json and --paths-only cannot be used together")
     if args.json_summary and args.json:

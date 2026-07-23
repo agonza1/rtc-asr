@@ -6859,6 +6859,20 @@ def test_main_rejects_paths_only_with_json() -> None:
         raise AssertionError("paths-only JSON output should be rejected")
 
 
+def test_main_rejects_negative_limit_before_building_manifest(monkeypatch) -> None:
+    def fail_build_manifest(*args, **kwargs):
+        raise AssertionError("negative --limit should be rejected before manifest build")
+
+    monkeypatch.setattr(report_module, "build_manifest", fail_build_manifest)
+
+    try:
+        report_module.main(["--limit=-1"])
+    except ValueError as error:
+        assert str(error) == "limit must be non-negative"
+    else:
+        raise AssertionError("negative --limit should be rejected")
+
+
 def test_main_rejects_json_lines_with_other_output_modes() -> None:
     for args, expected in [
         (["--json-lines", "--json"], "--json-lines and --json cannot be used together"),
