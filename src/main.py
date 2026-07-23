@@ -1348,6 +1348,10 @@ def _local_stt_ready_event(session: StreamSession, *, backend: str, model: str) 
         "backend": backend,
         "model": model,
         "max_buffer_bytes": session.max_buffer_bytes,
+        "partial_interval_chunks": session.partial_interval_chunks,
+        "partial_interval_ms": session.partial_interval_audio_ms
+        if session.partial_interval_audio_ms is not None
+        else session.partial_interval_chunks * HOT_PATH_FRAME_MS,
     }
     if session.client_stream_id is not None:
         metadata["client_stream_id"] = session.client_stream_id

@@ -1780,6 +1780,8 @@ def test_local_stt_v1_stream_accepts_flat_start_binary_audio_and_finalize() -> N
                 "backend": "fake-whisper",
                 "model": "fixture-adapter",
                 "max_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
+                "partial_interval_chunks": 1,
+                "partial_interval_ms": HOT_PATH_FRAME_MS,
                 "client_stream_id": "turn-1",
                 "client_metadata": {"turn_id": "turn-1", "tenant": "demo"},
             }
