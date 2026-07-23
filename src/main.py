@@ -22,7 +22,12 @@ import uvicorn
 
 from .audio_processor import AudioConfig, AudioProcessor
 from .config import AppConfig
-from .model_loader import ASRUnavailableError, Transcriber, build_transcriber
+from .model_loader import (
+    ASRUnavailableError,
+    Transcriber,
+    backend_aliases_for,
+    build_transcriber,
+)
 from .protocols import (
     HOT_PATH_BYTES_PER_FRAME,
     HOT_PATH_CHANNELS,
@@ -473,9 +478,11 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         status = _backend_status(current)
         streaming = description.get("streaming")
         audio = description.get("audio")
+        backend_aliases = backend_aliases_for(current.transcriber.backend_name)
         return {
             "backend": current.transcriber.backend_name,
             "model": current.transcriber.model_name,
+            "backend_aliases": backend_aliases,
             "sample_rate": current.config.sample_rate,
             "status": status,
             "ready": _accepting_traffic(current),
@@ -489,6 +496,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     "id": current.transcriber.model_name,
                     "backend": current.transcriber.backend_name,
                     "model": current.transcriber.model_name,
+                    "runtime_aliases": backend_aliases,
                     "loaded": current.transcriber.is_loaded(),
                     "streaming": streaming,
                     "audio": audio,
