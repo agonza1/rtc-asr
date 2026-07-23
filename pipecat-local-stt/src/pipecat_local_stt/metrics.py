@@ -19,6 +19,7 @@ class LocalSTTMetrics:
     local_stt_send_queue_utilization_high_water_ratio: float = 0.0
     local_stt_reconnects_total: int = 0
     local_stt_ready_events_total: int = 0
+    local_stt_stale_ready_events_total: int = 0
     local_stt_ready_latency_ms: float = 0.0
     local_stt_ready_timeouts_total: int = 0
     local_stt_interim_events_total: int = 0
