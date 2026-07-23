@@ -204,6 +204,11 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> dict[str, Any]:
 
 
 def _parse_raw_uds_frame_type(frame_type: RawUdsFrameType | int) -> RawUdsFrameType:
+    if isinstance(frame_type, bool):
+        raise LocalSTTProtocolError(
+            f"Unsupported Raw UDS frame type: {frame_type}",
+            code="raw_uds_unsupported_frame_type",
+        )
     try:
         return frame_type if isinstance(frame_type, RawUdsFrameType) else RawUdsFrameType(int(frame_type))
     except (TypeError, ValueError) as exc:

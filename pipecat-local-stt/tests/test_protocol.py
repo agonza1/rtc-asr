@@ -246,6 +246,14 @@ def test_raw_uds_frame_codec_reports_stable_error_codes() -> None:
     assert excinfo.value.code == "raw_uds_frame_length_mismatch"
 
 
+def test_raw_uds_frame_codec_rejects_boolean_frame_type() -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        encode_raw_uds_frame(True, b"{}")
+
+    assert excinfo.value.code == "raw_uds_unsupported_frame_type"
+    assert "Unsupported Raw UDS frame type: True" in excinfo.value.message
+
+
 @pytest.mark.parametrize("payload", [2, "not-bytes"])
 def test_raw_uds_frame_codec_rejects_non_bytes_like_payloads(payload: object) -> None:
     with pytest.raises(LocalSTTProtocolError) as excinfo:
