@@ -20,6 +20,8 @@ class LocalSTTMetrics:
     local_stt_final_events_total: int = 0
     local_stt_final_timeouts_total: int = 0
     local_stt_heartbeat_events_total: int = 0
+    local_stt_ping_events_total: int = 0
+    local_stt_pong_events_total: int = 0
     local_stt_protocol_errors_total: int = 0
 
     def as_dict(self) -> dict[str, int | float]:
