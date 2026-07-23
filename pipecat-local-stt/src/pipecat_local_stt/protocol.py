@@ -123,7 +123,8 @@ def validate_raw_uds_audio_payload(payload: bytes) -> bytes:
     return payload
 
 
-def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, Any]) -> bytes:
+def encode_raw_uds_json_frame(frame_type: RawUdsFrameType | int, payload: dict[str, Any]) -> bytes:
+    resolved_type = _parse_raw_uds_frame_type(frame_type)
     json_frame_types = {
         RawUdsFrameType.JSON_CONTROL,
         RawUdsFrameType.JSON_EVENT,
@@ -131,12 +132,12 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, An
         RawUdsFrameType.PING,
         RawUdsFrameType.PONG,
     }
-    if frame_type not in json_frame_types:
+    if resolved_type not in json_frame_types:
         raise LocalSTTProtocolError(
-            f"Raw UDS frame type {frame_type.name} cannot carry JSON control data",
+            f"Raw UDS frame type {resolved_type.name} cannot carry JSON control data",
             code="raw_uds_invalid_json_frame_type",
         )
-    return encode_raw_uds_frame(frame_type, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    return encode_raw_uds_frame(resolved_type, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
 
 
 def decode_raw_uds_frame(data: bytes | bytearray | memoryview) -> RawUdsFrame:
