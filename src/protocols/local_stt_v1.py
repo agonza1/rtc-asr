@@ -30,6 +30,24 @@ class RawUdsFrameType(IntEnum):
     PONG = 0x06
 
 
+RAW_UDS_CLIENT_FRAME_TYPES = (
+    RawUdsFrameType.JSON_CONTROL,
+    RawUdsFrameType.AUDIO_PCM16,
+    RawUdsFrameType.PING,
+    RawUdsFrameType.PONG,
+)
+RAW_UDS_SERVER_FRAME_TYPES = (
+    RawUdsFrameType.JSON_EVENT,
+    RawUdsFrameType.ERROR,
+    RawUdsFrameType.PING,
+    RawUdsFrameType.PONG,
+)
+RAW_UDS_FRAME_DIRECTION = {
+    "client_to_server": [frame_type.name for frame_type in RAW_UDS_CLIENT_FRAME_TYPES],
+    "server_to_client": [frame_type.name for frame_type in RAW_UDS_SERVER_FRAME_TYPES],
+}
+
+
 @dataclass(frozen=True, slots=True)
 class RawUdsFrame:
     frame_type: RawUdsFrameType
@@ -434,6 +452,11 @@ def decode_raw_uds_json_payload(frame: RawUdsFrame) -> dict[str, Any]:
 
 
 def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
+    if frame.frame_type not in RAW_UDS_CLIENT_FRAME_TYPES:
+        raise LocalSttProtocolError(
+            f"Raw UDS frame type {frame.frame_type.name} is not a client frame",
+            code="raw_uds_invalid_client_frame_type",
+        )
     if frame.frame_type == RawUdsFrameType.AUDIO_PCM16:
         return validate_audio_chunk(frame.payload)
     if frame.frame_type == RawUdsFrameType.JSON_CONTROL:
@@ -470,29 +493,26 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
                 retryable=exc.retryable,
                 metadata={"original_code": exc.code, **exc.metadata},
             ) from exc
-    raise LocalSttProtocolError(
-        f"Raw UDS frame type {frame.frame_type.name} is not a client frame",
-        code="raw_uds_invalid_client_frame_type",
-    )
+    raise AssertionError(f"Unhandled Raw UDS client frame type: {frame.frame_type.name}")
 
 
 def parse_raw_uds_server_frame(frame: RawUdsFrame) -> ServerMessage:
-    if frame.frame_type in {RawUdsFrameType.JSON_EVENT, RawUdsFrameType.ERROR, RawUdsFrameType.PING, RawUdsFrameType.PONG}:
-        if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
-            payload = {}
-        else:
-            payload = decode_raw_uds_json_payload(frame)
-        if frame.frame_type == RawUdsFrameType.PING:
-            payload.setdefault("type", "ping")
-        if frame.frame_type == RawUdsFrameType.PONG:
-            payload.setdefault("type", "pong")
-        if frame.frame_type == RawUdsFrameType.ERROR:
-            payload.setdefault("type", "error")
-        return parse_server_message(payload)
-    raise LocalSttProtocolError(
-        f"Raw UDS frame type {frame.frame_type.name} is not a server frame",
-        code="raw_uds_invalid_server_frame_type",
-    )
+    if frame.frame_type not in RAW_UDS_SERVER_FRAME_TYPES:
+        raise LocalSttProtocolError(
+            f"Raw UDS frame type {frame.frame_type.name} is not a server frame",
+            code="raw_uds_invalid_server_frame_type",
+        )
+    if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
+        payload = {}
+    else:
+        payload = decode_raw_uds_json_payload(frame)
+    if frame.frame_type == RawUdsFrameType.PING:
+        payload.setdefault("type", "ping")
+    if frame.frame_type == RawUdsFrameType.PONG:
+        payload.setdefault("type", "pong")
+    if frame.frame_type == RawUdsFrameType.ERROR:
+        payload.setdefault("type", "error")
+    return parse_server_message(payload)
 
 
 def _normalize_raw_uds_control_payload(payload: dict[str, Any]) -> dict[str, Any]:
