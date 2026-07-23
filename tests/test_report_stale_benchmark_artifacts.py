@@ -105,6 +105,13 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         assert parse_args(["--sort", alias]).sort == alias
 
 
+def test_parse_args_accepts_repo_relative_paths_mode() -> None:
+    args = parse_args(["--paths-only", "--repo-relative-paths"])
+
+    assert args.paths_only is True
+    assert args.repo_relative_paths is True
+
+
 def test_measured_month_uses_utc_month_or_unknown() -> None:
     assert measured_month("2026-06-30T23:30:00-02:00") == "2026-07"
     assert measured_month(None) == "unknown"
@@ -793,6 +800,28 @@ def test_render_json_lines_emits_one_sorted_object_per_artifact() -> None:
         "benchmark-results/small.json",
     ]
     assert lines[0].startswith('{"artifact_path":')
+
+
+def test_render_paths_can_emit_repo_relative_artifacts_and_detail_pages() -> None:
+    rendered = render_paths(
+        [
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "detail_page_path": "benchmark-results/pages/base.html",
+            },
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "detail_page_path": "benchmark-results/pages/base.html",
+            },
+        ],
+        include_detail_pages=True,
+        path_prefix=Path("docs"),
+    )
+
+    assert rendered.splitlines() == [
+        "docs/benchmark-results/base.json",
+        "docs/benchmark-results/pages/base.html",
+    ]
 
 
 def test_render_json_summary_can_select_and_limit_groups() -> None:
