@@ -653,6 +653,22 @@ def test_raw_uds_client_ping_frame_classifies_schema_errors_as_control_error() -
     assert "timestamp_ms" in error.message
 
 
+def test_raw_uds_client_ping_frame_rejects_mismatched_payload_type() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_json_frame(RawUdsFrameType.PING, {"type": "finalize"}))
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_raw_uds_client_frame(frame)
+
+    error = excinfo.value.as_event()
+    assert error.code == "raw_uds_malformed_json_control"
+    assert error.metadata == {
+        "original_code": "raw_uds_frame_type_mismatch",
+        "frame_message_type": "ping",
+        "payload_message_type": "finalize",
+    }
+    assert "payload type must be ping" in error.message
+
+
 def test_raw_uds_frame_decoder_rejects_length_mismatch() -> None:
     encoded = b"\x01\x04\x00\x00\x00{}"
 
@@ -830,6 +846,20 @@ def test_raw_uds_server_frame_parser_accepts_compact_error_payload() -> None:
     assert message.type == "error"
     assert message.code == "raw_uds_malformed_json_control"
     assert message.message == "bad control frame"
+
+
+def test_raw_uds_server_typed_frame_rejects_mismatched_payload_type() -> None:
+    frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(RawUdsFrameType.ERROR, {"type": "warning", "code": "warn", "message": "warn"})
+    )
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_raw_uds_server_frame(frame)
+
+    error = excinfo.value.as_event()
+    assert error.code == "raw_uds_frame_type_mismatch"
+    assert error.metadata == {"frame_message_type": "error", "payload_message_type": "warning"}
+    assert "payload type must be error" in error.message
 
 
 def test_raw_uds_server_frame_parser_maps_event_error_and_empty_pong() -> None:

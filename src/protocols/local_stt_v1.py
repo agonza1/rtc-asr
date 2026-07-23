@@ -487,7 +487,8 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> ClientMessage | bytes:
     if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG}:
         try:
             payload = {} if not frame.payload else decode_raw_uds_json_payload(frame)
-            payload.setdefault("type", "ping" if frame.frame_type == RawUdsFrameType.PING else "pong")
+            expected_type = "ping" if frame.frame_type == RawUdsFrameType.PING else "pong"
+            _apply_raw_uds_envelope_type(payload, expected_type)
             return parse_client_message(payload)
         except LocalSttProtocolError as exc:
             raise LocalSttProtocolError(
@@ -511,11 +512,11 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> ServerMessage:
     else:
         payload = decode_raw_uds_json_payload(frame)
     if frame.frame_type == RawUdsFrameType.PING:
-        payload.setdefault("type", "ping")
+        _apply_raw_uds_envelope_type(payload, "ping")
     if frame.frame_type == RawUdsFrameType.PONG:
-        payload.setdefault("type", "pong")
+        _apply_raw_uds_envelope_type(payload, "pong")
     if frame.frame_type == RawUdsFrameType.ERROR:
-        payload.setdefault("type", "error")
+        _apply_raw_uds_envelope_type(payload, "error")
     return parse_server_message(payload)
 
 
@@ -542,6 +543,17 @@ def _normalize_raw_uds_control_payload(payload: dict[str, Any]) -> dict[str, Any
         "client_stream_id": payload.get("client_stream_id"),
         "metadata": payload.get("metadata", {}),
     }
+
+
+def _apply_raw_uds_envelope_type(payload: dict[str, Any], expected_type: str) -> None:
+    payload_type = payload.get("type")
+    if payload_type is not None and payload_type != expected_type:
+        raise LocalSttProtocolError(
+            f"Raw UDS {expected_type} frame payload type must be {expected_type}, not {payload_type}",
+            code="raw_uds_frame_type_mismatch",
+            metadata={"frame_message_type": expected_type, "payload_message_type": str(payload_type)},
+        )
+    payload["type"] = expected_type
 
 
 def encode_raw_uds_server_message(payload: dict[str, Any]) -> bytes:
