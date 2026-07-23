@@ -9,8 +9,11 @@ from src.protocols.local_stt_v1 import (
     HOT_PATH_PCM_FORMAT,
     HOT_PATH_SAMPLE_RATE,
     PROTOCOL_VERSION,
+    RAW_UDS_CLIENT_FRAME_TYPES,
+    RAW_UDS_FRAME_DIRECTION,
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
+    RAW_UDS_SERVER_FRAME_TYPES,
     RawUdsFrameDecoder,
     RawUdsFrameType,
     ErrorMessage,
@@ -33,6 +36,15 @@ from src.protocols.local_stt_v1 import (
     parse_raw_uds_server_frame,
     validate_audio_chunk,
 )
+
+
+def test_raw_uds_direction_constants_match_parsers() -> None:
+    assert RAW_UDS_FRAME_DIRECTION == {
+        "client_to_server": ["JSON_CONTROL", "AUDIO_PCM16", "PING", "PONG"],
+        "server_to_client": ["JSON_EVENT", "ERROR", "PING", "PONG"],
+    }
+    assert RawUdsFrameType.JSON_EVENT not in RAW_UDS_CLIENT_FRAME_TYPES
+    assert RawUdsFrameType.JSON_CONTROL not in RAW_UDS_SERVER_FRAME_TYPES
 
 
 def test_builders_emit_hot_path_messages_for_clients_and_servers() -> None:

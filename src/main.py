@@ -30,6 +30,7 @@ from .protocols import (
     HOT_PATH_PCM_FORMAT,
     HOT_PATH_SAMPLE_RATE,
     RAW_UDS_HEADER_BYTES,
+    RAW_UDS_FRAME_DIRECTION,
     RAW_UDS_MAX_PAYLOAD_BYTES,
     PROTOCOL_VERSION,
     CancelMessage,
@@ -197,10 +198,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                     "frame_format": "uint8_type_uint32_len_le",
-                    "frame_direction": {
-                        "client_to_server": ["JSON_CONTROL", "AUDIO_PCM16", "PING", "PONG"],
-                        "server_to_client": ["JSON_EVENT", "ERROR", "PING", "PONG"],
-                    },
+                    "frame_direction": RAW_UDS_FRAME_DIRECTION,
                     "keepalive_payloads": ["empty_ping", "json_ping", "empty_pong", "json_pong"],
                     "comparison_required_transports": ["tcp_ws", "uds_ws", "raw_uds"],
                     "benchmark_command": (
