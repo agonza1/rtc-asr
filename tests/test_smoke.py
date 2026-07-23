@@ -2316,12 +2316,15 @@ def test_legacy_env_aliases_and_cuda_detection(monkeypatch: pytest.MonkeyPatch) 
 def test_blank_env_aliases_are_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MODEL_NAME", "   ")
     monkeypatch.delenv("ASR_MODEL_SIZE", raising=False)
+    monkeypatch.setenv("SAMPLE_RATE", "   ")
+    monkeypatch.setenv("AUDIO_SAMPLE_RATE", "\t22050\n")
     monkeypatch.setenv("ASR_DEVICE", "   ")
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0")
 
     config = AppConfig.from_env()
 
     assert config.asr_model_size == AppConfig().asr_model_size
+    assert config.sample_rate == 22050
     assert config.asr_device == "cuda"
 
 

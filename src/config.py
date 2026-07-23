@@ -47,7 +47,7 @@ def _default_asr_device(default: str) -> str:
 
 
 def _positive_int_env(name: str, default: int) -> int:
-    value = int(os.getenv(name, str(default)))
+    value = int(os.getenv(name, str(default)).strip())
     if value <= 0:
         raise ValueError(f"{name} must be a positive integer")
     return value
@@ -56,11 +56,15 @@ def _positive_int_env(name: str, default: int) -> int:
 def _positive_int_first_env(*names: str, default: int) -> int:
     for name in names:
         value = os.getenv(name)
-        if value:
-            parsed = int(value)
-            if parsed <= 0:
-                raise ValueError(f"{name} must be a positive integer")
-            return parsed
+        if value is None:
+            continue
+        normalized = value.strip()
+        if not normalized:
+            continue
+        parsed = int(normalized)
+        if parsed <= 0:
+            raise ValueError(f"{name} must be a positive integer")
+        return parsed
     return default
 
 
