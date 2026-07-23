@@ -533,7 +533,12 @@ class LocalStreamingSTTService(STTService):
             raise ValueError("Local STT requires complete little-endian PCM16 samples")
 
     def _update_queue_depth_metric(self) -> None:
-        self.metrics.local_stt_send_queue_depth_ms = round(self._queued_audio_ms, 3)
+        depth_ms = round(self._queued_audio_ms, 3)
+        self.metrics.local_stt_send_queue_depth_ms = depth_ms
+        self.metrics.local_stt_send_queue_depth_high_water_ms = max(
+            self.metrics.local_stt_send_queue_depth_high_water_ms,
+            depth_ms,
+        )
 
     def _record_dropped_audio_ms(self, duration_ms: float) -> None:
         self.metrics.local_stt_audio_dropped_ms_total = round(
