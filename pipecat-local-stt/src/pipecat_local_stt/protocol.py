@@ -193,7 +193,13 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> dict[str, Any]:
     if frame.frame_type in {RawUdsFrameType.JSON_EVENT, RawUdsFrameType.ERROR, RawUdsFrameType.PING, RawUdsFrameType.PONG}:
         payload = decode_raw_uds_json_payload(frame)
         if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG}:
-            payload.setdefault("type", frame.frame_type.name.lower())
+            frame_event_type = frame.frame_type.name.lower()
+            event_type = payload.setdefault("type", frame_event_type)
+            if event_type != frame_event_type:
+                raise LocalSTTProtocolError(
+                    f"Raw UDS {frame.frame_type.name} frame cannot carry a {event_type!r} event",
+                    code="raw_uds_heartbeat_type_mismatch",
+                )
         elif frame.frame_type == RawUdsFrameType.ERROR:
             payload.setdefault("type", "error")
         return parse_server_message(payload)
