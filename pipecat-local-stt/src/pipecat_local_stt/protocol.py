@@ -24,6 +24,24 @@ class RawUdsFrameType(IntEnum):
     PONG = 0x06
 
 
+RAW_UDS_CLIENT_FRAME_TYPES = (
+    RawUdsFrameType.JSON_CONTROL,
+    RawUdsFrameType.AUDIO_PCM16,
+    RawUdsFrameType.PING,
+    RawUdsFrameType.PONG,
+)
+RAW_UDS_SERVER_FRAME_TYPES = (
+    RawUdsFrameType.JSON_EVENT,
+    RawUdsFrameType.ERROR,
+    RawUdsFrameType.PING,
+    RawUdsFrameType.PONG,
+)
+RAW_UDS_FRAME_DIRECTION = {
+    "client_to_server": [frame_type.name for frame_type in RAW_UDS_CLIENT_FRAME_TYPES],
+    "server_to_client": [frame_type.name for frame_type in RAW_UDS_SERVER_FRAME_TYPES],
+}
+
+
 @dataclass(frozen=True, slots=True)
 class RawUdsFrame:
     frame_type: RawUdsFrameType
