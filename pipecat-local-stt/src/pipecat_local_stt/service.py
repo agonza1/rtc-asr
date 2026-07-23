@@ -353,6 +353,8 @@ class LocalStreamingSTTService(STTService):
             self.metrics.local_stt_heartbeat_events_total += 1
             if event_type == "ping":
                 self.metrics.local_stt_ping_events_total += 1
+                await self._send_json(_pong_payload(payload))
+                self.metrics.local_stt_pong_events_sent_total += 1
             else:
                 self.metrics.local_stt_pong_events_total += 1
             return
@@ -616,6 +618,15 @@ def _compact_raw_uds_heartbeat_payload(payload: dict[str, Any]) -> dict[str, Any
     if compacted.get("metadata") == {}:
         compacted.pop("metadata")
     return compacted
+
+
+def _pong_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    response: dict[str, Any] = {"type": "pong", "metadata": {}}
+    if payload.get("ping_id") is not None:
+        response["ping_id"] = payload["ping_id"]
+    if payload.get("timestamp_ms") is not None:
+        response["timestamp_ms"] = payload["timestamp_ms"]
+    return response
 
 
 async def _default_connect(config: LocalSTTConfig) -> WebSocketConnection:
