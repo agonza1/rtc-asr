@@ -86,6 +86,8 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "detail-page-asc",
         "detail-page-name-asc",
         "detail-page-stem-asc",
+        "detail-page-dir-asc",
+        "detail-page-extension-asc",
         "status-asc",
         "backend-asc",
         "model-asc",
@@ -4299,12 +4301,71 @@ def test_stale_artifacts_can_filter_by_detail_page_directory() -> None:
     assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
 
 
+def test_stale_artifacts_can_filter_by_detail_page_extension() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.txt",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        statuses=["any"],
+        detail_page_extensions=["html"],
+        detail_page_extension_contains=["HT"],
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == ["benchmark-results/base-old.json"]
+    assert stale[0]["detail_page_extension"] == ".html"
+
+
+def test_stale_artifacts_can_sort_by_detail_page_directory_and_extension() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.txt",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    by_dir = stale_artifacts(manifest, statuses=["any"], sort_by="detail-page-dir-desc")
+    by_extension = stale_artifacts(manifest, statuses=["any"], sort_by="detail-page-extension-desc")
+
+    assert [entry["artifact_path"] for entry in by_dir] == [
+        "benchmark-results/base-old.json",
+        "benchmark-results/qwen-old.txt",
+    ]
+    assert [entry["artifact_path"] for entry in by_extension] == [
+        "benchmark-results/base-old.json",
+        "benchmark-results/qwen-old.txt",
+    ]
+
+
 def test_stale_artifacts_rejects_unknown_sort_order() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, sort_by="unknown")
     except ValueError as error:
         assert str(error).startswith("sort_by must be one of: size, size-desc, size-asc")
         assert "artifact-stem-asc" in str(error)
+        assert "detail-page-extension-asc" in str(error)
         assert "current-path-extension-asc" in str(error)
         assert str(error).endswith("age-bucket, age-bucket-asc, age-bucket-desc")
     else:
