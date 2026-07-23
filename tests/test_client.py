@@ -257,13 +257,13 @@ def test_async_local_stt_client_stream_flow() -> None:
         )
         pong_event = await client.ping(ping_id="heartbeat-1", timestamp_ms=1234)
         await client.pong(ping_id="server-heartbeat-1")
-        await client.send_audio(b"hel")
+        await client.send_audio(b"\x00\x01")
         partial_event = await client.recv_event()
-        await client.send_audio(b"lo")
+        await client.send_audio(b"\x02\x03")
         await client.cancel()
         canceled_event = await client.recv_event()
         second_ready_event = await client.start()
-        await client.send_audio(b"lo")
+        await client.send_audio(b"\x04\x05")
         await client.finalize()
         final_event = await client.recv_event()
         closed_event = await client.close()
@@ -304,8 +304,8 @@ def test_async_local_stt_client_stream_flow() -> None:
             },
             {"type": "ping", "ping_id": "heartbeat-1", "timestamp_ms": 1234},
             {"type": "pong", "ping_id": "server-heartbeat-1"},
-            b"hel",
-            b"lo",
+            b"\x00\x01",
+            b"\x02\x03",
             {"type": "cancel"},
             {
                 "type": "start",
@@ -321,7 +321,7 @@ def test_async_local_stt_client_stream_flow() -> None:
                 "interim_results": True,
                 "partial_interval_ms": 20,
             },
-            b"lo",
+            b"\x04\x05",
             {"type": "finalize"},
             {"type": "close"},
         ]
@@ -329,6 +329,19 @@ def test_async_local_stt_client_stream_flow() -> None:
 
     asyncio.run(scenario())
 
+
+def test_async_local_stt_client_rejects_invalid_pcm16_before_connecting() -> None:
+    async def fail_connect(_url: str) -> FakeWebSocket:
+        raise AssertionError("invalid audio should not open the websocket")
+
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fail_connect)
+        with pytest.raises(LocalSttProtocolError) as excinfo:
+            await client.send_audio(b"\x00")
+
+        assert excinfo.value.as_event().code == "invalid_audio_chunk"
+
+    asyncio.run(scenario())
 
 
 def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
