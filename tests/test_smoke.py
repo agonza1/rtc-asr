@@ -72,6 +72,12 @@ DEFAULT_PROTOCOLS = [
             "frame_ms": HOT_PATH_FRAME_MS,
             "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
         },
+        "partial_interval": {
+            "request_field": "partial_interval_ms",
+            "resolution_ms": HOT_PATH_FRAME_MS,
+            "rounding": "ceil_to_audio_frame",
+            "ready_metadata_field": "partial_interval_ms",
+        },
         "start_control_payload": {
             "type": "start",
             "version": PROTOCOL_VERSION,
@@ -182,13 +188,6 @@ DEFAULT_PROTOCOLS = [
                 "notes": "Raw UDS framing is available as a tested codec for latency experiments; enable LOCAL_STT_RAW_UDS_ENABLED=true to serve it.",
             }
         ],
-        "audio": {
-            "sample_rate": HOT_PATH_SAMPLE_RATE,
-            "channels": HOT_PATH_CHANNELS,
-            "format": HOT_PATH_PCM_FORMAT,
-            "frame_ms": HOT_PATH_FRAME_MS,
-            "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
-        },
     },
 ]
 
