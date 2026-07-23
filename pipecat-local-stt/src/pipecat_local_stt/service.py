@@ -534,10 +534,16 @@ class LocalStreamingSTTService(STTService):
 
     def _update_queue_depth_metric(self) -> None:
         depth_ms = round(self._queued_audio_ms, 3)
+        utilization_ratio = round(min(depth_ms / self.config.max_send_queue_ms, 1.0), 3)
         self.metrics.local_stt_send_queue_depth_ms = depth_ms
         self.metrics.local_stt_send_queue_depth_high_water_ms = max(
             self.metrics.local_stt_send_queue_depth_high_water_ms,
             depth_ms,
+        )
+        self.metrics.local_stt_send_queue_utilization_ratio = utilization_ratio
+        self.metrics.local_stt_send_queue_utilization_high_water_ratio = max(
+            self.metrics.local_stt_send_queue_utilization_high_water_ratio,
+            utilization_ratio,
         )
 
     def _record_dropped_audio_ms(self, duration_ms: float) -> None:
