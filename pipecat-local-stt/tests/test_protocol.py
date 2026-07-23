@@ -5,7 +5,10 @@ import pytest
 from pipecat_local_stt import LocalSTTConfig, RtcAsrSTTService
 from pipecat_local_stt.protocol import (
     LocalSTTProtocolError,
+    RAW_UDS_CLIENT_FRAME_TYPES,
+    RAW_UDS_FRAME_DIRECTION,
     RAW_UDS_MAX_PAYLOAD_BYTES,
+    RAW_UDS_SERVER_FRAME_TYPES,
     RawUdsFrame,
     RawUdsFrameDecoder,
     RawUdsFrameType,
@@ -114,6 +117,20 @@ def test_package_exports_raw_uds_codec_contract() -> None:
     assert decoded.frame_type == package.RawUdsFrameType.JSON_CONTROL
     assert decoded.payload == b'{"type":"close"}'
     assert decoder.feed(encoded)[0] == decoded
+
+
+def test_package_exports_raw_uds_direction_catalog() -> None:
+    import pipecat_local_stt as package
+
+    assert RAW_UDS_FRAME_DIRECTION == {
+        "client_to_server": ["JSON_CONTROL", "AUDIO_PCM16", "PING", "PONG"],
+        "server_to_client": ["JSON_EVENT", "ERROR", "PING", "PONG"],
+    }
+    assert RawUdsFrameType.JSON_EVENT not in RAW_UDS_CLIENT_FRAME_TYPES
+    assert RawUdsFrameType.JSON_CONTROL not in RAW_UDS_SERVER_FRAME_TYPES
+    assert package.RAW_UDS_FRAME_DIRECTION == RAW_UDS_FRAME_DIRECTION
+    assert package.RAW_UDS_CLIENT_FRAME_TYPES == RAW_UDS_CLIENT_FRAME_TYPES
+    assert package.RAW_UDS_SERVER_FRAME_TYPES == RAW_UDS_SERVER_FRAME_TYPES
 
 
 def test_raw_uds_json_payload_decoder_accepts_outbound_control_frames() -> None:
