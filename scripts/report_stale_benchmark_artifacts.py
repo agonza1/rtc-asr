@@ -494,6 +494,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--repo-relative-paths",
+        action="store_true",
+        help=(
+            "With --paths-only, print paths relative to the repository root, "
+            "for example docs/benchmark-results/example.json"
+        ),
+    )
+    parser.add_argument(
         "-0",
         "--null",
         action="store_true",
@@ -2063,12 +2071,15 @@ def render_paths(
     detail_pages_only: bool = False,
     existing_root: Path | None = None,
     missing_root: Path | None = None,
+    path_prefix: Path | None = None,
     output_root: Path | None = None,
     separator: str = "\n",
 ) -> str:
     paths = []
 
     def append_path_once(path: str) -> None:
+        if path_prefix is not None:
+            path = str(path_prefix / path)
         if output_root is not None:
             path = str((output_root / path).resolve())
         if path not in paths:
@@ -3347,6 +3358,10 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--detail-pages-only requires --paths-only")
     if args.absolute_paths and not args.paths_only:
         raise ValueError("--absolute-paths requires --paths-only")
+    if args.repo_relative_paths and not args.paths_only:
+        raise ValueError("--repo-relative-paths requires --paths-only")
+    if args.absolute_paths and args.repo_relative_paths:
+        raise ValueError("--absolute-paths cannot be combined with --repo-relative-paths")
     if args.null and not args.paths_only:
         raise ValueError("--null requires --paths-only")
     if args.existing_paths_only and not args.paths_only:
@@ -3460,6 +3475,7 @@ def main(argv: list[str] | None = None) -> int:
             detail_pages_only=args.detail_pages_only,
             existing_root=args.results_dir.parent if args.existing_paths_only else None,
             missing_root=args.results_dir.parent if args.missing_paths_only else None,
+            path_prefix=args.results_dir.parent if args.repo_relative_paths else None,
             output_root=args.results_dir.parent if args.absolute_paths else None,
             separator="\0" if args.null else "\n",
         )
