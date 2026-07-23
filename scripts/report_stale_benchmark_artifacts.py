@@ -2228,15 +2228,16 @@ def render_json_summary(
         if group not in selected_groups:
             continue
         summary_key = SUMMARY_GROUP_KEYS[group]
-        buckets = limit_summary_buckets(
+        filtered_buckets = limit_summary_buckets(
             summary[summary_key],
-            summary_limit,
+            None,
             sort_by=summary_sort,
             min_count=summary_min_count,
             max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
             max_size_bytes=summary_max_size_bytes,
         )
+        buckets = filtered_buckets if summary_limit is None else filtered_buckets[:summary_limit]
         if include_share:
             buckets = with_summary_shares(
                 buckets,
@@ -2244,6 +2245,14 @@ def render_json_summary(
                 total_size_bytes=summary["total_size_bytes"],
             )
         rendered[summary_key] = buckets
+        if summary_limit is not None and len(filtered_buckets) > len(buckets):
+            omitted_buckets = filtered_buckets[len(buckets) :]
+            omitted_size_bytes = sum(bucket["total_size_bytes"] for bucket in omitted_buckets)
+            rendered[f"{summary_key}_omitted"] = {
+                "count": len(omitted_buckets),
+                "total_size_bytes": omitted_size_bytes,
+                "total_size": format_bytes(omitted_size_bytes),
+            }
     return json.dumps(rendered, indent=2)
 
 
