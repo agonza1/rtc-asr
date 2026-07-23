@@ -49,6 +49,14 @@ stt = RtcAsrSTTService(
 )
 ```
 
+The package also exports the Raw UDS codec constants for probes and custom transports. `RAW_UDS_FRAME_DIRECTION` is a stable name catalog for deciding whether a frame type is valid client-to-server or server-to-client traffic:
+
+```python
+from pipecat_local_stt import RAW_UDS_FRAME_DIRECTION
+
+assert RAW_UDS_FRAME_DIRECTION["client_to_server"] == ["JSON_CONTROL", "AUDIO_PCM16", "PING", "PONG"]
+```
+
 Place the service after `transport.input()` and before `context_aggregator.user()` in a Pipecat pipeline. The plugin does not implement RTC, VAD, LLM context aggregation, or TTS.
 
 ## Running Against `rtc-asr`
