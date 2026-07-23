@@ -270,6 +270,33 @@ class HealthySendWebSocket:
         return None
 
 
+class WarningWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str) and json.loads(data)["type"] == "start":
+            await self.incoming.put(json.dumps({"type": "ready"}))
+            await self.incoming.put(
+                json.dumps(
+                    {
+                        "type": "warning",
+                        "code": "partial_dropped",
+                        "message": "Dropped one partial due to backpressure",
+                        "metadata": {"queue_depth_ms": 40},
+                    }
+                )
+            )
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
 def capture_pushed_frames(service: LocalStreamingSTTService) -> list[tuple[Any, FrameDirection]]:
     frames: list[tuple[Any, FrameDirection]] = []
     original_push_frame = service.push_frame
@@ -338,6 +365,26 @@ async def _test_cancel_suppresses_stale_results() -> None:
     final_frames = [frame for frame, _ in pushed_frames if isinstance(frame, TranscriptionFrame)]
     assert final_frames == []
     assert service.metrics.local_stt_transcripts_suppressed_total == 1
+
+
+def test_warning_events_are_counted_without_reconnect() -> None:
+    asyncio.run(_test_warning_events_are_counted_without_reconnect())
+
+
+async def _test_warning_events_are_counted_without_reconnect() -> None:
+    websocket = WarningWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: service.metrics.local_stt_warning_events_total == 1)
+
+    assert service.metrics.local_stt_protocol_errors_total == 0
+    assert service.metrics.local_stt_reconnects_total == 0
+    await service.cleanup()
 
 
 def test_receive_loop_reconnect_exits_old_reader() -> None:
