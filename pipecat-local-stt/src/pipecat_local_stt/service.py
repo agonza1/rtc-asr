@@ -359,6 +359,10 @@ class LocalStreamingSTTService(STTService):
                 self.metrics.local_stt_pong_events_total += 1
             return
         if event_type == "ready":
+            generation = self._payload_generation(payload)
+            if isinstance(generation, int) and generation != self._generation:
+                self.metrics.local_stt_stale_ready_events_total += 1
+                return
             self.metrics.local_stt_ready_events_total += 1
             if self._ready_event is not None:
                 self._ready_event.set()
@@ -386,9 +390,18 @@ class LocalStreamingSTTService(STTService):
             logger.warning("Local STT protocol error: %s", payload.get("message", payload))
 
     def _event_generation(self, event: LocalSTTTranscriptEvent) -> int | None:
-        generation = event.metadata.get("local_stt_generation")
+        return self._metadata_generation(event.metadata)
+
+    def _payload_generation(self, payload: dict[str, Any]) -> int | None:
+        metadata = payload.get("metadata")
+        if not isinstance(metadata, dict):
+            return None
+        return self._metadata_generation(metadata)
+
+    def _metadata_generation(self, metadata: dict[str, Any]) -> int | None:
+        generation = metadata.get("local_stt_generation")
         if not isinstance(generation, int):
-            client_metadata = event.metadata.get("client_metadata")
+            client_metadata = metadata.get("client_metadata")
             if isinstance(client_metadata, dict):
                 generation = client_metadata.get("local_stt_generation")
         return generation if isinstance(generation, int) else None

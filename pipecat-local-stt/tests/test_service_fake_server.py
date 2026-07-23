@@ -116,6 +116,30 @@ def test_service_counts_ready_timeout() -> None:
     asyncio.run(_test_service_counts_ready_timeout())
 
 
+def test_service_ignores_stale_ready_events() -> None:
+    service = LocalStreamingSTTService()
+    service._generation = 2
+    service._ready_event = asyncio.Event()
+
+    asyncio.run(service._handle_server_payload({"type": "ready", "metadata": {"local_stt_generation": 1}}))
+
+    assert service._ready_event.is_set() is False
+    assert service.metrics.local_stt_ready_events_total == 0
+    assert service.metrics.local_stt_stale_ready_events_total == 1
+
+
+def test_service_accepts_matching_ready_generation() -> None:
+    service = LocalStreamingSTTService()
+    service._generation = 2
+    service._ready_event = asyncio.Event()
+
+    asyncio.run(service._handle_server_payload({"type": "ready", "metadata": {"local_stt_generation": 2}}))
+
+    assert service._ready_event.is_set() is True
+    assert service.metrics.local_stt_ready_events_total == 1
+    assert service.metrics.local_stt_stale_ready_events_total == 0
+
+
 async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping() -> None:
     websocket = FakeLocalSTTWebSocket()
     service = LocalStreamingSTTService(LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20), connect_fn=lambda _url: asyncio.sleep(0, websocket))
