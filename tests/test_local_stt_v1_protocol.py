@@ -554,6 +554,25 @@ def test_raw_uds_frame_decoder_feed_rejects_non_bytes_like_socket_chunks(chunk: 
     assert decoder.buffered_bytes == 0
 
 
+@pytest.mark.parametrize("chunk", [2, "not-bytes"])
+def test_raw_uds_frame_decoder_clears_partial_buffer_after_non_bytes_like_socket_chunk(chunk: object) -> None:
+    decoder = RawUdsFrameDecoder()
+    encoded = encode_raw_uds_json_frame(
+        RawUdsFrameType.JSON_CONTROL, {"type": "ping", "ping_id": "partial"}
+    )
+
+    assert decoder.feed(encoded[:2]) == []
+    assert decoder.buffered_bytes == 2
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        decoder.feed(chunk)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_bytes"
+    assert decoder.buffered_bytes == 0
+    frames = decoder.feed(encode_raw_uds_frame(RawUdsFrameType.PING, b""))
+
+    assert frames[0].frame_type == RawUdsFrameType.PING
+
+
 def test_raw_uds_frame_decoder_clears_oversized_frame_after_error() -> None:
     decoder = RawUdsFrameDecoder()
     oversized_header = bytes([RawUdsFrameType.AUDIO_PCM16]) + (
