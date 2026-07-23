@@ -324,8 +324,9 @@ class AsyncLocalSttClient:
         return ready_event
 
     async def send_audio(self, chunk: bytes, *, on_sent: Callable[[], None] | None = None) -> None:
+        audio_bytes = validate_audio_chunk(chunk)
         websocket = self._require_websocket()
-        await websocket.send(chunk)
+        await websocket.send(audio_bytes)
         if on_sent is not None:
             on_sent()
 
