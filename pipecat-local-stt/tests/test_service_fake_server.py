@@ -625,13 +625,32 @@ def test_service_counts_raw_uds_error_frame_without_crashing() -> None:
     assert service.metrics.local_stt_protocol_errors_total == 1
 
 
-def test_service_ignores_server_heartbeat_events() -> None:
+def test_service_acknowledges_server_ping_events() -> None:
+    websocket = FakeLocalSTTWebSocket()
+    service = LocalStreamingSTTService()
+    service._websocket = websocket
+
+    asyncio.run(service._handle_server_payload({"type": "ping", "ping_id": "server-1", "timestamp_ms": 1234}))
+
+    assert json.loads(websocket.sent[0]) == {
+        "type": "pong",
+        "metadata": {},
+        "ping_id": "server-1",
+        "timestamp_ms": 1234,
+    }
+    assert service.metrics.local_stt_heartbeat_events_total == 1
+    assert service.metrics.local_stt_ping_events_total == 1
+    assert service.metrics.local_stt_pong_events_sent_total == 1
+    assert service.metrics.local_stt_protocol_errors_total == 0
+
+
+def test_service_counts_server_pong_events() -> None:
     service = LocalStreamingSTTService()
 
-    asyncio.run(service._handle_server_payload({"type": "ping"}))
     asyncio.run(service._handle_server_payload({"type": "pong"}))
 
-    assert service.metrics.local_stt_heartbeat_events_total == 2
-    assert service.metrics.local_stt_ping_events_total == 1
+    assert service.metrics.local_stt_heartbeat_events_total == 1
+    assert service.metrics.local_stt_ping_events_total == 0
     assert service.metrics.local_stt_pong_events_total == 1
+    assert service.metrics.local_stt_pong_events_sent_total == 0
     assert service.metrics.local_stt_protocol_errors_total == 0
