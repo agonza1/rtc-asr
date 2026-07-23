@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import io
+import wave
+
 import numpy as np
 import pytest
 
@@ -62,3 +65,31 @@ def test_wav_bytes_keep_generic_decoder_even_when_sample_rate_is_provided(monkey
 
     assert called
     assert decoded.samples.tolist() == [0.0, 0.0]
+
+
+def test_decode_wav_supports_pcm24_without_optional_soundfile(monkeypatch: pytest.MonkeyPatch) -> None:
+    processor = AudioProcessor(AudioConfig(sample_rate=16000))
+    samples = [0, 0x400000, -0x800000, 0x7FFFFF]
+    wav_bytes = _build_pcm24_wav(samples, sample_rate=16000)
+
+    def fail_soundfile(*args: object, **kwargs: object) -> object:
+        raise AssertionError("24-bit PCM WAV should decode without soundfile fallback")
+
+    monkeypatch.setattr(processor, "_decode_with_soundfile", fail_soundfile)
+
+    decoded = processor.load_audio(wav_bytes)
+
+    assert decoded.sample_rate == 16000
+    assert decoded.samples.dtype == np.float32
+    assert decoded.samples.tolist() == pytest.approx([0.0, 0.5, -1.0, 0x7FFFFF / 8388608])
+
+
+def _build_pcm24_wav(samples: list[int], *, sample_rate: int) -> bytes:
+    frames = b"".join(sample.to_bytes(3, "little", signed=True) for sample in samples)
+    with io.BytesIO() as buffer:
+        with wave.open(buffer, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(3)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(frames)
+        return buffer.getvalue()

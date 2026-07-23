@@ -79,6 +79,8 @@ class AudioProcessor:
             pcm = (pcm - 128.0) / 128.0
         elif sample_width == 2:
             pcm = np.frombuffer(frames, dtype="<i2").astype(np.float32) / 32768.0
+        elif sample_width == 3:
+            pcm = self._decode_pcm24(frames)
         elif sample_width == 4:
             pcm = np.frombuffer(frames, dtype="<i4").astype(np.float32) / 2147483648.0
         else:
@@ -109,6 +111,14 @@ class AudioProcessor:
         if len(audio_data) % 2 != 0:
             raise ValueError("Raw PCM16 audio must contain an even number of bytes")
         return np.frombuffer(audio_data, dtype="<i2").astype(np.float32) / 32768.0
+
+    def _decode_pcm24(self, audio_data: bytes) -> np.ndarray:
+        if len(audio_data) % 3 != 0:
+            raise ValueError("PCM24 audio must contain complete 3 byte samples")
+        packed = np.frombuffer(audio_data, dtype=np.uint8).reshape(-1, 3).astype(np.int32)
+        values = packed[:, 0] | (packed[:, 1] << 8) | (packed[:, 2] << 16)
+        values = np.where(values & 0x800000, values - 0x1000000, values)
+        return values.astype(np.float32) / 8388608.0
 
     def _should_use_pcm16_fast_path(self, audio_data: bytes, sample_rate: int | None) -> bool:
         if not self.config.enable_pcm16_fast_path or sample_rate is None:
