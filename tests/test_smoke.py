@@ -506,6 +506,16 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["frame_format"] == "uint8_type_uint32_len_le"
     assert raw_uds["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
     assert raw_uds["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
+    assert raw_uds["audio_payload"] == {
+        "frame_type": "AUDIO_PCM16",
+        "frame_type_code": 2,
+        "format": HOT_PATH_PCM_FORMAT,
+        "sample_rate": HOT_PATH_SAMPLE_RATE,
+        "channels": HOT_PATH_CHANNELS,
+        "frame_ms": HOT_PATH_FRAME_MS,
+        "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+        "payload_rules": ["binary_pcm16", "non_empty", "even_byte_length", "never_base64"],
+    }
     assert raw_uds["frame_direction"] == {
         "client_to_server": ["JSON_CONTROL", "AUDIO_PCM16", "PING", "PONG"],
         "server_to_client": ["JSON_EVENT", "ERROR", "PING", "PONG"],
