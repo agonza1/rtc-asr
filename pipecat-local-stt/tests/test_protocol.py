@@ -169,6 +169,13 @@ def test_raw_uds_json_payload_decoder_accepts_outbound_control_frames() -> None:
     assert decode_raw_uds_json_payload(frame) == {"type": "close"}
 
 
+def test_raw_uds_json_frame_codec_rejects_audio_frame_type() -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        encode_raw_uds_json_frame(RawUdsFrameType.AUDIO_PCM16, {"type": "close"})
+
+    assert excinfo.value.code == "raw_uds_invalid_json_frame_type"
+
+
 @pytest.mark.parametrize("payload", [b"{", b'["not-object"]', b"\xff"])
 def test_raw_uds_json_payload_errors_are_protocol_errors(payload: bytes) -> None:
     frame = RawUdsFrame(frame_type=RawUdsFrameType.JSON_EVENT, payload=payload)
@@ -239,6 +246,24 @@ def test_raw_uds_frame_codec_reports_stable_error_codes() -> None:
     assert excinfo.value.code == "raw_uds_frame_length_mismatch"
 
 
+@pytest.mark.parametrize("payload", [2, "not-bytes"])
+def test_raw_uds_frame_codec_rejects_non_bytes_like_payloads(payload: object) -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, payload)
+
+    assert excinfo.value.code == "raw_uds_invalid_bytes"
+    assert "Raw UDS frame payload must be bytes-like" in excinfo.value.message
+
+
+@pytest.mark.parametrize("frame_bytes", [2, "not-bytes"])
+def test_raw_uds_frame_decoder_rejects_non_bytes_like_frames(frame_bytes: object) -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        decode_raw_uds_frame(frame_bytes)
+
+    assert excinfo.value.code == "raw_uds_invalid_bytes"
+    assert "Raw UDS frame must be bytes-like" in excinfo.value.message
+
+
 def test_raw_uds_frame_decoder_finish_rejects_partial_tail() -> None:
     decoder = RawUdsFrameDecoder()
     ready = encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "ready"})
@@ -248,4 +273,16 @@ def test_raw_uds_frame_decoder_finish_rejects_partial_tail() -> None:
         decoder.finish()
 
     assert excinfo.value.code == "raw_uds_incomplete_frame"
+    assert decoder.buffered_bytes == 0
+
+
+@pytest.mark.parametrize("chunk", [2, "not-bytes"])
+def test_raw_uds_frame_decoder_feed_rejects_non_bytes_like_socket_chunks(chunk: object) -> None:
+    decoder = RawUdsFrameDecoder()
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        decoder.feed(chunk)
+
+    assert excinfo.value.code == "raw_uds_invalid_bytes"
+    assert "Raw UDS socket chunks must be bytes-like" in excinfo.value.message
     assert decoder.buffered_bytes == 0

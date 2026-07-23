@@ -55,7 +55,7 @@ class RawUdsFrameDecoder:
     _buffer: bytearray = field(default_factory=bytearray)
 
     def feed(self, data: bytes | bytearray | memoryview) -> list[RawUdsFrame]:
-        chunk = bytes(data)
+        chunk = _coerce_bytes_like(data, context="Raw UDS socket chunks")
         if not chunk:
             return []
         self._buffer.extend(chunk)
@@ -99,7 +99,7 @@ class RawUdsFrameDecoder:
 
 def encode_raw_uds_frame(frame_type: RawUdsFrameType | int, payload: bytes | bytearray | memoryview) -> bytes:
     resolved_type = _parse_raw_uds_frame_type(frame_type)
-    payload_bytes = bytes(payload)
+    payload_bytes = _coerce_bytes_like(payload, context="Raw UDS frame payload")
     if len(payload_bytes) > RAW_UDS_MAX_PAYLOAD_BYTES:
         raise LocalSTTProtocolError(
             f"Raw UDS frame payload exceeds {RAW_UDS_MAX_PAYLOAD_BYTES} bytes",
@@ -120,11 +120,23 @@ def validate_raw_uds_audio_payload(payload: bytes) -> bytes:
 
 
 def encode_raw_uds_json_frame(frame_type: RawUdsFrameType, payload: dict[str, Any]) -> bytes:
+    json_frame_types = {
+        RawUdsFrameType.JSON_CONTROL,
+        RawUdsFrameType.JSON_EVENT,
+        RawUdsFrameType.ERROR,
+        RawUdsFrameType.PING,
+        RawUdsFrameType.PONG,
+    }
+    if frame_type not in json_frame_types:
+        raise LocalSTTProtocolError(
+            f"Raw UDS frame type {frame_type.name} cannot carry JSON control data",
+            code="raw_uds_invalid_json_frame_type",
+        )
     return encode_raw_uds_frame(frame_type, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
 
 
 def decode_raw_uds_frame(data: bytes | bytearray | memoryview) -> RawUdsFrame:
-    frame_bytes = bytes(data)
+    frame_bytes = _coerce_bytes_like(data, context="Raw UDS frame")
     if len(frame_bytes) < RAW_UDS_HEADER_BYTES:
         raise LocalSTTProtocolError(
             "Raw UDS frames must include a 5 byte header",
@@ -195,6 +207,20 @@ def _parse_raw_uds_frame_type(frame_type: RawUdsFrameType | int) -> RawUdsFrameT
             f"Unsupported Raw UDS frame type: {frame_type}",
             code="raw_uds_unsupported_frame_type",
         ) from exc
+
+
+def _coerce_bytes_like(value: Any, *, context: str) -> bytes:
+    if isinstance(value, str):
+        raise LocalSTTProtocolError(
+            f"{context} must be bytes-like, not text",
+            code="raw_uds_invalid_bytes",
+        )
+    if not isinstance(value, (bytes, bytearray, memoryview)):
+        raise LocalSTTProtocolError(
+            f"{context} must be bytes-like",
+            code="raw_uds_invalid_bytes",
+        )
+    return bytes(value)
 
 
 @dataclass(slots=True)
