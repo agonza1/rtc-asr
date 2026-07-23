@@ -152,6 +152,12 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                 "frame_ms": HOT_PATH_FRAME_MS,
                 "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
             },
+            "partial_interval": {
+                "request_field": "partial_interval_ms",
+                "resolution_ms": HOT_PATH_FRAME_MS,
+                "rounding": "ceil_to_audio_frame",
+                "ready_metadata_field": "partial_interval_ms",
+            },
             "start_control_payload": {
                 "type": "start",
                 "version": PROTOCOL_VERSION,
@@ -256,13 +262,6 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     ),
                 }
             ],
-            "audio": {
-                "sample_rate": 16000,
-                "channels": 1,
-                "format": HOT_PATH_PCM_FORMAT,
-                "frame_ms": HOT_PATH_FRAME_MS,
-                "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
-            },
         },
     ]
 
