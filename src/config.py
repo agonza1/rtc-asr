@@ -64,6 +64,18 @@ def _positive_int_first_env(*names: str, default: int) -> int:
     return default
 
 
+def _socket_path_env(name: str, default: str, *, required: bool) -> str:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip()
+    if normalized:
+        return normalized
+    if required:
+        raise ValueError(f"{name} must not be empty")
+    return default
+
+
 @dataclass(slots=True)
 class AppConfig:
     """Runtime configuration loaded from environment variables."""
@@ -115,12 +127,16 @@ class AppConfig:
         local_stt_socket_mode = os.getenv("LOCAL_STT_SOCKET_MODE", defaults.local_stt_socket_mode).strip().lower()
         if local_stt_socket_mode not in {"tcp", "uds"}:
             raise ValueError("LOCAL_STT_SOCKET_MODE must be 'tcp' or 'uds'")
-        local_stt_uds_path = os.getenv("LOCAL_STT_UDS_PATH", defaults.local_stt_uds_path)
-        if local_stt_socket_mode == "uds" and not local_stt_uds_path.strip():
-            raise ValueError("LOCAL_STT_UDS_PATH is required when LOCAL_STT_SOCKET_MODE=uds")
-        local_stt_raw_uds_path = os.getenv("LOCAL_STT_RAW_UDS_PATH", defaults.local_stt_raw_uds_path)
-        if not local_stt_raw_uds_path.strip():
-            raise ValueError("LOCAL_STT_RAW_UDS_PATH must not be empty")
+        local_stt_uds_path = _socket_path_env(
+            "LOCAL_STT_UDS_PATH",
+            defaults.local_stt_uds_path,
+            required=local_stt_socket_mode == "uds",
+        )
+        local_stt_raw_uds_path = _socket_path_env(
+            "LOCAL_STT_RAW_UDS_PATH",
+            defaults.local_stt_raw_uds_path,
+            required=True,
+        )
 
         return cls(
             app_name=os.getenv("APP_NAME", defaults.app_name),

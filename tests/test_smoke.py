@@ -2386,6 +2386,36 @@ def test_local_stt_socket_mode_env_supports_uds(monkeypatch: pytest.MonkeyPatch,
     assert config.local_stt_raw_uds_path == str(raw_socket_path)
 
 
+def test_local_stt_socket_paths_trim_env_whitespace(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    socket_path = tmp_path / "stt.sock"
+    raw_socket_path = tmp_path / "stt.raw.sock"
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "uds")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", f"  {socket_path}  ")
+    monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", f"\t{raw_socket_path}\n")
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_uds_path == str(socket_path)
+    assert config.local_stt_raw_uds_path == str(raw_socket_path)
+
+
+def test_tcp_socket_mode_ignores_empty_local_uds_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "tcp")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", "   ")
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_uds_path == "/run/rtc-asr/stt.sock"
+
+
+def test_uds_socket_mode_rejects_empty_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "uds")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", "   ")
+
+    with pytest.raises(ValueError, match="LOCAL_STT_UDS_PATH must not be empty"):
+        AppConfig.from_env()
+
+
 def test_local_stt_raw_uds_path_rejects_empty_value(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", "   ")
 
