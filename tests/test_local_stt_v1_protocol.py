@@ -401,6 +401,12 @@ def test_raw_uds_frame_codec_rejects_boolean_frame_type() -> None:
     assert excinfo.value.as_event().code == "raw_uds_unsupported_frame_type"
     assert "Unsupported Raw UDS frame type: True" in excinfo.value.message
 
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        encode_raw_uds_json_frame(True, {"type": "ping"})
+
+    assert excinfo.value.as_event().code == "raw_uds_unsupported_frame_type"
+    assert "Unsupported Raw UDS frame type: True" in excinfo.value.message
+
 
 @pytest.mark.parametrize("frame_bytes", [2, "not-bytes"])
 def test_raw_uds_frame_decoder_rejects_non_bytes_like_frames(frame_bytes: object) -> None:
