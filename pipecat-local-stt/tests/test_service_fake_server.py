@@ -632,4 +632,6 @@ def test_service_ignores_server_heartbeat_events() -> None:
     asyncio.run(service._handle_server_payload({"type": "pong"}))
 
     assert service.metrics.local_stt_heartbeat_events_total == 2
+    assert service.metrics.local_stt_ping_events_total == 1
+    assert service.metrics.local_stt_pong_events_total == 1
     assert service.metrics.local_stt_protocol_errors_total == 0

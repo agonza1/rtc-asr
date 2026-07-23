@@ -351,6 +351,10 @@ class LocalStreamingSTTService(STTService):
         event_type = payload.get("type")
         if event_type in {"ping", "pong"}:
             self.metrics.local_stt_heartbeat_events_total += 1
+            if event_type == "ping":
+                self.metrics.local_stt_ping_events_total += 1
+            else:
+                self.metrics.local_stt_pong_events_total += 1
             return
         if event_type == "ready":
             self.metrics.local_stt_ready_events_total += 1
