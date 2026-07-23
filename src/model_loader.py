@@ -645,6 +645,15 @@ BACKEND_ALIASES = {
 }
 
 
+def backend_aliases_for(canonical_backend: str) -> list[str]:
+    """Return accepted ASR_BACKEND values for a canonical backend name."""
+    return [
+        alias
+        for alias, backend in BACKEND_ALIASES.items()
+        if backend == canonical_backend
+    ]
+
+
 QWEN_LANGUAGE_ALIASES = {
     "ar": "Arabic",
     "cs": "Czech",

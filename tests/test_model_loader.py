@@ -10,9 +10,30 @@ import pytest
 
 from src.audio_processor import AudioProcessor
 from src.config import AppConfig
-from src.model_loader import ASRUnavailableError, ParakeetAdapter, ParakeetMLXAdapter, ParakeetNemoAdapter, QwenASRAdapter, VoxtralAdapter, VoxtralMLXAdapter, build_transcriber
+from src.model_loader import (
+    ASRUnavailableError,
+    ParakeetAdapter,
+    ParakeetMLXAdapter,
+    ParakeetNemoAdapter,
+    QwenASRAdapter,
+    VoxtralAdapter,
+    VoxtralMLXAdapter,
+    backend_aliases_for,
+    build_transcriber,
+)
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
+
+
+def test_backend_aliases_for_reports_runtime_env_values() -> None:
+    assert backend_aliases_for("faster-whisper") == ["faster-whisper", "whisper"]
+    assert backend_aliases_for("voxtral-mlx") == [
+        "voxtral-mlx",
+        "voxtral-mini-mlx",
+        "voxtral-mini-4b-mlx",
+        "voxtral-realtime-mlx",
+    ]
+    assert backend_aliases_for("custom-test-backend") == []
 
 
 @pytest.mark.parametrize("backend", ["qwen", "qwen-asr", "qwen3-asr"])

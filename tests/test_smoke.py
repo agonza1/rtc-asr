@@ -389,6 +389,7 @@ def test_ready_and_model_capabilities_smoke() -> None:
     assert models.json() == {
         "backend": "fake-whisper",
         "model": "fixture-adapter",
+        "backend_aliases": [],
         "sample_rate": 16000,
         "status": "ready",
         "ready": True,
@@ -413,6 +414,7 @@ def test_ready_and_model_capabilities_smoke() -> None:
                 "id": "fixture-adapter",
                 "backend": "fake-whisper",
                 "model": "fixture-adapter",
+                "runtime_aliases": [],
                 "loaded": True,
                 "streaming": {
                     "transport": "websocket",
