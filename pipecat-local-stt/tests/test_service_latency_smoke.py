@@ -55,6 +55,8 @@ async def _test_fake_server_latency_smoke_records_plugin_metrics_without_rtc_asr
     assert metrics["local_stt_audio_frames_sent_total"] == 4
     assert metrics["local_stt_audio_sent_ms_total"] == 80.0
     assert metrics["local_stt_audio_dropped_ms_total"] == 0.0
+    assert metrics["local_stt_send_queue_chunks"] == 0
+    assert metrics["local_stt_send_queue_chunks_high_water"] > 0
     assert metrics["local_stt_send_queue_utilization_ratio"] == 0.0
     assert metrics["local_stt_send_queue_utilization_high_water_ratio"] > 0.0
     assert metrics["local_stt_ready_events_total"] == 1
