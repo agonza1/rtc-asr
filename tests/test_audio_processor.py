@@ -31,6 +31,21 @@ def test_pcm16_fast_path_rejects_non_target_sample_rate() -> None:
         processor.load_audio(b"\x00\x00", sample_rate=8000)
 
 
+@pytest.mark.parametrize("sample_rate", [0, -16000])
+def test_load_audio_rejects_non_positive_sample_rate(sample_rate: int) -> None:
+    processor = AudioProcessor(AudioConfig(sample_rate=16000, require_target_sample_rate=False))
+
+    with pytest.raises(ValueError, match="sample_rate must be a positive integer"):
+        processor.load_audio(b"\x00\x00", sample_rate=sample_rate)
+
+
+def test_resample_rejects_non_positive_sample_rates() -> None:
+    processor = AudioProcessor(AudioConfig(sample_rate=16000))
+
+    with pytest.raises(ValueError, match="Audio sample rates must be positive integers"):
+        processor._resample(np.zeros(1, dtype=np.float32), 0, 16000)
+
+
 def test_wav_bytes_keep_generic_decoder_even_when_sample_rate_is_provided(monkeypatch: pytest.MonkeyPatch) -> None:
     processor = AudioProcessor(AudioConfig(sample_rate=16000))
     called = False

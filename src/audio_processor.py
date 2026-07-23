@@ -37,6 +37,8 @@ class AudioProcessor:
     def load_audio(self, audio_data: bytes, sample_rate: int | None = None) -> DecodedAudio:
         if not audio_data:
             raise ValueError("No audio data provided")
+        if sample_rate is not None and sample_rate <= 0:
+            raise ValueError("sample_rate must be a positive integer")
 
         if self._should_use_pcm16_fast_path(audio_data, sample_rate):
             return DecodedAudio(
@@ -118,6 +120,8 @@ class AudioProcessor:
         return True
 
     def _resample(self, samples: np.ndarray, source_rate: int, target_rate: int) -> np.ndarray:
+        if source_rate <= 0 or target_rate <= 0:
+            raise ValueError("Audio sample rates must be positive integers")
         if samples.size == 0:
             return samples.astype(np.float32, copy=False)
 
