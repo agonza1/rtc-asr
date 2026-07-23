@@ -366,6 +366,7 @@ class LocalStreamingSTTService(STTService):
         if event_type == "transcript":
             event = parse_transcript_event(payload)
             if self._should_drop_transcript(event):
+                self.metrics.local_stt_transcripts_suppressed_total += 1
                 return
             await self._push_transcript(event)
             if event.is_final:
