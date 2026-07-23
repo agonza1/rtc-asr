@@ -860,6 +860,11 @@ def test_render_json_summary_can_select_and_limit_groups() -> None:
                 "total_size": "90 B",
             }
         ],
+        "by_slug_omitted": {
+            "count": 1,
+            "total_size_bytes": 10,
+            "total_size": "10 B",
+        },
         "by_status": [
             {
                 "status": "legacy",
@@ -6716,6 +6721,11 @@ def test_main_json_summary_reports_selected_groups(monkeypatch, capsys) -> None:
                 "total_size": "90 B",
             }
         ],
+        "by_slug_omitted": {
+            "count": 1,
+            "total_size_bytes": 10,
+            "total_size": "10 B",
+        },
     }
 
 
