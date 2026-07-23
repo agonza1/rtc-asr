@@ -113,6 +113,16 @@ DEFAULT_PROTOCOLS = [
                 "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "frame_format": "uint8_type_uint32_len_le",
+                "audio_payload": {
+                    "frame_type": "AUDIO_PCM16",
+                    "frame_type_code": 2,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                    "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+                    "payload_rules": ["binary_pcm16", "non_empty", "even_byte_length", "never_base64"],
+                },
                 "frame_direction": {
                     "client_to_server": ["JSON_CONTROL", "AUDIO_PCM16", "PING", "PONG"],
                     "server_to_client": ["JSON_EVENT", "ERROR", "PING", "PONG"],

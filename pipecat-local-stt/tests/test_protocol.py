@@ -286,3 +286,19 @@ def test_raw_uds_frame_decoder_feed_rejects_non_bytes_like_socket_chunks(chunk: 
     assert excinfo.value.code == "raw_uds_invalid_bytes"
     assert "Raw UDS socket chunks must be bytes-like" in excinfo.value.message
     assert decoder.buffered_bytes == 0
+
+
+@pytest.mark.parametrize("chunk", [2, "not-bytes"])
+def test_raw_uds_frame_decoder_clears_partial_buffer_after_non_bytes_like_socket_chunk(chunk: object) -> None:
+    decoder = RawUdsFrameDecoder()
+    ready = encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "ready"})
+    pong = encode_raw_uds_frame(RawUdsFrameType.PONG, b"")
+
+    assert decoder.feed(ready[:2]) == []
+    assert decoder.buffered_bytes == 2
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        decoder.feed(chunk)
+
+    assert excinfo.value.code == "raw_uds_invalid_bytes"
+    assert decoder.buffered_bytes == 0
+    assert decoder.feed(pong) == [decode_raw_uds_frame(pong)]

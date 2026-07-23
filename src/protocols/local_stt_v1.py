@@ -61,7 +61,11 @@ class RawUdsFrameDecoder:
     _buffer: bytearray = field(default_factory=bytearray)
 
     def feed(self, data: bytes | bytearray | memoryview) -> list[RawUdsFrame]:
-        chunk = _coerce_bytes_like(data, context="Raw UDS socket chunks")
+        try:
+            chunk = _coerce_bytes_like(data, context="Raw UDS socket chunks")
+        except LocalSttProtocolError:
+            self._buffer.clear()
+            raise
         if not chunk:
             return []
         self._buffer.extend(chunk)
