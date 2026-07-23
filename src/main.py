@@ -256,6 +256,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "time_to_first_interim_ms",
                         "time_to_final_after_finalize_ms",
                         "send_queue_depth_p95",
+                        "send_queue_high_water",
                         "asr_queue_delay_p95",
                         "protocol_errors",
                         "cpu_utilization",
@@ -264,6 +265,7 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "time_to_first_interim_ms": ["p50", "p95", "p99"],
                         "time_to_final_after_finalize_ms": ["p50", "p95", "p99"],
                         "send_queue_depth_p95": ["p95"],
+                        "send_queue_high_water": ["max"],
                         "asr_queue_delay_p95": ["p95"],
                         "protocol_errors": ["p50", "p95", "p99"],
                         "cpu_utilization": ["if_available"],
@@ -376,6 +378,7 @@ class StreamRuntime:
     dirty: bool = False
     closed: bool = False
     final_emitted: bool = False
+    send_queue_high_water: int = 0
 
     def note_audio(self) -> None:
         self.dirty = True
@@ -394,6 +397,15 @@ class StreamRuntime:
     def close(self) -> None:
         self.closed = True
         self.audio_updated.set()
+
+    async def enqueue_event(self, event: dict[str, Any]) -> None:
+        depth_after_enqueue = self.outgoing_events.qsize() + 1
+        self.send_queue_high_water = max(self.send_queue_high_water, depth_after_enqueue)
+        metadata = event.get("metadata")
+        if isinstance(metadata, dict):
+            metadata.setdefault("send_queue_depth", depth_after_enqueue)
+            metadata.setdefault("send_queue_high_water", self.send_queue_high_water)
+        await self.outgoing_events.put(event)
 
 
 @dataclass(slots=True)
@@ -790,7 +802,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         )
 
                     runtime.request_cancel()
-                    await runtime.outgoing_events.put(_local_stt_cancel_warning_event(runtime.session))
+                    await runtime.enqueue_event(_local_stt_cancel_warning_event(runtime.session))
                     await runtime.outgoing_events.join()
                     await stop_runtime()
                     continue
@@ -799,7 +811,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     if runtime is None or send_task is None:
                         await websocket.send_json(_local_stt_pong_event(payload))
                     else:
-                        await runtime.outgoing_events.put(_local_stt_pong_event(payload))
+                        await runtime.enqueue_event(_local_stt_pong_event(payload))
                     continue
 
                 if event_type == "pong":
@@ -980,7 +992,7 @@ async def _raw_uds_stream_client(
                         code="invalid_state",
                     )
                 runtime.request_cancel()
-                await runtime.outgoing_events.put(_local_stt_cancel_warning_event(runtime.session))
+                await runtime.enqueue_event(_local_stt_cancel_warning_event(runtime.session))
                 await runtime.outgoing_events.join()
                 await stop_runtime()
                 continue
@@ -989,7 +1001,7 @@ async def _raw_uds_stream_client(
                 if runtime is None or send_task is None:
                     await _write_raw_uds_event(writer, _local_stt_pong_event(payload))
                 else:
-                    await runtime.outgoing_events.put(_local_stt_pong_event(payload))
+                    await runtime.enqueue_event(_local_stt_pong_event(payload))
                 continue
 
             if event_type == "pong":
@@ -1120,7 +1132,7 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
             final_result = await _resolve_final_result_async(session, runtime.services)
             if runtime.cancel_requested.is_set() or runtime.closed:
                 return
-            await runtime.outgoing_events.put(
+            await runtime.enqueue_event(
                 _local_stt_transcript_event(
                     session,
                     final_result,
@@ -1171,7 +1183,7 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
         )
         partial_text = str(partial.get("text", "")).strip()
         if partial_text:
-            await runtime.outgoing_events.put(
+            await runtime.enqueue_event(
                 _local_stt_transcript_event(
                     session,
                     partial,

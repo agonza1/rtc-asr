@@ -14,6 +14,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
 from src.main import (
+    StreamRuntime,
     StreamSession,
     _prepare_uds_socket,
     _receive_raw_uds_event,
@@ -160,6 +161,7 @@ DEFAULT_PROTOCOLS = [
                     "time_to_first_interim_ms",
                     "time_to_final_after_finalize_ms",
                     "send_queue_depth_p95",
+                    "send_queue_high_water",
                     "asr_queue_delay_p95",
                     "protocol_errors",
                     "cpu_utilization",
@@ -168,6 +170,7 @@ DEFAULT_PROTOCOLS = [
                     "time_to_first_interim_ms": ["p50", "p95", "p99"],
                     "time_to_final_after_finalize_ms": ["p50", "p95", "p99"],
                     "send_queue_depth_p95": ["p95"],
+                    "send_queue_high_water": ["max"],
                     "asr_queue_delay_p95": ["p95"],
                     "protocol_errors": ["p50", "p95", "p99"],
                     "cpu_utilization": ["if_available"],
@@ -587,6 +590,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
         "time_to_first_interim_ms": ["p50", "p95", "p99"],
         "time_to_final_after_finalize_ms": ["p50", "p95", "p99"],
         "send_queue_depth_p95": ["p95"],
+        "send_queue_high_water": ["max"],
         "asr_queue_delay_p95": ["p95"],
         "protocol_errors": ["p50", "p95", "p99"],
         "cpu_utilization": ["if_available"],
@@ -1715,6 +1719,34 @@ def test_local_stt_v1_partial_interval_chunks_still_emit_after_batched_audio() -
     assert session.should_emit_partial() is False
 
 
+def test_local_stt_runtime_tracks_send_queue_high_water() -> None:
+    session = StreamSession(
+        stream_id=1,
+        language=None,
+        sample_rate=HOT_PATH_SAMPLE_RATE,
+        max_buffer_bytes=HOT_PATH_BYTES_PER_FRAME * 8,
+    )
+    runtime = StreamRuntime(
+        stream_id=session.stream_id,
+        client_stream_id=None,
+        session=session,
+        services=None,
+    )
+
+    async def enqueue_events() -> list[dict[str, object]]:
+        first_event: dict[str, object] = {"type": "transcript", "metadata": {}}
+        second_event: dict[str, object] = {"type": "pong", "metadata": {}}
+        await runtime.enqueue_event(first_event)
+        await runtime.enqueue_event(second_event)
+        return [first_event, second_event]
+
+    first_event, second_event = asyncio.run(enqueue_events())
+
+    assert runtime.send_queue_high_water == 2
+    assert first_event["metadata"] == {"send_queue_depth": 1, "send_queue_high_water": 1}
+    assert second_event["metadata"] == {"send_queue_depth": 2, "send_queue_high_water": 2}
+
+
 def test_local_stt_v1_partial_interval_ms_takes_priority_over_chunks() -> None:
     transcriber = FakeTranscriber()
     chunk = b"y" * HOT_PATH_BYTES_PER_FRAME
@@ -1952,6 +1984,8 @@ def test_local_stt_v1_stream_cancel_clears_buffer_and_suppresses_final_transcrip
                     "chunks_received": 1,
                     "buffered_bytes": 0,
                     "remaining_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
+                    "send_queue_depth": 1,
+                    "send_queue_high_water": 1,
                 },
                 "retryable": False,
             }
