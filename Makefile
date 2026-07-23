@@ -81,7 +81,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-plan clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan clean lint docs start stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -122,6 +122,7 @@ help:
 	@echo "  make lint           - Run linter"
 	@echo "  make benchmark-site-check - Fail when benchmark manifest, homepage, detail pages, sitemap, robots.txt, or llms.txt are stale"
 	@echo "  make benchmark-artifact-report - List legacy benchmark artifacts that are no longer current"
+	@echo "  make benchmark-artifact-cleanup-summary - Summarize stale benchmark cleanup candidates older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days"
 	@echo "  make benchmark-artifact-cleanup-plan - Print existing stale benchmark artifact/detail paths older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days"
 	@echo "  make docs           - Build documentation snapshot"
 	@echo "  make start          - Start docker compose stack, including the browser Pipecat demo"
@@ -540,6 +541,9 @@ benchmark-site-check:
 
 benchmark-artifact-report:
 	@python3 scripts/report_stale_benchmark_artifacts.py --results-dir $(BENCHMARK_RESULTS_DIR) --tracks $(BENCHMARK_RESULTS_DIR)/tracks.json $(BENCHMARK_ARTIFACT_REPORT_FLAGS)
+
+benchmark-artifact-cleanup-summary:
+	@python3 scripts/report_stale_benchmark_artifacts.py --results-dir $(BENCHMARK_RESULTS_DIR) --tracks $(BENCHMARK_RESULTS_DIR)/tracks.json --older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) --json-summary --summary-share $(BENCHMARK_ARTIFACT_REPORT_FLAGS)
 
 benchmark-artifact-cleanup-plan:
 	@python3 scripts/report_stale_benchmark_artifacts.py --results-dir $(BENCHMARK_RESULTS_DIR) --tracks $(BENCHMARK_RESULTS_DIR)/tracks.json --older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) --paths-only --include-detail-pages --existing-paths-only $(BENCHMARK_ARTIFACT_REPORT_FLAGS)

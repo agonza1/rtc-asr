@@ -484,16 +484,22 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
         "benchmark-site",
         "benchmark-site-check",
         "benchmark-artifact-report",
+        "benchmark-artifact-cleanup-summary",
         "benchmark-artifact-cleanup-plan",
     } <= phony_targets
     assert "BENCHMARK_ARTIFACT_CLEANUP_DAYS ?= 30" in makefile
     assert "BENCHMARK_ARTIFACT_REPORT_FLAGS ?=" in makefile
     assert "make benchmark-site-check - Fail when benchmark manifest, homepage, detail pages, sitemap, robots.txt, or llms.txt are stale" in makefile
     assert "make benchmark-artifact-cleanup-plan - Print existing stale benchmark artifact/detail paths older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days" in makefile
+    assert "make benchmark-artifact-cleanup-summary - Summarize stale benchmark cleanup candidates older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days" in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
     assert "scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --site-base-url $(BENCHMARK_SITE_BASE_URL) --check" in block
     assert '@echo "  ✓ Benchmark site manifest is up to date"' in block
+    cleanup_summary_block = makefile.split("benchmark-artifact-cleanup-summary:\n", 1)[1].split("\n\n", 1)[0]
+    assert "--older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS)" in cleanup_summary_block
+    assert "--json-summary --summary-share" in cleanup_summary_block
+    assert "$(BENCHMARK_ARTIFACT_REPORT_FLAGS)" in cleanup_summary_block
     cleanup_block = makefile.split("benchmark-artifact-cleanup-plan:\n", 1)[1].split("\n\n", 1)[0]
     assert "--older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS)" in cleanup_block
     assert "--paths-only --include-detail-pages --existing-paths-only" in cleanup_block
