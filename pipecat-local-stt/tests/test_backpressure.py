@@ -337,6 +337,7 @@ async def _test_cancel_suppresses_stale_results() -> None:
 
     final_frames = [frame for frame, _ in pushed_frames if isinstance(frame, TranscriptionFrame)]
     assert final_frames == []
+    assert service.metrics.local_stt_transcripts_suppressed_total == 1
 
 
 def test_receive_loop_reconnect_exits_old_reader() -> None:
