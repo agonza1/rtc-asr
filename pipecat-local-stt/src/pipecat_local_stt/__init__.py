@@ -10,8 +10,10 @@ from .protocol import (
     RawUdsFrameDecoder,
     RawUdsFrameType,
     decode_raw_uds_frame,
+    decode_raw_uds_json_payload,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    parse_raw_uds_server_frame,
 )
 from .rtc_asr import RtcAsrSTTService
 from .service import LocalStreamingSTTService
@@ -30,6 +32,8 @@ __all__ = [
     "RawUdsFrameType",
     "RtcAsrSTTService",
     "decode_raw_uds_frame",
+    "decode_raw_uds_json_payload",
     "encode_raw_uds_frame",
     "encode_raw_uds_json_frame",
+    "parse_raw_uds_server_frame",
 ]

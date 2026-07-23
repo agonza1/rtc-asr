@@ -17,6 +17,7 @@ from pipecat_local_stt.protocol import (
     decode_raw_uds_json_payload,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    parse_raw_uds_server_frame,
     parse_transcript_event,
 )
 
@@ -117,6 +118,34 @@ def test_package_exports_raw_uds_codec_contract() -> None:
     assert decoded.frame_type == package.RawUdsFrameType.JSON_CONTROL
     assert decoded.payload == b'{"type":"close"}'
     assert decoder.feed(encoded)[0] == decoded
+
+
+def test_package_exports_raw_uds_json_decoder_and_server_parser() -> None:
+    import pipecat_local_stt as package
+
+    encoded = package.encode_raw_uds_json_frame(package.RawUdsFrameType.JSON_EVENT, {"type": "ready"})
+    decoded = package.decode_raw_uds_frame(encoded)
+
+    assert package.decode_raw_uds_json_payload(decoded) == {"type": "ready"}
+    assert package.parse_raw_uds_server_frame(decoded) == {"type": "ready"}
+
+
+@pytest.mark.parametrize("frame_type", [RawUdsFrameType.PING, RawUdsFrameType.PONG])
+def test_raw_uds_server_parser_accepts_empty_keepalive_frames(frame_type: RawUdsFrameType) -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_frame(frame_type, b""))
+
+    assert parse_raw_uds_server_frame(frame) == {"type": frame_type.name.lower()}
+
+
+def test_raw_uds_server_parser_defaults_error_event_type() -> None:
+    frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(RawUdsFrameType.ERROR, {"code": "raw_uds_payload_too_large"})
+    )
+
+    assert parse_raw_uds_server_frame(frame) == {
+        "type": "error",
+        "code": "raw_uds_payload_too_large",
+    }
 
 
 def test_package_exports_raw_uds_direction_catalog() -> None:
