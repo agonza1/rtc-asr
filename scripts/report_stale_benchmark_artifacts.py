@@ -123,6 +123,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="JSON file listing tracked benchmark lanes",
     )
     parser.add_argument(
+        "--manifest",
+        type=Path,
+        default=None,
+        help="Read an existing benchmark manifest JSON instead of rebuilding one from --results-dir and --tracks",
+    )
+    parser.add_argument(
         "--older-than-days",
         type=int,
         default=None,
@@ -3471,7 +3477,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.detail_pages_only and args.include_detail_pages:
         raise ValueError("--detail-pages-only cannot be combined with --include-detail-pages")
 
-    manifest = build_manifest(args.results_dir, args.tracks)
+    if args.manifest is None:
+        manifest = build_manifest(args.results_dir, args.tracks)
+    else:
+        try:
+            manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            raise ValueError(f"{args.manifest} contains invalid JSON: {error.msg}") from error
+        if not isinstance(manifest, dict):
+            raise ValueError(f"{args.manifest} must contain a JSON object")
     stale = stale_artifacts(
         manifest,
         older_than_days=args.older_than_days,
