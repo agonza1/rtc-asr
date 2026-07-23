@@ -114,6 +114,12 @@ def test_parse_args_accepts_repo_relative_paths_mode() -> None:
     assert args.repo_relative_paths is True
 
 
+def test_parse_args_accepts_existing_manifest_path() -> None:
+    args = parse_args(["--manifest", "docs/benchmark-results/manifest.json"])
+
+    assert args.manifest == Path("docs/benchmark-results/manifest.json")
+
+
 def test_measured_month_uses_utc_month_or_unknown() -> None:
     assert measured_month("2026-06-30T23:30:00-02:00") == "2026-07"
     assert measured_month(None) == "unknown"
@@ -5773,6 +5779,48 @@ def test_main_paths_only_can_output_absolute_paths(monkeypatch, tmp_path, capsys
     assert report_module.main(["--results-dir", str(results_dir), "--paths-only", "--absolute-paths"]) == 0
 
     assert capsys.readouterr().out == f"{results_dir / 'old.json'}\n"
+
+
+def test_main_paths_only_can_read_existing_manifest(monkeypatch, tmp_path, capsys) -> None:
+    def fail_build_manifest(*args, **kwargs):
+        raise AssertionError("--manifest should skip manifest rebuild")
+
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "tracks": [{"slug": "base", "artifact_path": "benchmark-results/current.json"}],
+                "artifacts": [
+                    {
+                        "artifact_path": "benchmark-results/current.json",
+                        "slug": "base",
+                        "status": "validated",
+                        "artifact_size_bytes": 100,
+                    },
+                    {
+                        "artifact_path": "benchmark-results/old.json",
+                        "slug": "base",
+                        "status": "legacy",
+                        "artifact_size_bytes": 10,
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(report_module, "build_manifest", fail_build_manifest)
+
+    assert report_module.main(["--manifest", str(manifest_path), "--paths-only"]) == 0
+
+    assert capsys.readouterr().out == "benchmark-results/old.json\n"
+
+
+def test_main_rejects_non_object_existing_manifest(tmp_path) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text("[]", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must contain a JSON object"):
+        report_module.main(["--manifest", str(manifest_path), "--paths-only"])
 
 
 def test_main_null_paths_only_does_not_emit_newline_for_no_matches(monkeypatch, capsys) -> None:
