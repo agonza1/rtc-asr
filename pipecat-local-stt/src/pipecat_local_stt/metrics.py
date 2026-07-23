@@ -19,6 +19,7 @@ class LocalSTTMetrics:
     local_stt_interim_events_total: int = 0
     local_stt_final_events_total: int = 0
     local_stt_final_timeouts_total: int = 0
+    local_stt_heartbeat_events_total: int = 0
     local_stt_protocol_errors_total: int = 0
 
     def as_dict(self) -> dict[str, int | float]:

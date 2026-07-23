@@ -350,6 +350,7 @@ class LocalStreamingSTTService(STTService):
     async def _handle_server_payload(self, payload: dict[str, Any]) -> None:
         event_type = payload.get("type")
         if event_type in {"ping", "pong"}:
+            self.metrics.local_stt_heartbeat_events_total += 1
             return
         if event_type == "ready":
             self.metrics.local_stt_ready_events_total += 1
