@@ -119,6 +119,16 @@ def test_package_exports_raw_uds_codec_contract() -> None:
     assert decoder.feed(encoded)[0] == decoded
 
 
+def test_package_exports_raw_uds_json_decoder_and_server_parser() -> None:
+    import pipecat_local_stt as package
+
+    encoded = package.encode_raw_uds_json_frame(package.RawUdsFrameType.JSON_EVENT, {"type": "ready"})
+    decoded = package.decode_raw_uds_frame(encoded)
+
+    assert package.decode_raw_uds_json_payload(decoded) == {"type": "ready"}
+    assert package.parse_raw_uds_server_frame(decoded) == {"type": "ready"}
+
+
 def test_package_exports_raw_uds_direction_catalog() -> None:
     import pipecat_local_stt as package
 
