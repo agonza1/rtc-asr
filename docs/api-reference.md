@@ -173,7 +173,7 @@ Example response:
 }
 ```
 
-Use `default_transport` when a client wants the recommended live STT path without hard-coding transport precedence. Catalog entries also expose `recommended` so clients that render the full `protocols` array can highlight the same preferred transport. The full `protocols` array includes the legacy `/ws/stream` contract, Local STT v1 websocket contract, and any configured experimental transports such as Raw UDS.
+Use `default_transport` when a client wants the recommended live STT path without hard-coding transport precedence. When `LOCAL_STT_SOCKET_MODE=uds`, this object reports `transport: "uds_ws"` and includes `uds_path`; otherwise it reports the TCP websocket path. Catalog entries also expose `recommended` so clients that render the full `protocols` array can highlight the same preferred transport. The full `protocols` array includes the legacy `/ws/stream` contract, Local STT v1 websocket contract, and any configured experimental transports such as Raw UDS.
 
 ## Synchronous Transcription
 
