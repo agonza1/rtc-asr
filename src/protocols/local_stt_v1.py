@@ -57,6 +57,15 @@ def _reject_boolean_integer_field(value: Any) -> Any:
     return value
 
 
+def _reject_boolean_numeric_field(value: Any) -> Any:
+    if isinstance(value, bool):
+        raise PydanticCustomError(
+            "invalid_numeric_field",
+            "must be numeric, not a boolean",
+        )
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class RawUdsFrame:
     frame_type: RawUdsFrameType
@@ -178,6 +187,11 @@ class StartMessage(LocalSttModel):
     @classmethod
     def reject_boolean_integer_fields(cls, value: Any) -> Any:
         return _reject_boolean_integer_field(value)
+
+    @field_validator("partial_window_seconds", "max_buffer_seconds", mode="before")
+    @classmethod
+    def reject_boolean_numeric_fields(cls, value: Any) -> Any:
+        return _reject_boolean_numeric_field(value)
 
 
 class FinalizeMessage(LocalSttModel):
@@ -681,7 +695,7 @@ def _protocol_error_from_validation(exc: ValidationError) -> LocalSttProtocolErr
 
 def _error_code_from_validation(error: dict[str, Any]) -> str:
     error_type = str(error.get("type", "invalid_message"))
-    if error_type in {"unsupported_audio_format", "invalid_timing_metadata", "invalid_integer_field"}:
+    if error_type in {"unsupported_audio_format", "invalid_timing_metadata", "invalid_integer_field", "invalid_numeric_field"}:
         return error_type
     if error_type == "union_tag_invalid":
         return "unsupported_message_type"

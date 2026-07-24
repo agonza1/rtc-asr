@@ -282,6 +282,27 @@ def test_start_message_rejects_boolean_partial_interval_ms() -> None:
     assert excinfo.value.as_event().message == "partial_interval_ms: must be an integer, not a boolean"
 
 
+@pytest.mark.parametrize("field", ["partial_window_seconds", "max_buffer_seconds"])
+def test_start_message_rejects_boolean_float_tuning_fields(field: str) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": {
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                },
+                field: True,
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_numeric_field"
+    assert excinfo.value.as_event().message == f"{field}: must be numeric, not a boolean"
+
+
 @pytest.mark.parametrize("message_type", ["ping", "pong"])
 def test_heartbeat_messages_reject_boolean_timestamp_ms(message_type: str) -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:
