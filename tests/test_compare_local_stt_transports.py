@@ -1908,6 +1908,29 @@ def test_compare_artifacts_accepts_duration_seconds_benchmark_alias(tmp_path: Pa
     assert comparison["transports"]["raw_uds"]["audio"]["duration_ms"] == 1000.0
 
 
+def test_compare_artifacts_accepts_duration_milliseconds_benchmark_aliases(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    for path, duration_key in (
+        (tcp, "audio_duration_ms"),
+        (uds, "clip_duration_ms"),
+        (raw, "source_duration_ms"),
+    ):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["audio"].pop("duration_ms")
+        payload["audio"][duration_key] = 1000
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == []
+    assert comparison["transports"]["tcp_ws"]["audio"]["duration_ms"] == 1000
+    assert comparison["transports"]["uds_ws"]["audio"]["duration_ms"] == 1000
+    assert comparison["transports"]["raw_uds"]["audio"]["duration_ms"] == 1000
+
+
 def test_compare_artifacts_accepts_common_audio_metadata_aliases(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)

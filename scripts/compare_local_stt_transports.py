@@ -863,11 +863,19 @@ def normalized_audio_inputs(artifact: dict[str, Any]) -> dict[str, Any]:
     source = first_defined(audio.get("source"), audio.get("path"), audio.get("source_path"))
     duration_ms = first_defined(
         audio.get("duration_ms"),
+        audio.get("audio_duration_ms"),
+        audio.get("clip_duration_ms"),
+        audio.get("source_duration_ms"),
         audio.get("duration_s"),
         audio.get("duration_seconds"),
         audio.get("audio_duration_seconds"),
     )
-    if duration_ms is not None and audio.get("duration_ms") is None:
+    if duration_ms is not None and first_defined(
+        audio.get("duration_ms"),
+        audio.get("audio_duration_ms"),
+        audio.get("clip_duration_ms"),
+        audio.get("source_duration_ms"),
+    ) is None:
         duration_ms = round(float(duration_ms) * 1000, 3)
     frame_ms = first_defined(
         audio.get("frame_ms"),
