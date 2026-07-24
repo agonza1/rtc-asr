@@ -238,6 +238,59 @@ def test_transcript_message_rejects_boolean_integer_fields(field: str) -> None:
     assert excinfo.value.as_event().message == f"{field}: must be an integer, not a boolean"
 
 
+@pytest.mark.parametrize("field", ["sample_rate", "channels", "frame_ms", "bytes_per_frame"])
+def test_start_message_rejects_boolean_audio_integer_fields(field: str) -> None:
+    audio = {
+        "sample_rate": HOT_PATH_SAMPLE_RATE,
+        "channels": HOT_PATH_CHANNELS,
+        "format": HOT_PATH_PCM_FORMAT,
+        "frame_ms": HOT_PATH_FRAME_MS,
+        "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+    }
+    audio[field] = True
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": audio,
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_integer_field"
+    assert excinfo.value.as_event().message == f"audio.{field}: must be an integer, not a boolean"
+
+
+def test_start_message_rejects_boolean_partial_interval_ms() -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": {
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                },
+                "partial_interval_ms": True,
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_integer_field"
+    assert excinfo.value.as_event().message == "partial_interval_ms: must be an integer, not a boolean"
+
+
+@pytest.mark.parametrize("message_type", ["ping", "pong"])
+def test_heartbeat_messages_reject_boolean_timestamp_ms(message_type: str) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message({"type": message_type, "timestamp_ms": True})
+
+    assert excinfo.value.as_event().code == "invalid_integer_field"
+    assert excinfo.value.as_event().message == "timestamp_ms: must be an integer, not a boolean"
+
+
 
 def test_start_message_rejects_nonpositive_partial_window_seconds() -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:
