@@ -349,6 +349,8 @@ def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
             first_defined(
                 cpu.get("utilization_percent"),
                 cpu.get("utilization"),
+                cpu.get("usage_percent"),
+                cpu.get("usage"),
                 cpu.get("average_utilization_percent"),
                 cpu.get("percent"),
                 cpu.get("average_percent"),
