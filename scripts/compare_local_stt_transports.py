@@ -17,6 +17,17 @@ KEY_METRICS = (
     "protocol_errors",
 )
 METRIC_ALIASES = {
+    "time_to_first_interim_ms": (
+        "time_to_first_partial_ms",
+        "first_interim_ms",
+        "first_partial_ms",
+        "first_partial_end_to_end_ms",
+    ),
+    "time_to_final_after_finalize_ms": (
+        "time_to_final_from_audio_end_ms",
+        "audio_end_finalization_ms",
+        "final_after_finalize_ms",
+    ),
     # Issue #88 names these acceptance metrics without the historical audio_/ms
     # suffixes; accept both artifact spellings while keeping the comparison schema stable.
     "audio_send_queue_depth_p95_ms": ("send_queue_depth_p95", "send_queue_depth_p95_ms"),
