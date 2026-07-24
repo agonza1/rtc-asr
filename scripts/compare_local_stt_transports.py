@@ -227,6 +227,8 @@ def numeric_scalar(value: Any) -> float | None:
 CPU_UTILIZATION_KEYS = (
     "cpu_utilization_percent",
     "cpu_utilization",
+    "cpu_usage_percent",
+    "cpu_usage",
     "cpu_percent",
     "average_cpu_percent",
     "process_cpu_percent",
@@ -234,6 +236,8 @@ CPU_UTILIZATION_KEYS = (
 NESTED_CPU_UTILIZATION_PATHS = (
     ("cpu", "utilization_percent"),
     ("cpu", "utilization"),
+    ("cpu", "usage_percent"),
+    ("cpu", "usage"),
     ("cpu", "average_utilization_percent"),
     ("cpu", "percent"),
     ("cpu", "average_percent"),
