@@ -273,6 +273,33 @@ def test_compare_artifacts_requires_transport_target_fields(tmp_path: Path) -> N
     assert compare_module.comparison_has_blocking_gaps(comparison) is True
 
 
+def test_compare_artifacts_accepts_transport_aliases_from_stream_artifacts(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 10.0)
+
+    tcp_payload = json.loads(tcp.read_text(encoding="utf8"))
+    tcp_payload["target"].pop("transport")
+    tcp_payload["target"]["transport_type"] = "websocket"
+    tcp.write_text(json.dumps(tcp_payload), encoding="utf8")
+
+    uds_payload = json.loads(uds.read_text(encoding="utf8"))
+    uds_payload["target"].pop("transport")
+    uds_payload["integration"] = {"transport": "unix-domain-websocket"}
+    uds.write_text(json.dumps(uds_payload), encoding="utf8")
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"].pop("transport")
+    raw_payload["streaming"] = {"transport_type": "raw-uds"}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_transports"] == []
+    assert comparison["unexpected_transports"] == []
+    assert sorted(comparison["transports"]) == ["raw_uds", "tcp_ws", "uds_ws"]
+
+
 def test_compare_artifacts_accepts_issue_88_queue_metric_aliases(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
