@@ -131,7 +131,7 @@ Default artifact contract:
 - `partial_interval_chunks=1`
 - `partial_window_seconds=2.0`
 - `partial_event_timeout_seconds=0.1`
-- JSON/base64 websocket framing by default (`BENCHMARK_BINARY_FRAMES` disabled)
+- binary PCM websocket framing by default (`BENCHMARK_BINARY_FRAMES=true`); the low-latency sweep below deliberately includes a JSON/base64 lane for transport comparison
 - JSON output checked into `docs/benchmark-results/`
 
 The tracked registry in `docs/benchmark-results/tracks.json` now also records the recommended low-latency sweep matrix:
