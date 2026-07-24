@@ -860,7 +860,7 @@ def normalized_audio_inputs(artifact: dict[str, Any]) -> dict[str, Any]:
     benchmark = artifact.get("benchmark") if isinstance(artifact.get("benchmark"), dict) else {}
     integration = artifact.get("integration") if isinstance(artifact.get("integration"), dict) else {}
     streaming = artifact.get("streaming") if isinstance(artifact.get("streaming"), dict) else {}
-    source = first_defined(audio.get("source"), audio.get("path"))
+    source = first_defined(audio.get("source"), audio.get("path"), audio.get("source_path"))
     duration_ms = first_defined(
         audio.get("duration_ms"),
         audio.get("duration_s"),
@@ -878,9 +878,9 @@ def normalized_audio_inputs(artifact: dict[str, Any]) -> dict[str, Any]:
     )
     return {
         "source": source,
-        "sample_rate": audio.get("sample_rate"),
-        "channels": audio.get("channels"),
-        "format": audio.get("format"),
+        "sample_rate": first_defined(audio.get("sample_rate"), audio.get("sample_rate_hz")),
+        "channels": first_defined(audio.get("channels"), audio.get("channel_count")),
+        "format": first_defined(audio.get("format"), audio.get("audio_format"), audio.get("encoding")),
         "frame_ms": frame_ms,
         "duration_ms": duration_ms,
     }
