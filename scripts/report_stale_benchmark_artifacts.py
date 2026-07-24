@@ -76,6 +76,9 @@ SUMMARY_SORTS = (
     "size",
     "size-desc",
     "size-asc",
+    "total-size",
+    "total-size-desc",
+    "total-size-asc",
     "average-size",
     "average-size-desc",
     "average-size-asc",
@@ -607,7 +610,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--summary-sort",
         choices=SUMMARY_SORTS,
         default="size",
-        help="With --summary-only or --json-summary, sort grouping rows by total size, average size, count, or bucket name; use *-asc or *-desc for explicit direction",
+        help=(
+            "With --summary-only or --json-summary, sort grouping rows by total size, "
+            "average size, count, or bucket name; use *-asc or *-desc for explicit direction"
+        ),
     )
     parser.add_argument(
         "--summary-min-count",
@@ -2521,7 +2527,7 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
         return (*(-ord(character) for character in name), -len(name))
     if sort_by in {"name", "name-asc"}:
         return (name,)
-    if sort_by == "size-asc":
+    if sort_by in {"size-asc", "total-size-asc"}:
         return (bucket["total_size_bytes"], name)
     return (-bucket["total_size_bytes"], name)
 

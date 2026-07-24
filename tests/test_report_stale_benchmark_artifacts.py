@@ -83,6 +83,11 @@ def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_total_size_summary_sort_aliases() -> None:
+    for alias in ["total-size", "total-size-desc", "total-size-asc"]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
     aliases = [
         "artifact-stem-asc",
@@ -1218,6 +1223,33 @@ def test_render_json_summary_accepts_explicit_size_desc_sort() -> None:
     summary = json.loads(rendered)
 
     assert [bucket["slug"] for bucket in summary["by_slug"]] == ["base", "qwen"]
+
+
+def test_render_json_summary_accepts_total_size_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-large.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 90,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 10,
+        },
+    ]
+
+    descending_summary = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="total-size-desc")
+    )
+    ascending_summary = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="total-size-asc")
+    )
+
+    assert [bucket["slug"] for bucket in descending_summary["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in ascending_summary["by_slug"]] == ["qwen", "base"]
 
 
 def test_render_json_summary_can_sort_group_rows_by_average_size() -> None:
