@@ -305,8 +305,8 @@ def parse_transcript_event(payload: dict[str, Any]) -> LocalSTTTranscriptEvent:
     try:
         event = LocalSTTTranscriptEvent(
             text=str(payload["text"]),
-            is_final=bool(payload["is_final"]),
-            speech_final=bool(payload.get("speech_final", payload["is_final"])),
+            is_final=_parse_bool_field(payload["is_final"], "is_final"),
+            speech_final=_parse_bool_field(payload.get("speech_final", payload["is_final"]), "speech_final"),
             revision=int(payload["revision"]),
             audio_received_ms=int(payload["audio_received_ms"]),
             audio_transcribed_ms=int(payload["audio_transcribed_ms"]),
@@ -316,6 +316,8 @@ def parse_transcript_event(payload: dict[str, Any]) -> LocalSTTTranscriptEvent:
         )
     except KeyError as exc:
         raise LocalSTTProtocolError(f"Transcript event missing required field: {exc.args[0]}") from exc
+    except LocalSTTProtocolError:
+        raise
     except (TypeError, ValueError) as exc:
         raise LocalSTTProtocolError("Transcript event contains invalid timing or revision fields") from exc
     if event.revision < 1:
@@ -325,3 +327,9 @@ def parse_transcript_event(payload: dict[str, Any]) -> LocalSTTTranscriptEvent:
     if event.audio_transcribed_ms > event.audio_received_ms:
         raise LocalSTTProtocolError("audio_transcribed_ms must be <= audio_received_ms")
     return event
+
+
+def _parse_bool_field(value: Any, field_name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    raise LocalSTTProtocolError(f"Transcript event {field_name} must be a boolean")
