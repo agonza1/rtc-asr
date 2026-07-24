@@ -64,6 +64,14 @@ SUMMARY_GROUP_KEYS = {
     "age-bucket": "by_age_bucket",
 }
 
+SUMMARY_GROUP_ALIASES = {
+    "current-path": "current-artifact",
+    "current-path-name": "current-artifact-name",
+    "current-path-stem": "current-artifact-stem",
+    "current-path-dir": "current-artifact-dir",
+    "current-path-extension": "current-artifact-extension",
+}
+
 AGE_BUCKET_ORDER = {
     "0-6d": 0,
     "7-29d": 1,
@@ -746,7 +754,7 @@ def descending_text_key(value: Any) -> tuple[int, ...]:
 
 def normalize_summary_groups(groups: list[str] | None) -> set[str]:
     selected_groups = {
-        group.strip()
+        SUMMARY_GROUP_ALIASES.get(group.strip(), group.strip())
         for value in (groups or list(SUMMARY_GROUPS))
         for group in value.split(",")
         if group.strip()
