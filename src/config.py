@@ -60,7 +60,10 @@ def _default_asr_device(default: str) -> str:
 
 
 def _positive_int_env(name: str, default: int) -> int:
-    value = int(os.getenv(name, str(default)).strip())
+    try:
+        value = int(os.getenv(name, str(default)).strip())
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a positive integer") from exc
     if value <= 0:
         raise ValueError(f"{name} must be a positive integer")
     return value
@@ -74,7 +77,10 @@ def _positive_int_first_env(*names: str, default: int) -> int:
         normalized = value.strip()
         if not normalized:
             continue
-        parsed = int(normalized)
+        try:
+            parsed = int(normalized)
+        except ValueError as exc:
+            raise ValueError(f"{name} must be a positive integer") from exc
         if parsed <= 0:
             raise ValueError(f"{name} must be a positive integer")
         return parsed
@@ -136,11 +142,10 @@ class AppConfig:
     @classmethod
     def from_env(cls) -> "AppConfig":
         defaults = cls()
-        stream_max_buffer_bytes = int(
-            os.getenv("STREAM_MAX_BUFFER_BYTES", str(defaults.stream_max_buffer_bytes))
+        stream_max_buffer_bytes = _positive_int_env(
+            "STREAM_MAX_BUFFER_BYTES",
+            defaults.stream_max_buffer_bytes,
         )
-        if stream_max_buffer_bytes <= 0:
-            raise ValueError("STREAM_MAX_BUFFER_BYTES must be a positive integer")
         local_stt_socket_mode = os.getenv("LOCAL_STT_SOCKET_MODE", defaults.local_stt_socket_mode).strip().lower()
         if local_stt_socket_mode not in {"tcp", "uds"}:
             raise ValueError("LOCAL_STT_SOCKET_MODE must be 'tcp' or 'uds'")
