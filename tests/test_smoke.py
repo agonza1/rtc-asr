@@ -2362,7 +2362,7 @@ def test_blank_env_aliases_are_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.asr_device == "cuda"
 
 
-@pytest.mark.parametrize("invalid_value", ["0", "-1"])
+@pytest.mark.parametrize("invalid_value", ["0", "-1", "", "not-an-int"])
 def test_stream_max_buffer_bytes_must_be_positive(
     monkeypatch: pytest.MonkeyPatch,
     invalid_value: str,
