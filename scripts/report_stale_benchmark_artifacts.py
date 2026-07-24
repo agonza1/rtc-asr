@@ -76,6 +76,9 @@ SUMMARY_SORTS = (
     "size",
     "size-desc",
     "size-asc",
+    "average-size",
+    "average-size-desc",
+    "average-size-asc",
     "count",
     "count-desc",
     "count-asc",
@@ -602,19 +605,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-sort",
-        choices=(
-            "size",
-            "size-desc",
-            "size-asc",
-            "count",
-            "count-desc",
-            "count-asc",
-            "name",
-            "name-asc",
-            "name-desc",
-        ),
+        choices=SUMMARY_SORTS,
         default="size",
-        help="With --summary-only or --json-summary, sort grouping rows by total size, count, or bucket name; use *-asc or *-desc for explicit direction",
+        help="With --summary-only or --json-summary, sort grouping rows by total size, average size, count, or bucket name; use *-asc or *-desc for explicit direction",
     )
     parser.add_argument(
         "--summary-min-count",
@@ -2511,10 +2504,15 @@ def limit_summary_buckets(
 def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, ...]:
     bucket_key = next((key for key in bucket if key not in {"count", "total_size_bytes", "total_size"}), "")
     name = str(bucket.get(bucket_key, ""))
+    average_size = bucket["total_size_bytes"] / bucket["count"] if bucket["count"] else 0
     if bucket_key == "age_bucket" and sort_by in {"name", "name-asc"}:
         return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
     if bucket_key == "age_bucket" and sort_by == "name-desc":
         return (-AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
+    if sort_by in {"average-size", "average-size-desc"}:
+        return (-average_size, -bucket["total_size_bytes"], name)
+    if sort_by == "average-size-asc":
+        return (average_size, bucket["total_size_bytes"], name)
     if sort_by in {"count", "count-desc"}:
         return (-bucket["count"], -bucket["total_size_bytes"], name)
     if sort_by == "count-asc":
