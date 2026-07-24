@@ -813,6 +813,16 @@ def normalized_benchmark_settings(artifact: dict[str, Any]) -> dict[str, Any]:
             integration.get("simulate_realtime"),
             streaming.get("simulate_realtime"),
         ),
+        "receive_timeout_seconds": first_defined(
+            settings.get("receive_timeout_seconds"),
+            settings.get("receive_timeout_s"),
+            benchmark.get("receive_timeout_seconds"),
+            benchmark.get("receive_timeout_s"),
+            integration.get("receive_timeout_seconds"),
+            integration.get("receive_timeout_s"),
+            streaming.get("receive_timeout_seconds"),
+            streaming.get("receive_timeout_s"),
+        ),
     }
 
 
@@ -848,6 +858,7 @@ def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
         ("audio", "duration_ms"),
         ("settings", "partial_interval_ms"),
         ("settings", "realtime_pace"),
+        ("settings", "receive_timeout_seconds"),
     )
     values_by_field: dict[str, dict[str, Any]] = {}
     for section, field in comparable_fields:
@@ -1623,14 +1634,14 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
             [
                 "",
                 "Benchmark inputs:",
-                "| Transport | Source | Sample rate | Channels | Format | Frame ms | Duration ms | Partial interval ms | Realtime pace |",
-                "| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- |",
+                "| Transport | Source | Sample rate | Channels | Format | Frame ms | Duration ms | Partial interval ms | Realtime pace | Receive timeout seconds |",
+                "| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- | ---: |",
             ]
         )
         for transport in comparison["required_transports"]:
             payload = comparison["transports"].get(transport)
             if payload is None:
-                lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing | missing | missing |")
+                lines.append(f"| {transport} | missing | missing | missing | missing | missing | missing | missing | missing | missing |")
                 continue
             audio = payload.get("audio") or {}
             settings = payload.get("settings") or {}
@@ -1647,6 +1658,7 @@ def format_markdown_summary(comparison: dict[str, Any]) -> str:
                         _format_optional_value(audio.get("duration_ms")),
                         _format_optional_value(settings.get("partial_interval_ms")),
                         _format_optional_value(settings.get("realtime_pace")),
+                        _format_optional_value(settings.get("receive_timeout_seconds")),
                     ]
                 )
                 + " |"

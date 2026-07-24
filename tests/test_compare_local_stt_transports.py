@@ -100,7 +100,11 @@ def write_artifact(
                     else {}
                 ),
                 "audio": {"source": "sample.raw", "sample_rate": 16000, "channels": 1, "format": "pcm_s16le", "frame_ms": 20, "duration_ms": 1000},
-                "settings": {"partial_interval_ms": 100, "realtime_pace": True},
+                "settings": {
+                    "partial_interval_ms": 100,
+                    "realtime_pace": True,
+                    "receive_timeout_seconds": 5,
+                },
                 **({"runs": runs} if runs is not None else {}),
                 "summary": {
                     "time_to_first_interim_ms": {"p50": first_interim_p95 - 1, "p95": first_interim_p95, "p99": first_interim_p95 + 1},
@@ -1815,6 +1819,7 @@ def test_compare_artifacts_accepts_benchmark_input_aliases_from_stream_artifacts
             "source_frame_ms": 20,
             "requested_partial_interval_ms": 100,
             "simulate_realtime": True,
+            "receive_timeout_s": 5,
         }
         path.write_text(json.dumps(payload), encoding="utf8")
 
@@ -1832,6 +1837,7 @@ def test_compare_artifacts_accepts_benchmark_input_aliases_from_stream_artifacts
     assert comparison["transports"]["raw_uds"]["settings"] == {
         "partial_interval_ms": 100,
         "realtime_pace": True,
+        "receive_timeout_seconds": 5,
     }
 
 
@@ -1855,16 +1861,19 @@ def test_compare_artifacts_accepts_stream_artifact_benchmark_sections(tmp_path: 
             "source_frame_ms": 20,
             "requested_partial_interval_ms": 100,
             "simulate_realtime": True,
+            "receive_timeout_seconds": 5,
         }
         payload["integration"] = {
             "source_frame_ms": 20,
             "requested_partial_interval_ms": 100,
             "simulate_realtime": True,
+            "receive_timeout_seconds": 5,
         }
         payload["streaming"] = {
             "source_frame_ms": 20,
             "requested_partial_interval_ms": 100,
             "simulate_realtime": True,
+            "receive_timeout_seconds": 5,
         }
         path.write_text(json.dumps(payload), encoding="utf8")
 
@@ -1875,6 +1884,7 @@ def test_compare_artifacts_accepts_stream_artifact_benchmark_sections(tmp_path: 
     assert comparison["transports"]["raw_uds"]["settings"] == {
         "partial_interval_ms": 100,
         "realtime_pace": True,
+        "receive_timeout_seconds": 5,
     }
 
 
@@ -1886,7 +1896,11 @@ def test_compare_artifacts_requires_matching_benchmark_inputs(tmp_path: Path) ->
     for path, frame_ms in [(tcp, 20), (uds, 20), (raw, 40)]:
         payload = json.loads(path.read_text(encoding="utf8"))
         payload["audio"] = {"source": "sample.raw", "sample_rate": 16000, "channels": 1, "format": "pcm_s16le", "frame_ms": frame_ms, "duration_ms": 1000}
-        payload["settings"] = {"partial_interval_ms": 100, "realtime_pace": True}
+        payload["settings"] = {
+            "partial_interval_ms": 100,
+            "realtime_pace": True,
+            "receive_timeout_seconds": 5,
+        }
         path.write_text(json.dumps(payload), encoding="utf8")
 
     comparison = compare_module.compare_artifacts([tcp, uds, raw])
@@ -1902,6 +1916,26 @@ def test_compare_artifacts_requires_matching_benchmark_inputs(tmp_path: Path) ->
     assert comparison["recommendation"] == (
         "Re-run transport benchmarks with matching audio and pacing settings before recommending raw UDS."
     )
+
+
+def test_compare_artifacts_requires_matching_receive_timeout(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["settings"]["receive_timeout_seconds"] = 2
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == [
+        "benchmark input mismatch for settings.receive_timeout_seconds: raw_uds=2, tcp_ws=5, uds_ws=5"
+    ]
+    assert comparison["blocking_gaps"] == comparison["benchmark_input_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "benchmark_input:benchmark input mismatch for settings.receive_timeout_seconds: raw_uds=2, tcp_ws=5, uds_ws=5"
+    ]
 
 
 def test_compare_artifacts_requires_matching_audio_format(tmp_path: Path) -> None:
@@ -2194,8 +2228,8 @@ def test_format_markdown_summary_includes_transport_gate_and_blockers(tmp_path: 
     assert "| uds_ws | missing | missing | missing | missing | missing | missing | missing | missing |" in markdown
     assert "| raw_uds | missing | /tmp/stt.sock | uint8_type_uint32_len_le | 5 | 8388608 | JSON_CONTROL,AUDIO_PCM16,JSON_EVENT,ERROR,PING,PONG | start,audio,transcript,finalize,cancel,close | bad_frame_type,malformed_json_control,invalid_json_payload,oversized_payload,incomplete_frame,frame_length_mismatch,invalid_client_frame_type,invalid_server_frame_type | raw_uds_unsupported_frame_type,raw_uds_malformed_json_control,raw_uds_invalid_json,raw_uds_payload_too_large,raw_uds_incomplete_frame,raw_uds_frame_length_mismatch,raw_uds_invalid_client_frame_type,raw_uds_invalid_server_frame_type | True |" in markdown
     assert "Benchmark inputs:" in markdown
-    assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
-    assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
+    assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True | 5 |" in markdown
+    assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True | 5 |" in markdown
     assert "Transport diagnostics:" in markdown
     assert "| raw_uds | 2 | raw_uds_invalid_json=2 | 1 | late_partial=1 |" in markdown
     assert "- missing transport benchmark: uds_ws" in markdown
@@ -2410,7 +2444,11 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 },
                 "runs": 3,
                 "service": {"backend": None, "model": None},
-                "settings": {"partial_interval_ms": 100, "realtime_pace": True},
+                "settings": {
+                    "partial_interval_ms": 100,
+                    "realtime_pace": True,
+                    "receive_timeout_seconds": 5,
+                },
             },
             "tcp_ws": {
                 "audio": {
@@ -2423,7 +2461,11 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 },
                 "runs": 3,
                 "service": {"backend": None, "model": None},
-                "settings": {"partial_interval_ms": 100, "realtime_pace": True},
+                "settings": {
+                    "partial_interval_ms": 100,
+                    "realtime_pace": True,
+                    "receive_timeout_seconds": 5,
+                },
             },
             "uds_ws": {
                 "audio": {
@@ -2436,7 +2478,11 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 },
                 "runs": 3,
                 "service": {"backend": None, "model": None},
-                "settings": {"partial_interval_ms": 100, "realtime_pace": True},
+                "settings": {
+                    "partial_interval_ms": 100,
+                    "realtime_pace": True,
+                    "receive_timeout_seconds": 5,
+                },
             },
         },
         "required_metric_snapshot": {
