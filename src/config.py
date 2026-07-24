@@ -47,6 +47,10 @@ def _env_text(name: str, default: str | None) -> str | None:
     return normalized or default
 
 
+def _env_lower_text(name: str, default: str) -> str:
+    return (_env_text(name, default) or default).lower()
+
+
 def _default_asr_device(default: str) -> str:
     explicit = _first_env("ASR_DEVICE")
     if explicit:
@@ -191,7 +195,7 @@ class AppConfig:
                 defaults.local_stt_raw_uds_enabled,
             ),
             local_stt_raw_uds_path=str(Path(local_stt_raw_uds_path)),
-            asr_backend=_env_text("ASR_BACKEND", defaults.asr_backend) or defaults.asr_backend,
+            asr_backend=_env_lower_text("ASR_BACKEND", defaults.asr_backend),
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
             asr_device=_default_asr_device(defaults.asr_device),
             asr_compute_type=_env_text("ASR_COMPUTE_TYPE", defaults.asr_compute_type) or defaults.asr_compute_type,

@@ -47,6 +47,26 @@ def test_build_transcriber_accepts_qwen_aliases(backend: str) -> None:
     assert transcriber.model_name == "Qwen/Qwen3-ASR-0.6B"
 
 
+@pytest.mark.parametrize(
+    ("backend", "expected_type"),
+    [
+        (" QWEN ", QwenASRAdapter),
+        ("Voxtral-Mini-4B", VoxtralAdapter),
+        ("PARAKEET-CTC", ParakeetNemoAdapter),
+    ],
+)
+def test_build_transcriber_normalizes_backend_alias_case(
+    backend: str,
+    expected_type: type[QwenASRAdapter] | type[VoxtralAdapter] | type[ParakeetNemoAdapter],
+) -> None:
+    transcriber = build_transcriber(
+        AppConfig(asr_backend=backend, asr_parakeet_model="nvidia/parakeet-tdt_ctc-110m"),
+        AudioProcessor(),
+    )
+
+    assert isinstance(transcriber, expected_type)
+
+
 @pytest.mark.parametrize("backend", ["parakeet", "parakeet-asr"])
 def test_build_transcriber_accepts_parakeet_aliases(backend: str) -> None:
     transcriber = build_transcriber(
@@ -722,7 +742,7 @@ def test_app_config_reads_qwen_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_app_config_trims_optional_backend_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("ASR_BACKEND", " qwen ")
+    monkeypatch.setenv("ASR_BACKEND", " QWEN ")
     monkeypatch.setenv("ASR_COMPUTE_TYPE", "\tfloat16\n")
     monkeypatch.setenv("ASR_QWEN_MODEL", " Qwen/Qwen3-ASR-1.7B ")
     monkeypatch.setenv("ASR_QWEN_DTYPE", " bfloat16 ")

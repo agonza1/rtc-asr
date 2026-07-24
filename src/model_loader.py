@@ -775,7 +775,8 @@ def _shared_capabilities(audio_processor: AudioProcessor) -> dict[str, Any]:
 
 
 def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Transcriber:
-    backend = BACKEND_ALIASES.get(config.asr_backend, config.asr_backend)
+    requested_backend = config.asr_backend.strip().lower()
+    backend = BACKEND_ALIASES.get(requested_backend, requested_backend)
     if backend == "faster-whisper":
         return FasterWhisperAdapter(config=config, audio_processor=audio_processor)
     if backend == "qwen-asr":
