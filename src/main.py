@@ -285,6 +285,22 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
     ]
 
 
+def _protocol_discovery_payload(services: AppServices) -> dict[str, object]:
+    protocols = _protocol_catalog(services.config)
+    return {
+        "status": _backend_status(services),
+        "ready": _accepting_traffic(services),
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": {
+            "protocol": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+        },
+        "legacy_protocols": ["rtc-asr-stream.v1"],
+        "protocols": protocols,
+    }
+
+
 def _record_lazy_load_failure(services: AppServices, exc: Exception) -> None:
     # Only promote the service to degraded when the backend failed before it ever loaded.
     if not services.transcriber.is_loaded():
@@ -495,12 +511,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
 
     @app.get("/api/protocols")
     async def list_protocols() -> dict[str, object]:
-        current = app.state.services
-        return {
-            "status": _backend_status(current),
-            "ready": _accepting_traffic(current),
-            "protocols": _protocol_catalog(current.config),
-        }
+        return _protocol_discovery_payload(app.state.services)
 
     @app.get("/api/models")
     async def list_models() -> dict[str, object]:
