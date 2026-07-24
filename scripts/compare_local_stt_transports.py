@@ -319,16 +319,44 @@ DIAGNOSTIC_CODE_ALIASES = {
 }
 
 DIAGNOSTIC_TOTAL_ALIASES = {
-    "protocol_error_codes": ("protocol_error_total", "protocol_errors_total", "protocol_error_count"),
-    "warning_codes": ("warning_total", "warnings_total", "warning_count"),
+    "protocol_error_codes": (
+        "protocol_error_total",
+        "protocol_errors_total",
+        "protocol_error_count",
+    ),
+    "warning_codes": (
+        "warning_total",
+        "warnings_total",
+        "warning_count",
+        "warnings_received",
+    ),
+}
+SAMPLE_DIAGNOSTIC_TOTAL_ALIASES = {
+    "protocol_error_codes": ("protocol_errors", *DIAGNOSTIC_TOTAL_ALIASES["protocol_error_codes"]),
+    "warning_codes": DIAGNOSTIC_TOTAL_ALIASES["warning_codes"],
 }
 
 
+def diagnostic_sources(artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        source
+        for source in (
+            artifact.get("diagnostics"),
+            artifact.get("summary"),
+            artifact.get("metrics"),
+            artifact,
+        )
+        if isinstance(source, dict)
+    ]
+
+
 def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[str, int]:
-    diagnostics = artifact.get("diagnostics") if isinstance(artifact.get("diagnostics"), dict) else {}
     values = first_defined(
-        diagnostics.get(key),
-        *(diagnostics.get(alias) for alias in DIAGNOSTIC_CODE_ALIASES.get(key, ())),
+        *(
+            source.get(candidate_key)
+            for source in diagnostic_sources(artifact)
+            for candidate_key in (key, *DIAGNOSTIC_CODE_ALIASES.get(key, ()))
+        ),
     )
     counts: dict[str, int] = {}
     if isinstance(values, dict):
@@ -339,6 +367,10 @@ def extract_diagnostic_code_counts(artifact: dict[str, Any], key: str) -> dict[s
                 counts[code] = int(count)
             except (TypeError, ValueError):
                 continue
+    elif isinstance(values, list):
+        for code in values:
+            if isinstance(code, str):
+                counts[code] = counts.get(code, 0) + 1
     else:
         for sample in sample_records(artifact):
             sample_codes = sample.get(key)
@@ -355,13 +387,22 @@ def diagnostic_code_total(counts: dict[str, int]) -> int:
 
 
 def extract_diagnostic_total(artifact: dict[str, Any], key: str, counts: dict[str, int]) -> int:
-    diagnostics = artifact.get("diagnostics") if isinstance(artifact.get("diagnostics"), dict) else {}
-    value = first_defined(*(diagnostics.get(alias) for alias in DIAGNOSTIC_TOTAL_ALIASES.get(key, ())))
-    try:
-        explicit_total = int(value) if value is not None else 0
-    except (TypeError, ValueError):
-        explicit_total = 0
-    return max(explicit_total, diagnostic_code_total(counts))
+    totals: list[int] = [diagnostic_code_total(counts)]
+    for source in diagnostic_sources(artifact):
+        value = first_defined(*(source.get(alias) for alias in DIAGNOSTIC_TOTAL_ALIASES.get(key, ())))
+        parsed = numeric_or_percentile(value)
+        if parsed is not None and parsed > 0:
+            totals.append(int(parsed))
+
+    sample_total = 0
+    for sample in sample_records(artifact):
+        value = first_defined(*(sample.get(alias) for alias in SAMPLE_DIAGNOSTIC_TOTAL_ALIASES.get(key, ())))
+        parsed = numeric_or_percentile(value)
+        if parsed is not None and parsed > 0:
+            sample_total += int(parsed)
+    if sample_total > 0:
+        totals.append(sample_total)
+    return max(totals)
 
 
 def fastest_transport_by_metric(transports: dict[str, dict[str, Any]], metric: str) -> str | None:

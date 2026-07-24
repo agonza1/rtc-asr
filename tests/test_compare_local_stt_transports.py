@@ -2555,3 +2555,45 @@ def test_format_markdown_summary_includes_benchmark_inputs_when_recorded(tmp_pat
     assert "| tcp_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| uds_ws | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
     assert "| raw_uds | sample.raw | 16000 | 1 | pcm_s16le | 20 | 1000 | 100 | True |" in markdown
+
+
+def test_compare_artifacts_reads_summary_diagnostic_codes(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["summary"]["warning_codes"] = ["late_partial", "late_partial", "slow_consumer"]
+    raw_payload["summary"]["protocol_error_codes"] = ["raw_uds_invalid_json"]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_codes"] == {
+        "late_partial": 2,
+        "slow_consumer": 1,
+    }
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_total"] == 3
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["protocol_error_codes"] == {
+        "raw_uds_invalid_json": 1,
+    }
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["protocol_error_total"] == 1
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == ["protocol_errors"]
+
+
+def test_compare_artifacts_reads_sample_warning_totals_without_codes(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["samples"] = [
+        {"warnings_received": 2},
+        {"warnings_received": "3"},
+    ]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_codes"] == {}
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_total"] == 5
