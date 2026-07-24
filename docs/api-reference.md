@@ -161,11 +161,19 @@ Example response:
     "path": "/v1/stt/stream"
   },
   "legacy_protocols": ["rtc-asr-stream.v1"],
-  "protocols": []
+  "protocols": [
+    {
+      "id": "local-stt.v1",
+      "transport": "websocket",
+      "path": "/v1/stt/stream",
+      "status": "preview",
+      "recommended": true
+    }
+  ]
 }
 ```
 
-Use `default_transport` when a client wants the recommended live STT path without hard-coding transport precedence. The full `protocols` array includes the legacy `/ws/stream` contract, Local STT v1 websocket contract, and any configured experimental transports such as Raw UDS.
+Use `default_transport` when a client wants the recommended live STT path without hard-coding transport precedence. Catalog entries also expose `recommended` so clients that render the full `protocols` array can highlight the same preferred transport. The full `protocols` array includes the legacy `/ws/stream` contract, Local STT v1 websocket contract, and any configured experimental transports such as Raw UDS.
 
 ## Synchronous Transcription
 

@@ -55,6 +55,7 @@ DEFAULT_PROTOCOLS = [
         "path": "/ws/stream",
         "docs": "/docs/api-reference.md#websocket-streaming",
         "status": "legacy",
+        "recommended": False,
         "notes": "Deprecated transport: buffered websocket contract; prefer /v1/stt/stream for native-local-stream compatibility and lower-latency framing guidance.",
         "message_format": "json-control-plus-binary-audio",
     },
@@ -64,6 +65,7 @@ DEFAULT_PROTOCOLS = [
         "path": "/v1/stt/stream",
         "docs": "/docs/local-stt-v1.md",
         "status": "preview",
+        "recommended": True,
         "message_format": "json-control-plus-binary-pcm16",
         "lifecycle": ["start", "audio", "transcript", "finalize", "cancel", "close"],
         "audio": {
