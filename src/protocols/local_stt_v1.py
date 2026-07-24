@@ -644,6 +644,8 @@ def _apply_raw_uds_envelope_type(payload: dict[str, Any], expected_type: str) ->
 
 
 def encode_raw_uds_server_message(payload: dict[str, Any]) -> bytes:
+    if not isinstance(payload, dict):
+        raise LocalSttProtocolError("Raw UDS server message payload must be an object", code="raw_uds_invalid_json")
     message = parse_server_message(payload)
     if (
         isinstance(message, (PingMessage, PongMessage))
