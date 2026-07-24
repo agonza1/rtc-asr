@@ -293,6 +293,30 @@ def test_compare_artifacts_accepts_issue_88_queue_metric_aliases(tmp_path: Path)
     assert comparison["transports"]["tcp_ws"]["metrics"]["asr_queue_delay_p95_ms"]["p50"] == 4.0
 
 
+def test_compare_artifacts_accepts_first_partial_and_audio_end_aliases(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, final_after_finalize_p95=31.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0, final_after_finalize_p95=30.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0, final_after_finalize_p95=29.0)
+
+    for path in (tcp, uds, raw):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["summary"]["time_to_first_partial_ms"] = payload["summary"].pop("time_to_first_interim_ms")
+        payload["summary"]["audio_end_finalization_ms"] = payload["summary"].pop(
+            "time_to_final_after_finalize_ms"
+        )
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_p95_metrics_by_transport"] == {}
+    assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
+    assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "raw_uds"
+    assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 6.0
+    assert comparison["raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms"] == 1.0
+    assert comparison["transports"]["raw_uds"]["metrics_p95"]["time_to_first_interim_ms"] == 11.0
+    assert comparison["transports"]["raw_uds"]["metrics_p95"]["time_to_final_after_finalize_ms"] == 29.0
+
+
 def test_compare_artifacts_requires_raw_uds_three_transport_comparison_metadata(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
