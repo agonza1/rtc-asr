@@ -139,6 +139,9 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "total-size",
         "total-size-desc",
         "total-size-asc",
+        "artifact-path",
+        "artifact-path-desc",
+        "artifact-path-asc",
         "largest",
         "smallest",
     ]:
@@ -585,6 +588,40 @@ def test_stale_artifacts_can_sort_by_path_descending() -> None:
     stale = stale_artifacts(manifest, sort_by="path-desc")
 
     assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/qwen-old.json",
+        "benchmark-results/parakeet-old.json",
+        "benchmark-results/base-old.json",
+    ]
+
+
+def test_stale_artifacts_accepts_artifact_path_sort_aliases() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/parakeet-old.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="artifact-path")] == [
+        "benchmark-results/base-old.json",
+        "benchmark-results/parakeet-old.json",
+        "benchmark-results/qwen-old.json",
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="artifact-path-desc")] == [
         "benchmark-results/qwen-old.json",
         "benchmark-results/parakeet-old.json",
         "benchmark-results/base-old.json",
