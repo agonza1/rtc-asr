@@ -170,6 +170,7 @@ class LocalStreamingSTTService(STTService):
         self._aggregate_buffer.clear()
         self._aggregate_duration_ms = 0.0
         self._clear_send_queue()
+        self._release_final_waiters()
         if self._websocket is not None:
             await self._send_control({"type": "cancel"}, ensure_started=False)
 
@@ -525,6 +526,10 @@ class LocalStreamingSTTService(STTService):
             self._record_dropped_audio_ms(chunk.duration_ms)
         self._update_queue_depth_metric()
 
+    def _release_final_waiters(self) -> None:
+        for final_event in self._final_events.values():
+            final_event.set()
+        self._final_events.clear()
 
     def _append_pre_roll(self, audio: bytes) -> None:
         if self.config.pre_roll_bytes <= 0:

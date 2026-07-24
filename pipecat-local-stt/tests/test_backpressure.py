@@ -331,7 +331,10 @@ async def _test_drop_oldest_queue_overflow_is_explicit_and_counted() -> None:
 
     await service.start(StartFrame(audio_in_sample_rate=16000))
     await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
-    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await service.process_frame(
+        AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1),
+        FrameDirection.DOWNSTREAM,
+    )
     await eventually(lambda: any(isinstance(item, bytes) for item in websocket.sent))
     await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"c" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
@@ -514,6 +517,31 @@ async def _test_finalize_timeout_is_counted_and_cleans_waiter() -> None:
     await service.finalize_current_utterance()
 
     assert service.metrics.local_stt_final_timeouts_total == 1
+    assert service._final_events == {}
+    await service.cleanup()
+
+
+def test_cancel_releases_pending_finalize_waiter() -> None:
+    asyncio.run(_test_cancel_releases_pending_finalize_waiter())
+
+
+async def _test_cancel_releases_pending_finalize_waiter() -> None:
+    websocket = HealthySendWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, final_timeout_s=30),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+
+    finalize_task = asyncio.create_task(service.finalize_current_utterance())
+    await eventually(lambda: bool(service._final_events))
+    await service.cancel_current_utterance()
+    await asyncio.wait_for(finalize_task, timeout=1.0)
+
+    assert service.metrics.local_stt_final_timeouts_total == 0
     assert service._final_events == {}
     await service.cleanup()
 
