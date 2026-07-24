@@ -493,6 +493,15 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         payload = _health_payload(current)
         return JSONResponse(status_code=200 if payload["ready"] else 503, content=payload)
 
+    @app.get("/api/protocols")
+    async def list_protocols() -> dict[str, object]:
+        current = app.state.services
+        return {
+            "status": _backend_status(current),
+            "ready": _accepting_traffic(current),
+            "protocols": _protocol_catalog(current.config),
+        }
+
     @app.get("/api/models")
     async def list_models() -> dict[str, object]:
         current = app.state.services
