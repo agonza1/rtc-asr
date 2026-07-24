@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Annotated, Any, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 PROTOCOL_VERSION = "local-stt.v1"
@@ -197,6 +197,16 @@ class TranscriptMessage(LocalSttModel):
     audio_transcribed_ms: int = Field(ge=0)
     metadata: dict[str, Any] = Field(default_factory=dict)
     language: str | None = None
+
+    @field_validator("revision", "audio_received_ms", "audio_transcribed_ms", mode="before")
+    @classmethod
+    def reject_boolean_integer_fields(cls, value: Any, info: Any) -> Any:
+        if isinstance(value, bool):
+            raise PydanticCustomError(
+                "invalid_integer_field",
+                "must be an integer, not a boolean",
+            )
+        return value
 
     @model_validator(mode="after")
     def validate_timing(self) -> "TranscriptMessage":
@@ -647,7 +657,7 @@ def _protocol_error_from_validation(exc: ValidationError) -> LocalSttProtocolErr
 
 def _error_code_from_validation(error: dict[str, Any]) -> str:
     error_type = str(error.get("type", "invalid_message"))
-    if error_type in {"unsupported_audio_format", "invalid_timing_metadata"}:
+    if error_type in {"unsupported_audio_format", "invalid_timing_metadata", "invalid_integer_field"}:
         return error_type
     if error_type == "union_tag_invalid":
         return "unsupported_message_type"
