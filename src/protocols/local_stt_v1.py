@@ -66,6 +66,15 @@ def _reject_boolean_numeric_field(value: Any) -> Any:
     return value
 
 
+def _require_boolean_field(value: Any) -> Any:
+    if not isinstance(value, bool):
+        raise PydanticCustomError(
+            "invalid_boolean_field",
+            "must be a boolean",
+        )
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class RawUdsFrame:
     frame_type: RawUdsFrameType
@@ -193,6 +202,11 @@ class StartMessage(LocalSttModel):
     def reject_boolean_numeric_fields(cls, value: Any) -> Any:
         return _reject_boolean_numeric_field(value)
 
+    @field_validator("interim_results", mode="before")
+    @classmethod
+    def require_boolean_fields(cls, value: Any) -> Any:
+        return _require_boolean_field(value)
+
 
 class FinalizeMessage(LocalSttModel):
     type: Literal["finalize"]
@@ -224,6 +238,11 @@ class ReadyMessage(LocalSttModel):
     interim_results: bool = True
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("interim_results", mode="before")
+    @classmethod
+    def require_boolean_fields(cls, value: Any) -> Any:
+        return _require_boolean_field(value)
+
 
 class TranscriptMessage(LocalSttModel):
     type: Literal["transcript"]
@@ -240,6 +259,11 @@ class TranscriptMessage(LocalSttModel):
     @classmethod
     def reject_boolean_integer_fields(cls, value: Any, info: Any) -> Any:
         return _reject_boolean_integer_field(value)
+
+    @field_validator("is_final", "speech_final", mode="before")
+    @classmethod
+    def require_boolean_fields(cls, value: Any) -> Any:
+        return _require_boolean_field(value)
 
     @model_validator(mode="after")
     def validate_timing(self) -> "TranscriptMessage":
@@ -263,6 +287,11 @@ class WarningMessage(LocalSttModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     retryable: bool = False
 
+    @field_validator("retryable", mode="before")
+    @classmethod
+    def require_boolean_fields(cls, value: Any) -> Any:
+        return _require_boolean_field(value)
+
 
 class ErrorMessage(LocalSttModel):
     type: Literal["error"]
@@ -271,6 +300,11 @@ class ErrorMessage(LocalSttModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     retryable: bool = False
     fatal: bool = True
+
+    @field_validator("retryable", "fatal", mode="before")
+    @classmethod
+    def require_boolean_fields(cls, value: Any) -> Any:
+        return _require_boolean_field(value)
 
 
 class PongMessage(LocalSttModel):
@@ -695,7 +729,13 @@ def _protocol_error_from_validation(exc: ValidationError) -> LocalSttProtocolErr
 
 def _error_code_from_validation(error: dict[str, Any]) -> str:
     error_type = str(error.get("type", "invalid_message"))
-    if error_type in {"unsupported_audio_format", "invalid_timing_metadata", "invalid_integer_field", "invalid_numeric_field"}:
+    if error_type in {
+        "unsupported_audio_format",
+        "invalid_timing_metadata",
+        "invalid_integer_field",
+        "invalid_numeric_field",
+        "invalid_boolean_field",
+    }:
         return error_type
     if error_type == "union_tag_invalid":
         return "unsupported_message_type"
