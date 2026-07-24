@@ -652,6 +652,20 @@ def test_manifest_preserves_nested_memory_metadata_aliases() -> None:
     assert system["peak_rss_mb"] == 512.5
 
 
+def test_manifest_preserves_common_total_memory_aliases() -> None:
+    environment_system = extract_system_signals({"environment": {"total_memory_mb": 16384.0}})
+    system_alias = extract_system_signals({"system": {"system_ram_mb": 24576.0}})
+    metrics_alias = extract_system_signals({"metrics": {"ram_total_mb": 32768.0}})
+    nested_alias = extract_system_signals({"metrics": {"memory": {"system_ram_mb": 65536.0}}})
+    top_level_alias = extract_system_signals({"memory": {"total_memory_mb": 49152.0}})
+
+    assert environment_system["memory_total_mb"] == 16384.0
+    assert system_alias["memory_total_mb"] == 24576.0
+    assert metrics_alias["memory_total_mb"] == 32768.0
+    assert nested_alias["memory_total_mb"] == 65536.0
+    assert top_level_alias["memory_total_mb"] == 49152.0
+
+
 def test_manifest_preserves_common_rss_memory_aliases() -> None:
     system = extract_system_signals(
         {
