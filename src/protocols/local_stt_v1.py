@@ -497,6 +497,8 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType | int, payload: dict[s
 
 
 def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
+    if not isinstance(payload, dict):
+        raise LocalSttProtocolError("Raw UDS client message payload must be an object", code="raw_uds_invalid_json")
     normalized = _normalize_raw_uds_control_payload(dict(payload))
     message = parse_client_message(normalized)
     if (
