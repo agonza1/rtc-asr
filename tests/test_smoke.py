@@ -341,6 +341,7 @@ def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
     with TestClient(create_app(config=config, transcriber=transcriber)) as client:
         health = client.get("/health")
         ready = client.get("/ready")
+        protocols = client.get("/api/protocols")
         models = client.get("/api/models")
 
     assert health.status_code == 200
@@ -357,6 +358,12 @@ def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
     }
     assert ready.status_code == 200
     assert ready.json() == health.json()
+    assert protocols.status_code == 200
+    assert protocols.json() == {
+        "status": "loading",
+        "ready": True,
+        "protocols": DEFAULT_PROTOCOLS,
+    }
     assert models.status_code == 200
     assert models.json()["status"] == "loading"
     assert models.json()["ready"] is True
@@ -372,6 +379,7 @@ def test_ready_and_model_capabilities_smoke() -> None:
     with TestClient(create_app(config=config, transcriber=transcriber)) as client:
         health = client.get("/health")
         ready = client.get("/ready")
+        protocols = client.get("/api/protocols")
         models = client.get("/api/models")
 
     assert health.status_code == 200
@@ -396,6 +404,12 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "model_loaded": True,
         "preload_enabled": True,
         "preload_error": None,
+        "protocols": DEFAULT_PROTOCOLS,
+    }
+    assert protocols.status_code == 200
+    assert protocols.json() == {
+        "status": "ready",
+        "ready": True,
         "protocols": DEFAULT_PROTOCOLS,
     }
     assert models.status_code == 200
