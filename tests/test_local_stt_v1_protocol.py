@@ -618,6 +618,15 @@ def test_raw_uds_client_encoder_rejects_non_object_payloads(payload: object) -> 
     assert excinfo.value.as_event().message == "Raw UDS client message payload must be an object"
 
 
+@pytest.mark.parametrize("payload", [None, "not-object", ["ready"]])
+def test_raw_uds_server_encoder_rejects_non_object_payloads(payload: object) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        encode_raw_uds_server_message(payload)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_json"
+    assert excinfo.value.as_event().message == "Raw UDS server message payload must be an object"
+
+
 def test_raw_uds_server_helpers_support_server_initiated_ping_frames() -> None:
     encoded = encode_raw_uds_server_message({"type": "ping", "ping_id": "server-1"})
     frame = decode_raw_uds_frame(encoded)
