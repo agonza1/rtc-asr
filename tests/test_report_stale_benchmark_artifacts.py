@@ -78,6 +78,11 @@ def test_validate_summary_options_rejects_invalid_ranges() -> None:
         validate_summary_options(summary_min_size_bytes=20, summary_max_size_bytes=10)
 
 
+def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
+    for alias in ["average-size", "average-size-desc", "average-size-asc"]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
     aliases = [
         "artifact-stem-asc",
@@ -1213,6 +1218,69 @@ def test_render_json_summary_accepts_explicit_size_desc_sort() -> None:
     summary = json.loads(rendered)
 
     assert [bucket["slug"] for bucket in summary["by_slug"]] == ["base", "qwen"]
+
+
+def test_render_json_summary_can_sort_group_rows_by_average_size() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-a.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 50,
+            },
+            {
+                "artifact_path": "benchmark-results/base-b.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 50,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-large.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 80,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="average-size",
+    )
+
+    summary = json.loads(rendered)
+
+    assert [bucket["slug"] for bucket in summary["by_slug"]] == ["qwen", "base"]
+
+
+def test_render_summary_can_sort_group_rows_by_average_size_ascending() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-a.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 50,
+            },
+            {
+                "artifact_path": "benchmark-results/base-b.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 50,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-large.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 80,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="average-size-asc",
+    )
+
+    assert rendered.splitlines()[1:3] == [
+        "- base: 2 artifacts (100 B, 100 bytes)",
+        "- qwen: 1 artifact (80 B, 80 bytes)",
+    ]
 
 
 def test_render_summary_can_sort_group_rows_by_count_ascending() -> None:
