@@ -200,6 +200,19 @@ def numeric_or_percentile(value: Any) -> float | None:
         return None
 
 
+def numeric_scalar(value: Any) -> float | None:
+    if value is None or isinstance(value, dict | list):
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if value.endswith("%"):
+            value = value[:-1].strip()
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _matching_experimental_transport_contract(
     candidates: Any, transport: str | None
 ) -> dict[str, Any] | None:
@@ -390,14 +403,14 @@ def extract_diagnostic_total(artifact: dict[str, Any], key: str, counts: dict[st
     totals: list[int] = [diagnostic_code_total(counts)]
     for source in diagnostic_sources(artifact):
         value = first_defined(*(source.get(alias) for alias in DIAGNOSTIC_TOTAL_ALIASES.get(key, ())))
-        parsed = numeric_or_percentile(value)
+        parsed = numeric_scalar(value)
         if parsed is not None and parsed > 0:
             totals.append(int(parsed))
 
     sample_total = 0
     for sample in sample_records(artifact):
         value = first_defined(*(sample.get(alias) for alias in SAMPLE_DIAGNOSTIC_TOTAL_ALIASES.get(key, ())))
-        parsed = numeric_or_percentile(value)
+        parsed = numeric_scalar(value)
         if parsed is not None and parsed > 0:
             sample_total += int(parsed)
     if sample_total > 0:

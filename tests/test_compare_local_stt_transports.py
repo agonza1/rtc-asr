@@ -2597,3 +2597,38 @@ def test_compare_artifacts_reads_sample_warning_totals_without_codes(tmp_path: P
 
     assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_codes"] == {}
     assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_total"] == 5
+
+
+def test_compare_artifacts_does_not_count_summary_warning_percentiles_as_totals(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["summary"]["warnings_received"] = {"p50": 2, "p95": 2, "p99": 2}
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_codes"] == {}
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_total"] == 0
+
+
+def test_compare_artifacts_prefers_sample_warning_totals_over_summary_warning_percentiles(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["summary"]["warnings_received"] = {"p50": 2, "p95": 2, "p99": 2}
+    raw_payload["samples"] = [
+        {"warnings_received": 2},
+        {"warnings_received": 2},
+        {"warnings_received": 2},
+    ]
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_codes"] == {}
+    assert comparison["transports"]["raw_uds"]["diagnostics"]["warning_total"] == 6
