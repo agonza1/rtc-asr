@@ -58,6 +58,13 @@ def test_summary_groups_accept_comma_separated_values() -> None:
     }
 
 
+def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
+    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME"]) == {
+        "status",
+        "current-artifact-name",
+    }
+
+
 def test_summary_groups_accept_all_alias_with_specific_groups() -> None:
     assert normalize_summary_groups(["status, all"]) == set(report_module.SUMMARY_GROUPS)
 

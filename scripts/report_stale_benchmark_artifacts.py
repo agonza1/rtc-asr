@@ -754,7 +754,7 @@ def descending_text_key(value: Any) -> tuple[int, ...]:
 
 def normalize_summary_groups(groups: list[str] | None) -> set[str]:
     selected_groups = {
-        SUMMARY_GROUP_ALIASES.get(group.strip(), group.strip())
+        SUMMARY_GROUP_ALIASES.get(group.strip().lower(), group.strip().lower())
         for value in (groups or list(SUMMARY_GROUPS))
         for group in value.split(",")
         if group.strip()
