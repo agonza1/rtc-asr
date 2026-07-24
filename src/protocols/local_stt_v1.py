@@ -48,6 +48,15 @@ RAW_UDS_FRAME_DIRECTION = {
 }
 
 
+def _reject_boolean_integer_field(value: Any) -> Any:
+    if isinstance(value, bool):
+        raise PydanticCustomError(
+            "invalid_integer_field",
+            "must be an integer, not a boolean",
+        )
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class RawUdsFrame:
     frame_type: RawUdsFrameType
@@ -118,6 +127,11 @@ class AudioFormat(LocalSttModel):
     frame_ms: int = HOT_PATH_FRAME_MS
     bytes_per_frame: int | None = None
 
+    @field_validator("sample_rate", "channels", "frame_ms", "bytes_per_frame", mode="before")
+    @classmethod
+    def reject_boolean_integer_fields(cls, value: Any) -> Any:
+        return _reject_boolean_integer_field(value)
+
     @model_validator(mode="after")
     def validate_hot_path(self) -> "AudioFormat":
         if self.sample_rate != HOT_PATH_SAMPLE_RATE:
@@ -160,6 +174,11 @@ class StartMessage(LocalSttModel):
     client_stream_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("partial_interval_ms", mode="before")
+    @classmethod
+    def reject_boolean_integer_fields(cls, value: Any) -> Any:
+        return _reject_boolean_integer_field(value)
+
 
 class FinalizeMessage(LocalSttModel):
     type: Literal["finalize"]
@@ -177,6 +196,11 @@ class PingMessage(LocalSttModel):
     type: Literal["ping"]
     ping_id: str | None = None
     timestamp_ms: int | None = Field(default=None, ge=0)
+
+    @field_validator("timestamp_ms", mode="before")
+    @classmethod
+    def reject_boolean_integer_fields(cls, value: Any) -> Any:
+        return _reject_boolean_integer_field(value)
 
 
 class ReadyMessage(LocalSttModel):
@@ -201,12 +225,7 @@ class TranscriptMessage(LocalSttModel):
     @field_validator("revision", "audio_received_ms", "audio_transcribed_ms", mode="before")
     @classmethod
     def reject_boolean_integer_fields(cls, value: Any, info: Any) -> Any:
-        if isinstance(value, bool):
-            raise PydanticCustomError(
-                "invalid_integer_field",
-                "must be an integer, not a boolean",
-            )
-        return value
+        return _reject_boolean_integer_field(value)
 
     @model_validator(mode="after")
     def validate_timing(self) -> "TranscriptMessage":
@@ -245,6 +264,11 @@ class PongMessage(LocalSttModel):
     ping_id: str | None = None
     timestamp_ms: int | None = Field(default=None, ge=0)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("timestamp_ms", mode="before")
+    @classmethod
+    def reject_boolean_integer_fields(cls, value: Any) -> Any:
+        return _reject_boolean_integer_field(value)
 
 
 class ClosedMessage(LocalSttModel):
