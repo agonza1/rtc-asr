@@ -85,6 +85,9 @@ SUMMARY_SORTS = (
     "average-size",
     "average-size-desc",
     "average-size-asc",
+    "avg-size",
+    "avg-size-desc",
+    "avg-size-asc",
     "count",
     "count-desc",
     "count-asc",
@@ -2518,9 +2521,9 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
         return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
     if bucket_key == "age_bucket" and sort_by == "name-desc":
         return (-AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
-    if sort_by in {"average-size", "average-size-desc"}:
+    if sort_by in {"average-size", "average-size-desc", "avg-size", "avg-size-desc"}:
         return (-average_size, -bucket["total_size_bytes"], name)
-    if sort_by == "average-size-asc":
+    if sort_by in {"average-size-asc", "avg-size-asc"}:
         return (average_size, bucket["total_size_bytes"], name)
     if sort_by in {"count", "count-desc"}:
         return (-bucket["count"], -bucket["total_size_bytes"], name)
