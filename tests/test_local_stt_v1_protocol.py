@@ -312,6 +312,66 @@ def test_heartbeat_messages_reject_boolean_timestamp_ms(message_type: str) -> No
     assert excinfo.value.as_event().message == "timestamp_ms: must be an integer, not a boolean"
 
 
+def test_start_message_rejects_coerced_interim_results() -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": {
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                },
+                "interim_results": 1,
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_boolean_field"
+    assert excinfo.value.as_event().message == "interim_results: must be a boolean"
+
+
+@pytest.mark.parametrize("field", ["is_final", "speech_final"])
+def test_transcript_message_rejects_coerced_boolean_fields(field: str) -> None:
+    payload = {
+        "type": "transcript",
+        "text": "hello world",
+        "is_final": False,
+        "speech_final": False,
+        "revision": 1,
+        "audio_received_ms": 1000,
+        "audio_transcribed_ms": 900,
+        "metadata": {},
+    }
+    payload[field] = "false"
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_server_message(payload)
+
+    assert excinfo.value.as_event().code == "invalid_boolean_field"
+    assert excinfo.value.as_event().message == f"{field}: must be a boolean"
+
+
+@pytest.mark.parametrize("field", ["retryable", "fatal"])
+def test_error_message_rejects_coerced_boolean_fields(field: str) -> None:
+    payload = {
+        "type": "error",
+        "code": "backend_unavailable",
+        "message": "backend unavailable",
+        "metadata": {},
+        "retryable": False,
+        "fatal": True,
+    }
+    payload[field] = 0
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_server_message(payload)
+
+    assert excinfo.value.as_event().code == "invalid_boolean_field"
+    assert excinfo.value.as_event().message == f"{field}: must be a boolean"
+
+
 
 def test_start_message_rejects_nonpositive_partial_window_seconds() -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:
