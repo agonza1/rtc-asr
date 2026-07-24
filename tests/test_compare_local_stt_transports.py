@@ -317,6 +317,41 @@ def test_compare_artifacts_accepts_first_partial_and_audio_end_aliases(tmp_path:
     assert comparison["transports"]["raw_uds"]["metrics_p95"]["time_to_final_after_finalize_ms"] == 29.0
 
 
+def test_compare_artifacts_accepts_flattened_percentile_metric_aliases(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0, final_after_finalize_p95=31.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0, final_after_finalize_p95=30.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 11.0, final_after_finalize_p95=29.0)
+
+    for path in (tcp, uds, raw):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        first_interim = payload["summary"].pop("time_to_first_interim_ms")
+        final_after_finalize = payload["summary"].pop("time_to_final_after_finalize_ms")
+        payload["summary"].update(
+            {
+                "first_partial_end_to_end_ms_p50": first_interim["p50"],
+                "first_partial_end_to_end_ms_p95": first_interim["p95"],
+                "first_partial_end_to_end_ms_p99": first_interim["p99"],
+                "time_to_final_from_audio_end_ms_p50": final_after_finalize["p50"],
+                "time_to_final_from_audio_end_ms_p95": final_after_finalize["p95"],
+                "time_to_final_from_audio_end_ms_p99": final_after_finalize["p99"],
+            }
+        )
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_p95_metrics_by_transport"] == {}
+    assert comparison["fastest_time_to_first_interim_p95_transport"] == "raw_uds"
+    assert comparison["fastest_time_to_final_after_finalize_p95_transport"] == "raw_uds"
+    assert comparison["raw_uds_vs_uds_ws_time_to_first_interim_p95_delta_ms"] == 6.0
+    assert comparison["raw_uds_vs_uds_ws_time_to_final_after_finalize_p95_delta_ms"] == 1.0
+    assert comparison["transports"]["raw_uds"]["metrics"]["time_to_first_interim_ms"] == {
+        "p50": 10.0,
+        "p95": 11.0,
+        "p99": 12.0,
+    }
+
+
 def test_compare_artifacts_requires_raw_uds_three_transport_comparison_metadata(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
