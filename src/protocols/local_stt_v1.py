@@ -594,6 +594,18 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> ServerMessage:
             f"Raw UDS frame type {frame.frame_type.name} is not a server frame",
             code="raw_uds_invalid_server_frame_type",
         )
+    if frame.frame_type == RawUdsFrameType.JSON_EVENT:
+        try:
+            payload = decode_raw_uds_json_payload(frame)
+            return parse_server_message(payload)
+        except LocalSttProtocolError as exc:
+            raise LocalSttProtocolError(
+                exc.message,
+                code="raw_uds_malformed_json_event",
+                fatal=exc.fatal,
+                retryable=exc.retryable,
+                metadata={"original_code": exc.code, **exc.metadata},
+            ) from exc
     if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
         payload = {}
     else:

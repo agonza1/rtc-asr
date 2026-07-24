@@ -1036,6 +1036,31 @@ def test_raw_uds_server_frame_parser_accepts_compact_error_payload() -> None:
     assert message.message == "bad control frame"
 
 
+def test_raw_uds_server_event_frame_classifies_malformed_json() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_frame(RawUdsFrameType.JSON_EVENT, b"{"))
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_raw_uds_server_frame(frame)
+
+    error = excinfo.value.as_event()
+    assert error.code == "raw_uds_malformed_json_event"
+    assert error.metadata == {"original_code": "raw_uds_invalid_json"}
+
+
+def test_raw_uds_server_event_frame_classifies_schema_errors() -> None:
+    frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "transcript"})
+    )
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_raw_uds_server_frame(frame)
+
+    error = excinfo.value.as_event()
+    assert error.code == "raw_uds_malformed_json_event"
+    assert error.metadata == {"original_code": "invalid_message"}
+    assert "text" in error.message
+
+
 def test_raw_uds_server_typed_frame_rejects_mismatched_payload_type() -> None:
     frame = decode_raw_uds_frame(
         encode_raw_uds_json_frame(RawUdsFrameType.ERROR, {"type": "warning", "code": "warn", "message": "warn"})
