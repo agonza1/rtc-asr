@@ -721,6 +721,34 @@ def test_app_config_reads_qwen_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.asr_qwen_max_inference_batch_size == 3
 
 
+def test_app_config_trims_optional_backend_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASR_BACKEND", " qwen ")
+    monkeypatch.setenv("ASR_COMPUTE_TYPE", "\tfloat16\n")
+    monkeypatch.setenv("ASR_QWEN_MODEL", " Qwen/Qwen3-ASR-1.7B ")
+    monkeypatch.setenv("ASR_QWEN_DTYPE", " bfloat16 ")
+    monkeypatch.setenv("ASR_QWEN_DEVICE_MAP", "   ")
+    monkeypatch.setenv("ASR_PARAKEET_MODEL", " nvidia/parakeet-tdt_ctc-110m ")
+    monkeypatch.setenv("ASR_PARAKEET_DTYPE", " float32 ")
+    monkeypatch.setenv("ASR_VOXTRAL_MODEL", " mistralai/Voxtral-Mini-4B-Realtime-2602 ")
+    monkeypatch.setenv("ASR_VOXTRAL_MLX_MODEL", " mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit ")
+    monkeypatch.setenv("ASR_VOXTRAL_DTYPE", " float32 ")
+    monkeypatch.setenv("ASR_VOXTRAL_ATTN_IMPLEMENTATION", "\tsdpa\n")
+
+    config = AppConfig.from_env()
+
+    assert config.asr_backend == "qwen"
+    assert config.asr_compute_type == "float16"
+    assert config.asr_qwen_model == "Qwen/Qwen3-ASR-1.7B"
+    assert config.asr_qwen_dtype == "bfloat16"
+    assert config.asr_qwen_device_map is None
+    assert config.asr_parakeet_model == "nvidia/parakeet-tdt_ctc-110m"
+    assert config.asr_parakeet_dtype == "float32"
+    assert config.asr_voxtral_model == "mistralai/Voxtral-Mini-4B-Realtime-2602"
+    assert config.asr_voxtral_mlx_model == "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+    assert config.asr_voxtral_dtype == "float32"
+    assert config.asr_voxtral_attn_implementation == "sdpa"
+
+
 def test_app_config_reads_voxtral_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ASR_BACKEND", "voxtral")
     monkeypatch.setenv("ASR_VOXTRAL_MODEL", "mistralai/Voxtral-Mini-4B-Realtime-2602")
