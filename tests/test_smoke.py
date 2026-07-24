@@ -2397,6 +2397,25 @@ def test_positive_integer_env_values_reject_nonpositive_values(
         AppConfig.from_env()
 
 
+@pytest.mark.parametrize(
+    ("env_name", "invalid_value"),
+    [
+        ("ASR_PRELOAD_MODEL", "maybe"),
+        ("ASR_FAIL_FAST", ""),
+        ("LOCAL_STT_RAW_UDS_ENABLED", "enabled"),
+    ],
+)
+def test_boolean_env_values_reject_invalid_values(
+    monkeypatch: pytest.MonkeyPatch,
+    env_name: str,
+    invalid_value: str,
+) -> None:
+    monkeypatch.setenv(env_name, invalid_value)
+
+    with pytest.raises(ValueError, match=f"{env_name} must be a boolean value"):
+        AppConfig.from_env()
+
+
 def test_local_stt_socket_mode_env_defaults_to_tcp(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
     monkeypatch.delenv("LOCAL_STT_UDS_PATH", raising=False)

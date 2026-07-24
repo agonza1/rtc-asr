@@ -20,7 +20,12 @@ def _env_flag(name: str, default: bool) -> bool:
     value = os.getenv(name)
     if value is None:
         return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean value")
 
 
 def _first_env(*names: str) -> str | None:
