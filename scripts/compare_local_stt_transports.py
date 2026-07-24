@@ -137,8 +137,12 @@ def load_artifact(path: Path) -> dict[str, Any]:
     if payload.get("kind") != "local-stt-v1-latency-benchmark":
         raise ValueError(f"{path} is not a Local STT v1 latency benchmark artifact")
     target = payload.get("target")
-    if not isinstance(target, dict) or not isinstance(target.get("transport"), str):
+    if not isinstance(target, dict):
         raise ValueError(f"{path} is missing target.transport")
+    transport = normalized_transport(payload)
+    if transport is None:
+        raise ValueError(f"{path} is missing target.transport")
+    target["transport"] = transport
     return payload
 
 
@@ -193,6 +197,44 @@ def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
             return None
         current = current.get(key)
     return current
+
+
+def normalized_transport(artifact: dict[str, Any]) -> str | None:
+    target = artifact.get("target") if isinstance(artifact.get("target"), dict) else {}
+    benchmark = artifact.get("benchmark") if isinstance(artifact.get("benchmark"), dict) else {}
+    integration = artifact.get("integration") if isinstance(artifact.get("integration"), dict) else {}
+    streaming = artifact.get("streaming") if isinstance(artifact.get("streaming"), dict) else {}
+    if isinstance(target.get("transport"), str):
+        return target["transport"]
+    value = first_defined(
+        target.get("transport_type"),
+        target.get("socket_mode"),
+        integration.get("transport"),
+        integration.get("transport_type"),
+        streaming.get("transport"),
+        streaming.get("transport_type"),
+        benchmark.get("transport"),
+        benchmark.get("transport_type"),
+        benchmark.get("mode"),
+    )
+    if not isinstance(value, str):
+        return None
+    aliases = {
+        "tcp": "tcp_ws",
+        "websocket": "tcp_ws",
+        "ws": "tcp_ws",
+        "uds": "uds_ws",
+        "unix_ws": "uds_ws",
+        "uds-websocket": "uds_ws",
+        "uds_websocket": "uds_ws",
+        "unix-domain-websocket": "uds_ws",
+        "unix_domain_websocket": "uds_ws",
+        "raw-uds": "raw_uds",
+        "unix_raw": "raw_uds",
+        "raw_unix_socket": "raw_uds",
+    }
+    normalized = value.strip().lower()
+    return aliases.get(normalized, normalized)
 
 
 def numeric_or_percentile(value: Any) -> float | None:
