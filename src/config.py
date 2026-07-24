@@ -39,6 +39,14 @@ def _first_env(*names: str) -> str | None:
     return None
 
 
+def _env_text(name: str, default: str | None) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    normalized = value.strip()
+    return normalized or default
+
+
 def _default_asr_device(default: str) -> str:
     explicit = _first_env("ASR_DEVICE")
     if explicit:
@@ -178,16 +186,16 @@ class AppConfig:
                 defaults.local_stt_raw_uds_enabled,
             ),
             local_stt_raw_uds_path=str(Path(local_stt_raw_uds_path)),
-            asr_backend=os.getenv("ASR_BACKEND", defaults.asr_backend),
+            asr_backend=_env_text("ASR_BACKEND", defaults.asr_backend) or defaults.asr_backend,
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
             asr_device=_default_asr_device(defaults.asr_device),
-            asr_compute_type=os.getenv("ASR_COMPUTE_TYPE", defaults.asr_compute_type),
+            asr_compute_type=_env_text("ASR_COMPUTE_TYPE", defaults.asr_compute_type) or defaults.asr_compute_type,
             asr_vad_filter=_env_flag("ASR_VAD_FILTER", defaults.asr_vad_filter),
             asr_preload_model=_env_flag("ASR_PRELOAD_MODEL", defaults.asr_preload_model),
             asr_fail_fast=_env_flag("ASR_FAIL_FAST", defaults.asr_fail_fast),
-            asr_qwen_model=os.getenv("ASR_QWEN_MODEL", defaults.asr_qwen_model),
-            asr_qwen_dtype=os.getenv("ASR_QWEN_DTYPE", defaults.asr_qwen_dtype),
-            asr_qwen_device_map=os.getenv("ASR_QWEN_DEVICE_MAP", defaults.asr_qwen_device_map),
+            asr_qwen_model=_env_text("ASR_QWEN_MODEL", defaults.asr_qwen_model) or defaults.asr_qwen_model,
+            asr_qwen_dtype=_env_text("ASR_QWEN_DTYPE", defaults.asr_qwen_dtype) or defaults.asr_qwen_dtype,
+            asr_qwen_device_map=_env_text("ASR_QWEN_DEVICE_MAP", defaults.asr_qwen_device_map),
             asr_qwen_max_new_tokens=_positive_int_env(
                 "ASR_QWEN_MAX_NEW_TOKENS",
                 defaults.asr_qwen_max_new_tokens,
@@ -196,12 +204,17 @@ class AppConfig:
                 "ASR_QWEN_MAX_INFERENCE_BATCH_SIZE",
                 defaults.asr_qwen_max_inference_batch_size,
             ),
-            asr_parakeet_model=os.getenv("ASR_PARAKEET_MODEL", defaults.asr_parakeet_model),
-            asr_parakeet_dtype=os.getenv("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype),
-            asr_voxtral_model=os.getenv("ASR_VOXTRAL_MODEL", defaults.asr_voxtral_model),
-            asr_voxtral_mlx_model=os.getenv("ASR_VOXTRAL_MLX_MODEL", defaults.asr_voxtral_mlx_model),
-            asr_voxtral_dtype=os.getenv("ASR_VOXTRAL_DTYPE", defaults.asr_voxtral_dtype),
-            asr_voxtral_attn_implementation=os.getenv(
+            asr_parakeet_model=_env_text("ASR_PARAKEET_MODEL", defaults.asr_parakeet_model)
+            or defaults.asr_parakeet_model,
+            asr_parakeet_dtype=_env_text("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype)
+            or defaults.asr_parakeet_dtype,
+            asr_voxtral_model=_env_text("ASR_VOXTRAL_MODEL", defaults.asr_voxtral_model)
+            or defaults.asr_voxtral_model,
+            asr_voxtral_mlx_model=_env_text("ASR_VOXTRAL_MLX_MODEL", defaults.asr_voxtral_mlx_model)
+            or defaults.asr_voxtral_mlx_model,
+            asr_voxtral_dtype=_env_text("ASR_VOXTRAL_DTYPE", defaults.asr_voxtral_dtype)
+            or defaults.asr_voxtral_dtype,
+            asr_voxtral_attn_implementation=_env_text(
                 "ASR_VOXTRAL_ATTN_IMPLEMENTATION",
                 defaults.asr_voxtral_attn_implementation,
             ),
