@@ -62,6 +62,14 @@ def test_summary_groups_accept_all_alias_with_specific_groups() -> None:
     assert normalize_summary_groups(["status, all"]) == set(report_module.SUMMARY_GROUPS)
 
 
+def test_summary_groups_accept_current_path_aliases() -> None:
+    assert normalize_summary_groups(["current-path, current-path-name, current-path-stem"]) == {
+        "current-artifact",
+        "current-artifact-name",
+        "current-artifact-stem",
+    }
+
+
 def test_summary_groups_reject_unknown_values() -> None:
     with pytest.raises(ValueError) as exc_info:
         normalize_summary_groups(["status, typo"])
