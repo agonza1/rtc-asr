@@ -224,6 +224,52 @@ def numeric_scalar(value: Any) -> float | None:
         return None
 
 
+CPU_UTILIZATION_KEYS = (
+    "cpu_utilization_percent",
+    "cpu_utilization",
+    "cpu_percent",
+    "average_cpu_percent",
+    "process_cpu_percent",
+)
+NESTED_CPU_UTILIZATION_PATHS = (
+    ("cpu", "utilization_percent"),
+    ("cpu", "utilization"),
+    ("cpu", "average_utilization_percent"),
+    ("cpu", "percent"),
+    ("cpu", "average_percent"),
+    ("cpu", "process_percent"),
+    ("process", "cpu_percent"),
+    ("process", "average_cpu_percent"),
+)
+
+
+def extract_cpu_utilization_value(source: dict[str, Any]) -> float | None:
+    return numeric_or_percentile(
+        first_defined(
+            *(source.get(key) for key in CPU_UTILIZATION_KEYS),
+            *(nested_value(source, *path) for path in NESTED_CPU_UTILIZATION_PATHS),
+        )
+    )
+
+
+def extract_sample_cpu_utilization_value(sample: dict[str, Any]) -> float | None:
+    return first_defined(
+        extract_cpu_utilization_value(sample),
+        extract_cpu_utilization_value(sample.get("metrics") if isinstance(sample.get("metrics"), dict) else {}),
+        extract_cpu_utilization_value(sample.get("summary") if isinstance(sample.get("summary"), dict) else {}),
+        extract_cpu_utilization_value(sample.get("environment") if isinstance(sample.get("environment"), dict) else {}),
+        extract_cpu_utilization_value(sample.get("system") if isinstance(sample.get("system"), dict) else {}),
+    )
+
+
+def percentile(values: list[float], percentile_rank: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = round((len(ordered) - 1) * percentile_rank)
+    return ordered[index]
+
+
 def _matching_experimental_transport_contract(
     candidates: Any, transport: str | None
 ) -> dict[str, Any] | None:
@@ -290,51 +336,31 @@ def extract_cpu_utilization_percent(artifact: dict[str, Any]) -> float | None:
     summary = artifact.get("summary") if isinstance(artifact.get("summary"), dict) else {}
     system = artifact.get("system") if isinstance(artifact.get("system"), dict) else {}
     cpu = artifact.get("cpu") if isinstance(artifact.get("cpu"), dict) else {}
-    value = first_defined(
-        environment.get("cpu_utilization_percent"),
-        environment.get("cpu_utilization"),
-        environment.get("cpu_percent"),
-        environment.get("average_cpu_percent"),
-        environment.get("process_cpu_percent"),
-        system.get("cpu_utilization_percent"),
-        system.get("cpu_utilization"),
-        system.get("cpu_percent"),
-        system.get("average_cpu_percent"),
-        system.get("process_cpu_percent"),
-        metrics.get("cpu_utilization_percent"),
-        metrics.get("cpu_utilization"),
-        metrics.get("cpu_percent"),
-        metrics.get("average_cpu_percent"),
-        metrics.get("process_cpu_percent"),
-        nested_value(metrics, "cpu", "utilization_percent"),
-        nested_value(metrics, "cpu", "utilization"),
-        nested_value(metrics, "cpu", "average_utilization_percent"),
-        nested_value(metrics, "cpu", "percent"),
-        nested_value(metrics, "cpu", "average_percent"),
-        nested_value(metrics, "cpu", "process_percent"),
-        nested_value(metrics, "process", "cpu_percent"),
-        nested_value(metrics, "process", "average_cpu_percent"),
-        summary.get("cpu_utilization_percent"),
-        summary.get("cpu_utilization"),
-        summary.get("cpu_percent"),
-        summary.get("average_cpu_percent"),
-        summary.get("process_cpu_percent"),
-        nested_value(summary, "cpu", "utilization_percent"),
-        nested_value(summary, "cpu", "utilization"),
-        nested_value(summary, "cpu", "average_utilization_percent"),
-        nested_value(summary, "cpu", "percent"),
-        nested_value(summary, "cpu", "average_percent"),
-        nested_value(summary, "cpu", "process_percent"),
-        nested_value(summary, "process", "cpu_percent"),
-        nested_value(summary, "process", "average_cpu_percent"),
-        cpu.get("utilization_percent"),
-        cpu.get("utilization"),
-        cpu.get("average_utilization_percent"),
-        cpu.get("percent"),
-        cpu.get("average_percent"),
-        cpu.get("process_percent"),
+    aggregate_value = first_defined(
+        extract_cpu_utilization_value(environment),
+        extract_cpu_utilization_value(system),
+        extract_cpu_utilization_value(metrics),
+        extract_cpu_utilization_value(summary),
+        numeric_or_percentile(
+            first_defined(
+                cpu.get("utilization_percent"),
+                cpu.get("utilization"),
+                cpu.get("average_utilization_percent"),
+                cpu.get("percent"),
+                cpu.get("average_percent"),
+                cpu.get("process_percent"),
+            )
+        ),
     )
-    return numeric_or_percentile(value)
+    if aggregate_value is not None:
+        return aggregate_value
+
+    sample_values = [
+        value
+        for sample in sample_records(artifact)
+        if (value := extract_sample_cpu_utilization_value(sample)) is not None
+    ]
+    return percentile(sample_values, 0.95)
 
 
 DIAGNOSTIC_CODE_ALIASES = {
