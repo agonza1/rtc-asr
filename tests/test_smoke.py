@@ -2474,6 +2474,33 @@ def test_local_stt_socket_mode_env_supports_uds(monkeypatch: pytest.MonkeyPatch,
     assert config.local_stt_raw_uds_path == str(raw_socket_path)
 
 
+def test_local_stt_transport_env_selects_uds_socket_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    socket_path = tmp_path / "stt.sock"
+    monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "uds_ws")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", str(socket_path))
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_socket_mode == "uds"
+    assert config.local_stt_uds_path == str(socket_path)
+
+
+def test_local_stt_socket_mode_takes_precedence_over_transport_env(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    socket_path = tmp_path / "stt.sock"
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "tcp")
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "uds_ws")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", str(socket_path))
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_socket_mode == "tcp"
+    assert config.local_stt_uds_path == str(socket_path)
+
+
 def test_local_stt_socket_paths_trim_env_whitespace(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     socket_path = tmp_path / "stt.sock"
     raw_socket_path = tmp_path / "stt.raw.sock"
@@ -2515,6 +2542,14 @@ def test_local_stt_socket_mode_rejects_invalid_value(monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", "named-pipe")
 
     with pytest.raises(ValueError, match="LOCAL_STT_SOCKET_MODE must be 'tcp' or 'uds'"):
+        AppConfig.from_env()
+
+
+def test_local_stt_transport_env_rejects_invalid_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "named-pipe")
+
+    with pytest.raises(ValueError, match="LOCAL_STT_TRANSPORT must be 'tcp_ws', 'uds_ws', or 'raw_uds'"):
         AppConfig.from_env()
 
 

@@ -103,6 +103,28 @@ def _socket_path_env(name: str, default: str, *, required: bool) -> str:
     return default
 
 
+def _local_stt_socket_mode(default: Literal["tcp", "uds"]) -> Literal["tcp", "uds"]:
+    explicit_mode = os.getenv("LOCAL_STT_SOCKET_MODE")
+    if explicit_mode is not None:
+        normalized = explicit_mode.strip().lower()
+        if normalized == "tcp":
+            return "tcp"
+        if normalized == "uds":
+            return "uds"
+        raise ValueError("LOCAL_STT_SOCKET_MODE must be 'tcp' or 'uds'")
+
+    transport = os.getenv("LOCAL_STT_TRANSPORT")
+    if transport is None:
+        return default
+
+    normalized_transport = transport.strip().lower()
+    if normalized_transport == "uds_ws":
+        return "uds"
+    if normalized_transport in {"", "tcp_ws", "raw_uds"}:
+        return "tcp"
+    raise ValueError("LOCAL_STT_TRANSPORT must be 'tcp_ws', 'uds_ws', or 'raw_uds'")
+
+
 @dataclass(slots=True)
 class AppConfig:
     """Runtime configuration loaded from environment variables."""
@@ -150,9 +172,7 @@ class AppConfig:
             "STREAM_MAX_BUFFER_BYTES",
             defaults.stream_max_buffer_bytes,
         )
-        local_stt_socket_mode = os.getenv("LOCAL_STT_SOCKET_MODE", defaults.local_stt_socket_mode).strip().lower()
-        if local_stt_socket_mode not in {"tcp", "uds"}:
-            raise ValueError("LOCAL_STT_SOCKET_MODE must be 'tcp' or 'uds'")
+        local_stt_socket_mode = _local_stt_socket_mode(defaults.local_stt_socket_mode)
         local_stt_uds_path = _socket_path_env(
             "LOCAL_STT_UDS_PATH",
             defaults.local_stt_uds_path,
