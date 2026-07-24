@@ -102,6 +102,8 @@ def test_parse_args_accepts_bytes_summary_sort_aliases() -> None:
 
 def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
     aliases = [
+        "bytes-asc",
+        "total-size-asc",
         "artifact-stem-asc",
         "artifact-dir-asc",
         "artifact-extension-asc",
@@ -126,6 +128,18 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
     ]
 
     for alias in aliases:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_parse_args_accepts_size_stale_sort_aliases() -> None:
+    for alias in [
+        "bytes",
+        "bytes-desc",
+        "bytes-asc",
+        "total-size",
+        "total-size-desc",
+        "total-size-asc",
+    ]:
         assert parse_args(["--sort", alias]).sort == alias
 
 
@@ -805,6 +819,36 @@ def test_stale_artifacts_orders_largest_first_and_summarizes_total() -> None:
 
     assert summary["total_size_bytes"] == 100
     assert summary["total_size"] == "100 B"
+
+
+def test_stale_artifacts_accepts_size_sort_aliases() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/small.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/large.json",
+                "status": "legacy",
+                "artifact_size_bytes": 90,
+            },
+        ],
+    }
+
+    descending = stale_artifacts(manifest, sort_by="bytes-desc")
+    ascending = stale_artifacts(manifest, sort_by="total-size-asc")
+
+    assert [entry["artifact_path"] for entry in descending] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
+    assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/small.json",
+        "benchmark-results/large.json",
+    ]
 
 
 def test_render_json_lines_emits_one_sorted_object_per_artifact() -> None:
