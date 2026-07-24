@@ -209,6 +209,21 @@ DEFAULT_PROTOCOLS = [
 ]
 
 
+def expected_protocol_discovery_payload(status: str, ready: bool) -> dict[str, object]:
+    return {
+        "status": status,
+        "ready": ready,
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": {
+            "protocol": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+        },
+        "legacy_protocols": ["rtc-asr-stream.v1"],
+        "protocols": DEFAULT_PROTOCOLS,
+    }
+
+
 class FakeIncomingWebSocket:
     def __init__(self, message: dict[str, object]) -> None:
         self._message = message
@@ -359,11 +374,7 @@ def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
     assert ready.status_code == 200
     assert ready.json() == health.json()
     assert protocols.status_code == 200
-    assert protocols.json() == {
-        "status": "loading",
-        "ready": True,
-        "protocols": DEFAULT_PROTOCOLS,
-    }
+    assert protocols.json() == expected_protocol_discovery_payload(status="loading", ready=True)
     assert models.status_code == 200
     assert models.json()["status"] == "loading"
     assert models.json()["ready"] is True
@@ -407,11 +418,7 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "protocols": DEFAULT_PROTOCOLS,
     }
     assert protocols.status_code == 200
-    assert protocols.json() == {
-        "status": "ready",
-        "ready": True,
-        "protocols": DEFAULT_PROTOCOLS,
-    }
+    assert protocols.json() == expected_protocol_discovery_payload(status="ready", ready=True)
     assert models.status_code == 200
     assert models.json() == {
         "backend": "fake-whisper",
