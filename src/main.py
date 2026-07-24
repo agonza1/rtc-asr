@@ -119,20 +119,23 @@ def _health_payload(services: AppServices) -> dict[str, object]:
     }
 
 
-def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]]:
-    local_stt_transport: dict[str, object] = {
-        "mode": "tcp",
-        "transport": "tcp_ws",
-        "path": "/v1/stt/stream",
-    }
+def _local_stt_server_transport(config: AppConfig | None = None) -> dict[str, object]:
     if config is not None and config.local_stt_socket_mode == "uds":
-        local_stt_transport = {
+        return {
             "mode": "uds",
             "transport": "uds_ws",
             "path": "/v1/stt/stream",
             "uds_path": config.local_stt_uds_path,
         }
+    return {
+        "mode": "tcp",
+        "transport": "tcp_ws",
+        "path": "/v1/stt/stream",
+    }
 
+
+def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]]:
+    local_stt_transport = _local_stt_server_transport(config)
     return [
         {
             "id": "rtc-asr-stream.v1",
@@ -288,6 +291,10 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
 
 
 def _protocol_discovery_payload(services: AppServices) -> dict[str, object]:
+    local_stt_transport = _local_stt_server_transport(services.config)
+    default_transport_name = "websocket"
+    if local_stt_transport["transport"] == "uds_ws":
+        default_transport_name = local_stt_transport["transport"]
     protocols = _protocol_catalog(services.config)
     return {
         "status": _backend_status(services),
@@ -295,8 +302,9 @@ def _protocol_discovery_payload(services: AppServices) -> dict[str, object]:
         "default_protocol": PROTOCOL_VERSION,
         "default_transport": {
             "protocol": PROTOCOL_VERSION,
-            "transport": "websocket",
-            "path": "/v1/stt/stream",
+            "transport": default_transport_name,
+            "path": local_stt_transport["path"],
+            **({"uds_path": local_stt_transport["uds_path"]} if "uds_path" in local_stt_transport else {}),
         },
         "legacy_protocols": ["rtc-asr-stream.v1"],
         "protocols": protocols,
