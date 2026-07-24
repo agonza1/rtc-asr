@@ -152,13 +152,20 @@ def artifact_provenance(path: Path) -> dict[str, Any]:
 
 def _percentile(summary: dict[str, Any], metric: str, percentile: str) -> float | None:
     bucket = summary.get(metric)
-    for alias in METRIC_ALIASES.get(metric, ()):
+    aliases = METRIC_ALIASES.get(metric, ())
+    for alias in aliases:
         if isinstance(bucket, dict):
             break
         bucket = summary.get(alias)
     if not isinstance(bucket, dict):
         if metric == "protocol_errors" and bucket is not None:
             return float(bucket)
+        value = first_defined(
+            summary.get(f"{metric}_{percentile}"),
+            *(summary.get(f"{alias}_{percentile}") for alias in aliases),
+        )
+        if value is not None:
+            return float(value)
         return None
     value = bucket.get(percentile)
     if value is None:
