@@ -112,15 +112,16 @@ def encode_raw_uds_frame(frame_type: RawUdsFrameType | int, payload: bytes | byt
     return struct.pack("<BI", int(resolved_type), len(payload_bytes)) + payload_bytes
 
 
-def validate_raw_uds_audio_payload(payload: bytes) -> bytes:
-    if not payload:
+def validate_raw_uds_audio_payload(payload: bytes | bytearray | memoryview) -> bytes:
+    payload_bytes = _coerce_bytes_like(payload, context="Raw UDS audio payload")
+    if not payload_bytes:
         raise LocalSTTProtocolError("Raw UDS audio frames must not be empty", code="invalid_audio_chunk")
-    if len(payload) % 2 != 0:
+    if len(payload_bytes) % 2 != 0:
         raise LocalSTTProtocolError(
             "Raw UDS PCM16 audio frames must contain an even number of bytes",
             code="invalid_audio_chunk",
         )
-    return payload
+    return payload_bytes
 
 
 def encode_raw_uds_json_frame(frame_type: RawUdsFrameType | int, payload: dict[str, Any]) -> bytes:
