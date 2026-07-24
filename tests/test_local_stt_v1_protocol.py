@@ -857,6 +857,15 @@ def test_raw_uds_json_decoder_rejects_audio_frames() -> None:
     assert excinfo.value.as_event().code == "raw_uds_invalid_json_frame_type"
 
 
+@pytest.mark.parametrize("payload", [["not-object"], "not-object", None])
+def test_raw_uds_json_frame_codec_rejects_non_object_payloads(payload: object) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, payload)
+
+    assert excinfo.value.as_event().code == "raw_uds_invalid_json"
+    assert excinfo.value.as_event().message == "Raw UDS JSON payload must be an object"
+
+
 def test_raw_uds_client_frame_parser_maps_control_ping_and_audio() -> None:
     start_frame = decode_raw_uds_frame(
         encode_raw_uds_json_frame(

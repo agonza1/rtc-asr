@@ -137,6 +137,8 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType | int, payload: dict[s
             f"Raw UDS frame type {resolved_type.name} cannot carry JSON control data",
             code="raw_uds_invalid_json_frame_type",
         )
+    if not isinstance(payload, dict):
+        raise LocalSTTProtocolError("Raw UDS JSON payload must be an object", code="raw_uds_invalid_json")
     return encode_raw_uds_frame(resolved_type, json.dumps(payload, separators=(",", ":")).encode("utf-8"))
 
 
