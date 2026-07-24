@@ -217,6 +217,27 @@ def test_invalid_transcript_timing_maps_to_protocol_error() -> None:
     ).model_dump()
 
 
+@pytest.mark.parametrize("field", ["revision", "audio_received_ms", "audio_transcribed_ms"])
+def test_transcript_message_rejects_boolean_integer_fields(field: str) -> None:
+    payload = {
+        "type": "transcript",
+        "text": "hello world",
+        "is_final": False,
+        "speech_final": False,
+        "revision": 1,
+        "audio_received_ms": 1000,
+        "audio_transcribed_ms": 900,
+        "metadata": {},
+    }
+    payload[field] = True
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_server_message(payload)
+
+    assert excinfo.value.as_event().code == "invalid_integer_field"
+    assert excinfo.value.as_event().message == f"{field}: must be an integer, not a boolean"
+
+
 
 def test_start_message_rejects_nonpositive_partial_window_seconds() -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:

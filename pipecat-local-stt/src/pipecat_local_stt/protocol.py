@@ -307,9 +307,9 @@ def parse_transcript_event(payload: dict[str, Any]) -> LocalSTTTranscriptEvent:
             text=str(payload["text"]),
             is_final=_parse_bool_field(payload["is_final"], "is_final"),
             speech_final=_parse_bool_field(payload.get("speech_final", payload["is_final"]), "speech_final"),
-            revision=int(payload["revision"]),
-            audio_received_ms=int(payload["audio_received_ms"]),
-            audio_transcribed_ms=int(payload["audio_transcribed_ms"]),
+            revision=_parse_int_field(payload["revision"], "revision"),
+            audio_received_ms=_parse_int_field(payload["audio_received_ms"], "audio_received_ms"),
+            audio_transcribed_ms=_parse_int_field(payload["audio_transcribed_ms"], "audio_transcribed_ms"),
             metadata=dict(metadata),
             language=payload.get("language") if isinstance(payload.get("language"), str) else None,
             raw=dict(payload),
@@ -333,3 +333,9 @@ def _parse_bool_field(value: Any, field_name: str) -> bool:
     if isinstance(value, bool):
         return value
     raise LocalSTTProtocolError(f"Transcript event {field_name} must be a boolean")
+
+
+def _parse_int_field(value: Any, field_name: str) -> int:
+    if isinstance(value, bool):
+        raise LocalSTTProtocolError(f"Transcript event {field_name} must be an integer, not a boolean")
+    return int(value)

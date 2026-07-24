@@ -76,6 +76,24 @@ def test_parse_transcript_event_rejects_non_boolean_final_flags(field: str) -> N
         parse_transcript_event(payload)
 
 
+@pytest.mark.parametrize("field", ["revision", "audio_received_ms", "audio_transcribed_ms"])
+def test_parse_transcript_event_rejects_boolean_integer_fields(field: str) -> None:
+    payload = {
+        "type": "transcript",
+        "text": "hello",
+        "is_final": False,
+        "speech_final": False,
+        "revision": 1,
+        "audio_received_ms": 40,
+        "audio_transcribed_ms": 20,
+        "metadata": {},
+    }
+    payload[field] = True
+
+    with pytest.raises(LocalSTTProtocolError, match=f"{field} must be an integer, not a boolean"):
+        parse_transcript_event(payload)
+
+
 def test_rtc_asr_wrapper_exports_default_service_config() -> None:
     service = RtcAsrSTTService(url="ws://localhost:8080/v1/stt/stream", language="es")
 
