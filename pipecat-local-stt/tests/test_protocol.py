@@ -19,6 +19,7 @@ from pipecat_local_stt.protocol import (
     encode_raw_uds_json_frame,
     parse_raw_uds_server_frame,
     parse_transcript_event,
+    validate_raw_uds_audio_payload,
 )
 
 
@@ -321,6 +322,19 @@ def test_raw_uds_frame_codec_rejects_non_bytes_like_payloads(payload: object) ->
 
     assert excinfo.value.code == "raw_uds_invalid_bytes"
     assert "Raw UDS frame payload must be bytes-like" in excinfo.value.message
+
+
+def test_validate_raw_uds_audio_payload_accepts_bytes_like_payloads() -> None:
+    assert validate_raw_uds_audio_payload(memoryview(b"\x00\x01")) == b"\x00\x01"
+
+
+@pytest.mark.parametrize("payload", [2, "not-bytes"])
+def test_validate_raw_uds_audio_payload_rejects_non_bytes_like_payloads(payload: object) -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        validate_raw_uds_audio_payload(payload)
+
+    assert excinfo.value.code == "raw_uds_invalid_bytes"
+    assert "Raw UDS audio payload must be bytes-like" in excinfo.value.message
 
 
 @pytest.mark.parametrize("frame_bytes", [2, "not-bytes"])
