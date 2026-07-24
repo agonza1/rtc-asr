@@ -861,7 +861,12 @@ def normalized_audio_inputs(artifact: dict[str, Any]) -> dict[str, Any]:
     integration = artifact.get("integration") if isinstance(artifact.get("integration"), dict) else {}
     streaming = artifact.get("streaming") if isinstance(artifact.get("streaming"), dict) else {}
     source = first_defined(audio.get("source"), audio.get("path"))
-    duration_ms = first_defined(audio.get("duration_ms"), audio.get("duration_s"))
+    duration_ms = first_defined(
+        audio.get("duration_ms"),
+        audio.get("duration_s"),
+        audio.get("duration_seconds"),
+        audio.get("audio_duration_seconds"),
+    )
     if duration_ms is not None and audio.get("duration_ms") is None:
         duration_ms = round(float(duration_ms) * 1000, 3)
     frame_ms = first_defined(
