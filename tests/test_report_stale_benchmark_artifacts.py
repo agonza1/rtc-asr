@@ -139,6 +139,8 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "total-size",
         "total-size-desc",
         "total-size-asc",
+        "largest",
+        "smallest",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
@@ -840,12 +842,22 @@ def test_stale_artifacts_accepts_size_sort_aliases() -> None:
 
     descending = stale_artifacts(manifest, sort_by="bytes-desc")
     ascending = stale_artifacts(manifest, sort_by="total-size-asc")
+    largest = stale_artifacts(manifest, sort_by="largest")
+    smallest = stale_artifacts(manifest, sort_by="smallest")
 
     assert [entry["artifact_path"] for entry in descending] == [
         "benchmark-results/large.json",
         "benchmark-results/small.json",
     ]
+    assert [entry["artifact_path"] for entry in largest] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
     assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/small.json",
+        "benchmark-results/large.json",
+    ]
+    assert [entry["artifact_path"] for entry in smallest] == [
         "benchmark-results/small.json",
         "benchmark-results/large.json",
     ]
