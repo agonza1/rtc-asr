@@ -57,7 +57,7 @@ def _default_asr_device(default: str) -> str:
         return explicit
 
     visible_devices = _first_env("CUDA_VISIBLE_DEVICES")
-    if visible_devices and visible_devices.strip() not in {"", "-1", "none", "None"}:
+    if visible_devices and visible_devices.strip().lower() not in {"", "-1", "none"}:
         return "cuda"
 
     return default

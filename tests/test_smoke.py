@@ -2347,6 +2347,15 @@ def test_legacy_env_aliases_and_cuda_detection(monkeypatch: pytest.MonkeyPatch) 
     assert config.asr_device == "cuda"
 
 
+def test_cuda_visible_devices_none_is_case_insensitive(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ASR_DEVICE", raising=False)
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", " NONE ")
+
+    config = AppConfig.from_env()
+
+    assert config.asr_device == "cpu"
+
+
 def test_blank_env_aliases_are_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MODEL_NAME", "   ")
     monkeypatch.delenv("ASR_MODEL_SIZE", raising=False)
