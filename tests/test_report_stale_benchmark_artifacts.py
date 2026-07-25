@@ -64,7 +64,7 @@ def test_summary_groups_accept_comma_separated_values() -> None:
 
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
-    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH"]) == {
+    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH"]) == {
         "status",
         "current-artifact-name",
         "detail-page",
@@ -232,6 +232,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "artifact-extension-asc",
         "detail-page-asc",
         "detail-path-asc",
+        "detail-page-path-asc",
         "detail-page-name-asc",
         "detail-page-stem-asc",
         "detail-page-dir-asc",
@@ -558,8 +559,12 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
         [
             "--detail-path",
             "benchmark-results/pages/stale.html",
+            "--detail-page-path",
+            "benchmark-results/pages/older.html",
             "--detail-path-contains",
             "stale",
+            "--detail-page-path-contains",
+            "older",
             "--detail-dir",
             "benchmark-results/pages",
             "--detail-directory",
@@ -595,8 +600,8 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
         ]
     )
 
-    assert args.detail_page == ["benchmark-results/pages/stale.html"]
-    assert args.detail_page_contains == ["stale"]
+    assert args.detail_page == ["benchmark-results/pages/stale.html", "benchmark-results/pages/older.html"]
+    assert args.detail_page_contains == ["stale", "older"]
     assert args.detail_page_dir == [
         "benchmark-results/pages",
         "benchmark-results/legacy-pages",
@@ -999,6 +1004,7 @@ def test_stale_artifacts_accepts_filename_sort_aliases() -> None:
     current_basename_sorted = stale_artifacts(manifest, sort_by="current-basename-desc")
     detail_sorted = stale_artifacts(manifest, sort_by="detail-filename")
     detail_basename_sorted = stale_artifacts(manifest, sort_by="detail-basename")
+    detail_path_sorted = stale_artifacts(manifest, sort_by="detail-page-path")
 
     assert [entry["artifact_name"] for entry in artifact_sorted] == ["alpha.json", "zulu.json"]
     assert [entry["artifact_name"] for entry in artifact_basename_sorted] == ["alpha.json", "zulu.json"]
@@ -1012,6 +1018,7 @@ def test_stale_artifacts_accepts_filename_sort_aliases() -> None:
     ]
     assert [entry["detail_page_name"] for entry in detail_sorted] == ["alpha.html", "zulu.html"]
     assert [entry["detail_page_name"] for entry in detail_basename_sorted] == ["alpha.html", "zulu.html"]
+    assert [entry["detail_page_name"] for entry in detail_path_sorted] == ["alpha.html", "zulu.html"]
 
 
 def test_stale_artifacts_can_filter_by_artifact_directory() -> None:
