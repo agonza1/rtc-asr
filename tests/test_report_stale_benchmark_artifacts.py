@@ -209,6 +209,11 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         assert parse_args(["--sort", alias]).sort == alias
 
 
+def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
+    for alias in ["oldest", "oldest-first", "newest", "newest-first"]:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
 def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
     args = parse_args(
         [
@@ -3243,6 +3248,35 @@ def test_stale_artifacts_can_sort_newest_measured_first() -> None:
         "benchmark-results/newer.json",
         "benchmark-results/older.json",
         "benchmark-results/unknown.json",
+    ]
+
+
+def test_stale_artifacts_accepts_readable_measured_time_sort_aliases() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/newer.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T00:00:00Z",
+                "artifact_size_bytes": 90,
+            },
+            {
+                "artifact_path": "benchmark-results/older.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="oldest")] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="newest")] == [
+        "benchmark-results/newer.json",
+        "benchmark-results/older.json",
     ]
 
 
