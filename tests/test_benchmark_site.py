@@ -41,6 +41,7 @@ citation_text = prerender_module.citation_text
 measurement_technique = prerender_module.measurement_technique
 evidence_role = prerender_module.evidence_role
 telemetry_coverage_text = prerender_module.telemetry_coverage_text
+extract_prerender_system_signals = prerender_module.extract_system_signals
 detail_variable_measured = prerender_module.detail_variable_measured
 rss_delta_mb = prerender_module.rss_delta_mb
 render_sitemap = prerender_module.render_sitemap
@@ -658,6 +659,20 @@ def test_manifest_preserves_common_total_memory_aliases() -> None:
     metrics_alias = extract_system_signals({"metrics": {"ram_total_mb": 32768.0}})
     nested_alias = extract_system_signals({"metrics": {"memory": {"system_ram_mb": 65536.0}}})
     top_level_alias = extract_system_signals({"memory": {"total_memory_mb": 49152.0}})
+
+    assert environment_system["memory_total_mb"] == 16384.0
+    assert system_alias["memory_total_mb"] == 24576.0
+    assert metrics_alias["memory_total_mb"] == 32768.0
+    assert nested_alias["memory_total_mb"] == 65536.0
+    assert top_level_alias["memory_total_mb"] == 49152.0
+
+
+def test_prerender_preserves_common_total_memory_aliases() -> None:
+    environment_system = extract_prerender_system_signals({"environment": {"total_memory_mb": 16384.0}})
+    system_alias = extract_prerender_system_signals({"system": {"system_ram_mb": 24576.0}})
+    metrics_alias = extract_prerender_system_signals({"metrics": {"ram_total_mb": 32768.0}})
+    nested_alias = extract_prerender_system_signals({"metrics": {"memory": {"system_ram_mb": 65536.0}}})
+    top_level_alias = extract_prerender_system_signals({"memory": {"total_memory_mb": 49152.0}})
 
     assert environment_system["memory_total_mb"] == 16384.0
     assert system_alias["memory_total_mb"] == 24576.0
