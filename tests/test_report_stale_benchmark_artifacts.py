@@ -64,9 +64,10 @@ def test_summary_groups_accept_comma_separated_values() -> None:
 
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
-    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME"]) == {
+    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH"]) == {
         "status",
         "current-artifact-name",
+        "detail-page",
     }
 
 
@@ -230,6 +231,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "artifact-dirname-asc",
         "artifact-extension-asc",
         "detail-page-asc",
+        "detail-path-asc",
         "detail-page-name-asc",
         "detail-page-stem-asc",
         "detail-page-dir-asc",
@@ -554,6 +556,10 @@ def test_parse_args_accepts_file_name_filter_aliases() -> None:
 def test_parse_args_accepts_detail_path_filter_aliases() -> None:
     args = parse_args(
         [
+            "--detail-path",
+            "benchmark-results/pages/stale.html",
+            "--detail-path-contains",
+            "stale",
             "--detail-dir",
             "benchmark-results/pages",
             "--detail-directory",
@@ -589,6 +595,8 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
         ]
     )
 
+    assert args.detail_page == ["benchmark-results/pages/stale.html"]
+    assert args.detail_page_contains == ["stale"]
     assert args.detail_page_dir == [
         "benchmark-results/pages",
         "benchmark-results/legacy-pages",

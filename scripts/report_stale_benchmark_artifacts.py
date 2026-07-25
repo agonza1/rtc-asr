@@ -94,6 +94,7 @@ SUMMARY_GROUP_ALIASES = {
     "current-path-extension": "current-artifact-extension",
     "detail-ext": "detail-page-extension",
     "detail-page-ext": "detail-page-extension",
+    "detail-path": "detail-page",
     "detail-basename": "detail-page-name",
     "detail-filename": "detail-page-name",
     "detail-file-stem": "detail-page-stem",
@@ -179,6 +180,9 @@ STALE_SORT_ALIASES = {
     "current-path-ext": "current-path-extension",
     "current-path-ext-asc": "current-path-extension-asc",
     "current-path-ext-desc": "current-path-extension-desc",
+    "detail-path": "detail-page",
+    "detail-path-asc": "detail-page-asc",
+    "detail-path-desc": "detail-page-desc",
     "detail-basename": "detail-page-name",
     "detail-basename-asc": "detail-page-name-asc",
     "detail-basename-desc": "detail-page-name-desc",
@@ -439,6 +443,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "detail-page",
             "detail-page-asc",
             "detail-page-desc",
+            "detail-path",
+            "detail-path-asc",
+            "detail-path-desc",
             "detail-page-name",
             "detail-page-name-asc",
             "detail-page-name-desc",
@@ -800,12 +807,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--detail-page",
+        "--detail-path",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page path matches this path; repeat to include multiple paths",
     )
     parser.add_argument(
         "--detail-page-contains",
+        "--detail-path-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page path contains this text; repeat to include multiple matches",
