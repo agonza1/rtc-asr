@@ -85,6 +85,10 @@ STALE_SORT_ALIASES = {
     "newest-first": "measured-at-desc",
     "latest": "measured-at-desc",
     "latest-first": "measured-at-desc",
+    "recent": "measured-at-desc",
+    "recent-first": "measured-at-desc",
+    "most-recent": "measured-at-desc",
+    "most-recent-first": "measured-at-desc",
     "oldest": "measured-at",
     "oldest-first": "measured-at",
     "earliest": "measured-at",
@@ -310,6 +314,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "newest-first",
             "latest",
             "latest-first",
+            "recent",
+            "recent-first",
+            "most-recent",
+            "most-recent-first",
             "path",
             "path-asc",
             "path-desc",
@@ -1853,7 +1861,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-desc, size-asc, bytes, bytes-desc, bytes-asc, disk-size, disk-size-desc, disk-size-asc, total-size, total-size-desc, total-size-asc, largest, smallest, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, oldest, oldest-first, newest, newest-first, path, path-asc, path-desc, artifact-path, artifact-path-asc, artifact-path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, detail-page-stem, detail-page-stem-asc, detail-page-stem-desc, detail-page-dir, detail-page-dir-asc, detail-page-dir-desc, detail-page-extension, detail-page-extension-asc, detail-page-extension-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
+        "sort_by must be one of: size, size-desc, size-asc, bytes, bytes-desc, bytes-asc, disk-size, disk-size-desc, disk-size-asc, total-size, total-size-desc, total-size-asc, largest, smallest, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, oldest, oldest-first, newest, newest-first, latest, latest-first, recent, recent-first, most-recent, most-recent-first, path, path-asc, path-desc, artifact-path, artifact-path-asc, artifact-path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, detail-page-stem, detail-page-stem-asc, detail-page-stem-desc, detail-page-dir, detail-page-dir-asc, detail-page-dir-desc, detail-page-extension, detail-page-extension-asc, detail-page-extension-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
     )
 
 
