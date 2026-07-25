@@ -247,6 +247,10 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "newest-first",
         "latest",
         "latest-first",
+        "recent",
+        "recent-first",
+        "most-recent",
+        "most-recent-first",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
