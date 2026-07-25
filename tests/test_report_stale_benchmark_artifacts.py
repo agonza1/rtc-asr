@@ -419,6 +419,46 @@ def test_parse_args_accepts_file_name_filter_aliases() -> None:
     assert args.detail_page_name_contains == ["stale", "older"]
 
 
+def test_parse_args_accepts_detail_path_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--detail-dir",
+            "benchmark-results/pages",
+            "--detail-directory",
+            "benchmark-results/legacy-pages",
+            "--detail-page-directory",
+            "benchmark-results/archive-pages",
+            "--detail-dir-contains",
+            "pages",
+            "--detail-directory-contains",
+            "legacy",
+            "--detail-page-directory-contains",
+            "archive",
+            "--detail-extension",
+            ".html",
+            "--detail-ext",
+            "htm",
+            "--detail-page-ext",
+            "none",
+            "--detail-extension-contains",
+            "html",
+            "--detail-ext-contains",
+            "htm",
+            "--detail-page-ext-contains",
+            "none",
+        ]
+    )
+
+    assert args.detail_page_dir == [
+        "benchmark-results/pages",
+        "benchmark-results/legacy-pages",
+        "benchmark-results/archive-pages",
+    ]
+    assert args.detail_page_dir_contains == ["pages", "legacy", "archive"]
+    assert args.detail_page_extension == [".html", "htm", "none"]
+    assert args.detail_page_extension_contains == ["html", "htm", "none"]
+
+
 def test_parse_args_accepts_repo_relative_paths_mode() -> None:
     args = parse_args(["--paths-only", "--repo-relative-paths"])
 
