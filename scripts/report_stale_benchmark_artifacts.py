@@ -72,6 +72,24 @@ SUMMARY_GROUP_ALIASES = {
     "current-path-extension": "current-artifact-extension",
 }
 
+STALE_SORT_ALIASES = {
+    "current-artifact": "current-path",
+    "current-artifact-asc": "current-path-asc",
+    "current-artifact-desc": "current-path-desc",
+    "current-artifact-name": "current-path-name",
+    "current-artifact-name-asc": "current-path-name-asc",
+    "current-artifact-name-desc": "current-path-name-desc",
+    "current-artifact-stem": "current-path-stem",
+    "current-artifact-stem-asc": "current-path-stem-asc",
+    "current-artifact-stem-desc": "current-path-stem-desc",
+    "current-artifact-dir": "current-path-dir",
+    "current-artifact-dir-asc": "current-path-dir-asc",
+    "current-artifact-dir-desc": "current-path-dir-desc",
+    "current-artifact-extension": "current-path-extension",
+    "current-artifact-extension-asc": "current-path-extension-asc",
+    "current-artifact-extension-desc": "current-path-extension-desc",
+}
+
 AGE_BUCKET_ORDER = {
     "0-6d": 0,
     "7-29d": 1,
@@ -258,18 +276,33 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "current-path",
             "current-path-asc",
             "current-path-desc",
+            "current-artifact",
+            "current-artifact-asc",
+            "current-artifact-desc",
             "current-path-name",
             "current-path-name-asc",
             "current-path-name-desc",
+            "current-artifact-name",
+            "current-artifact-name-asc",
+            "current-artifact-name-desc",
             "current-path-stem",
             "current-path-stem-asc",
             "current-path-stem-desc",
+            "current-artifact-stem",
+            "current-artifact-stem-asc",
+            "current-artifact-stem-desc",
             "current-path-dir",
             "current-path-dir-asc",
             "current-path-dir-desc",
+            "current-artifact-dir",
+            "current-artifact-dir-asc",
+            "current-artifact-dir-desc",
             "current-path-extension",
             "current-path-extension-asc",
             "current-path-extension-desc",
+            "current-artifact-extension",
+            "current-artifact-extension-asc",
+            "current-artifact-extension-desc",
             "measured-month",
             "measured-month-asc",
             "measured-month-desc",
@@ -336,60 +369,70 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--current-path",
+        "--current-artifact",
         action="append",
         default=None,
         help="Only include stale artifacts whose track currently points at this artifact path; repeat to include multiple paths",
     )
     parser.add_argument(
         "--current-path-contains",
+        "--current-artifact-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact path contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--current-path-name",
+        "--current-artifact-name",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact file name matches this name; repeat to include multiple names",
     )
     parser.add_argument(
         "--current-path-name-contains",
+        "--current-artifact-name-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact file name contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--current-path-stem",
+        "--current-artifact-stem",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact file stem matches this value; repeat to include multiple stems",
     )
     parser.add_argument(
         "--current-path-stem-contains",
+        "--current-artifact-stem-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact file stem contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--current-path-dir",
+        "--current-artifact-dir",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact directory matches this path; repeat to include multiple paths",
     )
     parser.add_argument(
         "--current-path-dir-contains",
+        "--current-artifact-dir-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact directory contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--current-path-extension",
+        "--current-artifact-extension",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact extension matches this value; repeat or comma-separate; use 'none' for extensionless or untracked paths",
     )
     parser.add_argument(
         "--current-path-extension-contains",
+        "--current-artifact-extension-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact extension contains this text; repeat to include multiple matches",
@@ -760,6 +803,10 @@ def descending_text_key(value: Any) -> tuple[int, ...]:
     return tuple(-ord(character) for character in str(value))
 
 
+def normalize_stale_sort(sort_by: str) -> str:
+    return STALE_SORT_ALIASES.get(sort_by, sort_by)
+
+
 def normalize_summary_groups(groups: list[str] | None) -> set[str]:
     selected_groups = {
         SUMMARY_GROUP_ALIASES.get(group.strip().lower(), group.strip().lower())
@@ -830,6 +877,7 @@ def stale_artifacts(
     now: datetime | None = None,
     sort_by: str = "size",
 ) -> list[dict[str, Any]]:
+    sort_by = normalize_stale_sort(sort_by)
     if min_size_bytes is not None and min_size_bytes < 0:
         raise ValueError("min_size_bytes must be non-negative")
     if max_size_bytes is not None and max_size_bytes < 0:

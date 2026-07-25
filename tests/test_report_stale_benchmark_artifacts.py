@@ -144,10 +144,15 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "slug-asc",
         "track-state-asc",
         "current-path-asc",
+        "current-artifact-asc",
         "current-path-name-asc",
+        "current-artifact-name-asc",
         "current-path-stem-asc",
+        "current-artifact-stem-asc",
         "current-path-dir-asc",
+        "current-artifact-dir-asc",
         "current-path-extension-asc",
+        "current-artifact-extension-asc",
         "measured-month-asc",
         "age-bucket-asc",
     ]
@@ -174,6 +179,44 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "smallest",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--current-artifact",
+            "benchmark-results/current.json",
+            "--current-artifact-contains",
+            "current",
+            "--current-artifact-name",
+            "current.json",
+            "--current-artifact-name-contains",
+            "current",
+            "--current-artifact-stem",
+            "current",
+            "--current-artifact-stem-contains",
+            "curr",
+            "--current-artifact-dir",
+            "benchmark-results",
+            "--current-artifact-dir-contains",
+            "benchmark",
+            "--current-artifact-extension",
+            ".json",
+            "--current-artifact-extension-contains",
+            "json",
+        ]
+    )
+
+    assert args.current_path == ["benchmark-results/current.json"]
+    assert args.current_path_contains == ["current"]
+    assert args.current_path_name == ["current.json"]
+    assert args.current_path_name_contains == ["current"]
+    assert args.current_path_stem == ["current"]
+    assert args.current_path_stem_contains == ["curr"]
+    assert args.current_path_dir == ["benchmark-results"]
+    assert args.current_path_dir_contains == ["benchmark"]
+    assert args.current_path_extension == [".json"]
+    assert args.current_path_extension_contains == ["json"]
 
 
 def test_parse_args_accepts_repo_relative_paths_mode() -> None:
@@ -3806,6 +3849,34 @@ def test_stale_artifacts_can_sort_by_current_path_then_artifact_path() -> None:
     ]
 
 
+def test_stale_artifacts_accepts_current_artifact_sort_alias() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    assert stale_artifacts(manifest, sort_by="current-artifact") == stale_artifacts(
+        manifest,
+        sort_by="current-path",
+    )
+
+
 def test_stale_artifacts_can_sort_by_current_path_descending_then_artifact_path() -> None:
     manifest = {
         "tracks": [
@@ -6527,6 +6598,12 @@ def test_main_fail_on_stale_honors_current_path_filter(monkeypatch) -> None:
     assert (
         report_module.main(
             ["--fail-on-stale", "--current-path", "benchmark-results/base-current.json"]
+        )
+        == 1
+    )
+    assert (
+        report_module.main(
+            ["--fail-on-stale", "--current-artifact", "benchmark-results/base-current.json"]
         )
         == 1
     )
