@@ -153,6 +153,11 @@ def test_parse_size_bytes_rejects_unknown_units() -> None:
         parse_size_bytes("1XB")
 
 
+def test_parse_size_bytes_rejects_negative_values() -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="size must not be negative"):
+        parse_size_bytes("-1MiB")
+
+
 def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
     aliases = [
         "bytes-asc",

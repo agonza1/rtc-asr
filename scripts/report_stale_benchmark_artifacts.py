@@ -172,12 +172,16 @@ def parse_size_bytes(value: str) -> int:
         raise argparse.ArgumentTypeError("size must be bytes or a value with KB, KiB, MB, MiB, GB, or GiB")
 
     amount_text, unit_text = match.groups()
+    amount = float(amount_text)
+    if amount < 0:
+        raise argparse.ArgumentTypeError("size must not be negative")
+
     unit = unit_text.lower()
     multiplier = BYTE_SIZE_UNITS.get(unit)
     if multiplier is None:
         raise argparse.ArgumentTypeError("size unit must be one of: B, KB, KiB, MB, MiB, GB, GiB")
 
-    return int(float(amount_text) * multiplier)
+    return int(amount * multiplier)
 
 
 def format_age_days(age_days: int | None) -> str:
