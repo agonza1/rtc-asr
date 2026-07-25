@@ -110,6 +110,20 @@ def test_summary_groups_accept_directory_aliases() -> None:
     }
 
 
+def test_summary_groups_accept_extension_aliases() -> None:
+    assert normalize_summary_groups(
+        [
+            "artifact-ext",
+            "current-artifact-ext, current-path-ext, current-path-extension",
+            "detail-ext, detail-page-ext",
+        ]
+    ) == {
+        "artifact-extension",
+        "current-artifact-extension",
+        "detail-page-extension",
+    }
+
+
 def test_summary_groups_reject_unknown_values() -> None:
     with pytest.raises(ValueError) as exc_info:
         normalize_summary_groups(["status, typo"])
@@ -226,14 +240,19 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-artifact-stem-asc",
         "current-path-dir-asc",
         "current-artifact-dir-asc",
+        "current-path-ext-asc",
+        "current-artifact-ext-asc",
         "current-path-extension-asc",
         "current-artifact-extension-asc",
         "measured-month-asc",
         "age-bucket-asc",
         "artifact-filename-asc",
         "artifact-basename-asc",
+        "artifact-ext-asc",
         "detail-filename-asc",
         "detail-basename-asc",
+        "detail-ext-asc",
+        "detail-page-ext-asc",
     ]
 
     for alias in aliases:
