@@ -486,12 +486,14 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
         "benchmark-artifact-report",
         "benchmark-artifact-cleanup-summary",
         "benchmark-artifact-cleanup-plan",
+        "benchmark-artifact-cleanup-check",
     } <= phony_targets
     assert "BENCHMARK_ARTIFACT_CLEANUP_DAYS ?= 30" in makefile
     assert "BENCHMARK_ARTIFACT_REPORT_FLAGS ?=" in makefile
     assert "make benchmark-site-check - Fail when benchmark manifest, homepage, detail pages, sitemap, robots.txt, or llms.txt are stale" in makefile
     assert "make benchmark-artifact-cleanup-plan - Print existing stale benchmark artifact/detail paths older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days" in makefile
     assert "make benchmark-artifact-cleanup-summary - Summarize stale benchmark cleanup candidates older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days" in makefile
+    assert "make benchmark-artifact-cleanup-check - Fail when stale benchmark cleanup candidates older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days exist" in makefile
     block = makefile.split("benchmark-site-check:\n", 1)[1].split("\n\n", 1)[0]
     assert "scripts/build_benchmark_manifest.py --results-dir $(BENCHMARK_RESULTS_DIR) --output $(BENCHMARK_RESULTS_DIR)/manifest.json --check" in block
     assert "scripts/prerender_benchmark_homepage.py --manifest $(BENCHMARK_RESULTS_DIR)/manifest.json --homepage docs/index.html --site-base-url $(BENCHMARK_SITE_BASE_URL) --check" in block
@@ -504,6 +506,10 @@ def test_makefile_exposes_benchmark_site_sync_targets() -> None:
     assert "--older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS)" in cleanup_block
     assert "--paths-only --include-detail-pages --existing-paths-only" in cleanup_block
     assert "$(BENCHMARK_ARTIFACT_REPORT_FLAGS)" in cleanup_block
+    cleanup_check_block = makefile.split("benchmark-artifact-cleanup-check:\n", 1)[1].split("\n\n", 1)[0]
+    assert "--older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS)" in cleanup_check_block
+    assert "--fail-on-stale" in cleanup_check_block
+    assert "$(BENCHMARK_ARTIFACT_REPORT_FLAGS)" in cleanup_check_block
 
 
 def test_makefile_exposes_local_stt_transport_compare_target() -> None:
