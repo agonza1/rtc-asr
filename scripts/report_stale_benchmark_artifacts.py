@@ -612,6 +612,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--current-path-dir",
         "--current-artifact-dir",
+        "--current-path-directory",
+        "--current-artifact-directory",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact directory matches this path; repeat to include multiple paths",
@@ -619,6 +621,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--current-path-dir-contains",
         "--current-artifact-dir-contains",
+        "--current-path-directory-contains",
+        "--current-artifact-directory-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact directory contains this text; repeat to include multiple matches",
@@ -626,6 +630,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--current-path-extension",
         "--current-artifact-extension",
+        "--current-path-ext",
+        "--current-artifact-ext",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact extension matches this value; repeat or comma-separate; use 'none' for extensionless or untracked paths",
@@ -633,6 +639,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--current-path-extension-contains",
         "--current-artifact-extension-contains",
+        "--current-path-ext-contains",
+        "--current-artifact-ext-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact extension contains this text; repeat to include multiple matches",
@@ -657,6 +665,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-dir",
+        "--artifact-directory",
         action="append",
         default=None,
         help=(
@@ -666,6 +675,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-dir-contains",
+        "--artifact-directory-contains",
         action="append",
         default=None,
         help=(
@@ -703,12 +713,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-extension",
+        "--artifact-ext",
         action="append",
         default=None,
         help="Only include stale artifacts with this file extension; repeat or comma-separate; use 'none' for extensionless paths",
     )
     parser.add_argument(
         "--artifact-extension-contains",
+        "--artifact-ext-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose file extension contains this text; repeat to include multiple matches",

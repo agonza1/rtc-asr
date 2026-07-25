@@ -360,12 +360,28 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "curr",
             "--current-artifact-dir",
             "benchmark-results",
+            "--current-artifact-directory",
+            "benchmark-results/current",
+            "--current-path-directory",
+            "benchmark-results/path",
             "--current-artifact-dir-contains",
             "benchmark",
+            "--current-artifact-directory-contains",
+            "current",
+            "--current-path-directory-contains",
+            "path",
             "--current-artifact-extension",
             ".json",
+            "--current-artifact-ext",
+            "jsonl",
+            "--current-path-ext",
+            "txt",
             "--current-artifact-extension-contains",
             "json",
+            "--current-artifact-ext-contains",
+            "jsonl",
+            "--current-path-ext-contains",
+            "txt",
         ]
     )
 
@@ -375,10 +391,34 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
     assert args.current_path_name_contains == ["current"]
     assert args.current_path_stem == ["current"]
     assert args.current_path_stem_contains == ["curr"]
-    assert args.current_path_dir == ["benchmark-results"]
-    assert args.current_path_dir_contains == ["benchmark"]
-    assert args.current_path_extension == [".json"]
-    assert args.current_path_extension_contains == ["json"]
+    assert args.current_path_dir == [
+        "benchmark-results",
+        "benchmark-results/current",
+        "benchmark-results/path",
+    ]
+    assert args.current_path_dir_contains == ["benchmark", "current", "path"]
+    assert args.current_path_extension == [".json", "jsonl", "txt"]
+    assert args.current_path_extension_contains == ["json", "jsonl", "txt"]
+
+
+def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--artifact-directory",
+            "benchmark-results",
+            "--artifact-directory-contains",
+            "bench",
+            "--artifact-ext",
+            ".json",
+            "--artifact-ext-contains",
+            "json",
+        ]
+    )
+
+    assert args.artifact_dir == ["benchmark-results"]
+    assert args.artifact_dir_contains == ["bench"]
+    assert args.artifact_extension == [".json"]
+    assert args.artifact_extension_contains == ["json"]
 
 
 def test_parse_args_accepts_file_name_filter_aliases() -> None:
