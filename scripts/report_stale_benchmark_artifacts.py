@@ -784,7 +784,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--json-lines",
+        "--jsonl",
+        "--ndjson",
         action="store_true",
+        dest="json_lines",
         help="Emit one machine-readable stale artifact JSON object per line",
     )
     parser.add_argument(
