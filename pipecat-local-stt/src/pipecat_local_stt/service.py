@@ -490,6 +490,7 @@ class LocalStreamingSTTService(STTService):
     async def _disconnect(self) -> None:
         await self._close_socket_and_tasks(cancel_current=True)
         self._clear_send_queue()
+        self._release_final_waiters()
         self._pre_roll_buffer.clear()
         self._aggregate_buffer.clear()
         self._aggregate_duration_ms = 0.0

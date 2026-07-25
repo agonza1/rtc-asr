@@ -546,6 +546,30 @@ async def _test_cancel_releases_pending_finalize_waiter() -> None:
     await service.cleanup()
 
 
+def test_cleanup_releases_pending_finalize_waiter() -> None:
+    asyncio.run(_test_cleanup_releases_pending_finalize_waiter())
+
+
+async def _test_cleanup_releases_pending_finalize_waiter() -> None:
+    websocket = HealthySendWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, final_timeout_s=30),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+
+    finalize_task = asyncio.create_task(service.finalize_current_utterance())
+    await eventually(lambda: bool(service._final_events))
+    await service.cleanup()
+    await asyncio.wait_for(finalize_task, timeout=1.0)
+
+    assert service.metrics.local_stt_final_timeouts_total == 0
+    assert service._final_events == {}
+
+
 def test_finalize_skips_control_after_queued_send_failure_disconnects() -> None:
     asyncio.run(_test_finalize_skips_control_after_queued_send_failure_disconnects())
 
