@@ -7019,6 +7019,18 @@ def test_main_fail_on_stale_honors_status_contains_filter(monkeypatch) -> None:
 
     assert report_module.main(["--fail-on-stale", "--status", "any", "--status-contains", "legacy"]) == 0
     assert report_module.main(["--fail-on-stale", "--status", "any", "--status-contains", "review"]) == 1
+    assert (
+        report_module.main(
+            [
+                "--fail-on-stale",
+                "--artifact-status",
+                "any",
+                "--artifact-status-contains",
+                "review",
+            ]
+        )
+        == 1
+    )
 
 
 def test_main_fail_on_stale_honors_label_filter(monkeypatch) -> None:
@@ -7264,6 +7276,7 @@ def test_main_fail_on_stale_honors_status_filter(monkeypatch) -> None:
     assert report_module.main(["--fail-on-stale"]) == 0
     assert report_module.main(["--fail-on-stale", "--status", "blocked"]) == 1
     assert report_module.main(["--fail-on-stale", "--status", "legacy,blocked"]) == 1
+    assert report_module.main(["--fail-on-stale", "--artifact-status", "blocked"]) == 1
 
 
 def test_main_json_reports_total_matching_size_when_limited(monkeypatch, capsys) -> None:

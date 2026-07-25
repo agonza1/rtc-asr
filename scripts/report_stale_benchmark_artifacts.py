@@ -791,12 +791,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--status",
+        "--artifact-status",
         action="append",
         default=None,
         help="Only include stale artifacts with this status; repeat to include multiple statuses; use 'any' for all statuses (default: legacy)",
     )
     parser.add_argument(
         "--status-contains",
+        "--artifact-status-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose status contains this text; repeat to include multiple matches",
