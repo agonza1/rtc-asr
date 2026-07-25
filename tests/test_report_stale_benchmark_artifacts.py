@@ -96,6 +96,20 @@ def test_summary_groups_accept_filename_aliases() -> None:
     }
 
 
+def test_summary_groups_accept_directory_aliases() -> None:
+    assert normalize_summary_groups(
+        [
+            "artifact-directory",
+            "current-artifact-directory, current-path-directory",
+            "detail-directory, detail-page-directory",
+        ]
+    ) == {
+        "artifact-dir",
+        "current-artifact-dir",
+        "detail-page-dir",
+    }
+
+
 def test_summary_groups_reject_unknown_values() -> None:
     with pytest.raises(ValueError) as exc_info:
         normalize_summary_groups(["status, typo"])
@@ -275,6 +289,27 @@ def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
         "detail-basename",
         "detail-basename-asc",
         "detail-basename-desc",
+    ]:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_parse_args_accepts_directory_stale_sort_aliases() -> None:
+    for alias in [
+        "artifact-directory",
+        "artifact-directory-asc",
+        "artifact-directory-desc",
+        "current-artifact-directory",
+        "current-artifact-directory-asc",
+        "current-artifact-directory-desc",
+        "current-path-directory",
+        "current-path-directory-asc",
+        "current-path-directory-desc",
+        "detail-directory",
+        "detail-directory-asc",
+        "detail-directory-desc",
+        "detail-page-directory",
+        "detail-page-directory-asc",
+        "detail-page-directory-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
