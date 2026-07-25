@@ -272,6 +272,9 @@ SUMMARY_SORTS = (
     "mean-size",
     "mean-size-desc",
     "mean-size-asc",
+    "mean-bytes",
+    "mean-bytes-desc",
+    "mean-bytes-asc",
     "largest",
     "smallest",
     "count",
@@ -3036,9 +3039,11 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
         "avg-size-desc",
         "mean-size",
         "mean-size-desc",
+        "mean-bytes",
+        "mean-bytes-desc",
     }:
         return (-average_size, -bucket["total_size_bytes"], name)
-    if sort_by in {"average-size-asc", "avg-size-asc", "mean-size-asc"}:
+    if sort_by in {"average-size-asc", "avg-size-asc", "mean-size-asc", "mean-bytes-asc"}:
         return (average_size, bucket["total_size_bytes"], name)
     if sort_by in {"count", "count-desc"}:
         return (-bucket["count"], -bucket["total_size_bytes"], name)

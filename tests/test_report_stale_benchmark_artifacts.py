@@ -160,6 +160,9 @@ def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
         "mean-size",
         "mean-size-desc",
         "mean-size-asc",
+        "mean-bytes",
+        "mean-bytes-desc",
+        "mean-bytes-asc",
     ]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
@@ -2137,6 +2140,37 @@ def test_render_json_summary_accepts_avg_size_sort_alias() -> None:
         ],
         groups=["slug"],
         summary_sort="avg-size",
+    )
+
+    summary = json.loads(rendered)
+
+    assert [bucket["slug"] for bucket in summary["by_slug"]] == ["qwen", "base"]
+
+
+def test_render_json_summary_accepts_mean_bytes_sort_alias() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-a.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 50,
+            },
+            {
+                "artifact_path": "benchmark-results/base-b.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 50,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-large.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 80,
+            },
+        ],
+        groups=["slug"],
+        summary_sort="mean-bytes",
     )
 
     summary = json.loads(rendered)
