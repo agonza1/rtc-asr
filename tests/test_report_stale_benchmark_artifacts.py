@@ -98,7 +98,10 @@ def test_summary_groups_accept_filename_aliases() -> None:
         [
             "artifact-filename, artifact-basename, artifact-file-name",
             "current-filename, current-basename, current-file-name",
-            "detail-filename, detail-basename, detail-file-name, detail-page-file-name",
+            (
+                "detail-filename, detail-page-filename, detail-basename, detail-page-basename, "
+                "detail-file-name, detail-page-file-name"
+            ),
         ]
     ) == {
         "artifact-name",
@@ -251,6 +254,8 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "detail-path-asc",
         "detail-page-path-asc",
         "detail-page-name-asc",
+        "detail-page-basename-asc",
+        "detail-page-filename-asc",
         "detail-page-stem-asc",
         "detail-page-dir-asc",
         "detail-dir-asc",
