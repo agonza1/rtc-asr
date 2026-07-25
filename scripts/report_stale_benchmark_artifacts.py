@@ -17,6 +17,7 @@ from build_benchmark_manifest import DEFAULT_RESULTS_DIR, DEFAULT_TRACKS_PATH, b
 
 SUMMARY_GROUPS = (
     "slug",
+    "artifact-path",
     "artifact-name",
     "artifact-stem",
     "artifact-dir",
@@ -42,6 +43,7 @@ SUMMARY_GROUPS = (
 
 SUMMARY_GROUP_KEYS = {
     "slug": "by_slug",
+    "artifact-path": "by_artifact_path",
     "artifact-name": "by_artifact_name",
     "artifact-stem": "by_artifact_stem",
     "artifact-dir": "by_artifact_dir",
@@ -1808,6 +1810,7 @@ def stale_artifacts(
 def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     total_size_bytes = sum(entry.get("artifact_size_bytes") or 0 for entry in stale)
     by_slug: dict[str, dict[str, Any]] = {}
+    by_artifact_path: dict[str, dict[str, Any]] = {}
     by_artifact_name: dict[str, dict[str, Any]] = {}
     by_artifact_stem: dict[str, dict[str, Any]] = {}
     by_artifact_dir: dict[str, dict[str, Any]] = {}
@@ -1843,6 +1846,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         bucket["count"] += 1
         bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         bucket["total_size"] = format_bytes(bucket["total_size_bytes"])
+
+        artifact_path = str(entry.get("artifact_path") or "unknown")
+        artifact_path_bucket = by_artifact_path.setdefault(
+            artifact_path,
+            {
+                "artifact_path": artifact_path,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        artifact_path_bucket["count"] += 1
+        artifact_path_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        artifact_path_bucket["total_size"] = format_bytes(artifact_path_bucket["total_size_bytes"])
 
         artifact_name = Path(entry.get("artifact_path") or "").name or "unknown"
         artifact_name_bucket = by_artifact_name.setdefault(
@@ -2149,6 +2166,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_slug": sorted(
             by_slug.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["slug"]),
+        ),
+        "by_artifact_path": sorted(
+            by_artifact_path.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["artifact_path"]),
         ),
         "by_artifact_name": sorted(
             by_artifact_name.values(),
@@ -2801,6 +2822,40 @@ def render_summary(
         append_omitted_summary_buckets(
             lines,
             summary["by_slug"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+    if "artifact-path" in selected_groups and summary["by_artifact_path"]:
+        lines.append("By artifact path:")
+    if "artifact-path" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_artifact_path"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {artifact_path}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    artifact_path=bucket["artifact_path"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_artifact_path"],
             shown_buckets,
             limit=summary_limit,
             sort_by=summary_sort,

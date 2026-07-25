@@ -54,10 +54,11 @@ def test_status_filters_accept_comma_separated_values() -> None:
 
 
 def test_summary_groups_accept_comma_separated_values() -> None:
-    assert normalize_summary_groups(["status, backend", "measured-month"]) == {
+    assert normalize_summary_groups(["status, backend", "measured-month, artifact-path"]) == {
         "status",
         "backend",
         "measured-month",
+        "artifact-path",
     }
 
 
@@ -85,7 +86,7 @@ def test_summary_groups_reject_unknown_values() -> None:
         normalize_summary_groups(["status, typo"])
 
     assert "Unsupported summary group: typo." in str(exc_info.value)
-    assert "Valid groups: slug, artifact-name" in str(exc_info.value)
+    assert "Valid groups: slug, artifact-path, artifact-name" in str(exc_info.value)
 
 
 def test_validate_summary_options_rejects_invalid_ranges() -> None:
@@ -1174,6 +1175,41 @@ def test_render_json_summary_can_select_and_limit_groups() -> None:
             }
         ],
     }
+
+
+def test_render_json_summary_can_group_by_artifact_path() -> None:
+    rendered = render_json_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/archive/base.json",
+                "status": "legacy",
+                "artifact_size_bytes": 70,
+            },
+            {
+                "artifact_path": "benchmark-results/base.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+        groups=["artifact-path"],
+    )
+
+    summary = json.loads(rendered)
+
+    assert summary["by_artifact_path"] == [
+        {
+            "artifact_path": "benchmark-results/archive/base.json",
+            "count": 1,
+            "total_size_bytes": 70,
+            "total_size": "70 B",
+        },
+        {
+            "artifact_path": "benchmark-results/base.json",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+    ]
 
 
 def test_render_json_summary_can_include_group_share_percentages() -> None:
@@ -2497,6 +2533,37 @@ def test_stale_summary_groups_artifact_size_by_slug() -> None:
         },
         {
             "slug": "qwen",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
+def test_stale_summary_groups_artifact_size_by_artifact_path() -> None:
+    stale = [
+        {"artifact_path": "benchmark-results/archive/base-old.json", "artifact_size_bytes": 20},
+        {"artifact_path": "benchmark-results/base-old.json", "artifact_size_bytes": 30},
+        {"artifact_path": "benchmark-results/qwen.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_artifact_path"] == [
+        {
+            "artifact_path": "benchmark-results/base-old.json",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "artifact_path": "benchmark-results/archive/base-old.json",
+            "count": 1,
+            "total_size_bytes": 20,
+            "total_size": "20 B",
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
             "count": 1,
             "total_size_bytes": 5,
             "total_size": "5 B",
@@ -5970,6 +6037,10 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "Found 3 stale benchmark artifacts (65 B, 65 bytes).\n"
         "- base: 2 artifacts (35 B, 35 bytes)\n"
         "- untracked: 1 artifact (30 B, 30 bytes)\n"
+        "By artifact path:\n"
+        "- benchmark-results/untracked.json: 1 artifact (30 B, 30 bytes)\n"
+        "- benchmark-results/base-old.json: 1 artifact (20 B, 20 bytes)\n"
+        "- benchmark-results/base-older.json: 1 artifact (15 B, 15 bytes)\n"
         "By artifact name:\n"
         "- untracked.json: 1 artifact (30 B, 30 bytes)\n"
         "- base-old.json: 1 artifact (20 B, 20 bytes)\n"
@@ -7210,6 +7281,9 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
     assert capsys.readouterr().out == (
         "Found 2 stale benchmark artifacts (100 B, 100 bytes).\n"
         "- base: 2 artifacts (100 B, 100 bytes)\n"
+        "By artifact path:\n"
+        "- benchmark-results/large.json: 1 artifact (90 B, 90 bytes)\n"
+        "- benchmark-results/small.json: 1 artifact (10 B, 10 bytes)\n"
         "By artifact name:\n"
         "- large.json: 1 artifact (90 B, 90 bytes)\n"
         "- small.json: 1 artifact (10 B, 10 bytes)\n"
