@@ -169,7 +169,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--manifest",
         type=Path,
         default=None,
-        help="Read an existing benchmark manifest JSON instead of rebuilding one from --results-dir and --tracks",
+        help=(
+            "Read an existing benchmark manifest JSON instead of rebuilding one from "
+            "--results-dir and --tracks; use '-' to read from stdin"
+        ),
     )
     parser.add_argument(
         "--older-than-days",
@@ -823,6 +826,17 @@ def normalize_summary_groups(groups: list[str] | None) -> set[str]:
         invalid_group_list = ", ".join(invalid_groups)
         raise ValueError(f"Unsupported summary group: {invalid_group_list}. Valid groups: {valid_groups}")
     return selected_groups
+
+
+def load_manifest_from_path(path: Path) -> dict[str, Any]:
+    try:
+        manifest_text = sys.stdin.read() if str(path) == "-" else path.read_text(encoding="utf-8")
+        manifest = json.loads(manifest_text)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{path} contains invalid JSON: {error.msg}") from error
+    if not isinstance(manifest, dict):
+        raise ValueError(f"{path} must contain a JSON object")
+    return manifest
 
 
 def stale_artifacts(
@@ -3583,12 +3597,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.manifest is None:
         manifest = build_manifest(args.results_dir, args.tracks)
     else:
-        try:
-            manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as error:
-            raise ValueError(f"{args.manifest} contains invalid JSON: {error.msg}") from error
-        if not isinstance(manifest, dict):
-            raise ValueError(f"{args.manifest} must contain a JSON object")
+        manifest = load_manifest_from_path(args.manifest)
     stale = stale_artifacts(
         manifest,
         older_than_days=args.older_than_days,

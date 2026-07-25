@@ -1,4 +1,5 @@
 import importlib.util
+import io
 import json
 import sys
 from datetime import UTC, datetime
@@ -6248,6 +6249,42 @@ def test_main_paths_only_can_read_existing_manifest(monkeypatch, tmp_path, capsy
     monkeypatch.setattr(report_module, "build_manifest", fail_build_manifest)
 
     assert report_module.main(["--manifest", str(manifest_path), "--paths-only"]) == 0
+
+    assert capsys.readouterr().out == "benchmark-results/old.json\n"
+
+
+def test_main_paths_only_can_read_existing_manifest_from_stdin(monkeypatch, capsys) -> None:
+    def fail_build_manifest(*args, **kwargs):
+        raise AssertionError("--manifest - should skip manifest rebuild")
+
+    monkeypatch.setattr(report_module, "build_manifest", fail_build_manifest)
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        io.StringIO(
+            json.dumps(
+                {
+                    "tracks": [{"slug": "base", "artifact_path": "benchmark-results/current.json"}],
+                    "artifacts": [
+                        {
+                            "artifact_path": "benchmark-results/current.json",
+                            "slug": "base",
+                            "status": "validated",
+                            "artifact_size_bytes": 100,
+                        },
+                        {
+                            "artifact_path": "benchmark-results/old.json",
+                            "slug": "base",
+                            "status": "legacy",
+                            "artifact_size_bytes": 10,
+                        },
+                    ],
+                }
+            )
+        ),
+    )
+
+    assert report_module.main(["--manifest", "-", "--paths-only"]) == 0
 
     assert capsys.readouterr().out == "benchmark-results/old.json\n"
 
