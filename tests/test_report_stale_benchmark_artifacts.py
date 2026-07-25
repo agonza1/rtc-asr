@@ -96,6 +96,34 @@ def test_summary_groups_accept_filename_aliases() -> None:
     }
 
 
+def test_summary_groups_accept_directory_aliases() -> None:
+    assert normalize_summary_groups(
+        [
+            "artifact-directory",
+            "current-artifact-directory, current-path-directory",
+            "detail-directory, detail-page-directory",
+        ]
+    ) == {
+        "artifact-dir",
+        "current-artifact-dir",
+        "detail-page-dir",
+    }
+
+
+def test_summary_groups_accept_extension_aliases() -> None:
+    assert normalize_summary_groups(
+        [
+            "artifact-ext",
+            "current-artifact-ext, current-path-ext, current-path-extension",
+            "detail-ext, detail-page-ext",
+        ]
+    ) == {
+        "artifact-extension",
+        "current-artifact-extension",
+        "detail-page-extension",
+    }
+
+
 def test_summary_groups_reject_unknown_values() -> None:
     with pytest.raises(ValueError) as exc_info:
         normalize_summary_groups(["status, typo"])
@@ -212,14 +240,19 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-artifact-stem-asc",
         "current-path-dir-asc",
         "current-artifact-dir-asc",
+        "current-path-ext-asc",
+        "current-artifact-ext-asc",
         "current-path-extension-asc",
         "current-artifact-extension-asc",
         "measured-month-asc",
         "age-bucket-asc",
         "artifact-filename-asc",
         "artifact-basename-asc",
+        "artifact-ext-asc",
         "detail-filename-asc",
         "detail-basename-asc",
+        "detail-ext-asc",
+        "detail-page-ext-asc",
     ]
 
     for alias in aliases:
@@ -275,6 +308,27 @@ def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
         "detail-basename",
         "detail-basename-asc",
         "detail-basename-desc",
+    ]:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_parse_args_accepts_directory_stale_sort_aliases() -> None:
+    for alias in [
+        "artifact-directory",
+        "artifact-directory-asc",
+        "artifact-directory-desc",
+        "current-artifact-directory",
+        "current-artifact-directory-asc",
+        "current-artifact-directory-desc",
+        "current-path-directory",
+        "current-path-directory-asc",
+        "current-path-directory-desc",
+        "detail-directory",
+        "detail-directory-asc",
+        "detail-directory-desc",
+        "detail-page-directory",
+        "detail-page-directory-asc",
+        "detail-page-directory-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
