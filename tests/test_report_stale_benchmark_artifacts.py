@@ -2359,6 +2359,11 @@ def test_parse_args_accepts_markdown_output_flag() -> None:
     assert parse_args(["--markdown"]).markdown is True
 
 
+def test_parse_args_accepts_json_lines_output_aliases() -> None:
+    assert parse_args(["--jsonl"]).json_lines is True
+    assert parse_args(["--ndjson"]).json_lines is True
+
+
 def test_parse_args_accepts_json_summary_share_flag() -> None:
     assert parse_args(["--json-summary", "--summary-share"]).summary_share is True
 
