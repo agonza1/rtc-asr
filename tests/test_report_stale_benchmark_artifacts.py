@@ -115,6 +115,11 @@ def test_parse_args_accepts_bytes_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_disk_size_summary_sort_aliases() -> None:
+    for alias in ["disk-size", "disk-size-desc", "disk-size-asc"]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
     for alias in ["largest", "smallest"]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
@@ -156,6 +161,9 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "bytes",
         "bytes-desc",
         "bytes-asc",
+        "disk-size",
+        "disk-size-desc",
+        "disk-size-asc",
         "total-size",
         "total-size-desc",
         "total-size-asc",
@@ -897,8 +905,8 @@ def test_stale_artifacts_accepts_size_sort_aliases() -> None:
         ],
     }
 
-    descending = stale_artifacts(manifest, sort_by="bytes-desc")
-    ascending = stale_artifacts(manifest, sort_by="total-size-asc")
+    descending = stale_artifacts(manifest, sort_by="disk-size-desc")
+    ascending = stale_artifacts(manifest, sort_by="disk-size-asc")
     largest = stale_artifacts(manifest, sort_by="largest")
     smallest = stale_artifacts(manifest, sort_by="smallest")
 
@@ -1418,6 +1426,33 @@ def test_render_json_summary_accepts_bytes_sort_aliases() -> None:
 
     descending_summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="bytes-desc"))
     ascending_summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="bytes-asc"))
+
+    assert [bucket["slug"] for bucket in descending_summary["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in ascending_summary["by_slug"]] == ["qwen", "base"]
+
+
+def test_render_json_summary_accepts_disk_size_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 90,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 10,
+        },
+    ]
+
+    descending_summary = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="disk-size-desc")
+    )
+    ascending_summary = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="disk-size-asc")
+    )
 
     assert [bucket["slug"] for bucket in descending_summary["by_slug"]] == ["base", "qwen"]
     assert [bucket["slug"] for bucket in ascending_summary["by_slug"]] == ["qwen", "base"]

@@ -87,6 +87,9 @@ SUMMARY_SORTS = (
     "bytes",
     "bytes-desc",
     "bytes-asc",
+    "disk-size",
+    "disk-size-desc",
+    "disk-size-asc",
     "total-size",
     "total-size-desc",
     "total-size-asc",
@@ -187,6 +190,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "bytes",
             "bytes-desc",
             "bytes-asc",
+            "disk-size",
+            "disk-size-desc",
+            "disk-size-asc",
             "total-size",
             "total-size-desc",
             "total-size-asc",
@@ -1227,7 +1233,17 @@ def stale_artifacts(
                 "artifact_size": format_bytes(artifact_size_bytes),
             }
         )
-    if sort_by in {"size", "size-desc", "bytes", "bytes-desc", "total-size", "total-size-desc", "largest"}:
+    if sort_by in {
+        "size",
+        "size-desc",
+        "bytes",
+        "bytes-desc",
+        "disk-size",
+        "disk-size-desc",
+        "total-size",
+        "total-size-desc",
+        "largest",
+    }:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1235,7 +1251,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by in {"size-asc", "bytes-asc", "total-size-asc", "smallest"}:
+    if sort_by in {"size-asc", "bytes-asc", "disk-size-asc", "total-size-asc", "smallest"}:
         return sorted(
             stale,
             key=lambda entry: (
@@ -1654,7 +1670,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-desc, size-asc, bytes, bytes-desc, bytes-asc, total-size, total-size-desc, total-size-asc, largest, smallest, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-path, artifact-path-asc, artifact-path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, detail-page-stem, detail-page-stem-asc, detail-page-stem-desc, detail-page-dir, detail-page-dir-asc, detail-page-dir-desc, detail-page-extension, detail-page-extension-asc, detail-page-extension-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
+        "sort_by must be one of: size, size-desc, size-asc, bytes, bytes-desc, bytes-asc, disk-size, disk-size-desc, disk-size-asc, total-size, total-size-desc, total-size-asc, largest, smallest, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, path, path-asc, path-desc, artifact-path, artifact-path-asc, artifact-path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, detail-page-stem, detail-page-stem-asc, detail-page-stem-desc, detail-page-dir, detail-page-dir-asc, detail-page-dir-desc, detail-page-extension, detail-page-extension-asc, detail-page-extension-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
     )
 
 
@@ -2554,7 +2570,7 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
         return (*(-ord(character) for character in name), -len(name))
     if sort_by in {"name", "name-asc"}:
         return (name,)
-    if sort_by in {"size-asc", "bytes-asc", "total-size-asc", "smallest"}:
+    if sort_by in {"size-asc", "bytes-asc", "disk-size-asc", "total-size-asc", "smallest"}:
         return (bucket["total_size_bytes"], name)
     return (-bucket["total_size_bytes"], name)
 
