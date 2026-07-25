@@ -84,7 +84,9 @@ def test_summary_groups_accept_current_path_aliases() -> None:
 
 
 def test_summary_groups_accept_file_stem_aliases() -> None:
-    assert normalize_summary_groups(["artifact-file-stem, current-file-stem, detail-file-stem, detail-stem"]) == {
+    assert normalize_summary_groups(
+        ["artifact-file-stem, current-file-stem, detail-file-stem, detail-stem, detail-page-file-stem"]
+    ) == {
         "artifact-stem",
         "current-artifact-stem",
         "detail-page-stem",
@@ -96,7 +98,7 @@ def test_summary_groups_accept_filename_aliases() -> None:
         [
             "artifact-filename, artifact-basename, artifact-file-name",
             "current-filename, current-basename, current-file-name",
-            "detail-filename, detail-basename, detail-file-name",
+            "detail-filename, detail-basename, detail-file-name, detail-page-file-name",
         ]
     ) == {
         "artifact-name",
@@ -133,6 +135,7 @@ def test_summary_groups_accept_extension_aliases() -> None:
             "current-extension, current-ext, current-artifact-ext, current-file-ext",
             "current-file-extension, current-path-ext, current-path-extension",
             "detail-extension, detail-ext, detail-file-ext, detail-file-extension, detail-page-ext",
+            "detail-page-file-ext, detail-page-file-extension",
         ]
     ) == {
         "artifact-extension",
@@ -293,12 +296,16 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "detail-filename-asc",
         "detail-basename-asc",
         "detail-file-name-asc",
+        "detail-page-file-name-asc",
         "detail-file-stem-asc",
         "detail-stem-asc",
+        "detail-page-file-stem-asc",
         "detail-ext-asc",
         "detail-file-ext-asc",
         "detail-file-extension-asc",
         "detail-page-ext-asc",
+        "detail-page-file-ext-asc",
+        "detail-page-file-extension-asc",
     ]
 
     for alias in aliases:
@@ -363,6 +370,9 @@ def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
         "detail-file-name",
         "detail-file-name-asc",
         "detail-file-name-desc",
+        "detail-page-file-name",
+        "detail-page-file-name-asc",
+        "detail-page-file-name-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
@@ -381,6 +391,21 @@ def test_parse_args_accepts_file_stem_stale_sort_aliases() -> None:
         "detail-stem",
         "detail-stem-asc",
         "detail-stem-desc",
+        "detail-page-file-stem",
+        "detail-page-file-stem-asc",
+        "detail-page-file-stem-desc",
+    ]:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_parse_args_accepts_detail_page_file_extension_sort_aliases() -> None:
+    for alias in [
+        "detail-page-file-ext",
+        "detail-page-file-ext-asc",
+        "detail-page-file-ext-desc",
+        "detail-page-file-extension",
+        "detail-page-file-extension-asc",
+        "detail-page-file-extension-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
@@ -635,17 +660,21 @@ def test_parse_args_accepts_file_stem_filter_aliases() -> None:
             "detail",
             "--detail-stem",
             "older-detail",
+            "--detail-page-file-stem",
+            "page-detail",
             "--detail-file-stem-contains",
             "detail",
             "--detail-stem-contains",
             "older",
+            "--detail-page-file-stem-contains",
+            "page",
         ]
     )
 
     assert args.artifact_stem == ["stale"]
     assert args.artifact_stem_contains == ["old"]
-    assert args.detail_page_stem == ["detail", "older-detail"]
-    assert args.detail_page_stem_contains == ["detail", "older"]
+    assert args.detail_page_stem == ["detail", "older-detail", "page-detail"]
+    assert args.detail_page_stem_contains == ["detail", "older", "page"]
 
 
 def test_parse_args_accepts_file_name_filter_aliases() -> None:
@@ -681,12 +710,16 @@ def test_parse_args_accepts_file_name_filter_aliases() -> None:
             "older.html",
             "--detail-file-name",
             "archive.html",
+            "--detail-page-file-name",
+            "page-archive.html",
             "--detail-basename-contains",
             "stale",
             "--detail-filename-contains",
             "older",
             "--detail-file-name-contains",
             "archive",
+            "--detail-page-file-name-contains",
+            "page-archive",
         ]
     )
 
@@ -694,8 +727,8 @@ def test_parse_args_accepts_file_name_filter_aliases() -> None:
     assert args.artifact_name_contains == ["stale", "older", "archive"]
     assert args.current_path_name == ["current.json", "latest.json", "winner.json"]
     assert args.current_path_name_contains == ["current", "latest", "winner"]
-    assert args.detail_page_name == ["stale.html", "older.html", "archive.html"]
-    assert args.detail_page_name_contains == ["stale", "older", "archive"]
+    assert args.detail_page_name == ["stale.html", "older.html", "archive.html", "page-archive.html"]
+    assert args.detail_page_name_contains == ["stale", "older", "archive", "page-archive"]
 
 
 def test_parse_args_accepts_detail_path_filter_aliases() -> None:
@@ -755,6 +788,10 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
             "json",
             "--detail-page-ext",
             "none",
+            "--detail-page-file-ext",
+            "md",
+            "--detail-page-file-extension",
+            "txt",
             "--detail-extension-contains",
             "html",
             "--detail-ext-contains",
@@ -765,6 +802,10 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
             "json",
             "--detail-page-ext-contains",
             "none",
+            "--detail-page-file-ext-contains",
+            "md",
+            "--detail-page-file-extension-contains",
+            "txt",
         ]
     )
 
@@ -792,8 +833,8 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
         "folder-name",
         "page-folder-name",
     ]
-    assert args.detail_page_extension == [".html", "htm", "xhtml", "json", "none"]
-    assert args.detail_page_extension_contains == ["html", "htm", "xhtml", "json", "none"]
+    assert args.detail_page_extension == [".html", "htm", "xhtml", "json", "none", "md", "txt"]
+    assert args.detail_page_extension_contains == ["html", "htm", "xhtml", "json", "none", "md", "txt"]
 
 
 def test_parse_args_accepts_repo_relative_paths_mode() -> None:
