@@ -157,6 +157,9 @@ def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
         "avg-size",
         "avg-size-desc",
         "avg-size-asc",
+        "mean-size",
+        "mean-size-desc",
+        "mean-size-asc",
     ]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
