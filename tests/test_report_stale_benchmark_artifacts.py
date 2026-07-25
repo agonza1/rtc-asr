@@ -117,7 +117,7 @@ def test_summary_groups_accept_directory_aliases() -> None:
                 "current-artifact-folder-name, current-path-folder-name"
             ),
             (
-                "detail-directory, detail-page-directory, detail-dirname, detail-page-dirname, "
+                "detail-directory, detail-dir, detail-page-directory, detail-dirname, detail-page-dirname, "
                 "detail-folder, detail-page-folder, detail-folder-name, detail-page-folder-name"
             ),
         ]
@@ -253,6 +253,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "detail-page-name-asc",
         "detail-page-stem-asc",
         "detail-page-dir-asc",
+        "detail-dir-asc",
         "detail-dirname-asc",
         "detail-page-dirname-asc",
         "detail-page-extension-asc",
@@ -451,6 +452,9 @@ def test_parse_args_accepts_directory_stale_sort_aliases() -> None:
         "detail-directory",
         "detail-directory-asc",
         "detail-directory-desc",
+        "detail-dir",
+        "detail-dir-asc",
+        "detail-dir-desc",
         "detail-dirname",
         "detail-dirname-asc",
         "detail-dirname-desc",
