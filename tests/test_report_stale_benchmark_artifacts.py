@@ -75,10 +75,18 @@ def test_summary_groups_accept_all_alias_with_specific_groups() -> None:
 
 
 def test_summary_groups_accept_current_path_aliases() -> None:
-    assert normalize_summary_groups(["current-path, current-path-name, current-path-stem"]) == {
+    assert normalize_summary_groups(["current-path, current-path-name, current-path-stem, current-file-stem"]) == {
         "current-artifact",
         "current-artifact-name",
         "current-artifact-stem",
+    }
+
+
+def test_summary_groups_accept_file_stem_aliases() -> None:
+    assert normalize_summary_groups(["artifact-file-stem, current-file-stem, detail-file-stem, detail-stem"]) == {
+        "artifact-stem",
+        "current-artifact-stem",
+        "detail-page-stem",
     }
 
 
@@ -217,6 +225,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "bytes-asc",
         "total-size-asc",
         "artifact-stem-asc",
+        "artifact-file-stem-asc",
         "artifact-dir-asc",
         "artifact-extension-asc",
         "detail-page-asc",
@@ -238,6 +247,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-basename-asc",
         "current-path-stem-asc",
         "current-artifact-stem-asc",
+        "current-file-stem-asc",
         "current-path-dir-asc",
         "current-artifact-dir-asc",
         "current-path-ext-asc",
@@ -251,6 +261,8 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "artifact-ext-asc",
         "detail-filename-asc",
         "detail-basename-asc",
+        "detail-file-stem-asc",
+        "detail-stem-asc",
         "detail-ext-asc",
         "detail-page-ext-asc",
     ]
@@ -312,6 +324,24 @@ def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
         assert parse_args(["--sort", alias]).sort == alias
 
 
+def test_parse_args_accepts_file_stem_stale_sort_aliases() -> None:
+    for alias in [
+        "artifact-file-stem",
+        "artifact-file-stem-asc",
+        "artifact-file-stem-desc",
+        "current-file-stem",
+        "current-file-stem-asc",
+        "current-file-stem-desc",
+        "detail-file-stem",
+        "detail-file-stem-asc",
+        "detail-file-stem-desc",
+        "detail-stem",
+        "detail-stem-asc",
+        "detail-stem-desc",
+    ]:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
 def test_parse_args_accepts_directory_stale_sort_aliases() -> None:
     for alias in [
         "artifact-directory",
@@ -356,8 +386,12 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "current",
             "--current-artifact-stem",
             "current",
+            "--current-file-stem",
+            "latest",
             "--current-artifact-stem-contains",
             "curr",
+            "--current-file-stem-contains",
+            "late",
             "--current-artifact-dir",
             "benchmark-results",
             "--current-artifact-directory",
@@ -389,8 +423,8 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
     assert args.current_path_contains == ["current"]
     assert args.current_path_name == ["current.json"]
     assert args.current_path_name_contains == ["current"]
-    assert args.current_path_stem == ["current"]
-    assert args.current_path_stem_contains == ["curr"]
+    assert args.current_path_stem == ["current", "latest"]
+    assert args.current_path_stem_contains == ["curr", "late"]
     assert args.current_path_dir == [
         "benchmark-results",
         "benchmark-results/current",
@@ -419,6 +453,30 @@ def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() ->
     assert args.artifact_dir_contains == ["bench"]
     assert args.artifact_extension == [".json"]
     assert args.artifact_extension_contains == ["json"]
+
+
+def test_parse_args_accepts_file_stem_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--artifact-file-stem",
+            "stale",
+            "--artifact-file-stem-contains",
+            "old",
+            "--detail-file-stem",
+            "detail",
+            "--detail-stem",
+            "older-detail",
+            "--detail-file-stem-contains",
+            "detail",
+            "--detail-stem-contains",
+            "older",
+        ]
+    )
+
+    assert args.artifact_stem == ["stale"]
+    assert args.artifact_stem_contains == ["old"]
+    assert args.detail_page_stem == ["detail", "older-detail"]
+    assert args.detail_page_stem_contains == ["detail", "older"]
 
 
 def test_parse_args_accepts_file_name_filter_aliases() -> None:
