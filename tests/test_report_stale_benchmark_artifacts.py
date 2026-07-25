@@ -122,9 +122,9 @@ def test_summary_groups_accept_directory_aliases() -> None:
 def test_summary_groups_accept_extension_aliases() -> None:
     assert normalize_summary_groups(
         [
-            "artifact-ext",
-            "current-artifact-ext, current-path-ext, current-path-extension",
-            "detail-ext, detail-page-ext",
+            "artifact-ext, artifact-file-extension",
+            "current-artifact-ext, current-file-extension, current-path-ext, current-path-extension",
+            "detail-ext, detail-file-extension, detail-page-ext",
         ]
     ) == {
         "artifact-extension",
@@ -267,6 +267,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-artifact-dirname-asc",
         "current-path-ext-asc",
         "current-artifact-ext-asc",
+        "current-file-extension-asc",
         "current-path-extension-asc",
         "current-artifact-extension-asc",
         "measured-month-asc",
@@ -275,12 +276,14 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "artifact-basename-asc",
         "artifact-file-name-asc",
         "artifact-ext-asc",
+        "artifact-file-extension-asc",
         "detail-filename-asc",
         "detail-basename-asc",
         "detail-file-name-asc",
         "detail-file-stem-asc",
         "detail-stem-asc",
         "detail-ext-asc",
+        "detail-file-extension-asc",
         "detail-page-ext-asc",
     ]
 
@@ -457,12 +460,16 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             ".json",
             "--current-artifact-ext",
             "jsonl",
+            "--current-file-extension",
+            "csv",
             "--current-path-ext",
             "txt",
             "--current-artifact-extension-contains",
             "json",
             "--current-artifact-ext-contains",
             "jsonl",
+            "--current-file-extension-contains",
+            "csv",
             "--current-path-ext-contains",
             "txt",
         ]
@@ -482,8 +489,8 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
         "benchmark-results/path-dirname",
     ]
     assert args.current_path_dir_contains == ["benchmark", "current", "path", "dirname-current", "dirname-path"]
-    assert args.current_path_extension == [".json", "jsonl", "txt"]
-    assert args.current_path_extension_contains == ["json", "jsonl", "txt"]
+    assert args.current_path_extension == [".json", "jsonl", "csv", "txt"]
+    assert args.current_path_extension_contains == ["json", "jsonl", "csv", "txt"]
 
 
 def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() -> None:
@@ -499,15 +506,19 @@ def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() ->
             "archive",
             "--artifact-ext",
             ".json",
+            "--artifact-file-extension",
+            "jsonl",
             "--artifact-ext-contains",
             "json",
+            "--artifact-file-extension-contains",
+            "jsonl",
         ]
     )
 
     assert args.artifact_dir == ["benchmark-results", "benchmark-results/archive"]
     assert args.artifact_dir_contains == ["bench", "archive"]
-    assert args.artifact_extension == [".json"]
-    assert args.artifact_extension_contains == ["json"]
+    assert args.artifact_extension == [".json", "jsonl"]
+    assert args.artifact_extension_contains == ["json", "jsonl"]
 
 
 def test_parse_args_accepts_file_stem_filter_aliases() -> None:
@@ -619,12 +630,16 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
             ".html",
             "--detail-ext",
             "htm",
+            "--detail-file-extension",
+            "json",
             "--detail-page-ext",
             "none",
             "--detail-extension-contains",
             "html",
             "--detail-ext-contains",
             "htm",
+            "--detail-file-extension-contains",
+            "json",
             "--detail-page-ext-contains",
             "none",
         ]
@@ -640,8 +655,8 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
         "benchmark-results/page-dirname-pages",
     ]
     assert args.detail_page_dir_contains == ["pages", "legacy", "archive", "dirname", "page-dirname"]
-    assert args.detail_page_extension == [".html", "htm", "none"]
-    assert args.detail_page_extension_contains == ["html", "htm", "none"]
+    assert args.detail_page_extension == [".html", "htm", "json", "none"]
+    assert args.detail_page_extension_contains == ["html", "htm", "json", "none"]
 
 
 def test_parse_args_accepts_repo_relative_paths_mode() -> None:
