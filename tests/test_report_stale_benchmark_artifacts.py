@@ -81,6 +81,14 @@ def test_summary_groups_accept_current_path_aliases() -> None:
     }
 
 
+def test_summary_groups_accept_filename_aliases() -> None:
+    assert normalize_summary_groups(["artifact-filename, current-filename, detail-filename"]) == {
+        "artifact-name",
+        "current-artifact-name",
+        "detail-page-name",
+    }
+
+
 def test_summary_groups_reject_unknown_values() -> None:
     with pytest.raises(ValueError) as exc_info:
         normalize_summary_groups(["status, typo"])
@@ -186,6 +194,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-artifact-asc",
         "current-path-name-asc",
         "current-artifact-name-asc",
+        "current-filename-asc",
         "current-path-stem-asc",
         "current-artifact-stem-asc",
         "current-path-dir-asc",
@@ -194,6 +203,8 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-artifact-extension-asc",
         "measured-month-asc",
         "age-bucket-asc",
+        "artifact-filename-asc",
+        "detail-filename-asc",
     ]
 
     for alias in aliases:
@@ -637,6 +648,40 @@ def test_stale_artifacts_accepts_readable_age_sort_aliases() -> None:
         "benchmark-results/fresh.json",
         "benchmark-results/stale.json",
     ]
+
+
+def test_stale_artifacts_accepts_filename_sort_aliases() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "base", "artifact_path": "benchmark-results/current/base-current.json"},
+            {"slug": "qwen", "artifact_path": "benchmark-results/current/qwen-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/zulu.json",
+                "slug": "qwen",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/alpha.json",
+                "slug": "base",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    artifact_sorted = stale_artifacts(manifest, sort_by="artifact-filename")
+    current_sorted = stale_artifacts(manifest, sort_by="current-filename-desc")
+    detail_sorted = stale_artifacts(manifest, sort_by="detail-filename")
+
+    assert [entry["artifact_name"] for entry in artifact_sorted] == ["alpha.json", "zulu.json"]
+    assert [entry["current_artifact_name"] for entry in current_sorted] == [
+        "qwen-current.json",
+        "base-current.json",
+    ]
+    assert [entry["detail_page_name"] for entry in detail_sorted] == ["alpha.html", "zulu.html"]
 
 
 def test_stale_artifacts_can_filter_by_artifact_directory() -> None:

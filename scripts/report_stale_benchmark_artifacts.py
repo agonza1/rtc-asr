@@ -68,11 +68,14 @@ SUMMARY_GROUP_KEYS = {
 }
 
 SUMMARY_GROUP_ALIASES = {
+    "artifact-filename": "artifact-name",
     "current-path": "current-artifact",
+    "current-filename": "current-artifact-name",
     "current-path-name": "current-artifact-name",
     "current-path-stem": "current-artifact-stem",
     "current-path-dir": "current-artifact-dir",
     "current-path-extension": "current-artifact-extension",
+    "detail-filename": "detail-page-name",
 }
 
 STALE_SORT_ALIASES = {
@@ -105,6 +108,15 @@ STALE_SORT_ALIASES = {
     "current-artifact-extension": "current-path-extension",
     "current-artifact-extension-asc": "current-path-extension-asc",
     "current-artifact-extension-desc": "current-path-extension-desc",
+    "artifact-filename": "artifact-name",
+    "artifact-filename-asc": "artifact-name-asc",
+    "artifact-filename-desc": "artifact-name-desc",
+    "current-filename": "current-path-name",
+    "current-filename-asc": "current-path-name-asc",
+    "current-filename-desc": "current-path-name-desc",
+    "detail-filename": "detail-page-name",
+    "detail-filename-asc": "detail-page-name-asc",
+    "detail-filename-desc": "detail-page-name-desc",
 }
 
 AGE_BUCKET_ORDER = {
@@ -295,6 +307,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "artifact-name",
             "artifact-name-asc",
             "artifact-name-desc",
+            "artifact-filename",
+            "artifact-filename-asc",
+            "artifact-filename-desc",
             "artifact-dir",
             "artifact-dir-asc",
             "artifact-dir-desc",
@@ -307,6 +322,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "detail-page-name",
             "detail-page-name-asc",
             "detail-page-name-desc",
+            "detail-filename",
+            "detail-filename-asc",
+            "detail-filename-desc",
             "detail-page-stem",
             "detail-page-stem-asc",
             "detail-page-stem-desc",
@@ -346,6 +364,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "current-path-name",
             "current-path-name-asc",
             "current-path-name-desc",
+            "current-filename",
+            "current-filename-asc",
+            "current-filename-desc",
             "current-artifact-name",
             "current-artifact-name-asc",
             "current-artifact-name-desc",
