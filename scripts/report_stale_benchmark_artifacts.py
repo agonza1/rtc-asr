@@ -372,7 +372,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--current-artifact",
         action="append",
         default=None,
-        help="Only include stale artifacts whose track currently points at this artifact path; repeat to include multiple paths",
+        help="Only include stale artifacts whose track currently points at this artifact path; repeat to include multiple paths; use 'none' for untracked artifacts",
     )
     parser.add_argument(
         "--current-path-contains",
@@ -981,7 +981,12 @@ def stale_artifacts(
     current_artifact_paths = {track["artifact_path"] for track in tracks}
     current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
     allowed_backends = None if backends is None else {backend.lower() for backend in backends}
-    allowed_current_paths = None if current_paths is None else set(current_paths)
+    allowed_current_paths = (
+        None if current_paths is None else {path for path in current_paths if path.lower() != "none"}
+    )
+    allow_missing_current_paths = current_paths is not None and any(
+        path.lower() == "none" for path in current_paths
+    )
     current_path_needles = None if current_path_contains is None else [needle.lower() for needle in current_path_contains]
     allowed_current_path_names = (
         None if current_path_names is None else {Path(name).name for name in current_path_names}
@@ -1178,8 +1183,11 @@ def stale_artifacts(
             if not any(model.lower() in artifact_model for model in models):
                 continue
         current_artifact_path = current_path_by_slug.get(artifact.get("slug"))
-        if allowed_current_paths is not None and current_artifact_path not in allowed_current_paths:
-            continue
+        if allowed_current_paths is not None or allow_missing_current_paths:
+            current_path_matches = current_artifact_path in (allowed_current_paths or set())
+            missing_current_path_matches = allow_missing_current_paths and current_artifact_path is None
+            if not current_path_matches and not missing_current_path_matches:
+                continue
         if current_path_needles is not None:
             current_path_text = str(current_artifact_path or "").lower()
             if not any(needle in current_path_text for needle in current_path_needles):

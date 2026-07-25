@@ -506,6 +506,35 @@ def test_stale_artifacts_can_filter_by_current_artifact_directory() -> None:
     assert stale[0]["current_artifact_dir"] == "benchmark-results/current"
 
 
+def test_stale_artifacts_can_filter_untracked_current_artifacts_with_none() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "base", "artifact_path": "benchmark-results/current/base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/base-old.json",
+                "slug": "base",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/archive/orphan-old.json",
+                "slug": "orphan",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, current_paths=["none"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/archive/orphan-old.json",
+    ]
+    assert stale[0]["track_state"] == "untracked"
+
+
 def test_stale_artifacts_rejects_impossible_age_window() -> None:
     with pytest.raises(ValueError, match="newer_than_days cannot be less than older_than_days"):
         stale_artifacts({"tracks": [], "artifacts": []}, older_than_days=30, newer_than_days=7)
