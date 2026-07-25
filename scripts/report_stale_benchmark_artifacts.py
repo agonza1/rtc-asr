@@ -7,6 +7,7 @@ import argparse
 import csv
 import io
 import json
+import re
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -98,6 +99,17 @@ AGE_BUCKET_ORDER = {
     "unknown": 4,
 }
 
+BYTE_SIZE_UNITS = {
+    "": 1,
+    "b": 1,
+    "kb": 1000,
+    "kib": 1024,
+    "mb": 1000**2,
+    "mib": 1024**2,
+    "gb": 1000**3,
+    "gib": 1024**3,
+}
+
 SUMMARY_SORTS = (
     "size",
     "size-desc",
@@ -142,6 +154,20 @@ def format_bytes(size_bytes: int | None) -> str:
     if unit == "B":
         return f"{int(size)} {unit}"
     return f"{size:.1f} {unit}"
+
+
+def parse_size_bytes(value: str) -> int:
+    match = re.fullmatch(r"\s*(-?\d+(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
+    if match is None:
+        raise argparse.ArgumentTypeError("size must be bytes or a value with KB, KiB, MB, MiB, GB, or GiB")
+
+    amount_text, unit_text = match.groups()
+    unit = unit_text.lower()
+    multiplier = BYTE_SIZE_UNITS.get(unit)
+    if multiplier is None:
+        raise argparse.ArgumentTypeError("size unit must be one of: B, KB, KiB, MB, MiB, GB, GiB")
+
+    return int(float(amount_text) * multiplier)
 
 
 def format_age_days(age_days: int | None) -> str:
@@ -318,15 +344,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--min-size-bytes",
-        type=int,
+        type=parse_size_bytes,
         default=None,
-        help="Only include stale artifacts at least this many bytes large",
+        help="Only include stale artifacts at least this large; accepts bytes or KB, KiB, MB, MiB, GB, GiB",
     )
     parser.add_argument(
         "--max-size-bytes",
-        type=int,
+        type=parse_size_bytes,
         default=None,
-        help="Only include stale artifacts no larger than this many bytes",
+        help="Only include stale artifacts no larger than this; accepts bytes or KB, KiB, MB, MiB, GB, GiB",
     )
     parser.add_argument(
         "--slug",
@@ -708,15 +734,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-min-size-bytes",
-        type=int,
+        type=parse_size_bytes,
         default=None,
-        help="With --summary-only or --json-summary, only print grouping rows with at least this many bytes",
+        help=(
+            "With --summary-only or --json-summary, only print grouping rows at least this large; "
+            "accepts bytes or KB, KiB, MB, MiB, GB, GiB"
+        ),
     )
     parser.add_argument(
         "--summary-max-size-bytes",
-        type=int,
+        type=parse_size_bytes,
         default=None,
-        help="With --summary-only or --json-summary, only print grouping rows with no more than this many bytes",
+        help=(
+            "With --summary-only or --json-summary, only print grouping rows no larger than this; "
+            "accepts bytes or KB, KiB, MB, MiB, GB, GiB"
+        ),
     )
     parser.add_argument(
         "--summary-share",
