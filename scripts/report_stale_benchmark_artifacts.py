@@ -755,24 +755,36 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--detail-page-dir",
+        "--detail-dir",
+        "--detail-directory",
+        "--detail-page-directory",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page directory matches this path; repeat to include multiple paths",
     )
     parser.add_argument(
         "--detail-page-dir-contains",
+        "--detail-dir-contains",
+        "--detail-directory-contains",
+        "--detail-page-directory-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page directory contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--detail-page-extension",
+        "--detail-extension",
+        "--detail-ext",
+        "--detail-page-ext",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page extension matches this value; repeat or comma-separate; use 'none' for artifacts without a detail page",
     )
     parser.add_argument(
         "--detail-page-extension-contains",
+        "--detail-extension-contains",
+        "--detail-ext-contains",
+        "--detail-page-ext-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page extension contains this text; repeat to include multiple matches",
