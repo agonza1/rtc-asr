@@ -246,6 +246,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--sort",
+        type=lowercase_cli_choice,
         choices=(
             "size",
             "size-desc",
@@ -739,6 +740,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-sort",
+        type=lowercase_cli_choice,
         choices=SUMMARY_SORTS,
         default="size",
         help=(
@@ -862,6 +864,10 @@ def age_bucket(age_days: int | None) -> str:
 
 def descending_text_key(value: Any) -> tuple[int, ...]:
     return tuple(-ord(character) for character in str(value))
+
+
+def lowercase_cli_choice(value: str) -> str:
+    return value.strip().lower()
 
 
 def normalize_stale_sort(sort_by: str) -> str:

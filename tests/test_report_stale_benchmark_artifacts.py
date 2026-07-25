@@ -114,6 +114,11 @@ def test_parse_args_accepts_total_size_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_case_insensitive_summary_sort_aliases() -> None:
+    assert parse_args(["--summary-sort", "LARGEST"]).summary_sort == "largest"
+    assert parse_args(["--summary-sort", "Avg-Size-Asc"]).summary_sort == "avg-size-asc"
+
+
 def test_parse_args_accepts_bytes_summary_sort_aliases() -> None:
     for alias in ["bytes", "bytes-desc", "bytes-asc"]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
@@ -218,6 +223,11 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
 def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
     for alias in ["oldest", "oldest-first", "newest", "newest-first"]:
         assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_parse_args_accepts_case_insensitive_stale_sort_aliases() -> None:
+    assert parse_args(["--sort", "Newest-First"]).sort == "newest-first"
+    assert parse_args(["--sort", "CURRENT-ARTIFACT-NAME-DESC"]).sort == "current-artifact-name-desc"
 
 
 def test_parse_args_accepts_readable_age_sort_aliases() -> None:
