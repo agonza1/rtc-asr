@@ -327,6 +327,44 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
     assert args.current_path_extension_contains == ["json"]
 
 
+def test_parse_args_accepts_file_name_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--artifact-basename",
+            "stale.json",
+            "--artifact-filename",
+            "older.json",
+            "--artifact-basename-contains",
+            "stale",
+            "--artifact-filename-contains",
+            "older",
+            "--current-basename",
+            "current.json",
+            "--current-filename",
+            "latest.json",
+            "--current-basename-contains",
+            "current",
+            "--current-filename-contains",
+            "latest",
+            "--detail-basename",
+            "stale.html",
+            "--detail-filename",
+            "older.html",
+            "--detail-basename-contains",
+            "stale",
+            "--detail-filename-contains",
+            "older",
+        ]
+    )
+
+    assert args.artifact_name == ["stale.json", "older.json"]
+    assert args.artifact_name_contains == ["stale", "older"]
+    assert args.current_path_name == ["current.json", "latest.json"]
+    assert args.current_path_name_contains == ["current", "latest"]
+    assert args.detail_page_name == ["stale.html", "older.html"]
+    assert args.detail_page_name_contains == ["stale", "older"]
+
+
 def test_parse_args_accepts_repo_relative_paths_mode() -> None:
     args = parse_args(["--paths-only", "--repo-relative-paths"])
 

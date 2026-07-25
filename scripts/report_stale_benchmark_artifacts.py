@@ -510,6 +510,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--current-path-name",
         "--current-artifact-name",
+        "--current-basename",
+        "--current-filename",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact file name matches this name; repeat to include multiple names",
@@ -517,6 +519,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--current-path-name-contains",
         "--current-artifact-name-contains",
+        "--current-basename-contains",
+        "--current-filename-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact file name contains this text; repeat to include multiple matches",
@@ -601,12 +605,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-name",
+        "--artifact-basename",
+        "--artifact-filename",
         action="append",
         default=None,
         help="Only include stale artifacts with this file name; repeat to include multiple names",
     )
     parser.add_argument(
         "--artifact-name-contains",
+        "--artifact-basename-contains",
+        "--artifact-filename-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose file name contains this text; repeat to include multiple matches",
@@ -649,12 +657,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--detail-page-name",
+        "--detail-basename",
+        "--detail-filename",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page file name matches this name; repeat to include multiple names",
     )
     parser.add_argument(
         "--detail-page-name-contains",
+        "--detail-basename-contains",
+        "--detail-filename-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page file name contains this text; repeat to include multiple matches",
