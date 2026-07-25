@@ -83,7 +83,13 @@ def test_summary_groups_accept_current_path_aliases() -> None:
 
 
 def test_summary_groups_accept_filename_aliases() -> None:
-    assert normalize_summary_groups(["artifact-filename, current-filename, detail-filename"]) == {
+    assert normalize_summary_groups(
+        [
+            "artifact-filename, artifact-basename",
+            "current-filename, current-basename",
+            "detail-filename, detail-basename",
+        ]
+    ) == {
         "artifact-name",
         "current-artifact-name",
         "detail-page-name",
@@ -201,6 +207,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-path-name-asc",
         "current-artifact-name-asc",
         "current-filename-asc",
+        "current-basename-asc",
         "current-path-stem-asc",
         "current-artifact-stem-asc",
         "current-path-dir-asc",
@@ -210,7 +217,9 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "measured-month-asc",
         "age-bucket-asc",
         "artifact-filename-asc",
+        "artifact-basename-asc",
         "detail-filename-asc",
+        "detail-basename-asc",
     ]
 
     for alias in aliases:
@@ -251,6 +260,21 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "recent-first",
         "most-recent",
         "most-recent-first",
+    ]:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
+    for alias in [
+        "artifact-basename",
+        "artifact-basename-asc",
+        "artifact-basename-desc",
+        "current-basename",
+        "current-basename-asc",
+        "current-basename-desc",
+        "detail-basename",
+        "detail-basename-asc",
+        "detail-basename-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
@@ -688,15 +712,24 @@ def test_stale_artifacts_accepts_filename_sort_aliases() -> None:
     }
 
     artifact_sorted = stale_artifacts(manifest, sort_by="artifact-filename")
+    artifact_basename_sorted = stale_artifacts(manifest, sort_by="artifact-basename")
     current_sorted = stale_artifacts(manifest, sort_by="current-filename-desc")
+    current_basename_sorted = stale_artifacts(manifest, sort_by="current-basename-desc")
     detail_sorted = stale_artifacts(manifest, sort_by="detail-filename")
+    detail_basename_sorted = stale_artifacts(manifest, sort_by="detail-basename")
 
     assert [entry["artifact_name"] for entry in artifact_sorted] == ["alpha.json", "zulu.json"]
+    assert [entry["artifact_name"] for entry in artifact_basename_sorted] == ["alpha.json", "zulu.json"]
     assert [entry["current_artifact_name"] for entry in current_sorted] == [
         "qwen-current.json",
         "base-current.json",
     ]
+    assert [entry["current_artifact_name"] for entry in current_basename_sorted] == [
+        "qwen-current.json",
+        "base-current.json",
+    ]
     assert [entry["detail_page_name"] for entry in detail_sorted] == ["alpha.html", "zulu.html"]
+    assert [entry["detail_page_name"] for entry in detail_basename_sorted] == ["alpha.html", "zulu.html"]
 
 
 def test_stale_artifacts_can_filter_by_artifact_directory() -> None:
