@@ -221,7 +221,16 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
 
 
 def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
-    for alias in ["oldest", "oldest-first", "newest", "newest-first"]:
+    for alias in [
+        "oldest",
+        "oldest-first",
+        "earliest",
+        "earliest-first",
+        "newest",
+        "newest-first",
+        "latest",
+        "latest-first",
+    ]:
         assert parse_args(["--sort", alias]).sort == alias
 
 
@@ -3397,7 +3406,15 @@ def test_stale_artifacts_accepts_readable_measured_time_sort_aliases() -> None:
         "benchmark-results/older.json",
         "benchmark-results/newer.json",
     ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="earliest-first")] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+    ]
     assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="newest")] == [
+        "benchmark-results/newer.json",
+        "benchmark-results/older.json",
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="latest-first")] == [
         "benchmark-results/newer.json",
         "benchmark-results/older.json",
     ]
