@@ -108,9 +108,16 @@ def test_summary_groups_accept_filename_aliases() -> None:
 def test_summary_groups_accept_directory_aliases() -> None:
     assert normalize_summary_groups(
         [
-            "artifact-directory, artifact-dirname",
-            "current-artifact-directory, current-path-directory, current-artifact-dirname, current-path-dirname",
-            "detail-directory, detail-page-directory, detail-dirname, detail-page-dirname",
+            "artifact-directory, artifact-dirname, artifact-folder, artifact-folder-name",
+            (
+                "current-artifact-directory, current-path-directory, current-artifact-dirname, "
+                "current-path-dirname, current-artifact-folder, current-path-folder, "
+                "current-artifact-folder-name, current-path-folder-name"
+            ),
+            (
+                "detail-directory, detail-page-directory, detail-dirname, detail-page-dirname, "
+                "detail-folder, detail-page-folder, detail-folder-name, detail-page-folder-name"
+            ),
         ]
     ) == {
         "artifact-dir",
@@ -386,30 +393,60 @@ def test_parse_args_accepts_directory_stale_sort_aliases() -> None:
         "artifact-dirname",
         "artifact-dirname-asc",
         "artifact-dirname-desc",
+        "artifact-folder",
+        "artifact-folder-asc",
+        "artifact-folder-desc",
+        "artifact-folder-name",
+        "artifact-folder-name-asc",
+        "artifact-folder-name-desc",
         "current-artifact-directory",
         "current-artifact-directory-asc",
         "current-artifact-directory-desc",
         "current-artifact-dirname",
         "current-artifact-dirname-asc",
         "current-artifact-dirname-desc",
+        "current-artifact-folder",
+        "current-artifact-folder-asc",
+        "current-artifact-folder-desc",
+        "current-artifact-folder-name",
+        "current-artifact-folder-name-asc",
+        "current-artifact-folder-name-desc",
         "current-path-directory",
         "current-path-directory-asc",
         "current-path-directory-desc",
         "current-path-dirname",
         "current-path-dirname-asc",
         "current-path-dirname-desc",
+        "current-path-folder",
+        "current-path-folder-asc",
+        "current-path-folder-desc",
+        "current-path-folder-name",
+        "current-path-folder-name-asc",
+        "current-path-folder-name-desc",
         "detail-directory",
         "detail-directory-asc",
         "detail-directory-desc",
         "detail-dirname",
         "detail-dirname-asc",
         "detail-dirname-desc",
+        "detail-folder",
+        "detail-folder-asc",
+        "detail-folder-desc",
+        "detail-folder-name",
+        "detail-folder-name-asc",
+        "detail-folder-name-desc",
         "detail-page-directory",
         "detail-page-directory-asc",
         "detail-page-directory-desc",
         "detail-page-dirname",
         "detail-page-dirname-asc",
         "detail-page-dirname-desc",
+        "detail-page-folder",
+        "detail-page-folder-asc",
+        "detail-page-folder-desc",
+        "detail-page-folder-name",
+        "detail-page-folder-name-asc",
+        "detail-page-folder-name-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
@@ -453,6 +490,14 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "benchmark-results/current-dirname",
             "--current-path-dirname",
             "benchmark-results/path-dirname",
+            "--current-artifact-folder",
+            "benchmark-results/current-folder",
+            "--current-path-folder",
+            "benchmark-results/path-folder",
+            "--current-artifact-folder-name",
+            "benchmark-results/current-folder-name",
+            "--current-path-folder-name",
+            "benchmark-results/path-folder-name",
             "--current-artifact-dir-contains",
             "benchmark",
             "--current-artifact-directory-contains",
@@ -463,6 +508,14 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "dirname-current",
             "--current-path-dirname-contains",
             "dirname-path",
+            "--current-artifact-folder-contains",
+            "folder-current",
+            "--current-path-folder-contains",
+            "folder-path",
+            "--current-artifact-folder-name-contains",
+            "folder-name-current",
+            "--current-path-folder-name-contains",
+            "folder-name-path",
             "--current-artifact-extension",
             ".json",
             "--current-extension",
@@ -506,8 +559,22 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
         "benchmark-results/path",
         "benchmark-results/current-dirname",
         "benchmark-results/path-dirname",
+        "benchmark-results/current-folder",
+        "benchmark-results/path-folder",
+        "benchmark-results/current-folder-name",
+        "benchmark-results/path-folder-name",
     ]
-    assert args.current_path_dir_contains == ["benchmark", "current", "path", "dirname-current", "dirname-path"]
+    assert args.current_path_dir_contains == [
+        "benchmark",
+        "current",
+        "path",
+        "dirname-current",
+        "dirname-path",
+        "folder-current",
+        "folder-path",
+        "folder-name-current",
+        "folder-name-path",
+    ]
     assert args.current_path_extension == [".json", "json.gz", "webm", "jsonl", "wav", "csv", "txt"]
     assert args.current_path_extension_contains == ["json", "gz", "web", "jsonl", "wav", "csv", "txt"]
 
@@ -519,10 +586,18 @@ def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() ->
             "benchmark-results",
             "--artifact-dirname",
             "benchmark-results/archive",
+            "--artifact-folder",
+            "benchmark-results/folder",
+            "--artifact-folder-name",
+            "benchmark-results/folder-name",
             "--artifact-directory-contains",
             "bench",
             "--artifact-dirname-contains",
             "archive",
+            "--artifact-folder-contains",
+            "folder",
+            "--artifact-folder-name-contains",
+            "folder-name",
             "--artifact-ext",
             ".json",
             "--artifact-file-ext",
@@ -538,8 +613,13 @@ def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() ->
         ]
     )
 
-    assert args.artifact_dir == ["benchmark-results", "benchmark-results/archive"]
-    assert args.artifact_dir_contains == ["bench", "archive"]
+    assert args.artifact_dir == [
+        "benchmark-results",
+        "benchmark-results/archive",
+        "benchmark-results/folder",
+        "benchmark-results/folder-name",
+    ]
+    assert args.artifact_dir_contains == ["bench", "archive", "folder", "folder-name"]
     assert args.artifact_extension == [".json", "json.gz", "jsonl"]
     assert args.artifact_extension_contains == ["json", "gz", "jsonl"]
 
@@ -639,6 +719,14 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
             "benchmark-results/dirname-pages",
             "--detail-page-dirname",
             "benchmark-results/page-dirname-pages",
+            "--detail-folder",
+            "benchmark-results/folder-pages",
+            "--detail-page-folder",
+            "benchmark-results/page-folder-pages",
+            "--detail-folder-name",
+            "benchmark-results/folder-name-pages",
+            "--detail-page-folder-name",
+            "benchmark-results/page-folder-name-pages",
             "--detail-dir-contains",
             "pages",
             "--detail-directory-contains",
@@ -649,6 +737,14 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
             "dirname",
             "--detail-page-dirname-contains",
             "page-dirname",
+            "--detail-folder-contains",
+            "folder",
+            "--detail-page-folder-contains",
+            "page-folder",
+            "--detail-folder-name-contains",
+            "folder-name",
+            "--detail-page-folder-name-contains",
+            "page-folder-name",
             "--detail-extension",
             ".html",
             "--detail-ext",
@@ -680,8 +776,22 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
         "benchmark-results/archive-pages",
         "benchmark-results/dirname-pages",
         "benchmark-results/page-dirname-pages",
+        "benchmark-results/folder-pages",
+        "benchmark-results/page-folder-pages",
+        "benchmark-results/folder-name-pages",
+        "benchmark-results/page-folder-name-pages",
     ]
-    assert args.detail_page_dir_contains == ["pages", "legacy", "archive", "dirname", "page-dirname"]
+    assert args.detail_page_dir_contains == [
+        "pages",
+        "legacy",
+        "archive",
+        "dirname",
+        "page-dirname",
+        "folder",
+        "page-folder",
+        "folder-name",
+        "page-folder-name",
+    ]
     assert args.detail_page_extension == [".html", "htm", "xhtml", "json", "none"]
     assert args.detail_page_extension_contains == ["html", "htm", "xhtml", "json", "none"]
 
