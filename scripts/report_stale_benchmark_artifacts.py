@@ -828,14 +828,19 @@ def normalize_summary_groups(groups: list[str] | None) -> set[str]:
     return selected_groups
 
 
+def manifest_source_label(path: Path) -> str:
+    return "stdin" if str(path) == "-" else str(path)
+
+
 def load_manifest_from_path(path: Path) -> dict[str, Any]:
+    source = manifest_source_label(path)
     try:
         manifest_text = sys.stdin.read() if str(path) == "-" else path.read_text(encoding="utf-8")
         manifest = json.loads(manifest_text)
     except json.JSONDecodeError as error:
-        raise ValueError(f"{path} contains invalid JSON: {error.msg}") from error
+        raise ValueError(f"{source} contains invalid JSON: {error.msg}") from error
     if not isinstance(manifest, dict):
-        raise ValueError(f"{path} must contain a JSON object")
+        raise ValueError(f"{source} must contain a JSON object")
     return manifest
 
 

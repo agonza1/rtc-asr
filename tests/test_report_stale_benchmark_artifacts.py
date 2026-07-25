@@ -6289,12 +6289,26 @@ def test_main_paths_only_can_read_existing_manifest_from_stdin(monkeypatch, caps
     assert capsys.readouterr().out == "benchmark-results/old.json\n"
 
 
+def test_main_rejects_invalid_stdin_manifest(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "stdin", io.StringIO("{"))
+
+    with pytest.raises(ValueError, match="stdin contains invalid JSON"):
+        report_module.main(["--manifest", "-", "--paths-only"])
+
+
 def test_main_rejects_non_object_existing_manifest(tmp_path) -> None:
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text("[]", encoding="utf-8")
 
     with pytest.raises(ValueError, match="must contain a JSON object"):
         report_module.main(["--manifest", str(manifest_path), "--paths-only"])
+
+
+def test_main_rejects_non_object_stdin_manifest(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "stdin", io.StringIO("[]"))
+
+    with pytest.raises(ValueError, match="stdin must contain a JSON object"):
+        report_module.main(["--manifest", "-", "--paths-only"])
 
 
 def test_main_null_paths_only_does_not_emit_newline_for_no_matches(monkeypatch, capsys) -> None:
