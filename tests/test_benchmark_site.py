@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -60,6 +61,40 @@ HOMEPAGE_PATH = Path("docs") / "index.html"
 
 def load_tracks() -> dict[str, object]:
     return json.loads(TRACKS_PATH.read_text(encoding="utf-8"))
+
+
+def current_comparison_rows() -> dict[str, str]:
+    docs = DOCS_PATH.read_text(encoding="utf-8")
+    section = docs.split("## Current Artifact-Backed Comparison", 1)[1].split("## Recommended Low-Power Profiling Fields", 1)[0]
+    rows: dict[str, str] = {}
+    for line in section.splitlines():
+        match = re.match(r"^\| `([^`]+)` \|", line)
+        if match:
+            rows[match.group(1)] = line
+    return rows
+
+
+def metric_pair(mean: float | int | None, p95: float | int | None) -> str:
+    assert mean is not None
+    assert p95 is not None
+    return f"{mean:.1f} ms / {p95:.1f} ms"
+
+
+def test_current_benchmark_notes_table_matches_manifest_entries() -> None:
+    manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
+    rows = current_comparison_rows()
+
+    for entry in manifest["tracks"]:
+        if not entry.get("artifact_path") or entry["status"] == "blocked":
+            continue
+
+        row = rows[entry["slug"]]
+        assert f"`docs/{entry['artifact_path']}`" in row
+        assert f"| {entry['sample_count']} |" in row
+        assert metric_pair(entry["rest"]["mean_ms"], entry["rest"]["p95_ms"]) in row
+        assert f"| {entry['rest']['rtf_mean']:.3f} |" in row
+        assert metric_pair(entry["streaming"]["partial_mean_ms"], entry["streaming"]["partial_p95_ms"]) in row
+        assert metric_pair(entry["streaming"]["final_mean_ms"], entry["streaming"]["final_p95_ms"]) in row
 
 
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
