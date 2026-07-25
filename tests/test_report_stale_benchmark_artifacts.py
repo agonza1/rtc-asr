@@ -1,3 +1,4 @@
+import argparse
 import importlib.util
 import io
 import json
@@ -17,6 +18,7 @@ sys.modules.setdefault("rtc_asr_report_stale_benchmark_artifacts", report_module
 SPEC.loader.exec_module(report_module)
 
 format_bytes = report_module.format_bytes
+parse_size_bytes = report_module.parse_size_bytes
 format_age_days = report_module.format_age_days
 render_text = report_module.render_text
 render_paths = report_module.render_paths
@@ -124,6 +126,31 @@ def test_parse_args_accepts_disk_size_summary_sort_aliases() -> None:
 def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
     for alias in ["largest", "smallest"]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
+def test_parse_args_accepts_readable_size_thresholds() -> None:
+    args = parse_args(
+        [
+            "--min-size-bytes",
+            "1.5KiB",
+            "--max-size-bytes",
+            "2 MB",
+            "--summary-min-size-bytes",
+            "3kb",
+            "--summary-max-size-bytes",
+            "4GiB",
+        ]
+    )
+
+    assert args.min_size_bytes == 1536
+    assert args.max_size_bytes == 2_000_000
+    assert args.summary_min_size_bytes == 3000
+    assert args.summary_max_size_bytes == 4 * 1024**3
+
+
+def test_parse_size_bytes_rejects_unknown_units() -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="size unit must be one of"):
+        parse_size_bytes("1XB")
 
 
 def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
