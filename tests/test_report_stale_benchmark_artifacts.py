@@ -19,6 +19,7 @@ SPEC.loader.exec_module(report_module)
 
 format_bytes = report_module.format_bytes
 parse_size_bytes = report_module.parse_size_bytes
+parse_age_days = report_module.parse_age_days
 format_age_days = report_module.format_age_days
 render_text = report_module.render_text
 render_paths = report_module.render_paths
@@ -170,6 +171,11 @@ def test_parse_size_bytes_rejects_unknown_units() -> None:
 def test_parse_size_bytes_rejects_negative_values() -> None:
     with pytest.raises(argparse.ArgumentTypeError, match="size must not be negative"):
         parse_size_bytes("-1MiB")
+
+
+def test_parse_age_days_rejects_extreme_values() -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="days must be no more than 365000"):
+        parse_age_days("999999")
 
 
 def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
@@ -612,6 +618,11 @@ def test_stale_artifacts_can_filter_untracked_current_artifacts_with_none() -> N
 def test_stale_artifacts_rejects_impossible_age_window() -> None:
     with pytest.raises(ValueError, match="newer_than_days cannot be less than older_than_days"):
         stale_artifacts({"tracks": [], "artifacts": []}, older_than_days=30, newer_than_days=7)
+
+
+def test_stale_artifacts_rejects_too_large_older_than_days() -> None:
+    with pytest.raises(ValueError, match="older_than_days is too large"):
+        stale_artifacts({"tracks": [], "artifacts": []}, older_than_days=999999)
 
 
 def test_stale_artifacts_accepts_readable_age_sort_aliases() -> None:

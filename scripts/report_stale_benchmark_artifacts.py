@@ -202,6 +202,18 @@ def parse_size_bytes(value: str) -> int:
     return int(amount * multiplier)
 
 
+def parse_age_days(value: str) -> int:
+    try:
+        days = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("days must be an integer") from error
+    if days < 0:
+        raise argparse.ArgumentTypeError("days must be non-negative")
+    if days > 365000:
+        raise argparse.ArgumentTypeError("days must be no more than 365000")
+    return days
+
+
 def format_age_days(age_days: int | None) -> str:
     if age_days is None:
         return "unknown"
@@ -234,13 +246,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--older-than-days",
-        type=int,
+        type=parse_age_days,
         default=None,
         help="Only include stale artifacts measured before this many days ago",
     )
     parser.add_argument(
         "--newer-than-days",
-        type=int,
+        type=parse_age_days,
         default=None,
         help="Only include stale artifacts measured within this many days",
     )
@@ -1060,7 +1072,10 @@ def stale_artifacts(
         reference = now or datetime.now(UTC)
         if reference.tzinfo is None:
             reference = reference.replace(tzinfo=UTC)
-        cutoff = reference.astimezone(UTC) - timedelta(days=older_than_days)
+        try:
+            cutoff = reference.astimezone(UTC) - timedelta(days=older_than_days)
+        except OverflowError as error:
+            raise ValueError("older_than_days is too large") from error
     if measured_before is not None:
         measured_before_cutoff = (
             parse_required_timestamp(measured_before, field_name="measured_before")
