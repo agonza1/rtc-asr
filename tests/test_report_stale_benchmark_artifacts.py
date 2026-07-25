@@ -214,6 +214,11 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         assert parse_args(["--sort", alias]).sort == alias
 
 
+def test_parse_args_accepts_readable_age_sort_aliases() -> None:
+    for alias in ["stale", "stale-first", "stalest", "stalest-first", "freshest", "freshest-first"]:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
 def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
     args = parse_args(
         [
@@ -571,6 +576,42 @@ def test_stale_artifacts_can_filter_untracked_current_artifacts_with_none() -> N
 def test_stale_artifacts_rejects_impossible_age_window() -> None:
     with pytest.raises(ValueError, match="newer_than_days cannot be less than older_than_days"):
         stale_artifacts({"tracks": [], "artifacts": []}, older_than_days=30, newer_than_days=7)
+
+
+def test_stale_artifacts_accepts_readable_age_sort_aliases() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/fresh.json",
+                "status": "legacy",
+                "measured_at": "2026-06-19T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/stale.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    stale_first = stale_artifacts(manifest, now=datetime(2026, 6, 20, tzinfo=UTC), sort_by="stale-first")
+    freshest_first = stale_artifacts(
+        manifest,
+        now=datetime(2026, 6, 20, tzinfo=UTC),
+        sort_by="freshest-first",
+    )
+
+    assert [entry["artifact_path"] for entry in stale_first] == [
+        "benchmark-results/stale.json",
+        "benchmark-results/fresh.json",
+    ]
+    assert [entry["artifact_path"] for entry in freshest_first] == [
+        "benchmark-results/fresh.json",
+        "benchmark-results/stale.json",
+    ]
 
 
 def test_stale_artifacts_can_filter_by_artifact_directory() -> None:
