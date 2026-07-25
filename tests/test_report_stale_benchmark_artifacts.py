@@ -94,9 +94,9 @@ def test_summary_groups_accept_file_stem_aliases() -> None:
 def test_summary_groups_accept_filename_aliases() -> None:
     assert normalize_summary_groups(
         [
-            "artifact-filename, artifact-basename",
-            "current-filename, current-basename",
-            "detail-filename, detail-basename",
+            "artifact-filename, artifact-basename, artifact-file-name",
+            "current-filename, current-basename, current-file-name",
+            "detail-filename, detail-basename, detail-file-name",
         ]
     ) == {
         "artifact-name",
@@ -251,6 +251,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-artifact-name-asc",
         "current-filename-asc",
         "current-basename-asc",
+        "current-file-name-asc",
         "current-path-stem-asc",
         "current-artifact-stem-asc",
         "current-file-stem-asc",
@@ -266,9 +267,11 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "age-bucket-asc",
         "artifact-filename-asc",
         "artifact-basename-asc",
+        "artifact-file-name-asc",
         "artifact-ext-asc",
         "detail-filename-asc",
         "detail-basename-asc",
+        "detail-file-name-asc",
         "detail-file-stem-asc",
         "detail-stem-asc",
         "detail-ext-asc",
@@ -322,12 +325,21 @@ def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
         "artifact-basename",
         "artifact-basename-asc",
         "artifact-basename-desc",
+        "artifact-file-name",
+        "artifact-file-name-asc",
+        "artifact-file-name-desc",
         "current-basename",
         "current-basename-asc",
         "current-basename-desc",
+        "current-file-name",
+        "current-file-name-asc",
+        "current-file-name-desc",
         "detail-basename",
         "detail-basename-asc",
         "detail-basename-desc",
+        "detail-file-name",
+        "detail-file-name-asc",
+        "detail-file-name-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
@@ -523,35 +535,47 @@ def test_parse_args_accepts_file_name_filter_aliases() -> None:
             "stale.json",
             "--artifact-filename",
             "older.json",
+            "--artifact-file-name",
+            "archive.json",
             "--artifact-basename-contains",
             "stale",
             "--artifact-filename-contains",
             "older",
+            "--artifact-file-name-contains",
+            "archive",
             "--current-basename",
             "current.json",
             "--current-filename",
             "latest.json",
+            "--current-file-name",
+            "winner.json",
             "--current-basename-contains",
             "current",
             "--current-filename-contains",
             "latest",
+            "--current-file-name-contains",
+            "winner",
             "--detail-basename",
             "stale.html",
             "--detail-filename",
             "older.html",
+            "--detail-file-name",
+            "archive.html",
             "--detail-basename-contains",
             "stale",
             "--detail-filename-contains",
             "older",
+            "--detail-file-name-contains",
+            "archive",
         ]
     )
 
-    assert args.artifact_name == ["stale.json", "older.json"]
-    assert args.artifact_name_contains == ["stale", "older"]
-    assert args.current_path_name == ["current.json", "latest.json"]
-    assert args.current_path_name_contains == ["current", "latest"]
-    assert args.detail_page_name == ["stale.html", "older.html"]
-    assert args.detail_page_name_contains == ["stale", "older"]
+    assert args.artifact_name == ["stale.json", "older.json", "archive.json"]
+    assert args.artifact_name_contains == ["stale", "older", "archive"]
+    assert args.current_path_name == ["current.json", "latest.json", "winner.json"]
+    assert args.current_path_name_contains == ["current", "latest", "winner"]
+    assert args.detail_page_name == ["stale.html", "older.html", "archive.html"]
+    assert args.detail_page_name_contains == ["stale", "older", "archive"]
 
 
 def test_parse_args_accepts_detail_path_filter_aliases() -> None:
@@ -1000,14 +1024,18 @@ def test_stale_artifacts_accepts_filename_sort_aliases() -> None:
 
     artifact_sorted = stale_artifacts(manifest, sort_by="artifact-filename")
     artifact_basename_sorted = stale_artifacts(manifest, sort_by="artifact-basename")
+    artifact_file_name_sorted = stale_artifacts(manifest, sort_by="artifact-file-name")
     current_sorted = stale_artifacts(manifest, sort_by="current-filename-desc")
     current_basename_sorted = stale_artifacts(manifest, sort_by="current-basename-desc")
+    current_file_name_sorted = stale_artifacts(manifest, sort_by="current-file-name-desc")
     detail_sorted = stale_artifacts(manifest, sort_by="detail-filename")
     detail_basename_sorted = stale_artifacts(manifest, sort_by="detail-basename")
+    detail_file_name_sorted = stale_artifacts(manifest, sort_by="detail-file-name")
     detail_path_sorted = stale_artifacts(manifest, sort_by="detail-page-path")
 
     assert [entry["artifact_name"] for entry in artifact_sorted] == ["alpha.json", "zulu.json"]
     assert [entry["artifact_name"] for entry in artifact_basename_sorted] == ["alpha.json", "zulu.json"]
+    assert [entry["artifact_name"] for entry in artifact_file_name_sorted] == ["alpha.json", "zulu.json"]
     assert [entry["current_artifact_name"] for entry in current_sorted] == [
         "qwen-current.json",
         "base-current.json",
@@ -1016,8 +1044,13 @@ def test_stale_artifacts_accepts_filename_sort_aliases() -> None:
         "qwen-current.json",
         "base-current.json",
     ]
+    assert [entry["current_artifact_name"] for entry in current_file_name_sorted] == [
+        "qwen-current.json",
+        "base-current.json",
+    ]
     assert [entry["detail_page_name"] for entry in detail_sorted] == ["alpha.html", "zulu.html"]
     assert [entry["detail_page_name"] for entry in detail_basename_sorted] == ["alpha.html", "zulu.html"]
+    assert [entry["detail_page_name"] for entry in detail_file_name_sorted] == ["alpha.html", "zulu.html"]
     assert [entry["detail_page_name"] for entry in detail_path_sorted] == ["alpha.html", "zulu.html"]
 
 
