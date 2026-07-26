@@ -411,6 +411,10 @@ SUMMARY_SORTS = (
     "fewest-first",
     "fewest-artifacts",
     "fewest-artifacts-first",
+    "least",
+    "least-first",
+    "least-artifacts",
+    "least-artifacts-first",
     "name",
     "name-asc",
     "name-desc",
@@ -429,6 +433,10 @@ SUMMARY_SORT_ALIASES = {
     "fewest-first": "count-asc",
     "fewest-artifacts": "count-asc",
     "fewest-artifacts-first": "count-asc",
+    "least": "count-asc",
+    "least-first": "count-asc",
+    "least-artifacts": "count-asc",
+    "least-artifacts-first": "count-asc",
 }
 
 
