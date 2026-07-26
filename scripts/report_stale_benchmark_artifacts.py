@@ -426,6 +426,8 @@ BYTE_SIZE_UNITS = {
     "mib": 1024**2,
     "gb": 1000**3,
     "gib": 1024**3,
+    "tb": 1000**4,
+    "tib": 1024**4,
 }
 
 SUMMARY_SORTS = (
@@ -564,7 +566,7 @@ def format_bytes(size_bytes: int | None) -> str:
     if not size_bytes:
         return "0 B"
 
-    units = ("B", "KiB", "MiB", "GiB")
+    units = ("B", "KiB", "MiB", "GiB", "TiB")
     size = float(size_bytes)
     unit = units[0]
     for unit in units:
@@ -579,7 +581,7 @@ def format_bytes(size_bytes: int | None) -> str:
 def parse_size_bytes(value: str) -> int:
     match = re.fullmatch(r"\s*(-?\d+(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
     if match is None:
-        raise argparse.ArgumentTypeError("size must be bytes or a value with KB, KiB, MB, MiB, GB, or GiB")
+        raise argparse.ArgumentTypeError("size must be bytes or a value with KB, KiB, MB, MiB, GB, GiB, TB, or TiB")
 
     amount_text, unit_text = match.groups()
     amount = float(amount_text)
@@ -589,7 +591,7 @@ def parse_size_bytes(value: str) -> int:
     unit = unit_text.lower()
     multiplier = BYTE_SIZE_UNITS.get(unit)
     if multiplier is None:
-        raise argparse.ArgumentTypeError("size unit must be one of: B, KB, KiB, MB, MiB, GB, GiB")
+        raise argparse.ArgumentTypeError("size unit must be one of: B, KB, KiB, MB, MiB, GB, GiB, TB, TiB")
 
     return int(amount * multiplier)
 
@@ -1030,13 +1032,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--min-size-bytes",
         type=parse_size_bytes,
         default=None,
-        help="Only include stale artifacts at least this large; accepts bytes or KB, KiB, MB, MiB, GB, GiB",
+        help="Only include stale artifacts at least this large; accepts bytes or KB, KiB, MB, MiB, GB, GiB, TB, TiB",
     )
     parser.add_argument(
         "--max-size-bytes",
         type=parse_size_bytes,
         default=None,
-        help="Only include stale artifacts no larger than this; accepts bytes or KB, KiB, MB, MiB, GB, GiB",
+        help="Only include stale artifacts no larger than this; accepts bytes or KB, KiB, MB, MiB, GB, GiB, TB, TiB",
     )
     parser.add_argument(
         "--slug",
@@ -1536,7 +1538,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "With --summary-only or --json-summary, only print grouping rows at least this large; "
-            "accepts bytes or KB, KiB, MB, MiB, GB, GiB"
+            "accepts bytes or KB, KiB, MB, MiB, GB, GiB, TB, TiB"
         ),
     )
     parser.add_argument(
@@ -1545,7 +1547,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "With --summary-only or --json-summary, only print grouping rows no larger than this; "
-            "accepts bytes or KB, KiB, MB, MiB, GB, GiB"
+            "accepts bytes or KB, KiB, MB, MiB, GB, GiB, TB, TiB"
         ),
     )
     parser.add_argument(
