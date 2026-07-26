@@ -606,17 +606,28 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> ServerMessage:
                 retryable=exc.retryable,
                 metadata={"original_code": exc.code, **exc.metadata},
             ) from exc
-    if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
-        payload = {}
-    else:
-        payload = decode_raw_uds_json_payload(frame)
-    if frame.frame_type == RawUdsFrameType.PING:
-        _apply_raw_uds_envelope_type(payload, "ping")
-    if frame.frame_type == RawUdsFrameType.PONG:
-        _apply_raw_uds_envelope_type(payload, "pong")
-    if frame.frame_type == RawUdsFrameType.ERROR:
-        _apply_raw_uds_envelope_type(payload, "error")
-    return parse_server_message(payload)
+    try:
+        if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
+            payload = {}
+        else:
+            payload = decode_raw_uds_json_payload(frame)
+        if frame.frame_type == RawUdsFrameType.PING:
+            _apply_raw_uds_envelope_type(payload, "ping")
+        if frame.frame_type == RawUdsFrameType.PONG:
+            _apply_raw_uds_envelope_type(payload, "pong")
+        if frame.frame_type == RawUdsFrameType.ERROR:
+            _apply_raw_uds_envelope_type(payload, "error")
+        return parse_server_message(payload)
+    except LocalSttProtocolError as exc:
+        if exc.code == "raw_uds_frame_type_mismatch":
+            raise
+        raise LocalSttProtocolError(
+            exc.message,
+            code="raw_uds_malformed_json_event",
+            fatal=exc.fatal,
+            retryable=exc.retryable,
+            metadata={"original_code": exc.code, **exc.metadata},
+        ) from exc
 
 
 def _normalize_raw_uds_control_payload(payload: dict[str, Any]) -> dict[str, Any]:
