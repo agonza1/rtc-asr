@@ -328,6 +328,8 @@ def test_parse_args_accepts_readable_name_summary_sort_aliases() -> None:
         "alphabetical-first",
         "alphabetical-asc",
         "alphabetical-desc",
+        "reverse-alphabetical",
+        "reverse-alpha",
         "a-z",
         "z-a",
     ]:
@@ -351,9 +353,13 @@ def test_render_json_summary_accepts_readable_name_sort_aliases() -> None:
     ]
 
     alphabetical = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="alphabetical"))
+    reverse_alphabetical = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="reverse-alphabetical")
+    )
     reverse = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="z-a"))
 
     assert [bucket["slug"] for bucket in alphabetical["by_slug"]] == ["alpha", "zulu"]
+    assert [bucket["slug"] for bucket in reverse_alphabetical["by_slug"]] == ["zulu", "alpha"]
     assert [bucket["slug"] for bucket in reverse["by_slug"]] == ["zulu", "alpha"]
 
 

@@ -482,6 +482,8 @@ SUMMARY_SORTS = (
     "alphabetical-first",
     "alphabetical-asc",
     "alphabetical-desc",
+    "reverse-alphabetical",
+    "reverse-alpha",
     "a-z",
     "z-a",
 )
@@ -507,6 +509,8 @@ SUMMARY_SORT_ALIASES = {
     "alphabetical-first": "name",
     "alphabetical-asc": "name-asc",
     "alphabetical-desc": "name-desc",
+    "reverse-alphabetical": "name-desc",
+    "reverse-alpha": "name-desc",
     "a-z": "name-asc",
     "z-a": "name-desc",
 }
