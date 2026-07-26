@@ -4069,6 +4069,14 @@ def test_stale_artifacts_accepts_readable_measured_time_sort_aliases() -> None:
         "benchmark-results/older.json",
         "benchmark-results/newer.json",
     ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="least-recent")] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="least-recent-first")] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+    ]
     assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="newest")] == [
         "benchmark-results/newer.json",
         "benchmark-results/older.json",
