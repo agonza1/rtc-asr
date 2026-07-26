@@ -243,6 +243,50 @@ def test_render_json_summary_accepts_case_insensitive_summary_sort() -> None:
     assert [bucket["slug"] for bucket in summary["by_slug"]] == ["base", "qwen"]
 
 
+def test_render_json_summary_exposes_average_size_for_buckets() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="average-size"))
+
+    assert summary["by_slug"][0]["average_size_bytes"] == 60
+    assert summary["by_slug"][0]["average_size"] == "60 B"
+
+
+def test_render_json_summary_formats_fractional_average_size() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 55,
+        },
+    ]
+
+    summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="avg-bytes"))
+
+    assert summary["by_slug"][0]["average_size_bytes"] == 47.5
+    assert summary["by_slug"][0]["average_size"] == "47.5 B"
+
+
 def test_render_json_summary_accepts_readable_size_sort_aliases() -> None:
     stale = [
         {
