@@ -458,6 +458,8 @@ AGE_BUCKET_ORDER = {
     "unknown": 4,
 }
 
+MISSING_CURRENT_PATH_FILTER_VALUES = {"none", "missing", "untracked"}
+
 BYTE_SIZE_UNITS = {
     "": 1,
     "b": 1,
@@ -1202,7 +1204,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--current-artifact",
         action="append",
         default=None,
-        help="Only include stale artifacts whose track currently points at this artifact path; repeat to include multiple paths; use 'none' for untracked artifacts",
+        help=(
+            "Only include stale artifacts whose track currently points at this artifact path; "
+            "repeat to include multiple paths; use 'none', 'missing', or 'untracked' for untracked artifacts"
+        ),
     )
     parser.add_argument(
         "--current-path-contains",
@@ -1965,10 +1970,12 @@ def stale_artifacts(
     current_path_by_slug = {track.get("slug"): track.get("artifact_path") for track in tracks if track.get("slug")}
     allowed_backends = None if backends is None else {backend.lower() for backend in backends}
     allowed_current_paths = (
-        None if current_paths is None else {path for path in current_paths if path.lower() != "none"}
+        None
+        if current_paths is None
+        else {path for path in current_paths if path.lower() not in MISSING_CURRENT_PATH_FILTER_VALUES}
     )
     allow_missing_current_paths = current_paths is not None and any(
-        path.lower() == "none" for path in current_paths
+        path.lower() in MISSING_CURRENT_PATH_FILTER_VALUES for path in current_paths
     )
     current_path_needles = None if current_path_contains is None else [needle.lower() for needle in current_path_contains]
     allowed_current_path_names = (
