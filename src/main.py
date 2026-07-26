@@ -84,6 +84,24 @@ class TranscribeRequest(BaseModel):
         return self.audio_data or self.audio or ""
 
 
+class StreamTranscribeRequest(BaseModel):
+    audio_chunks: list[str] = Field(default_factory=list, description="Base64-encoded audio chunks")
+    audio_data: str | None = Field(default=None, description="Base64-encoded complete audio bytes")
+    audio: str | None = Field(default=None, description="Alias for audio_data")
+    language: str | None = Field(default="en")
+    sample_rate: int | None = Field(default=16000, ge=1)
+
+    @model_validator(mode="after")
+    def validate_audio_payload(self) -> "StreamTranscribeRequest":
+        if not self.audio_chunks and not self.audio_data and not self.audio:
+            raise ValueError("audio_chunks, audio_data, or audio is required")
+        return self
+
+    @property
+    def encoded_audio(self) -> str:
+        return self.audio_data or self.audio or ""
+
+
 @dataclass(slots=True)
 class AppServices:
     config: AppConfig
@@ -599,11 +617,35 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         }
 
     @app.post("/api/stream")
-    async def stream_transcribe() -> None:
-        raise HTTPException(
-            status_code=501,
-            detail="Streaming chunk transcription is available on /ws/stream; the HTTP streaming route is not implemented yet.",
+    async def stream_transcribe(payload: StreamTranscribeRequest) -> dict[str, object]:
+        services = app.state.services
+        audio_chunks = _decode_http_stream_chunks(payload)
+        buffered_bytes = sum(len(chunk) for chunk in audio_chunks)
+        if buffered_bytes > services.config.stream_max_buffer_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"Stream buffer exceeded {services.config.stream_max_buffer_bytes} bytes; "
+                    "send a smaller request or use /ws/stream"
+                ),
+            )
+
+        audio_bytes = b"".join(audio_chunks)
+        transcript = _transcribe_bytes(
+            services,
+            audio_bytes=audio_bytes,
+            language=payload.language,
+            sample_rate=payload.sample_rate,
         )
+        return {
+            "type": "final",
+            "stream_id": 1,
+            "is_final": True,
+            "chunks_received": len(audio_chunks),
+            "buffered_bytes": buffered_bytes,
+            "remaining_buffer_bytes": services.config.stream_max_buffer_bytes - buffered_bytes,
+            **transcript,
+        }
 
     @app.websocket("/ws/stream")
     async def websocket_stream(websocket: WebSocket) -> None:
@@ -1538,6 +1580,25 @@ def _decode_base64_audio(encoded_audio: str) -> bytes:
         return base64.b64decode(encoded_audio, validate=True)
     except (ValueError, binascii.Error) as exc:
         raise HTTPException(status_code=400, detail="audio_data must be valid base64-encoded audio bytes") from exc
+
+
+def _decode_http_stream_chunks(payload: StreamTranscribeRequest) -> list[bytes]:
+    encoded_chunks = payload.audio_chunks or [payload.encoded_audio]
+    chunks: list[bytes] = []
+    for index, encoded_chunk in enumerate(encoded_chunks, start=1):
+        if not isinstance(encoded_chunk, str) or not encoded_chunk:
+            raise HTTPException(status_code=400, detail=f"audio_chunks[{index - 1}] must be a non-empty base64 string")
+        try:
+            chunk = base64.b64decode(encoded_chunk, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"audio_chunks[{index - 1}] must be valid base64-encoded audio bytes",
+            ) from exc
+        if not chunk:
+            raise HTTPException(status_code=400, detail=f"audio_chunks[{index - 1}] must decode to non-empty audio bytes")
+        chunks.append(chunk)
+    return chunks
 
 
 def _decode_websocket_audio(payload: dict[str, Any]) -> bytes:

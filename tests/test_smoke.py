@@ -1316,6 +1316,93 @@ def test_transcribe_smoke_fixture() -> None:
     ]
 
 
+def test_http_stream_accepts_base64_chunks_and_returns_final_event() -> None:
+    fixture_bytes = FIXTURE_PATH.read_bytes()
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        response = client.post(
+            "/api/stream",
+            json={
+                "audio_chunks": [
+                    base64.b64encode(fixture_bytes[:32]).decode("ascii"),
+                    base64.b64encode(fixture_bytes[32:]).decode("ascii"),
+                ],
+                "language": "en",
+                "sample_rate": 16000,
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "type": "final",
+        "stream_id": 1,
+        "is_final": True,
+        "chunks_received": 2,
+        "buffered_bytes": len(fixture_bytes),
+        "remaining_buffer_bytes": AppConfig().stream_max_buffer_bytes - len(fixture_bytes),
+        "text": "fixture transcription 1",
+        "language": "en",
+        "duration_ms": 125,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
+    }
+    assert transcriber.calls == [
+        {
+            "audio_size": len(fixture_bytes),
+            "language": "en",
+            "sample_rate": 16000,
+            "prefix": b"RIFF",
+        }
+    ]
+
+
+def test_http_stream_accepts_single_audio_payload_alias() -> None:
+    fixture_bytes = FIXTURE_PATH.read_bytes()
+    transcriber = FakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        response = client.post(
+            "/api/stream",
+            json={
+                "audio": base64.b64encode(fixture_bytes).decode("ascii"),
+                "language": "es",
+                "sample_rate": 16000,
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["type"] == "final"
+    assert response.json()["chunks_received"] == 1
+    assert response.json()["text"] == "fixture transcription 1"
+    assert transcriber.calls == [
+        {
+            "audio_size": len(fixture_bytes),
+            "language": "es",
+            "sample_rate": 16000,
+            "prefix": b"RIFF",
+        }
+    ]
+
+
+def test_http_stream_rejects_requests_over_buffer_limit() -> None:
+    config = AppConfig(stream_max_buffer_bytes=4)
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as client:
+        response = client.post(
+            "/api/stream",
+            json={
+                "audio_chunks": [base64.b64encode(b"1234").decode("ascii"), base64.b64encode(b"56").decode("ascii")],
+                "sample_rate": 16000,
+            },
+        )
+
+    assert response.status_code == 413
+    assert response.json() == {
+        "detail": "Stream buffer exceeded 4 bytes; send a smaller request or use /ws/stream",
+    }
+
+
 def test_websocket_stream_emits_partial_and_final_events() -> None:
     transcriber = FakeTranscriber()
     chunk_one = b"first chunk"
