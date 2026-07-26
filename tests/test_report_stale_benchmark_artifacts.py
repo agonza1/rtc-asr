@@ -522,6 +522,9 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "total-size",
         "total-size-desc",
         "total-size-asc",
+        "total-bytes",
+        "total-bytes-desc",
+        "total-bytes-asc",
         "artifact-path",
         "artifact-path-desc",
         "artifact-path-asc",
@@ -541,6 +544,36 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "smallest-bytes-first",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_stale_artifacts_accept_total_bytes_sort_aliases() -> None:
+    manifest = {
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/small.json",
+                "status": "legacy",
+                "artifact_size_bytes": 25,
+            },
+            {
+                "artifact_path": "benchmark-results/large.json",
+                "status": "legacy",
+                "artifact_size_bytes": 75,
+            },
+        ],
+        "tracks": [],
+    }
+
+    descending = stale_artifacts(manifest, sort_by="total-bytes")
+    ascending = stale_artifacts(manifest, sort_by="total-bytes-asc")
+
+    assert [entry["artifact_path"] for entry in descending] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
+    assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/small.json",
+        "benchmark-results/large.json",
+    ]
 
 
 def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:

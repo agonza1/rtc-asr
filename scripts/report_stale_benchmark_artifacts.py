@@ -159,6 +159,9 @@ STALE_SORT_ALIASES = {
     "smallest-first": "size-asc",
     "smallest-bytes": "size-asc",
     "smallest-bytes-first": "size-asc",
+    "total-bytes": "size",
+    "total-bytes-desc": "size",
+    "total-bytes-asc": "size-asc",
     "freshest": "age-asc",
     "freshest-first": "age-asc",
     "newest": "measured-at-desc",
@@ -684,6 +687,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "total-size",
             "total-size-desc",
             "total-size-asc",
+            "total-bytes",
+            "total-bytes-desc",
+            "total-bytes-asc",
             "biggest",
             "biggest-first",
             "heaviest",
@@ -2162,6 +2168,8 @@ def stale_artifacts(
         "disk-size-desc",
         "total-size",
         "total-size-desc",
+        "total-bytes",
+        "total-bytes-desc",
         "heaviest",
         "largest",
     }:
@@ -2172,7 +2180,15 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by in {"size-asc", "bytes-asc", "disk-size-asc", "total-size-asc", "lightest", "smallest"}:
+    if sort_by in {
+        "size-asc",
+        "bytes-asc",
+        "disk-size-asc",
+        "total-size-asc",
+        "total-bytes-asc",
+        "lightest",
+        "smallest",
+    }:
         return sorted(
             stale,
             key=lambda entry: (
