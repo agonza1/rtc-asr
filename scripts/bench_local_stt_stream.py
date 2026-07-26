@@ -427,6 +427,14 @@ def split_pcm_frames(pcm_bytes: bytes, *, sample_rate: int, frame_ms: int) -> li
     return [pcm_bytes[index : index + bytes_per_frame] for index in range(0, len(pcm_bytes), bytes_per_frame) if pcm_bytes[index : index + bytes_per_frame]]
 
 
+def audio_duration_ms(audio: AudioInput) -> float:
+    if audio.sample_rate <= 0:
+        return 0.0
+    sample_width_bytes = 2
+    total_samples = sum(len(frame) for frame in audio.frames) / sample_width_bytes
+    return round(total_samples * 1000 / audio.sample_rate, 3)
+
+
 def percentile(values: list[float], q: float) -> float | None:
     if not values:
         return None
@@ -598,7 +606,7 @@ async def run_benchmark(
             "frame_ms": audio.frame_ms,
             "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME if audio.sample_rate == HOT_PATH_SAMPLE_RATE and audio.frame_ms == HOT_PATH_FRAME_MS else len(audio.frames[0]) if audio.frames else 0,
             "frames": len(audio.frames),
-            "duration_ms": len(audio.frames) * audio.frame_ms,
+            "duration_ms": audio_duration_ms(audio),
         },
         "settings": {
             "partial_interval_ms": partial_interval_ms,
@@ -919,10 +927,10 @@ def compute_overlap_ms(
 def compute_audio_end_finalization_rtf(final_after_finalize_ms: float | None, audio: AudioInput) -> float | None:
     if final_after_finalize_ms is None or not audio.frames:
         return None
-    audio_duration_ms = len(audio.frames) * audio.frame_ms
-    if audio_duration_ms <= 0:
+    duration_ms = audio_duration_ms(audio)
+    if duration_ms <= 0:
         return None
-    return round(final_after_finalize_ms / audio_duration_ms, 3)
+    return round(final_after_finalize_ms / duration_ms, 3)
 
 
 def compute_transport_audio_overhead_bytes(*, transport: str, frames_sent: int) -> int:

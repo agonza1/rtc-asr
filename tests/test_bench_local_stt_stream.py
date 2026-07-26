@@ -185,6 +185,16 @@ def test_split_pcm_frames_uses_20_ms_pcm16_boundaries() -> None:
     assert frames == [b"a" * 640, b"b" * 640, b"tail"]
 
 
+def test_audio_duration_uses_actual_pcm_bytes_for_tail_frames() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 320],
+    )
+
+    assert benchmark_module.audio_duration_ms(audio) == 30.0
+
 
 def test_parse_args_accepts_optional_power_and_thermal_signals(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
@@ -565,6 +575,28 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["successful_runs"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["summary"]["reconnects"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["protocol_errors"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+
+
+def test_run_benchmark_records_actual_tail_frame_audio_duration() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 320],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=FakeLocalSttClient,
+        )
+    )
+
+    assert payload["audio"]["duration_ms"] == 30.0
 
 
 def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_error() -> None:
