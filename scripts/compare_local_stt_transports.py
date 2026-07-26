@@ -326,7 +326,12 @@ def percentile(values: list[float], percentile_rank: float) -> float | None:
 def _matching_experimental_transport_contract(
     candidates: Any, transport: str | None
 ) -> dict[str, Any] | None:
-    if not isinstance(candidates, list) or not transport:
+    if not transport:
+        return None
+    if isinstance(candidates, dict):
+        candidate = candidates.get(transport)
+        return dict(candidate) if isinstance(candidate, dict) else None
+    if not isinstance(candidates, list):
         return None
     for candidate in candidates:
         if isinstance(candidate, dict) and candidate.get("transport") == transport:
