@@ -136,6 +136,9 @@ def _local_stt_server_transport(config: AppConfig | None = None) -> dict[str, ob
 
 def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]]:
     local_stt_transport = _local_stt_server_transport(config)
+    stream_max_buffer_bytes = (
+        config.stream_max_buffer_bytes if config is not None else AppConfig().stream_max_buffer_bytes
+    )
     return [
         {
             "id": "rtc-asr-stream.v1",
@@ -162,6 +165,12 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                 "format": HOT_PATH_PCM_FORMAT,
                 "frame_ms": HOT_PATH_FRAME_MS,
                 "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+            },
+            "limits": {
+                "max_buffer_bytes": stream_max_buffer_bytes,
+                "binary_audio_chunk_bytes_multiple": 2,
+                "max_buffer_request_field": "max_buffer_seconds",
+                "partial_window_request_field": "partial_window_seconds",
             },
             "partial_interval": {
                 "request_field": "partial_interval_ms",
