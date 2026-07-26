@@ -54,10 +54,12 @@ TRANSPORT_ALIASES = {
     "uds-websocket": "uds_ws",
     "unix-ws": "uds_ws",
     "unix-websocket": "uds_ws",
+    "unix-domain-websocket": "uds_ws",
     "raw": "raw_uds",
     "raw-uds": "raw_uds",
     "raw-unix": "raw_uds",
     "unix-raw": "raw_uds",
+    "raw-unix-socket": "raw_uds",
 }
 LOCAL_STT_AUDIO_CHANNELS = 1
 LOCAL_STT_AUDIO_FORMAT = "pcm_s16le"
