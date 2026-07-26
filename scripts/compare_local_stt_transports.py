@@ -204,9 +204,9 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
     benchmark = artifact.get("benchmark") if isinstance(artifact.get("benchmark"), dict) else {}
     integration = artifact.get("integration") if isinstance(artifact.get("integration"), dict) else {}
     streaming = artifact.get("streaming") if isinstance(artifact.get("streaming"), dict) else {}
-    if isinstance(target.get("transport"), str):
-        return target["transport"]
+    has_direct_target_transport = isinstance(target.get("transport"), str)
     value = first_defined(
+        target.get("transport"),
         target.get("transport_type"),
         target.get("socket_mode"),
         integration.get("transport"),
@@ -234,6 +234,8 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         "raw_unix_socket": "raw_uds",
     }
     normalized = value.strip().lower()
+    if has_direct_target_transport and normalized in {"tcp", "websocket", "ws"}:
+        return normalized
     return aliases.get(normalized, normalized)
 
 
