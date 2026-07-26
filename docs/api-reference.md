@@ -235,6 +235,44 @@ Example response:
 }
 ```
 
+## HTTP Chunk Stream
+
+```http
+POST /api/stream
+```
+
+Use this endpoint when an HTTP client already has a finite set of audio chunks and wants the same final-event envelope as the websocket stream without holding a websocket open. For live partials, use `/ws/stream` or `/v1/stt/stream`.
+
+Request:
+
+```json
+{
+  "audio_chunks": ["base64_encoded_audio_chunk_1", "base64_encoded_audio_chunk_2"],
+  "language": "en",
+  "sample_rate": 16000
+}
+```
+
+Response:
+
+```json
+{
+  "type": "final",
+  "stream_id": 1,
+  "is_final": true,
+  "chunks_received": 2,
+  "buffered_bytes": 2048,
+  "remaining_buffer_bytes": 260096,
+  "text": "hello world",
+  "language": "en",
+  "duration_ms": 640,
+  "backend": "faster-whisper",
+  "model": "small.en"
+}
+```
+
+`audio_data` or `audio` may be used instead of `audio_chunks` for a single complete payload. Requests are rejected with `413` when the concatenated chunks exceed `STREAM_MAX_BUFFER_BYTES`.
+
 ## WebSocket Streaming
 
 ```http
@@ -330,7 +368,7 @@ Notes:
 
 - Partial events are emitted against the buffered audio accumulated for the active stream on that connection.
 - After a `final` event, the websocket remains open and can accept a new `start` event for the next stream.
-- The current HTTP `POST /api/stream` route is still not implemented; use `/ws/stream` for streaming.
+- `POST /api/stream` supports finite HTTP chunk batches and returns a final event only; use websocket streaming when partials or cancellation are required.
 - Sending `cancel` returns a `canceled` event and clears the active stream without running a final transcription.
 - Invalid event ordering or invalid base64 audio results in a websocket `error` event followed by connection close.
 - `sample_rate` in the `start` event should match the raw PCM cadence you are sending.
