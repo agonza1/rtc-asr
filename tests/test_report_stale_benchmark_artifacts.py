@@ -261,13 +261,21 @@ def test_render_json_summary_accepts_readable_size_sort_aliases() -> None:
 
     largest = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="largest-first"))
     largest_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="largest-bytes-first"))
+    max_size = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="max-size"))
+    max_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="max-bytes-first"))
     smallest = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="smallest-first"))
     smallest_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="smallest-bytes-first"))
+    min_size = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="min-size"))
+    min_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="min-bytes-first"))
 
     assert [bucket["slug"] for bucket in largest["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in largest_bytes["by_slug"]] == ["qwen", "base"]
+    assert [bucket["slug"] for bucket in max_size["by_slug"]] == ["qwen", "base"]
+    assert [bucket["slug"] for bucket in max_bytes["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in smallest["by_slug"]] == ["base", "qwen"]
     assert [bucket["slug"] for bucket in smallest_bytes["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in min_size["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in min_bytes["by_slug"]] == ["base", "qwen"]
 
 
 def test_render_json_summary_accepts_least_count_sort_aliases() -> None:
@@ -344,10 +352,18 @@ def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
         "largest-first",
         "largest-bytes",
         "largest-bytes-first",
+        "max-size",
+        "max-size-first",
+        "max-bytes",
+        "max-bytes-first",
         "smallest",
         "smallest-first",
         "smallest-bytes",
         "smallest-bytes-first",
+        "min-size",
+        "min-size-first",
+        "min-bytes",
+        "min-bytes-first",
     ]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
