@@ -297,6 +297,35 @@ def test_render_json_summary_accepts_least_count_sort_aliases() -> None:
     assert [bucket["slug"] for bucket in summary["by_slug"]] == ["qwen", "base"]
 
 
+def test_render_json_summary_accepts_total_count_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    descending = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="total-count"))
+    ascending = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="artifact-count-asc"))
+
+    assert [bucket["slug"] for bucket in descending["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in ascending["by_slug"]] == ["qwen", "base"]
+
+
 def test_parse_args_accepts_bytes_summary_sort_aliases() -> None:
     for alias in ["bytes", "bytes-desc", "bytes-asc"]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
@@ -325,6 +354,12 @@ def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
 
 def test_parse_args_accepts_readable_count_summary_sort_aliases() -> None:
     for alias in [
+        "total-count",
+        "total-count-desc",
+        "total-count-asc",
+        "artifact-count",
+        "artifact-count-desc",
+        "artifact-count-asc",
         "most",
         "most-first",
         "most-artifacts",
