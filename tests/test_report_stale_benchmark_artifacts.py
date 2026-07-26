@@ -266,6 +266,20 @@ def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_readable_count_summary_sort_aliases() -> None:
+    for alias in [
+        "most",
+        "most-first",
+        "most-artifacts",
+        "most-artifacts-first",
+        "fewest",
+        "fewest-first",
+        "fewest-artifacts",
+        "fewest-artifacts-first",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_parse_args_accepts_readable_size_thresholds() -> None:
     args = parse_args(
         [
@@ -2335,6 +2349,35 @@ def test_render_json_summary_accepts_readable_size_sort_aliases() -> None:
 
     assert [bucket["slug"] for bucket in largest_summary["by_slug"]] == ["base", "qwen"]
     assert [bucket["slug"] for bucket in smallest_summary["by_slug"]] == ["qwen", "base"]
+
+
+def test_render_json_summary_accepts_readable_count_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 10,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 10,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 100,
+        },
+    ]
+
+    most_summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="most-artifacts"))
+    fewest_summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="fewest-artifacts"))
+
+    assert [bucket["slug"] for bucket in most_summary["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in fewest_summary["by_slug"]] == ["qwen", "base"]
 
 
 def test_render_json_summary_accepts_bytes_sort_aliases() -> None:
