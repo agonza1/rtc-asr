@@ -85,7 +85,10 @@ def test_summary_groups_accept_current_path_aliases() -> None:
 
 def test_summary_groups_accept_file_stem_aliases() -> None:
     assert normalize_summary_groups(
-        ["artifact-file-stem, current-file-stem, detail-file-stem, detail-stem, detail-page-file-stem"]
+        [
+            "artifact-file-stem, path-stem, path-file-stem, current-file-stem, "
+            "detail-file-stem, detail-stem, detail-page-file-stem"
+        ]
     ) == {
         "artifact-stem",
         "current-artifact-stem",
@@ -96,7 +99,10 @@ def test_summary_groups_accept_file_stem_aliases() -> None:
 def test_summary_groups_accept_filename_aliases() -> None:
     assert normalize_summary_groups(
         [
-            "artifact-filename, artifact-basename, artifact-file-name",
+            (
+                "artifact-filename, artifact-basename, artifact-file-name, path-name, "
+                "path-basename, path-filename, path-file-name"
+            ),
             "current-filename, current-basename, current-file-name",
             (
                 "detail-filename, detail-page-filename, detail-basename, detail-page-basename, "
@@ -113,7 +119,8 @@ def test_summary_groups_accept_filename_aliases() -> None:
 def test_summary_groups_accept_directory_aliases() -> None:
     assert normalize_summary_groups(
         [
-            "artifact-directory, artifact-dirname, artifact-folder, artifact-folder-name",
+            "artifact-directory, artifact-dirname, artifact-folder, artifact-folder-name, "
+            "path-dir, path-directory, path-dirname, path-folder, path-folder-name",
             (
                 "current-artifact-directory, current-path-directory, current-artifact-dirname, "
                 "current-path-dirname, current-artifact-folder, current-path-folder, "
@@ -134,7 +141,10 @@ def test_summary_groups_accept_directory_aliases() -> None:
 def test_summary_groups_accept_extension_aliases() -> None:
     assert normalize_summary_groups(
         [
-            "artifact-ext, artifact-file-ext, artifact-file-extension",
+            (
+                "artifact-ext, artifact-file-ext, artifact-file-extension, path-extension, "
+                "path-ext, path-file-ext, path-file-extension"
+            ),
             "current-extension, current-ext, current-artifact-ext, current-file-ext",
             "current-file-extension, current-path-ext, current-path-extension",
             "detail-extension, detail-ext, detail-file-ext, detail-file-extension, detail-page-ext",
@@ -510,6 +520,18 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
 
 def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
     for alias in [
+        "path-name",
+        "path-name-asc",
+        "path-name-desc",
+        "path-basename",
+        "path-basename-asc",
+        "path-basename-desc",
+        "path-filename",
+        "path-filename-asc",
+        "path-filename-desc",
+        "path-file-name",
+        "path-file-name-asc",
+        "path-file-name-desc",
         "artifact-basename",
         "artifact-basename-asc",
         "artifact-basename-desc",
@@ -537,6 +559,12 @@ def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
 
 def test_parse_args_accepts_file_stem_stale_sort_aliases() -> None:
     for alias in [
+        "path-stem",
+        "path-stem-asc",
+        "path-stem-desc",
+        "path-file-stem",
+        "path-file-stem-asc",
+        "path-file-stem-desc",
         "artifact-file-stem",
         "artifact-file-stem-asc",
         "artifact-file-stem-desc",
@@ -556,8 +584,20 @@ def test_parse_args_accepts_file_stem_stale_sort_aliases() -> None:
         assert parse_args(["--sort", alias]).sort == alias
 
 
-def test_parse_args_accepts_detail_page_file_extension_sort_aliases() -> None:
+def test_parse_args_accepts_file_extension_sort_aliases() -> None:
     for alias in [
+        "path-extension",
+        "path-extension-asc",
+        "path-extension-desc",
+        "path-ext",
+        "path-ext-asc",
+        "path-ext-desc",
+        "path-file-ext",
+        "path-file-ext-asc",
+        "path-file-ext-desc",
+        "path-file-extension",
+        "path-file-extension-asc",
+        "path-file-extension-desc",
         "detail-page-file-ext",
         "detail-page-file-ext-asc",
         "detail-page-file-ext-desc",
@@ -570,6 +610,21 @@ def test_parse_args_accepts_detail_page_file_extension_sort_aliases() -> None:
 
 def test_parse_args_accepts_directory_stale_sort_aliases() -> None:
     for alias in [
+        "path-dir",
+        "path-dir-asc",
+        "path-dir-desc",
+        "path-directory",
+        "path-directory-asc",
+        "path-directory-desc",
+        "path-dirname",
+        "path-dirname-asc",
+        "path-dirname-desc",
+        "path-folder",
+        "path-folder-asc",
+        "path-folder-desc",
+        "path-folder-name",
+        "path-folder-name-asc",
+        "path-folder-name-desc",
         "artifact-directory",
         "artifact-directory-asc",
         "artifact-directory-desc",
