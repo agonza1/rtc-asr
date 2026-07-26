@@ -4670,6 +4670,31 @@ def test_stale_artifacts_can_sort_by_artifact_extension_descending_then_path() -
     ]
 
 
+def test_stale_artifacts_can_sort_by_artifact_extension_descending_with_prefix_extensions() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/short.a",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/long.aa",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, sort_by="path-extension-desc")
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/long.aa",
+        "benchmark-results/short.a",
+    ]
+
+
 def test_stale_artifacts_can_sort_by_detail_page_path() -> None:
     manifest = {
         "tracks": [],

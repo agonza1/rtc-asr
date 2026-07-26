@@ -1577,7 +1577,7 @@ def age_bucket(age_days: int | None) -> str:
 
 
 def descending_text_key(value: Any) -> tuple[int, ...]:
-    return tuple(-ord(character) for character in str(value))
+    return (*(-ord(character) for character in str(value)), 0)
 
 
 def lowercase_cli_choice(value: str) -> str:
@@ -2220,7 +2220,8 @@ def stale_artifacts(
         return sorted(
             stale,
             key=lambda entry: (
-                *(-ord(character) for character in Path(entry.get("artifact_path") or "").suffix.lower()),
+                Path(entry.get("artifact_path") or "").suffix.lower() == "",
+                descending_text_key(Path(entry.get("artifact_path") or "").suffix.lower()),
                 entry.get("artifact_path") or "",
             ),
         )
