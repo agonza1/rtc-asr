@@ -333,9 +333,13 @@ def test_parse_args_accepts_readable_name_summary_sort_aliases() -> None:
         "alpha-asc",
         "alpha-desc",
         "reverse-alphabetical",
+        "reverse-alphabetical-first",
         "reverse-alpha",
+        "reverse-alpha-first",
         "reverse-name",
         "reverse-name-first",
+        "name-reverse",
+        "name-reverse-first",
         "a-z",
         "z-a",
     ]:
@@ -364,11 +368,13 @@ def test_render_json_summary_accepts_readable_name_sort_aliases() -> None:
     )
     alpha = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="alpha"))
     reverse = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="reverse-name"))
+    name_reverse = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="name-reverse"))
 
     assert [bucket["slug"] for bucket in alphabetical["by_slug"]] == ["alpha", "zulu"]
     assert [bucket["slug"] for bucket in alpha["by_slug"]] == ["alpha", "zulu"]
     assert [bucket["slug"] for bucket in reverse_alphabetical["by_slug"]] == ["zulu", "alpha"]
     assert [bucket["slug"] for bucket in reverse["by_slug"]] == ["zulu", "alpha"]
+    assert [bucket["slug"] for bucket in name_reverse["by_slug"]] == ["zulu", "alpha"]
 
 
 def test_parse_args_accepts_readable_size_thresholds() -> None:
