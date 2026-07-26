@@ -64,10 +64,11 @@ def test_summary_groups_accept_comma_separated_values() -> None:
 
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
-    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, MONTH"]) == {
+    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, MONTH"]) == {
         "status",
         "current-artifact-name",
         "detail-page",
+        "track-state",
         "measured-month",
     }
 
@@ -516,6 +517,10 @@ def test_parse_args_accepts_readable_age_filter_aliases() -> None:
     assert args.newer_than_days == 90
 
 
+def test_parse_args_accepts_track_status_filter_alias() -> None:
+    assert parse_args(["--track-status", "tracked"]).track_state == "tracked"
+
+
 def test_parse_size_bytes_rejects_unknown_units() -> None:
     with pytest.raises(argparse.ArgumentTypeError, match="size unit must be one of"):
         parse_size_bytes("1XB")
@@ -558,6 +563,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "label-asc",
         "slug-asc",
         "track-state-asc",
+        "track-status-asc",
         "current-path-asc",
         "current-artifact-asc",
         "current-path-name-asc",
@@ -5384,6 +5390,15 @@ def test_stale_artifacts_can_sort_by_track_state_slug_and_path() -> None:
         "benchmark-results/qwen-old.json",
         "benchmark-results/untracked-a.json",
         "benchmark-results/untracked-b.json",
+    ]
+
+    status_alias = stale_artifacts(manifest, sort_by="track-status-desc")
+
+    assert [entry["artifact_path"] for entry in status_alias] == [
+        "benchmark-results/untracked-b.json",
+        "benchmark-results/untracked-a.json",
+        "benchmark-results/qwen-old.json",
+        "benchmark-results/base-old.json",
     ]
 
 
