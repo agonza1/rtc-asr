@@ -844,6 +844,37 @@ def test_print_summary_formats_warning_counts_without_ms(capsys) -> None:
     assert lines[7] == "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a"
 
 
+def test_print_summary_includes_available_environment_observations(capsys) -> None:
+    benchmark_module.print_summary(
+        {
+            "summary": {
+                "time_to_first_interim_ms": {"p50": 4.0, "p95": 5.0, "p99": None},
+            },
+            "environment": {
+                "peak_rss_mb": 128.5,
+                "cpu_utilization_percent": 23.5,
+                "package_power_watts": 4.8,
+                "energy_per_audio_second_j": 2.6,
+                "thermal_peak_celsius": 63.5,
+                "thermal_observation": "stable after 5 minutes",
+                "thermal_duration_minutes": 5.0,
+                "process_rss_mb": None,
+            },
+        }
+    )
+
+    assert capsys.readouterr().out.splitlines() == [
+        "time_to_first_interim_ms: p50=4.0ms p95=5.0ms p99=n/a",
+        "peak_rss: 128.5 MB",
+        "cpu_utilization: 23.5 %",
+        "package_power: 4.8 W",
+        "energy_per_audio_second: 2.6 J/audio-second",
+        "thermal_peak: 63.5 C",
+        "thermal_observation: stable after 5 minutes",
+        "thermal_duration: 5.0 minutes",
+    ]
+
+
 def test_parse_args_accepts_uds_ws_with_socket_path(tmp_path: Path) -> None:
     raw_path = tmp_path / "clip.pcm"
     raw_path.write_bytes(b"a" * 640)

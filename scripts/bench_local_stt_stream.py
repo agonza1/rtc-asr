@@ -961,6 +961,28 @@ def print_summary(payload: dict[str, Any]) -> None:
             f"p95={_format_summary_value(metric, values['p95'])} "
             f"p99={_format_summary_value(metric, values['p99'])}"
         )
+    for label in _format_environment_summary_lines(payload.get("environment") or {}):
+        print(label)
+
+
+def _format_environment_summary_lines(environment: dict[str, Any]) -> list[str]:
+    fields = (
+        ("peak_rss_mb", "peak_rss", "MB"),
+        ("cpu_utilization_percent", "cpu_utilization", "%"),
+        ("package_power_watts", "package_power", "W"),
+        ("energy_per_audio_second_j", "energy_per_audio_second", "J/audio-second"),
+        ("thermal_peak_celsius", "thermal_peak", "C"),
+        ("thermal_observation", "thermal_observation", ""),
+        ("thermal_duration_minutes", "thermal_duration", "minutes"),
+    )
+    lines: list[str] = []
+    for key, label, unit in fields:
+        value = environment.get(key)
+        if value is None:
+            continue
+        suffix = f" {unit}" if unit else ""
+        lines.append(f"{label}: {value}{suffix}")
+    return lines
 
 
 def _format_summary_value(metric: str, value: float | None) -> str:
