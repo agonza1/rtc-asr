@@ -402,14 +402,14 @@ def test_parse_args_accepts_readable_size_thresholds() -> None:
             "--summary-min-size-bytes",
             "3kb",
             "--summary-max-size-bytes",
-            "4GiB",
+            "4TiB",
         ]
     )
 
     assert args.min_size_bytes == 1536
     assert args.max_size_bytes == 2_000_000
     assert args.summary_min_size_bytes == 3000
-    assert args.summary_max_size_bytes == 4 * 1024**3
+    assert args.summary_max_size_bytes == 4 * 1024**4
 
 
 def test_parse_args_accepts_readable_age_filter_aliases() -> None:
@@ -6834,6 +6834,7 @@ def test_format_bytes_uses_binary_units() -> None:
     assert format_bytes(75) == "75 B"
     assert format_bytes(1536) == "1.5 KiB"
     assert format_bytes(2 * 1024 * 1024) == "2.0 MiB"
+    assert format_bytes(3 * 1024**4) == "3.0 TiB"
 
 
 def test_detail_page_path_matches_prerendered_artifact_page() -> None:
