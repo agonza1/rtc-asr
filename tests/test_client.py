@@ -23,6 +23,7 @@ from src.rtc_client import (
     AsyncLocalSttClient,
     AsyncRawUdsLocalSttClient,
     LocalSTTConfig,
+    TranscriptEvent,
     _default_raw_uds_connect,
     build_async_local_stt_client,
 )
@@ -59,6 +60,37 @@ def test_importing_rtc_client_does_not_load_main_module() -> None:
     assert rtc_client.AsyncASRClient is not None
     assert rtc_client.AsyncLocalSttClient is not None
     assert "src.main" not in sys.modules
+
+
+def test_transcript_event_ignores_boolean_integer_fields() -> None:
+    event = TranscriptEvent.from_payload(
+        {
+            "type": "transcript",
+            "text": "hello",
+            "is_final": False,
+            "stream_id": True,
+            "chunks_received": True,
+            "buffered_bytes": False,
+            "remaining_buffer_bytes": True,
+            "revision": True,
+            "audio_received_ms": False,
+            "audio_transcribed_ms": True,
+            "metadata": {
+                "stream_id": False,
+                "chunks_received": True,
+                "buffered_bytes": True,
+                "remaining_buffer_bytes": False,
+            },
+        }
+    )
+
+    assert event.stream_id is None
+    assert event.chunks_received == 0
+    assert event.buffered_bytes == 0
+    assert event.remaining_buffer_bytes == 0
+    assert event.revision is None
+    assert event.audio_received_ms is None
+    assert event.audio_transcribed_ms is None
 
 
 def test_async_asr_client_stream_flow() -> None:
