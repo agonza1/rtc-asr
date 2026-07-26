@@ -132,6 +132,10 @@ SUMMARY_GROUP_ALIASES = {
 }
 
 STALE_SORT_ALIASES = {
+    "biggest": "size",
+    "biggest-first": "size",
+    "largest-first": "size",
+    "smallest-first": "size-asc",
     "freshest": "age-asc",
     "freshest-first": "age-asc",
     "newest": "measured-at-desc",
@@ -390,8 +394,12 @@ SUMMARY_SORTS = (
     "mean-bytes",
     "mean-bytes-desc",
     "mean-bytes-asc",
+    "biggest",
+    "biggest-first",
     "largest",
+    "largest-first",
     "smallest",
+    "smallest-first",
     "count",
     "count-desc",
     "count-asc",
@@ -399,6 +407,13 @@ SUMMARY_SORTS = (
     "name-asc",
     "name-desc",
 )
+
+SUMMARY_SORT_ALIASES = {
+    "biggest": "size",
+    "biggest-first": "size",
+    "largest-first": "size",
+    "smallest-first": "size-asc",
+}
 
 
 def format_bytes(size_bytes: int | None) -> str:
@@ -523,8 +538,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "total-size",
             "total-size-desc",
             "total-size-asc",
+            "biggest",
+            "biggest-first",
             "largest",
+            "largest-first",
             "smallest",
+            "smallest-first",
             "age",
             "age-desc",
             "age-asc",
@@ -1430,7 +1449,8 @@ def normalize_stale_sort(sort_by: str) -> str:
 
 
 def normalize_summary_sort(sort_by: str) -> str:
-    return sort_by.strip().lower()
+    normalized = sort_by.strip().lower()
+    return SUMMARY_SORT_ALIASES.get(normalized, normalized)
 
 
 def normalize_summary_groups(groups: list[str] | None) -> set[str]:

@@ -228,6 +228,29 @@ def test_render_json_summary_accepts_case_insensitive_summary_sort() -> None:
     assert [bucket["slug"] for bucket in summary["by_slug"]] == ["base", "qwen"]
 
 
+def test_render_json_summary_accepts_readable_size_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-small.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen-large.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    largest = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="largest-first"))
+    smallest = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="smallest-first"))
+
+    assert [bucket["slug"] for bucket in largest["by_slug"]] == ["qwen", "base"]
+    assert [bucket["slug"] for bucket in smallest["by_slug"]] == ["base", "qwen"]
+
+
 def test_parse_args_accepts_bytes_summary_sort_aliases() -> None:
     for alias in ["bytes", "bytes-desc", "bytes-asc"]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
@@ -239,7 +262,7 @@ def test_parse_args_accepts_disk_size_summary_sort_aliases() -> None:
 
 
 def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
-    for alias in ["largest", "smallest"]:
+    for alias in ["biggest", "biggest-first", "largest", "largest-first", "smallest", "smallest-first"]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
@@ -376,8 +399,12 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "artifact-path",
         "artifact-path-desc",
         "artifact-path-asc",
+        "biggest",
+        "biggest-first",
         "largest",
+        "largest-first",
         "smallest",
+        "smallest-first",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
