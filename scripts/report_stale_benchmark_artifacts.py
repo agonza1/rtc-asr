@@ -1425,7 +1425,12 @@ def lowercase_cli_choice(value: str) -> str:
 
 
 def normalize_stale_sort(sort_by: str) -> str:
-    return STALE_SORT_ALIASES.get(sort_by, sort_by)
+    normalized = sort_by.strip().lower()
+    return STALE_SORT_ALIASES.get(normalized, normalized)
+
+
+def normalize_summary_sort(sort_by: str) -> str:
+    return sort_by.strip().lower()
 
 
 def normalize_summary_groups(groups: list[str] | None) -> set[str]:
@@ -2839,6 +2844,7 @@ def validate_summary_options(
     summary_min_size_bytes: int | None = None,
     summary_max_size_bytes: int | None = None,
 ) -> None:
+    summary_sort = normalize_summary_sort(summary_sort)
     if summary_limit is not None and summary_limit < 0:
         raise ValueError("summary_limit must be non-negative")
     if summary_sort not in SUMMARY_SORTS:
@@ -2967,6 +2973,7 @@ def render_json_summary(
     summary_max_size_bytes: int | None = None,
     include_share: bool = False,
 ) -> str:
+    summary_sort = normalize_summary_sort(summary_sort)
     validate_summary_options(
         summary_limit=summary_limit,
         summary_sort=summary_sort,
@@ -3031,6 +3038,7 @@ def render_summary_csv(
     summary_max_size_bytes: int | None = None,
     include_share: bool = False,
 ) -> str:
+    summary_sort = normalize_summary_sort(summary_sort)
     validate_summary_options(
         summary_limit=summary_limit,
         summary_sort=summary_sort,
@@ -3237,6 +3245,7 @@ def limit_summary_buckets(
     min_size_bytes: int | None = None,
     max_size_bytes: int | None = None,
 ) -> list[dict[str, Any]]:
+    sort_by = normalize_summary_sort(sort_by)
     validate_summary_options(
         summary_limit=limit,
         summary_sort=sort_by,
@@ -3364,6 +3373,7 @@ def render_summary(
     summary_min_size_bytes: int | None = None,
     summary_max_size_bytes: int | None = None,
 ) -> str:
+    summary_sort = normalize_summary_sort(summary_sort)
     validate_summary_options(
         summary_limit=summary_limit,
         summary_sort=summary_sort,
