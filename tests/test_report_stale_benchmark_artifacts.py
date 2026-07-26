@@ -594,6 +594,30 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         assert parse_args(["--sort", alias]).sort == alias
 
 
+def test_parse_args_accepts_readable_path_sort_aliases() -> None:
+    for alias in [
+        "alphabetical",
+        "alphabetical-first",
+        "alphabetical-asc",
+        "alphabetical-desc",
+        "alpha",
+        "alpha-first",
+        "alpha-asc",
+        "alpha-desc",
+        "reverse-alphabetical",
+        "reverse-alphabetical-first",
+        "reverse-alpha",
+        "reverse-alpha-first",
+        "reverse-path",
+        "reverse-path-first",
+        "path-reverse",
+        "path-reverse-first",
+        "a-z",
+        "z-a",
+    ]:
+        assert parse_args(["--sort", alias]).sort == alias
+
+
 def test_parse_args_accepts_basename_stale_sort_aliases() -> None:
     for alias in [
         "path-name",
@@ -1515,6 +1539,46 @@ def test_stale_artifacts_accepts_case_insensitive_sort_aliases() -> None:
     assert [entry["artifact_path"] for entry in stale] == [
         "benchmark-results/fresh.json",
         "benchmark-results/stale.json",
+    ]
+
+
+def test_stale_artifacts_accepts_readable_path_sort_aliases() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/zulu.json",
+                "status": "legacy",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/alpha.json",
+                "status": "legacy",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    alphabetical = stale_artifacts(manifest, sort_by="alphabetical")
+    alpha = stale_artifacts(manifest, sort_by="alpha")
+    reverse = stale_artifacts(manifest, sort_by="reverse-alphabetical")
+    path_reverse = stale_artifacts(manifest, sort_by="path-reverse")
+
+    assert [entry["artifact_path"] for entry in alphabetical] == [
+        "benchmark-results/alpha.json",
+        "benchmark-results/zulu.json",
+    ]
+    assert [entry["artifact_path"] for entry in alpha] == [
+        "benchmark-results/alpha.json",
+        "benchmark-results/zulu.json",
+    ]
+    assert [entry["artifact_path"] for entry in reverse] == [
+        "benchmark-results/zulu.json",
+        "benchmark-results/alpha.json",
+    ]
+    assert [entry["artifact_path"] for entry in path_reverse] == [
+        "benchmark-results/zulu.json",
+        "benchmark-results/alpha.json",
     ]
 
 
