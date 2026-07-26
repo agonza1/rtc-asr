@@ -260,10 +260,14 @@ def test_render_json_summary_accepts_readable_size_sort_aliases() -> None:
     ]
 
     largest = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="largest-first"))
+    largest_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="largest-bytes-first"))
     smallest = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="smallest-first"))
+    smallest_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="smallest-bytes-first"))
 
     assert [bucket["slug"] for bucket in largest["by_slug"]] == ["qwen", "base"]
+    assert [bucket["slug"] for bucket in largest_bytes["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in smallest["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in smallest_bytes["by_slug"]] == ["base", "qwen"]
 
 
 def test_render_json_summary_accepts_least_count_sort_aliases() -> None:
@@ -304,7 +308,18 @@ def test_parse_args_accepts_disk_size_summary_sort_aliases() -> None:
 
 
 def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
-    for alias in ["biggest", "biggest-first", "largest", "largest-first", "smallest", "smallest-first"]:
+    for alias in [
+        "biggest",
+        "biggest-first",
+        "largest",
+        "largest-first",
+        "largest-bytes",
+        "largest-bytes-first",
+        "smallest",
+        "smallest-first",
+        "smallest-bytes",
+        "smallest-bytes-first",
+    ]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
@@ -514,8 +529,12 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "biggest-first",
         "largest",
         "largest-first",
+        "largest-bytes",
+        "largest-bytes-first",
         "smallest",
         "smallest-first",
+        "smallest-bytes",
+        "smallest-bytes-first",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
