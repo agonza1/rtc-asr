@@ -64,10 +64,11 @@ def test_summary_groups_accept_comma_separated_values() -> None:
 
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
-    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH"]) == {
+    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, MONTH"]) == {
         "status",
         "current-artifact-name",
         "detail-page",
+        "measured-month",
     }
 
 
@@ -685,8 +686,53 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "recent-first",
         "most-recent",
         "most-recent-first",
+        "month",
+        "month-asc",
+        "month-desc",
+        "measurement-month",
+        "measurement-month-asc",
+        "measurement-month-desc",
+        "measured-at-month",
+        "measured-at-month-asc",
+        "measured-at-month-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
+
+
+def test_parse_args_accepts_measured_month_filter_aliases() -> None:
+    args = parse_args(["--month", "2026-06", "--measurement-month", "2026-07"])
+
+    assert args.measured_month == ["2026-06", "2026-07"]
+
+
+def test_stale_artifacts_accept_measured_month_sort_aliases() -> None:
+    manifest = {
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/june.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T00:00:00Z",
+            },
+            {
+                "artifact_path": "benchmark-results/july.json",
+                "status": "legacy",
+                "measured_at": "2026-07-01T00:00:00Z",
+            },
+        ],
+        "tracks": [],
+    }
+
+    ascending = stale_artifacts(manifest, sort_by="month")
+    descending = stale_artifacts(manifest, sort_by="measurement-month-desc")
+
+    assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/june.json",
+        "benchmark-results/july.json",
+    ]
+    assert [entry["artifact_path"] for entry in descending] == [
+        "benchmark-results/july.json",
+        "benchmark-results/june.json",
+    ]
 
 
 def test_parse_args_accepts_readable_path_sort_aliases() -> None:
