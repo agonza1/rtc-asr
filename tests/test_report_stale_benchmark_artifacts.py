@@ -226,6 +226,13 @@ def test_parse_args_accepts_readable_size_thresholds() -> None:
     assert args.summary_max_size_bytes == 4 * 1024**3
 
 
+def test_parse_args_accepts_readable_age_filter_aliases() -> None:
+    args = parse_args(["--older-than", "30", "--newer-than", "90"])
+
+    assert args.older_than_days == 30
+    assert args.newer_than_days == 90
+
+
 def test_parse_size_bytes_rejects_unknown_units() -> None:
     with pytest.raises(argparse.ArgumentTypeError, match="size unit must be one of"):
         parse_size_bytes("1XB")
