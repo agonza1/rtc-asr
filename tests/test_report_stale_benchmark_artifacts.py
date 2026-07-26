@@ -147,7 +147,8 @@ def test_summary_groups_accept_extension_aliases() -> None:
                 "path-ext, path-file-ext, path-file-extension"
             ),
             "current-extension, current-ext, current-artifact-ext, current-file-ext",
-            "current-file-extension, current-path-ext, current-path-extension",
+            "current-file-extension, current-path-ext, current-path-file-ext, "
+            "current-path-file-extension, current-path-extension",
             "detail-extension, detail-ext, detail-file-ext, detail-file-extension, detail-page-ext",
             "detail-page-file-ext, detail-page-file-extension",
         ]
@@ -574,6 +575,8 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-extension-asc",
         "current-ext-asc",
         "current-path-ext-asc",
+        "current-path-file-ext-asc",
+        "current-path-file-extension-asc",
         "current-artifact-ext-asc",
         "current-file-ext-asc",
         "current-file-extension-asc",
@@ -839,6 +842,12 @@ def test_parse_args_accepts_file_extension_sort_aliases() -> None:
         "path-file-extension",
         "path-file-extension-asc",
         "path-file-extension-desc",
+        "current-path-file-ext",
+        "current-path-file-ext-asc",
+        "current-path-file-ext-desc",
+        "current-path-file-extension",
+        "current-path-file-extension-asc",
+        "current-path-file-extension-desc",
         "detail-page-file-ext",
         "detail-page-file-ext-asc",
         "detail-page-file-ext-desc",
@@ -1012,6 +1021,10 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "csv",
             "--current-path-ext",
             "txt",
+            "--current-path-file-ext",
+            "flac",
+            "--current-path-file-extension",
+            "opus",
             "--current-artifact-extension-contains",
             "json",
             "--current-extension-contains",
@@ -1026,6 +1039,10 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "csv",
             "--current-path-ext-contains",
             "txt",
+            "--current-path-file-ext-contains",
+            "flac",
+            "--current-path-file-extension-contains",
+            "opus",
         ]
     )
 
@@ -1057,8 +1074,18 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
         "folder-name-current",
         "folder-name-path",
     ]
-    assert args.current_path_extension == [".json", "json.gz", "webm", "jsonl", "wav", "csv", "txt"]
-    assert args.current_path_extension_contains == ["json", "gz", "web", "jsonl", "wav", "csv", "txt"]
+    assert args.current_path_extension == [".json", "json.gz", "webm", "jsonl", "wav", "csv", "txt", "flac", "opus"]
+    assert args.current_path_extension_contains == [
+        "json",
+        "gz",
+        "web",
+        "jsonl",
+        "wav",
+        "csv",
+        "txt",
+        "flac",
+        "opus",
+    ]
 
 
 def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() -> None:
