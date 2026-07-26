@@ -627,6 +627,14 @@ def format_bytes(size_bytes: int | None) -> str:
     return f"{size:.1f} {unit}"
 
 
+def format_average_bytes(size_bytes: float) -> str:
+    if size_bytes.is_integer():
+        return format_bytes(int(size_bytes))
+    if size_bytes < 1024:
+        return f"{size_bytes:.1f} B"
+    return format_bytes(size_bytes)
+
+
 def parse_size_bytes(value: str) -> int:
     match = re.fullmatch(r"\s*(-?\d+(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
     if match is None:
@@ -3309,6 +3317,8 @@ def render_json_summary(
             max_size_bytes=summary_max_size_bytes,
         )
         buckets = filtered_buckets if summary_limit is None else filtered_buckets[:summary_limit]
+        if is_average_summary_sort(summary_sort):
+            buckets = with_summary_average_sizes(buckets)
         if include_share:
             buckets = with_summary_shares(
                 buckets,
@@ -3395,6 +3405,40 @@ def render_summary_csv(
                 }
             )
     return output.getvalue()
+
+
+def is_average_summary_sort(sort_by: str) -> bool:
+    return normalize_summary_sort(sort_by) in {
+        "average-size",
+        "average-size-desc",
+        "average-bytes",
+        "average-bytes-desc",
+        "avg-size",
+        "avg-size-desc",
+        "avg-bytes",
+        "avg-bytes-desc",
+        "mean-size",
+        "mean-size-desc",
+        "mean-bytes",
+        "mean-bytes-desc",
+        "average-size-asc",
+        "average-bytes-asc",
+        "avg-size-asc",
+        "avg-bytes-asc",
+        "mean-size-asc",
+        "mean-bytes-asc",
+    }
+
+
+def with_summary_average_sizes(buckets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    averaged_buckets = []
+    for bucket in buckets:
+        averaged_bucket = dict(bucket)
+        average_size_bytes = bucket["total_size_bytes"] / bucket["count"] if bucket["count"] else 0
+        averaged_bucket["average_size_bytes"] = average_size_bytes
+        averaged_bucket["average_size"] = format_average_bytes(average_size_bytes)
+        averaged_buckets.append(averaged_bucket)
+    return averaged_buckets
 
 
 def with_summary_shares(
@@ -3576,7 +3620,14 @@ def limit_summary_buckets(
 
 
 def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, ...]:
-    bucket_key = next((key for key in bucket if key not in {"count", "total_size_bytes", "total_size"}), "")
+    bucket_key = next(
+        (
+            key
+            for key in bucket
+            if key not in {"count", "total_size_bytes", "total_size", "average_size_bytes", "average_size"}
+        ),
+        "",
+    )
     name = str(bucket.get(bucket_key, ""))
     average_size = bucket["total_size_bytes"] / bucket["count"] if bucket["count"] else 0
     if bucket_key == "age_bucket" and sort_by in {"name", "name-asc"}:
