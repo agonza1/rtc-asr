@@ -300,6 +300,42 @@ def test_compare_artifacts_accepts_transport_aliases_from_stream_artifacts(tmp_p
     assert sorted(comparison["transports"]) == ["raw_uds", "tcp_ws", "uds_ws"]
 
 
+def test_compare_artifacts_accepts_raw_uds_contract_map(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 10.0)
+
+    payload = json.loads(raw.read_text(encoding="utf8"))
+    inline_contract = {
+        key: payload["target"].pop(key)
+        for key in (
+            "frame_format",
+            "frame_header_bytes",
+            "per_frame_overhead_bytes",
+            "max_payload_bytes",
+            "frame_types",
+            "frame_type_codes",
+            "lifecycle",
+            "error_handling",
+            "error_codes",
+            "shared_stream_runtime",
+            "plugin_config",
+            "comparison_required_transports",
+            "start_control_payload",
+        )
+    }
+    payload["contract"] = {"experimental_transports": {"raw_uds": inline_contract}}
+    raw.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_contract_gaps"] == []
+    assert comparison["raw_uds_lifecycle_gaps"] == []
+    assert comparison["raw_uds_error_handling_gaps"] == []
+    assert comparison["raw_uds_error_code_gaps"] == []
+    assert comparison["raw_uds_runtime_gaps"] == []
+
+
 def test_compare_artifacts_accepts_issue_88_queue_metric_aliases(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 17.0)
