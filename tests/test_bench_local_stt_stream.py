@@ -250,6 +250,45 @@ def test_parse_args_accepts_scenario_label(tmp_path) -> None:
     assert args.scenario == "warm-service-regression"
 
 
+def test_parse_args_accepts_readable_transport_aliases(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    tcp_args = benchmark_module.parse_args(["--transport", "tcp-ws", "--input-raw-pcm", str(pcm_path)])
+    uds_args = benchmark_module.parse_args([
+        "--transport",
+        "unix-websocket",
+        "--uds-path",
+        "/tmp/stt.sock",
+        "--input-raw-pcm",
+        str(pcm_path),
+    ])
+    raw_args = benchmark_module.parse_args([
+        "--transport",
+        "raw-uds",
+        "--uds-path",
+        "/tmp/stt.raw.sock",
+        "--input-raw-pcm",
+        str(pcm_path),
+    ])
+
+    assert tcp_args.transport == "tcp_ws"
+    assert uds_args.transport == "uds_ws"
+    assert raw_args.transport == "raw_uds"
+
+
+def test_parse_args_rejects_unknown_transport(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    try:
+        benchmark_module.parse_args(["--transport", "bluetooth", "--input-raw-pcm", str(pcm_path)])
+    except SystemExit as exc:
+        assert exc.code == 2
+    else:
+        raise AssertionError("expected unknown transport to fail")
+
+
 def test_parse_args_rejects_negative_power_and_thermal_values(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
