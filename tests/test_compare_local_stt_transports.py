@@ -15,6 +15,11 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(compare_module)
 
 
+def test_normalized_transport_accepts_direct_target_aliases() -> None:
+    assert compare_module.normalized_transport({"target": {"transport": "raw-uds"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "uds-websocket"}}) == "uds_ws"
+
+
 def write_artifact(
     path: Path,
     transport: str,
