@@ -470,12 +470,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--older-than-days",
+        "--older-than",
         type=parse_age_days,
         default=None,
         help="Only include stale artifacts measured before this many days ago",
     )
     parser.add_argument(
         "--newer-than-days",
+        "--newer-than",
         type=parse_age_days,
         default=None,
         help="Only include stale artifacts measured within this many days",
