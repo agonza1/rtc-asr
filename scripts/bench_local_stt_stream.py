@@ -43,6 +43,24 @@ class LocalSttClient(Protocol):
 
 ClientFactory = Callable[[str], LocalSttClient]
 SUPPORTED_TRANSPORTS = {"tcp_ws", "uds_ws", "raw_uds"}
+TRANSPORT_ALIASES = {
+    "tcp": "tcp_ws",
+    "tcp-ws": "tcp_ws",
+    "tcp-websocket": "tcp_ws",
+    "websocket": "tcp_ws",
+    "ws": "tcp_ws",
+    "uds": "uds_ws",
+    "uds-ws": "uds_ws",
+    "uds-websocket": "uds_ws",
+    "unix-ws": "uds_ws",
+    "unix-websocket": "uds_ws",
+    "unix-domain-websocket": "uds_ws",
+    "raw": "raw_uds",
+    "raw-uds": "raw_uds",
+    "raw-unix": "raw_uds",
+    "unix-raw": "raw_uds",
+    "raw-unix-socket": "raw_uds",
+}
 LOCAL_STT_AUDIO_CHANNELS = 1
 LOCAL_STT_AUDIO_FORMAT = "pcm_s16le"
 
@@ -138,13 +156,24 @@ def nonnegative_float(value: str) -> float:
     return parsed
 
 
+def normalize_transport(value: str) -> str:
+    normalized = value.strip().lower().replace("_", "-")
+    canonical = normalized.replace("-", "_")
+    if canonical in SUPPORTED_TRANSPORTS:
+        return canonical
+    if normalized in TRANSPORT_ALIASES:
+        return TRANSPORT_ALIASES[normalized]
+    valid_values = sorted(SUPPORTED_TRANSPORTS | set(TRANSPORT_ALIASES))
+    raise argparse.ArgumentTypeError(f"unsupported benchmark transport: {value}. Valid transports: {', '.join(valid_values)}")
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark Local STT v1 websocket latency")
     parser.add_argument(
         "--transport",
-        choices=("tcp_ws", "uds_ws", "raw_uds"),
+        type=normalize_transport,
         default="tcp_ws",
-        help="Local STT transport to benchmark. raw_uds uses the experimental length-prefixed Unix socket framing.",
+        help="Local STT transport to benchmark. Accepts tcp_ws, uds_ws, raw_uds, and readable aliases such as tcp-ws, uds-ws, or raw-uds.",
     )
     parser.add_argument("--url", default="ws://localhost:8080/v1/stt/stream")
     parser.add_argument("--uds-path", type=Path, help="Unix socket path for --transport uds_ws or raw_uds")
