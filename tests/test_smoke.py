@@ -75,6 +75,12 @@ DEFAULT_PROTOCOLS = [
             "frame_ms": HOT_PATH_FRAME_MS,
             "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
         },
+        "limits": {
+            "max_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
+            "binary_audio_chunk_bytes_multiple": 2,
+            "max_buffer_request_field": "max_buffer_seconds",
+            "partial_window_request_field": "partial_window_seconds",
+        },
         "partial_interval": {
             "request_field": "partial_interval_ms",
             "resolution_ms": HOT_PATH_FRAME_MS,
@@ -520,6 +526,21 @@ def test_health_reports_active_uds_local_stt_transport(tmp_path: Path) -> None:
         "transport": "uds_ws",
         "path": "/v1/stt/stream",
         "uds_path": str(socket_path),
+    }
+
+
+def test_protocol_catalog_reports_configured_stream_limits() -> None:
+    config = AppConfig(stream_max_buffer_bytes=123456)
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as client:
+        protocols = client.get("/api/protocols").json()["protocols"]
+
+    local_stt = next(protocol for protocol in protocols if protocol["id"] == PROTOCOL_VERSION)
+    assert local_stt["limits"] == {
+        "max_buffer_bytes": 123456,
+        "binary_audio_chunk_bytes_multiple": 2,
+        "max_buffer_request_field": "max_buffer_seconds",
+        "partial_window_request_field": "partial_window_seconds",
     }
 
 
