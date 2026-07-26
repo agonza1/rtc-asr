@@ -2399,6 +2399,39 @@ def test_render_json_summary_accepts_mean_bytes_sort_alias() -> None:
     assert [bucket["slug"] for bucket in summary["by_slug"]] == ["qwen", "base"]
 
 
+def test_render_json_summary_accepts_avg_bytes_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen-large.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    descending_summary = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="avg-bytes")
+    )
+    ascending_summary = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="avg-bytes-asc")
+    )
+
+    assert [bucket["slug"] for bucket in descending_summary["by_slug"]] == ["qwen", "base"]
+    assert [bucket["slug"] for bucket in ascending_summary["by_slug"]] == ["base", "qwen"]
+
+
 def test_render_summary_can_sort_group_rows_by_average_size_ascending() -> None:
     rendered = render_summary(
         [
