@@ -201,6 +201,33 @@ def test_parse_args_accepts_case_insensitive_summary_sort_aliases() -> None:
     assert parse_args(["--summary-sort", "Avg-Size-Asc"]).summary_sort == "avg-size-asc"
 
 
+def test_render_json_summary_accepts_case_insensitive_summary_sort() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen-large.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="Avg-Bytes-Asc"))
+
+    assert [bucket["slug"] for bucket in summary["by_slug"]] == ["base", "qwen"]
+
+
 def test_parse_args_accepts_bytes_summary_sort_aliases() -> None:
     for alias in ["bytes", "bytes-desc", "bytes-asc"]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
@@ -1220,6 +1247,33 @@ def test_stale_artifacts_accepts_readable_age_sort_aliases() -> None:
         "benchmark-results/fresh.json",
     ]
     assert [entry["artifact_path"] for entry in freshest_first] == [
+        "benchmark-results/fresh.json",
+        "benchmark-results/stale.json",
+    ]
+
+
+def test_stale_artifacts_accepts_case_insensitive_sort_aliases() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/fresh.json",
+                "status": "legacy",
+                "measured_at": "2026-06-19T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/stale.json",
+                "status": "legacy",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, now=datetime(2026, 6, 20, tzinfo=UTC), sort_by="Freshest-First")
+
+    assert [entry["artifact_path"] for entry in stale] == [
         "benchmark-results/fresh.json",
         "benchmark-results/stale.json",
     ]
