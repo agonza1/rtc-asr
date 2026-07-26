@@ -126,7 +126,8 @@ def test_summary_groups_accept_directory_aliases() -> None:
             (
                 "current-artifact-directory, current-path-directory, current-artifact-dirname, "
                 "current-path-dirname, current-artifact-folder, current-path-folder, "
-                "current-artifact-folder-name, current-path-folder-name"
+                "current-artifact-folder-name, current-path-folder-name, current-directory, "
+                "current-dir, current-dirname, current-folder, current-folder-name"
             ),
             (
                 "detail-directory, detail-dir, detail-page-directory, detail-dirname, detail-page-dirname, "
@@ -521,6 +522,28 @@ def test_parse_args_accepts_track_status_filter_alias() -> None:
     assert parse_args(["--track-status", "tracked"]).track_state == "tracked"
 
 
+def test_parse_args_accepts_current_directory_filter_short_aliases() -> None:
+    for alias in [
+        "--current-directory",
+        "--current-dir",
+        "--current-dirname",
+        "--current-folder",
+        "--current-folder-name",
+    ]:
+        assert parse_args([alias, "benchmark-results"]).current_path_dir == ["benchmark-results"]
+
+
+def test_parse_args_accepts_current_directory_contains_short_aliases() -> None:
+    for alias in [
+        "--current-directory-contains",
+        "--current-dir-contains",
+        "--current-dirname-contains",
+        "--current-folder-contains",
+        "--current-folder-name-contains",
+    ]:
+        assert parse_args([alias, "benchmark"]).current_path_dir_contains == ["benchmark"]
+
+
 def test_parse_size_bytes_rejects_unknown_units() -> None:
     with pytest.raises(argparse.ArgumentTypeError, match="size unit must be one of"):
         parse_size_bytes("1XB")
@@ -578,6 +601,11 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-artifact-dir-asc",
         "current-path-dirname-asc",
         "current-artifact-dirname-asc",
+        "current-directory-asc",
+        "current-dir-asc",
+        "current-dirname-asc",
+        "current-folder-asc",
+        "current-folder-name-asc",
         "current-extension-asc",
         "current-ext-asc",
         "current-path-ext-asc",
