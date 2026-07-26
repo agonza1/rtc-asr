@@ -460,10 +460,14 @@ SUMMARY_SORTS = (
     "mean-bytes-asc",
     "biggest",
     "biggest-first",
+    "heaviest",
+    "heaviest-first",
     "largest",
     "largest-first",
     "largest-bytes",
     "largest-bytes-first",
+    "lightest",
+    "lightest-first",
     "smallest",
     "smallest-first",
     "smallest-bytes",
@@ -509,9 +513,13 @@ SUMMARY_SORTS = (
 SUMMARY_SORT_ALIASES = {
     "biggest": "size",
     "biggest-first": "size",
+    "heaviest": "size",
+    "heaviest-first": "size",
     "largest-first": "size",
     "largest-bytes": "size",
     "largest-bytes-first": "size",
+    "lightest": "size-asc",
+    "lightest-first": "size-asc",
     "smallest-first": "size-asc",
     "smallest-bytes": "size-asc",
     "smallest-bytes-first": "size-asc",
@@ -2144,6 +2152,7 @@ def stale_artifacts(
         "disk-size-desc",
         "total-size",
         "total-size-desc",
+        "heaviest",
         "largest",
     }:
         return sorted(
@@ -2153,7 +2162,7 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
-    if sort_by in {"size-asc", "bytes-asc", "disk-size-asc", "total-size-asc", "smallest"}:
+    if sort_by in {"size-asc", "bytes-asc", "disk-size-asc", "total-size-asc", "lightest", "smallest"}:
         return sorted(
             stale,
             key=lambda entry: (
