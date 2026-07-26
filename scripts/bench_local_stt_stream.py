@@ -156,6 +156,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--partial-interval-ms", type=positive_int, default=100)
     parser.add_argument("--runs", type=positive_int, default=3)
     parser.add_argument(
+        "--scenario",
+        help="Optional short label to record in the artifact settings, for example warmup or regression-check",
+    )
+    parser.add_argument(
         "--receive-timeout-seconds",
         type=positive_int,
         default=5,
@@ -546,6 +550,7 @@ async def run_benchmark(
     thermal_peak_celsius: float | None = None,
     thermal_observation: str | None = None,
     thermal_duration_minutes: float | None = None,
+    scenario: str | None = None,
 ) -> dict[str, Any]:
     validate_transport_args(transport, Path(uds_path) if uds_path is not None else None)
     factory = client_factory or make_client_factory(transport=transport, uds_path=uds_path)
@@ -599,6 +604,7 @@ async def run_benchmark(
             "partial_interval_ms": partial_interval_ms,
             "receive_timeout_seconds": receive_timeout_seconds,
             "realtime_pace": realtime_pace,
+            "scenario": scenario,
         },
         "runs": runs,
         "samples": samples,
@@ -991,6 +997,7 @@ def main(argv: list[str] | None = None) -> int:
             thermal_peak_celsius=args.thermal_peak_celsius,
             thermal_observation=args.thermal_observation,
             thermal_duration_minutes=args.thermal_duration_minutes,
+            scenario=args.scenario,
         )
     )
     if args.output is not None:

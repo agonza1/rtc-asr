@@ -226,6 +226,20 @@ def test_parse_args_accepts_documented_thermal_state_alias(tmp_path) -> None:
     assert args.thermal_observation == "nominal"
 
 
+def test_parse_args_accepts_scenario_label(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    args = benchmark_module.parse_args([
+        "--input-raw-pcm",
+        str(pcm_path),
+        "--scenario",
+        "warm-service-regression",
+    ])
+
+    assert args.scenario == "warm-service-regression"
+
+
 def test_parse_args_rejects_negative_power_and_thermal_values(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
@@ -458,6 +472,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
             runs=1,
             realtime_pace=False,
             client_factory=FakeLocalSttClient,
+            scenario="warm-service-regression",
         )
     )
 
@@ -480,6 +495,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
         "partial_interval_ms": 100,
         "receive_timeout_seconds": 5,
         "realtime_pace": False,
+        "scenario": "warm-service-regression",
     }
     assert sample["audio_frames_sent"] == 2
     assert sample["audio_frames_dropped"] == 0
@@ -1123,6 +1139,7 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
     async def fake_run_benchmark(**kwargs):
         audio_seen["audio"] = kwargs["audio"]
         audio_seen["metrics_pid"] = kwargs["metrics_pid"]
+        audio_seen["scenario"] = kwargs["scenario"]
         return {
             "kind": "local-stt-v1-latency-benchmark",
             "samples": [],
@@ -1147,6 +1164,8 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
             "7",
             "--metrics-pid",
             "4321",
+            "--scenario",
+            "raw-pcm-smoke",
             "--no-realtime-pace",
         ]
     )
@@ -1157,3 +1176,4 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
     assert written["settings"]["receive_timeout_seconds"] == 7
     assert audio_seen["audio"].frames == [b"a" * 640]
     assert audio_seen["metrics_pid"] == 4321
+    assert audio_seen["scenario"] == "raw-pcm-smoke"
