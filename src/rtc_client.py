@@ -622,7 +622,7 @@ async def _default_raw_uds_connect(uds_path: str) -> tuple[asyncio.StreamReader,
 
 
 def _maybe_int(value: Any) -> int | None:
-    return value if isinstance(value, int) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 def _validate_positive_number(value: Any, *, field_name: str) -> None:
