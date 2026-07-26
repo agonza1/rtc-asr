@@ -418,6 +418,12 @@ SUMMARY_SORTS = (
     "name",
     "name-asc",
     "name-desc",
+    "alphabetical",
+    "alphabetical-first",
+    "alphabetical-asc",
+    "alphabetical-desc",
+    "a-z",
+    "z-a",
 )
 
 SUMMARY_SORT_ALIASES = {
@@ -437,6 +443,12 @@ SUMMARY_SORT_ALIASES = {
     "least-first": "count-asc",
     "least-artifacts": "count-asc",
     "least-artifacts-first": "count-asc",
+    "alphabetical": "name",
+    "alphabetical-first": "name",
+    "alphabetical-asc": "name-asc",
+    "alphabetical-desc": "name-desc",
+    "a-z": "name-asc",
+    "z-a": "name-desc",
 }
 
 

@@ -312,6 +312,41 @@ def test_parse_args_accepts_readable_count_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_readable_name_summary_sort_aliases() -> None:
+    for alias in [
+        "alphabetical",
+        "alphabetical-first",
+        "alphabetical-asc",
+        "alphabetical-desc",
+        "a-z",
+        "z-a",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
+def test_render_json_summary_accepts_readable_name_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/zulu.json",
+            "status": "legacy",
+            "slug": "zulu",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/alpha.json",
+            "status": "legacy",
+            "slug": "alpha",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    alphabetical = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="alphabetical"))
+    reverse = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="z-a"))
+
+    assert [bucket["slug"] for bucket in alphabetical["by_slug"]] == ["alpha", "zulu"]
+    assert [bucket["slug"] for bucket in reverse["by_slug"]] == ["zulu", "alpha"]
+
+
 def test_parse_args_accepts_readable_size_thresholds() -> None:
     args = parse_args(
         [
