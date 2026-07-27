@@ -70,6 +70,11 @@ def test_parse_args_accepts_plural_summary_groups_alias() -> None:
     assert args.summary_group == ["status, backend"]
 
 
+def test_parse_args_accepts_short_group_aliases() -> None:
+    assert parse_args(["--group", "status"]).summary_group == ["status"]
+    assert parse_args(["--groups", "status, backend"]).summary_group == ["status, backend"]
+
+
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, MONTH"]) == {
         "status",
