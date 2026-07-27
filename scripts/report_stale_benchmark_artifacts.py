@@ -710,13 +710,13 @@ def parse_size_bytes(value: str) -> int:
 
 def parse_age_days(value: str) -> int:
     match = re.fullmatch(
-        r"\s*(-?\d+)\s*(d|day|days|w|wk|wks|week|weeks|mo|mon|month|months|y|yr|yrs|year|years)?\s*",
+        r"\s*(-?\d+)\s*(d|day|days|w|wk|wks|week|weeks|q|qtr|qtrs|quarter|quarters|mo|mon|month|months|y|yr|yrs|year|years)?\s*",
         value,
         flags=re.IGNORECASE,
     )
     if match is None:
         raise argparse.ArgumentTypeError(
-            "age must be an integer, optionally followed by days, weeks, months, or years"
+            "age must be an integer, optionally followed by days, weeks, quarters, months, or years"
         )
 
     amount_text, unit_text = match.groups()
@@ -725,6 +725,8 @@ def parse_age_days(value: str) -> int:
         unit = unit_text.lower()
         if unit in {"w", "wk", "wks", "week", "weeks"}:
             days *= 7
+        elif unit in {"q", "qtr", "qtrs", "quarter", "quarters"}:
+            days *= 90
         elif unit in {"mo", "mon", "month", "months"}:
             days *= 30
         elif unit in {"y", "yr", "yrs", "year", "years"}:
