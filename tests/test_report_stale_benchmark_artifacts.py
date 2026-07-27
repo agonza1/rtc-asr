@@ -654,6 +654,10 @@ def test_parse_args_accepts_age_bucket_summary_sort_aliases() -> None:
         "age",
         "age-desc",
         "age-asc",
+        "older",
+        "older-first",
+        "newer",
+        "newer-first",
         "stale",
         "stale-first",
         "stalest",
@@ -719,10 +723,14 @@ def test_render_json_summary_accepts_age_bucket_summary_sort_aliases() -> None:
 
     stale_first = json.loads(render_json_summary(stale, groups=["age-bucket"], summary_sort="stale"))
     freshest_first = json.loads(render_json_summary(stale, groups=["age-bucket"], summary_sort="freshest"))
+    older_first = json.loads(render_json_summary(stale, groups=["age-bucket"], summary_sort="older-first"))
+    newer_first = json.loads(render_json_summary(stale, groups=["age-bucket"], summary_sort="newer-first"))
     age_range = json.loads(render_json_summary(stale, groups=["age-bucket"], summary_sort="age-range-asc"))
 
     assert [bucket["age_bucket"] for bucket in stale_first["by_age_bucket"]] == ["90d+", "30-89d", "0-6d"]
     assert [bucket["age_bucket"] for bucket in freshest_first["by_age_bucket"]] == ["0-6d", "30-89d", "90d+"]
+    assert [bucket["age_bucket"] for bucket in older_first["by_age_bucket"]] == ["90d+", "30-89d", "0-6d"]
+    assert [bucket["age_bucket"] for bucket in newer_first["by_age_bucket"]] == ["0-6d", "30-89d", "90d+"]
     assert [bucket["age_bucket"] for bucket in age_range["by_age_bucket"]] == ["0-6d", "30-89d", "90d+"]
 
 
