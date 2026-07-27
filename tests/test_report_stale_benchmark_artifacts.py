@@ -632,6 +632,12 @@ def test_parse_age_days_accepts_week_suffixes() -> None:
     assert parse_age_days("3 weeks") == 21
 
 
+def test_parse_age_days_accepts_fractional_units() -> None:
+    assert parse_age_days("1.5 weeks") == 11
+    assert parse_age_days("0.5 months") == 15
+    assert parse_age_days("1_000.5 days") == 1001
+
+
 def test_parse_age_days_accepts_fortnight_suffixes() -> None:
     assert parse_age_days("1 fortnight") == 14
     assert parse_age_days("2 fortnights") == 28

@@ -7,6 +7,7 @@ import argparse
 import csv
 import io
 import json
+import math
 import re
 import sys
 from datetime import UTC, datetime, timedelta
@@ -737,17 +738,17 @@ def parse_size_bytes(value: str) -> int:
 
 def parse_age_days(value: str) -> int:
     match = re.fullmatch(
-        r"\s*(-?\d+)\s*(d|day|days|w|wk|wks|week|weeks|fortnight|fortnights|biweek|biweeks|biweekly|q|qtr|qtrs|quarter|quarters|mo|mon|month|months|y|yr|yrs|year|years)?\s*",
+        r"\s*(-?(?:\d+(?:[,_]\d{3})+|\d+)(?:\.\d+)?)\s*(d|day|days|w|wk|wks|week|weeks|fortnight|fortnights|biweek|biweeks|biweekly|q|qtr|qtrs|quarter|quarters|mo|mon|month|months|y|yr|yrs|year|years)?\s*",
         value,
         flags=re.IGNORECASE,
     )
     if match is None:
         raise argparse.ArgumentTypeError(
-            "age must be an integer, optionally followed by days, weeks, quarters, months, or years"
+            "age must be a number, optionally followed by days, weeks, quarters, months, or years"
         )
 
     amount_text, unit_text = match.groups()
-    days = int(amount_text)
+    days = float(amount_text.replace(",", "").replace("_", ""))
     if unit_text:
         unit = unit_text.lower()
         if unit in {"w", "wk", "wks", "week", "weeks"}:
@@ -764,7 +765,7 @@ def parse_age_days(value: str) -> int:
         raise argparse.ArgumentTypeError("days must be non-negative")
     if days > 365000:
         raise argparse.ArgumentTypeError("days must be no more than 365000")
-    return days
+    return math.ceil(days)
 
 
 def format_age_days(age_days: int | None) -> str:
