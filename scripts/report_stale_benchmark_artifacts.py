@@ -69,6 +69,8 @@ SUMMARY_GROUP_KEYS = {
     "age-bucket": "by_age_bucket",
 }
 
+SUMMARY_OUTPUT_REQUIREMENT = "--summary-only, --json-summary, --summary-csv, or --summary-markdown"
+
 SUMMARY_GROUP_ALIASES = {
     "path-name": "artifact-name",
     "path-basename": "artifact-name",
@@ -4959,17 +4961,17 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--markdown and --summary-only cannot be used together")
     summary_output_requested = args.summary_only or args.json_summary or args.summary_csv or args.summary_markdown
     if args.summary_group and not summary_output_requested:
-        raise ValueError("--summary-group requires --summary-only, --json-summary, or --summary-csv")
+        raise ValueError(f"--summary-group requires {SUMMARY_OUTPUT_REQUIREMENT}")
     if args.summary_limit is not None and not summary_output_requested:
-        raise ValueError("--summary-limit requires --summary-only, --json-summary, or --summary-csv")
+        raise ValueError(f"--summary-limit requires {SUMMARY_OUTPUT_REQUIREMENT}")
     if args.summary_min_count is not None and not summary_output_requested:
-        raise ValueError("--summary-min-count requires --summary-only, --json-summary, or --summary-csv")
+        raise ValueError(f"--summary-min-count requires {SUMMARY_OUTPUT_REQUIREMENT}")
     if args.summary_max_count is not None and not summary_output_requested:
-        raise ValueError("--summary-max-count requires --summary-only, --json-summary, or --summary-csv")
+        raise ValueError(f"--summary-max-count requires {SUMMARY_OUTPUT_REQUIREMENT}")
     if args.summary_min_size_bytes is not None and not summary_output_requested:
-        raise ValueError("--summary-min-size-bytes requires --summary-only, --json-summary, or --summary-csv")
+        raise ValueError(f"--summary-min-size-bytes requires {SUMMARY_OUTPUT_REQUIREMENT}")
     if args.summary_max_size_bytes is not None and not summary_output_requested:
-        raise ValueError("--summary-max-size-bytes requires --summary-only, --json-summary, or --summary-csv")
+        raise ValueError(f"--summary-max-size-bytes requires {SUMMARY_OUTPUT_REQUIREMENT}")
     if args.summary_share and not (args.json_summary or args.summary_csv or args.summary_markdown):
         raise ValueError("--summary-share requires --json-summary, --summary-csv, or --summary-markdown")
     if args.include_detail_pages and not args.paths_only:
