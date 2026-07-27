@@ -1167,6 +1167,10 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
 def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() -> None:
     args = parse_args(
         [
+            "--path",
+            "benchmark-results/stale.json",
+            "--path-contains",
+            "stale",
             "--artifact-directory",
             "benchmark-results",
             "--artifact-dirname",
@@ -1175,6 +1179,14 @@ def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() ->
             "benchmark-results/folder",
             "--artifact-folder-name",
             "benchmark-results/folder-name",
+            "--path-directory",
+            "benchmark-results/path",
+            "--path-dirname",
+            "benchmark-results/path-dirname",
+            "--path-folder",
+            "benchmark-results/path-folder",
+            "--path-folder-name",
+            "benchmark-results/path-folder-name",
             "--artifact-directory-contains",
             "bench",
             "--artifact-dirname-contains",
@@ -1183,30 +1195,65 @@ def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() ->
             "folder",
             "--artifact-folder-name-contains",
             "folder-name",
+            "--path-directory-contains",
+            "path",
+            "--path-dirname-contains",
+            "path-dirname",
+            "--path-folder-contains",
+            "path-folder",
+            "--path-folder-name-contains",
+            "path-folder-name",
             "--artifact-ext",
             ".json",
             "--artifact-file-ext",
             "json.gz",
             "--artifact-file-extension",
             "jsonl",
+            "--path-ext",
+            "wav",
+            "--path-file-ext",
+            "flac",
+            "--path-file-extension",
+            "opus",
             "--artifact-ext-contains",
             "json",
             "--artifact-file-ext-contains",
             "gz",
             "--artifact-file-extension-contains",
             "jsonl",
+            "--path-ext-contains",
+            "wav",
+            "--path-file-ext-contains",
+            "flac",
+            "--path-file-extension-contains",
+            "opus",
         ]
     )
 
+    assert args.artifact_path == ["benchmark-results/stale.json"]
+    assert args.artifact_path_contains == ["stale"]
     assert args.artifact_dir == [
         "benchmark-results",
         "benchmark-results/archive",
         "benchmark-results/folder",
         "benchmark-results/folder-name",
+        "benchmark-results/path",
+        "benchmark-results/path-dirname",
+        "benchmark-results/path-folder",
+        "benchmark-results/path-folder-name",
     ]
-    assert args.artifact_dir_contains == ["bench", "archive", "folder", "folder-name"]
-    assert args.artifact_extension == [".json", "json.gz", "jsonl"]
-    assert args.artifact_extension_contains == ["json", "gz", "jsonl"]
+    assert args.artifact_dir_contains == [
+        "bench",
+        "archive",
+        "folder",
+        "folder-name",
+        "path",
+        "path-dirname",
+        "path-folder",
+        "path-folder-name",
+    ]
+    assert args.artifact_extension == [".json", "json.gz", "jsonl", "wav", "flac", "opus"]
+    assert args.artifact_extension_contains == ["json", "gz", "jsonl", "wav", "flac", "opus"]
 
 
 def test_parse_args_accepts_file_stem_filter_aliases() -> None:
@@ -1214,8 +1261,16 @@ def test_parse_args_accepts_file_stem_filter_aliases() -> None:
         [
             "--artifact-file-stem",
             "stale",
+            "--path-stem",
+            "path-stale",
+            "--path-file-stem",
+            "path-file-stale",
             "--artifact-file-stem-contains",
             "old",
+            "--path-stem-contains",
+            "path-old",
+            "--path-file-stem-contains",
+            "path-file-old",
             "--detail-file-stem",
             "detail",
             "--detail-stem",
@@ -1231,8 +1286,8 @@ def test_parse_args_accepts_file_stem_filter_aliases() -> None:
         ]
     )
 
-    assert args.artifact_stem == ["stale"]
-    assert args.artifact_stem_contains == ["old"]
+    assert args.artifact_stem == ["stale", "path-stale", "path-file-stale"]
+    assert args.artifact_stem_contains == ["old", "path-old", "path-file-old"]
     assert args.detail_page_stem == ["detail", "older-detail", "page-detail"]
     assert args.detail_page_stem_contains == ["detail", "older", "page"]
 
@@ -1246,12 +1301,28 @@ def test_parse_args_accepts_file_name_filter_aliases() -> None:
             "older.json",
             "--artifact-file-name",
             "archive.json",
+            "--path-name",
+            "path.json",
+            "--path-basename",
+            "path-base.json",
+            "--path-filename",
+            "path-file.json",
+            "--path-file-name",
+            "path-file-name.json",
             "--artifact-basename-contains",
             "stale",
             "--artifact-filename-contains",
             "older",
             "--artifact-file-name-contains",
             "archive",
+            "--path-name-contains",
+            "path",
+            "--path-basename-contains",
+            "path-base",
+            "--path-filename-contains",
+            "path-file",
+            "--path-file-name-contains",
+            "path-file-name",
             "--current-basename",
             "current.json",
             "--current-filename",
@@ -1283,8 +1354,24 @@ def test_parse_args_accepts_file_name_filter_aliases() -> None:
         ]
     )
 
-    assert args.artifact_name == ["stale.json", "older.json", "archive.json"]
-    assert args.artifact_name_contains == ["stale", "older", "archive"]
+    assert args.artifact_name == [
+        "stale.json",
+        "older.json",
+        "archive.json",
+        "path.json",
+        "path-base.json",
+        "path-file.json",
+        "path-file-name.json",
+    ]
+    assert args.artifact_name_contains == [
+        "stale",
+        "older",
+        "archive",
+        "path",
+        "path-base",
+        "path-file",
+        "path-file-name",
+    ]
     assert args.current_path_name == ["current.json", "latest.json", "winner.json"]
     assert args.current_path_name_contains == ["current", "latest", "winner"]
     assert args.detail_page_name == ["stale.html", "older.html", "archive.html", "page-archive.html"]
