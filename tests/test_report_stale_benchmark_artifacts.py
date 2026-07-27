@@ -512,10 +512,10 @@ def test_parse_args_accepts_readable_size_thresholds() -> None:
 
 
 def test_parse_args_accepts_readable_age_filter_aliases() -> None:
-    args = parse_args(["--older-than", "4 weeks", "--newer-than", "90d"])
+    args = parse_args(["--older-than", "2 months", "--newer-than", "1year"])
 
-    assert args.older_than_days == 28
-    assert args.newer_than_days == 90
+    assert args.older_than_days == 60
+    assert args.newer_than_days == 365
 
 
 def test_parse_age_days_accepts_day_suffixes() -> None:
@@ -528,6 +528,18 @@ def test_parse_age_days_accepts_week_suffixes() -> None:
     assert parse_age_days("1w") == 7
     assert parse_age_days("2 wk") == 14
     assert parse_age_days("3 weeks") == 21
+
+
+def test_parse_age_days_accepts_month_suffixes() -> None:
+    assert parse_age_days("1mo") == 30
+    assert parse_age_days("2 mon") == 60
+    assert parse_age_days("3 months") == 90
+
+
+def test_parse_age_days_accepts_year_suffixes() -> None:
+    assert parse_age_days("1y") == 365
+    assert parse_age_days("2 yr") == 730
+    assert parse_age_days("3 years") == 1095
 
 
 def test_parse_args_accepts_track_status_filter_alias() -> None:
