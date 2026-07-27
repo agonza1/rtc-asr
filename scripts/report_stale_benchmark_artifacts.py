@@ -38,6 +38,7 @@ SUMMARY_GROUPS = (
     "detail-page-stem",
     "detail-page-dir",
     "detail-page-extension",
+    "measured-year",
     "measured-month",
     "age-bucket",
 )
@@ -65,6 +66,7 @@ SUMMARY_GROUP_KEYS = {
     "detail-page-stem": "by_detail_page_stem",
     "detail-page-dir": "by_detail_page_dir",
     "detail-page-extension": "by_detail_page_extension",
+    "measured-year": "by_measured_year",
     "measured-month": "by_measured_month",
     "age-bucket": "by_age_bucket",
 }
@@ -161,6 +163,9 @@ SUMMARY_GROUP_ALIASES = {
     "detail-page-file-ext": "detail-page-extension",
     "detail-page-file-extension": "detail-page-extension",
     "track-status": "track-state",
+    "year": "measured-year",
+    "measurement-year": "measured-year",
+    "measured-at-year": "measured-year",
     "month": "measured-month",
     "measurement-month": "measured-month",
     "measured-at-month": "measured-month",
@@ -259,6 +264,15 @@ STALE_SORT_ALIASES = {
     "track-status-desc": "track-state-desc",
     "a-z": "path-asc",
     "z-a": "path-desc",
+    "year": "measured-year",
+    "year-asc": "measured-year-asc",
+    "year-desc": "measured-year-desc",
+    "measurement-year": "measured-year",
+    "measurement-year-asc": "measured-year-asc",
+    "measurement-year-desc": "measured-year-desc",
+    "measured-at-year": "measured-year",
+    "measured-at-year-asc": "measured-year-asc",
+    "measured-at-year-desc": "measured-year-desc",
     "month": "measured-month",
     "month-asc": "measured-month-asc",
     "month-desc": "measured-month-desc",
@@ -1437,6 +1451,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "current-artifact-extension",
             "current-artifact-extension-asc",
             "current-artifact-extension-desc",
+            "year",
+            "year-asc",
+            "year-desc",
+            "measurement-year",
+            "measurement-year-asc",
+            "measurement-year-desc",
+            "measured-at-year",
+            "measured-at-year-asc",
+            "measured-at-year-desc",
+            "measured-year",
+            "measured-year-asc",
+            "measured-year-desc",
             "month",
             "month-asc",
             "month-desc",
@@ -2137,6 +2163,13 @@ def measured_month(value: Any) -> str:
     return parsed.strftime("%Y-%m")
 
 
+def measured_year(value: Any) -> str:
+    parsed = parse_timestamp(value)
+    if parsed is None:
+        return "unknown"
+    return parsed.strftime("%Y")
+
+
 def age_bucket(age_days: int | None) -> str:
     if age_days is None:
         return "unknown"
@@ -2615,6 +2648,7 @@ def stale_artifacts(
                 continue
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
+        artifact_measured_year = measured_year(measured_at)
         artifact_measured_month = measured_month(measured_at)
         artifact_age_days = None
         if measured_timestamp is not None:
@@ -2655,6 +2689,7 @@ def stale_artifacts(
                 "model": artifact.get("model"),
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
+                "measured_year": artifact_measured_year,
                 "measured_month": artifact_measured_month,
                 "age_days": artifact_age_days,
                 "age_bucket": artifact_age_bucket,
@@ -3088,6 +3123,22 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by in {"measured-year", "measured-year-asc"}:
+        return sorted(
+            stale,
+            key=lambda entry: (
+                entry.get("measured_year") or "unknown",
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "measured-year-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                tuple(-ord(character) for character in str(entry.get("measured_year") or "unknown")),
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by in {"measured-month", "measured-month-asc"}:
         return sorted(
             stale,
@@ -3123,7 +3174,7 @@ def stale_artifacts(
             ),
         )
     raise ValueError(
-        "sort_by must be one of: size, size-desc, size-asc, bytes, bytes-desc, bytes-asc, disk-size, disk-size-desc, disk-size-asc, total-size, total-size-desc, total-size-asc, largest, smallest, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, oldest, oldest-first, earliest, earliest-first, least-recent, least-recent-first, newest, newest-first, latest, latest-first, recent, recent-first, most-recent, most-recent-first, path, path-asc, path-desc, artifact-path, artifact-path-asc, artifact-path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, detail-page-stem, detail-page-stem-asc, detail-page-stem-desc, detail-page-dir, detail-page-dir-asc, detail-page-dir-desc, detail-page-extension, detail-page-extension-asc, detail-page-extension-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
+        "sort_by must be one of: size, size-desc, size-asc, bytes, bytes-desc, bytes-asc, disk-size, disk-size-desc, disk-size-asc, total-size, total-size-desc, total-size-asc, largest, smallest, age, age-desc, age-asc, measured-at, measured-at-asc, measured-at-desc, oldest, oldest-first, earliest, earliest-first, least-recent, least-recent-first, newest, newest-first, latest, latest-first, recent, recent-first, most-recent, most-recent-first, path, path-asc, path-desc, artifact-path, artifact-path-asc, artifact-path-desc, artifact-name, artifact-name-asc, artifact-name-desc, artifact-stem, artifact-stem-asc, artifact-stem-desc, artifact-dir, artifact-dir-asc, artifact-dir-desc, artifact-extension, artifact-extension-asc, artifact-extension-desc, detail-page, detail-page-asc, detail-page-desc, detail-page-name, detail-page-name-asc, detail-page-name-desc, detail-page-stem, detail-page-stem-asc, detail-page-stem-desc, detail-page-dir, detail-page-dir-asc, detail-page-dir-desc, detail-page-extension, detail-page-extension-asc, detail-page-extension-desc, status, status-asc, status-desc, backend, backend-asc, backend-desc, model, model-asc, model-desc, label, label-asc, label-desc, slug, slug-asc, slug-desc, track-state, track-state-asc, track-state-desc, current-path, current-path-asc, current-path-desc, current-path-name, current-path-name-asc, current-path-name-desc, current-path-stem, current-path-stem-asc, current-path-stem-desc, current-path-dir, current-path-dir-asc, current-path-dir-desc, current-path-extension, current-path-extension-asc, current-path-extension-desc, measured-year, measured-year-asc, measured-year-desc, measured-month, measured-month-asc, measured-month-desc, age-bucket, age-bucket-asc, age-bucket-desc"
     )
 
 
@@ -3150,6 +3201,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_detail_page_stem: dict[str, dict[str, Any]] = {}
     by_detail_page_dir: dict[str, dict[str, Any]] = {}
     by_detail_page_extension: dict[str, dict[str, Any]] = {}
+    by_measured_year: dict[str, dict[str, Any]] = {}
     by_measured_month: dict[str, dict[str, Any]] = {}
     by_age_bucket: dict[str, dict[str, Any]] = {}
     for entry in stale:
@@ -3451,6 +3503,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         detail_extension_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         detail_extension_bucket["total_size"] = format_bytes(detail_extension_bucket["total_size_bytes"])
 
+        year = str(entry.get("measured_year") or measured_year(entry.get("measured_at")))
+        year_bucket = by_measured_year.setdefault(
+            year,
+            {
+                "measured_year": year,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        year_bucket["count"] += 1
+        year_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        year_bucket["total_size"] = format_bytes(year_bucket["total_size_bytes"])
+
         month = measured_month(entry.get("measured_at"))
         month_bucket = by_measured_month.setdefault(
             month,
@@ -3566,6 +3632,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_detail_page_extension": sorted(
             by_detail_page_extension.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["detail_page_extension"]),
+        ),
+        "by_measured_year": sorted(
+            by_measured_year.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["measured_year"]),
         ),
         "by_measured_month": sorted(
             by_measured_month.values(),
@@ -4018,6 +4088,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "model",
         "status",
         "measured_at",
+        "measured_year",
         "measured_month",
         "age_days",
         "age_bucket",
@@ -4044,6 +4115,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             "artifact_name": entry.get("artifact_name") or Path(entry.get("artifact_path") or "").name,
             "artifact_stem": entry.get("artifact_stem") or Path(entry.get("artifact_path") or "").stem,
             "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
+            "measured_year": entry.get("measured_year") or measured_year(entry.get("measured_at")),
             "current_artifact_name": entry.get("current_artifact_name")
             or Path(entry.get("current_artifact_path") or "").name,
             "current_artifact_stem": entry.get("current_artifact_stem")
