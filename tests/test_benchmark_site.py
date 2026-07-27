@@ -831,9 +831,9 @@ def test_docs_index_does_not_fallback_partial_mean_into_first_visible_partial() 
     assert "entry.streaming.first_partial_end_to_end_mean_ms ?? entry.streaming.partial_mean_ms" not in html
     assert "const baselineEntries = comparableEntries(primary);" in html
     assert 'const firstPartialBaselineLabel = baselineEntries.length !== primary.length ? "vs validated fastest" : "vs fastest";' in html
-    assert 'Partial backlog latency' in html
+    assert 'Partial cadence' in html
     assert 'title="Time from audio end until the final transcript returns; this is closeout delay, not total clip duration."' in html
-    assert 'title="Diagnostic latency for chunk-triggered partial updates after streaming is already underway; this is not perceived first-response latency, so read it alongside partial gap and late partial ratio."' in html
+    assert 'title="Time gap between visible partial transcript updates after streaming is underway; read it alongside late partial ratio and transcript churn."' in html
     assert 'title="Buffered audio window used when generating partial transcripts."' in html
     assert 'late_partial_ratio' in html
     assert 'partial_transcript_churn_word_mean' in html
@@ -1268,7 +1268,7 @@ def test_docs_index_live_labels_match_streaming_framing() -> None:
     assert 'Recommended default' in html
     assert 'Primary ranking scope' in html
     assert 'Best live numbers' in html
-    assert 'data-label="Partial backlog latency"' in html
+    assert 'data-label="Partial cadence"' in html
     assert "entry.streaming.partial_gap_mean_ms" in html
     assert "entry.streaming.partial_gap_p95_ms" in html
     assert 'data-label="Audio-end finalization"' in html
