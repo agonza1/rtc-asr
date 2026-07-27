@@ -1093,6 +1093,15 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "recent-first",
         "most-recent",
         "most-recent-first",
+        "year",
+        "year-asc",
+        "year-desc",
+        "measurement-year",
+        "measurement-year-asc",
+        "measurement-year-desc",
+        "measured-at-year",
+        "measured-at-year-asc",
+        "measured-at-year-desc",
         "month",
         "month-asc",
         "month-desc",
@@ -1139,6 +1148,43 @@ def test_stale_artifacts_accept_measured_month_sort_aliases() -> None:
     assert [entry["artifact_path"] for entry in descending] == [
         "benchmark-results/july.json",
         "benchmark-results/june.json",
+    ]
+
+
+def test_stale_artifacts_accept_measured_year_sort_aliases() -> None:
+    manifest = {
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/old-b.json",
+                "status": "legacy",
+                "measured_at": "2025-12-20T00:00:00Z",
+            },
+            {
+                "artifact_path": "benchmark-results/new.json",
+                "status": "legacy",
+                "measured_at": "2026-01-01T00:00:00Z",
+            },
+            {
+                "artifact_path": "benchmark-results/old-a.json",
+                "status": "legacy",
+                "measured_at": "2025-06-01T00:00:00Z",
+            },
+        ],
+        "tracks": [],
+    }
+
+    ascending = stale_artifacts(manifest, sort_by="year")
+    descending = stale_artifacts(manifest, sort_by="measurement-year-desc")
+
+    assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/old-a.json",
+        "benchmark-results/old-b.json",
+        "benchmark-results/new.json",
+    ]
+    assert [entry["artifact_path"] for entry in descending] == [
+        "benchmark-results/new.json",
+        "benchmark-results/old-a.json",
+        "benchmark-results/old-b.json",
     ]
 
 
