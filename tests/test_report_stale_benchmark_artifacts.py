@@ -599,10 +599,16 @@ def test_parse_args_accepts_readable_count_summary_sort_aliases() -> None:
         "most-first",
         "most-artifacts",
         "most-artifacts-first",
+        "most-files",
+        "most-files-first",
         "fewest",
         "fewest-first",
         "fewest-artifacts",
         "fewest-artifacts-first",
+        "fewest-files",
+        "fewest-files-first",
+        "least-files",
+        "least-files-first",
     ]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
@@ -3469,11 +3475,13 @@ def test_render_json_summary_accepts_readable_count_sort_aliases() -> None:
         },
     ]
 
-    most_summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="most-artifacts"))
-    fewest_summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="fewest-artifacts"))
+    for alias in ["most-artifacts", "most-files", "most-files-first"]:
+        most_summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort=alias))
+        assert [bucket["slug"] for bucket in most_summary["by_slug"]] == ["base", "qwen"]
 
-    assert [bucket["slug"] for bucket in most_summary["by_slug"]] == ["base", "qwen"]
-    assert [bucket["slug"] for bucket in fewest_summary["by_slug"]] == ["qwen", "base"]
+    for alias in ["fewest-artifacts", "fewest-files", "least-files"]:
+        fewest_summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort=alias))
+        assert [bucket["slug"] for bucket in fewest_summary["by_slug"]] == ["qwen", "base"]
 
 
 def test_render_json_summary_accepts_bytes_sort_aliases() -> None:
