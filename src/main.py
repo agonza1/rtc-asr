@@ -129,6 +129,7 @@ def _health_payload(services: AppServices) -> dict[str, object]:
         "service": "realtime-asr",
         "backend": services.transcriber.backend_name,
         "model": services.transcriber.model_name,
+        "backend_aliases": backend_aliases_for(services.transcriber.backend_name),
         "ready": _accepting_traffic(services),
         "model_loaded": services.transcriber.is_loaded(),
         "preload_enabled": services.config.asr_preload_model,
