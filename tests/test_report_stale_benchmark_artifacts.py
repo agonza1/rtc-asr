@@ -95,7 +95,12 @@ def test_summary_groups_accept_all_alias_with_specific_groups() -> None:
 
 def test_summary_groups_accept_current_path_aliases() -> None:
     assert normalize_summary_groups(
-        ["current-path, current-artifact-path, current-path-name, current-path-stem, current-file-stem"]
+        [
+            (
+                "current-path, current-artifact-path, current-path-name, current-artifact-file-name, "
+                "current-path-stem, current-artifact-file-stem, current-file-stem"
+            )
+        ]
     ) == {
         "current-artifact",
         "current-artifact-name",
@@ -1186,6 +1191,9 @@ def test_parse_args_accepts_directory_stale_sort_aliases() -> None:
 def test_parse_args_accepts_case_insensitive_stale_sort_aliases() -> None:
     assert parse_args(["--sort", "Newest-First"]).sort == "newest-first"
     assert parse_args(["--sort", "CURRENT-ARTIFACT-NAME-DESC"]).sort == "current-artifact-name-desc"
+    assert parse_args(["--sort", "CURRENT-ARTIFACT-FILE-EXTENSION-DESC"]).sort == (
+        "current-artifact-file-extension-desc"
+    )
 
 
 def test_parse_args_accepts_readable_age_sort_aliases() -> None:
@@ -1202,14 +1210,22 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "current",
             "--current-artifact-name",
             "current.json",
+            "--current-artifact-file-name",
+            "latest.json",
             "--current-artifact-name-contains",
             "current",
+            "--current-artifact-file-name-contains",
+            "latest",
             "--current-artifact-stem",
             "current",
+            "--current-artifact-file-stem",
+            "winner",
             "--current-file-stem",
             "latest",
             "--current-artifact-stem-contains",
             "curr",
+            "--current-artifact-file-stem-contains",
+            "win",
             "--current-file-stem-contains",
             "late",
             "--current-artifact-dir",
@@ -1256,6 +1272,10 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "webm",
             "--current-artifact-ext",
             "jsonl",
+            "--current-artifact-file-ext",
+            "aiff",
+            "--current-artifact-file-extension",
+            "aifc",
             "--current-file-ext",
             "wav",
             "--current-file-extension",
@@ -1274,6 +1294,10 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
             "web",
             "--current-artifact-ext-contains",
             "jsonl",
+            "--current-artifact-file-ext-contains",
+            "aiff",
+            "--current-artifact-file-extension-contains",
+            "aifc",
             "--current-file-ext-contains",
             "wav",
             "--current-file-extension-contains",
@@ -1289,10 +1313,10 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
 
     assert args.current_path == ["benchmark-results/current.json"]
     assert args.current_path_contains == ["current"]
-    assert args.current_path_name == ["current.json"]
-    assert args.current_path_name_contains == ["current"]
-    assert args.current_path_stem == ["current", "latest"]
-    assert args.current_path_stem_contains == ["curr", "late"]
+    assert args.current_path_name == ["current.json", "latest.json"]
+    assert args.current_path_name_contains == ["current", "latest"]
+    assert args.current_path_stem == ["current", "winner", "latest"]
+    assert args.current_path_stem_contains == ["curr", "win", "late"]
     assert args.current_path_dir == [
         "benchmark-results",
         "benchmark-results/current",
@@ -1315,12 +1339,26 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
         "folder-name-current",
         "folder-name-path",
     ]
-    assert args.current_path_extension == [".json", "json.gz", "webm", "jsonl", "wav", "csv", "txt", "flac", "opus"]
+    assert args.current_path_extension == [
+        ".json",
+        "json.gz",
+        "webm",
+        "jsonl",
+        "aiff",
+        "aifc",
+        "wav",
+        "csv",
+        "txt",
+        "flac",
+        "opus",
+    ]
     assert args.current_path_extension_contains == [
         "json",
         "gz",
         "web",
         "jsonl",
+        "aiff",
+        "aifc",
         "wav",
         "csv",
         "txt",
