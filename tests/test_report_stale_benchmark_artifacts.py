@@ -182,15 +182,24 @@ def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
         "average-size",
         "average-size-desc",
         "average-size-asc",
+        "average",
+        "average-desc",
+        "average-asc",
         "average-bytes",
         "average-bytes-desc",
         "average-bytes-asc",
         "avg-size",
         "avg-size-desc",
         "avg-size-asc",
+        "avg",
+        "avg-desc",
+        "avg-asc",
         "mean-size",
         "mean-size-desc",
         "mean-size-asc",
+        "mean",
+        "mean-desc",
+        "mean-asc",
         "mean-bytes",
         "mean-bytes-desc",
         "mean-bytes-asc",
@@ -245,6 +254,38 @@ def test_render_json_summary_accepts_case_insensitive_summary_sort() -> None:
     summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="Avg-Bytes-Asc"))
 
     assert [bucket["slug"] for bucket in summary["by_slug"]] == ["base", "qwen"]
+
+
+def test_render_json_summary_accepts_short_average_summary_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 80,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 120,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 60,
+        },
+    ]
+
+    average = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="average"))
+    avg_asc = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="avg-asc"))
+    mean_desc = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="mean-desc"))
+
+    assert [bucket["slug"] for bucket in average["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in avg_asc["by_slug"]] == ["qwen", "base"]
+    assert [bucket["slug"] for bucket in mean_desc["by_slug"]] == ["base", "qwen"]
+    assert average["by_slug"][0]["average_size"] == "100 B"
 
 
 def test_render_json_summary_exposes_average_size_for_buckets() -> None:
