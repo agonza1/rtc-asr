@@ -9456,7 +9456,9 @@ def test_main_rejects_summary_group_without_summary_only() -> None:
     try:
         report_module.main(["--summary-group", "model"])
     except ValueError as error:
-        assert str(error) == "--summary-group requires --summary-only, --json-summary, or --summary-csv"
+        assert str(error) == (
+            "--summary-group requires --summary-only, --json-summary, --summary-csv, or --summary-markdown"
+        )
     else:
         raise AssertionError("--summary-group without --summary-only should be rejected")
 
@@ -9465,7 +9467,9 @@ def test_main_rejects_summary_limit_without_summary_only() -> None:
     try:
         report_module.main(["--summary-limit", "1"])
     except ValueError as error:
-        assert str(error) == "--summary-limit requires --summary-only, --json-summary, or --summary-csv"
+        assert str(error) == (
+            "--summary-limit requires --summary-only, --json-summary, --summary-csv, or --summary-markdown"
+        )
     else:
         raise AssertionError("--summary-limit without --summary-only should be rejected")
 
@@ -9474,19 +9478,19 @@ def test_main_rejects_summary_range_filters_without_summary_output() -> None:
     for args, expected in [
         (
             ["--summary-min-count", "1"],
-            "--summary-min-count requires --summary-only, --json-summary, or --summary-csv",
+            "--summary-min-count requires --summary-only, --json-summary, --summary-csv, or --summary-markdown",
         ),
         (
             ["--summary-max-count", "1"],
-            "--summary-max-count requires --summary-only, --json-summary, or --summary-csv",
+            "--summary-max-count requires --summary-only, --json-summary, --summary-csv, or --summary-markdown",
         ),
         (
             ["--summary-min-size-bytes", "1"],
-            "--summary-min-size-bytes requires --summary-only, --json-summary, or --summary-csv",
+            "--summary-min-size-bytes requires --summary-only, --json-summary, --summary-csv, or --summary-markdown",
         ),
         (
             ["--summary-max-size-bytes", "1"],
-            "--summary-max-size-bytes requires --summary-only, --json-summary, or --summary-csv",
+            "--summary-max-size-bytes requires --summary-only, --json-summary, --summary-csv, or --summary-markdown",
         ),
     ]:
         try:
