@@ -576,6 +576,12 @@ def test_parse_age_days_accepts_week_suffixes() -> None:
     assert parse_age_days("3 weeks") == 21
 
 
+def test_parse_age_days_accepts_fortnight_suffixes() -> None:
+    assert parse_age_days("1 fortnight") == 14
+    assert parse_age_days("2 fortnights") == 28
+    assert parse_age_days("3 biweeks") == 42
+
+
 def test_parse_age_days_accepts_month_suffixes() -> None:
     assert parse_age_days("1mo") == 30
     assert parse_age_days("2 mon") == 60
