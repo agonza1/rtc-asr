@@ -377,6 +377,12 @@ def test_health_and_ready_report_lazy_backend_as_traffic_ready() -> None:
         "model_loaded": False,
         "preload_enabled": False,
         "preload_error": None,
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": {
+            "protocol": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+        },
         "protocols": DEFAULT_PROTOCOLS,
     }
     assert ready.status_code == 200
@@ -411,6 +417,12 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "model_loaded": True,
         "preload_enabled": True,
         "preload_error": None,
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": {
+            "protocol": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+        },
         "protocols": DEFAULT_PROTOCOLS,
     }
     assert ready.status_code == 200
@@ -423,6 +435,12 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "model_loaded": True,
         "preload_enabled": True,
         "preload_error": None,
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": {
+            "protocol": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+        },
         "protocols": DEFAULT_PROTOCOLS,
     }
     assert protocols.status_code == 200
@@ -1152,6 +1170,12 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
         "model_loaded": False,
         "preload_enabled": True,
         "preload_error": "backend unavailable",
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": {
+            "protocol": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+        },
         "protocols": DEFAULT_PROTOCOLS,
     }
     assert ready.status_code == 503
@@ -1164,6 +1188,12 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
         "model_loaded": False,
         "preload_enabled": True,
         "preload_error": "backend unavailable",
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": {
+            "protocol": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+        },
         "protocols": DEFAULT_PROTOCOLS,
     }
     assert models.status_code == 200

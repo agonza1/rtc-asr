@@ -133,6 +133,8 @@ def _health_payload(services: AppServices) -> dict[str, object]:
         "model_loaded": services.transcriber.is_loaded(),
         "preload_enabled": services.config.asr_preload_model,
         "preload_error": services.preload_error,
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": _default_transport_payload(services.config),
         "protocols": _protocol_catalog(services.config),
     }
 
