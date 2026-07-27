@@ -243,6 +243,12 @@ def test_parse_args_accepts_total_size_summary_sort_aliases() -> None:
         "total-bytes",
         "total-bytes-desc",
         "total-bytes-asc",
+        "artifact-size",
+        "artifact-size-desc",
+        "artifact-size-asc",
+        "artifact-bytes",
+        "artifact-bytes-desc",
+        "artifact-bytes-asc",
     ]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
@@ -873,6 +879,12 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "total-bytes",
         "total-bytes-desc",
         "total-bytes-asc",
+        "artifact-size",
+        "artifact-size-desc",
+        "artifact-size-asc",
+        "artifact-bytes",
+        "artifact-bytes-desc",
+        "artifact-bytes-asc",
         "artifact-path",
         "artifact-path-desc",
         "artifact-path-asc",
@@ -933,6 +945,8 @@ def test_stale_artifacts_accept_total_bytes_sort_aliases() -> None:
 
     descending = stale_artifacts(manifest, sort_by="total-bytes")
     ascending = stale_artifacts(manifest, sort_by="total-bytes-asc")
+    artifact_size = stale_artifacts(manifest, sort_by="artifact-size")
+    artifact_bytes_asc = stale_artifacts(manifest, sort_by="artifact-bytes-asc")
     max_size = stale_artifacts(manifest, sort_by="max-size")
     min_bytes = stale_artifacts(manifest, sort_by="min-bytes-first")
     top_bytes = stale_artifacts(manifest, sort_by="top-bytes")
@@ -943,6 +957,14 @@ def test_stale_artifacts_accept_total_bytes_sort_aliases() -> None:
         "benchmark-results/small.json",
     ]
     assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/small.json",
+        "benchmark-results/large.json",
+    ]
+    assert [entry["artifact_path"] for entry in artifact_size] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
+    assert [entry["artifact_path"] for entry in artifact_bytes_asc] == [
         "benchmark-results/small.json",
         "benchmark-results/large.json",
     ]
