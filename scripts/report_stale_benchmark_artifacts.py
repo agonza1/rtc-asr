@@ -709,10 +709,11 @@ def parse_size_bytes(value: str) -> int:
 
 
 def parse_age_days(value: str) -> int:
-    try:
-        days = int(value)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("days must be an integer") from error
+    match = re.fullmatch(r"\s*(-?\d+)\s*(d|day|days)?\s*", value, flags=re.IGNORECASE)
+    if match is None:
+        raise argparse.ArgumentTypeError("days must be an integer, optionally followed by d, day, or days")
+
+    days = int(match.group(1))
     if days < 0:
         raise argparse.ArgumentTypeError("days must be non-negative")
     if days > 365000:
