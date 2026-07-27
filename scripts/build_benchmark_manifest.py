@@ -556,12 +556,20 @@ def summarize_accuracy(rest: dict[str, Any], streaming: dict[str, Any]) -> dict[
     }
 
 
+def warning_code_values(value: Any) -> set[str]:
+    if isinstance(value, dict):
+        return {code for code in value if isinstance(code, str) and code}
+    if isinstance(value, list):
+        return {code for code in value if isinstance(code, str) and code}
+    return set()
+
+
 def summarize_warnings(payload: dict[str, Any]) -> dict[str, Any]:
     summary = payload.get("summary") or {}
+    diagnostics = payload.get("diagnostics") or {}
     raw_samples = payload.get("samples") or []
     samples = [sample for sample in raw_samples if isinstance(sample, dict)] if isinstance(raw_samples, list) else []
-    warning_summary = summary.get("warnings_received")
-    summary_warning_codes = summary.get("warning_codes") or []
+    warning_summary = first_defined(summary.get("warnings_received"), diagnostics.get("warning_total"))
     warning_codes = sorted(
         {
             code
@@ -569,7 +577,8 @@ def summarize_warnings(payload: dict[str, Any]) -> dict[str, Any]:
             for code in sample.get("warning_codes", [])
             if isinstance(code, str) and code
         }
-        | {code for code in summary_warning_codes if isinstance(code, str) and code}
+        | warning_code_values(summary.get("warning_codes"))
+        | warning_code_values(diagnostics.get("warning_codes"))
     )
 
     counts = [sample.get("warnings_received") for sample in samples]

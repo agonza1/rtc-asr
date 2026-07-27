@@ -2304,6 +2304,59 @@ def test_manifest_uses_summary_sample_count_for_warning_rates(tmp_path: Path) ->
     assert manifest["summary"]["warnings"]["rate_per_sample"] == 0.5
 
 
+def test_manifest_reads_diagnostic_warning_totals_and_code_counts(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "diagnostic-warnings-2026-06-20.json"
+    artifact_path.write_text(
+        json.dumps(
+            {
+                "backend": {"name": "demo", "model": "warn-diagnostics-v1", "device": "cpu", "compute_type": "int8"},
+                "rest": {"mean_ms": 100, "p95_ms": 140, "rtf_mean": 0.4},
+                "streaming": {"partial_mean_ms": 50, "partial_p95_ms": 80, "final_mean_ms": 120, "final_p95_ms": 180},
+                "environment": {"date_utc": "2026-06-20T00:00:00Z"},
+                "benchmark": {"sample_count": 4},
+                "diagnostics": {
+                    "warning_total": 3,
+                    "warning_codes": {"partial_dropped": 2, "queue_depth_high": 1},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    tracks_path = tmp_path / "tracks.json"
+    tracks_path.write_text(
+        json.dumps(
+            {
+                "tracks": [
+                    {
+                        "slug": "diagnostic-warnings",
+                        "label": "diagnostic warnings",
+                        "backend": "demo",
+                        "model": "warn-diagnostics-v1",
+                        "device": "cpu",
+                        "compute": "int8",
+                        "lane": "local",
+                        "status": "validated",
+                        "status_detail": "diagnostic warning coverage",
+                        "target_sample_count": 4,
+                        "run_command": "make benchmark",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    manifest = build_manifest(tmp_path, tracks_path)
+
+    assert manifest["tracks"][0]["warnings"] == {
+        "received_total": 3,
+        "sample_count": 4,
+        "rate_per_sample": 0.75,
+        "codes": ["partial_dropped", "queue_depth_high"],
+    }
+    assert manifest["summary"]["warnings"]["rate_per_sample"] == 0.75
+
+
 def test_warning_summary_counts_codes_without_numeric_totals() -> None:
     entries = [
         {"warnings": {"codes": ["late_partial"], "received_total": None}},
