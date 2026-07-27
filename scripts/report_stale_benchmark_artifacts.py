@@ -709,11 +709,16 @@ def parse_size_bytes(value: str) -> int:
 
 
 def parse_age_days(value: str) -> int:
-    match = re.fullmatch(r"\s*(-?\d+)\s*(d|day|days)?\s*", value, flags=re.IGNORECASE)
+    match = re.fullmatch(r"\s*(-?\d+)\s*(d|day|days|w|wk|wks|week|weeks)?\s*", value, flags=re.IGNORECASE)
     if match is None:
-        raise argparse.ArgumentTypeError("days must be an integer, optionally followed by d, day, or days")
+        raise argparse.ArgumentTypeError(
+            "age must be an integer, optionally followed by d, day, days, w, wk, wks, week, or weeks"
+        )
 
-    days = int(match.group(1))
+    amount_text, unit_text = match.groups()
+    days = int(amount_text)
+    if unit_text and unit_text.lower() in {"w", "wk", "wks", "week", "weeks"}:
+        days *= 7
     if days < 0:
         raise argparse.ArgumentTypeError("days must be non-negative")
     if days > 365000:
@@ -756,14 +761,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--older-than",
         type=parse_age_days,
         default=None,
-        help="Only include stale artifacts measured before this many days ago",
+        help="Only include stale artifacts measured before this age, in days or weeks",
     )
     parser.add_argument(
         "--newer-than-days",
         "--newer-than",
         type=parse_age_days,
         default=None,
-        help="Only include stale artifacts measured within this many days",
+        help="Only include stale artifacts measured within this age, in days or weeks",
     )
     parser.add_argument(
         "--measured-before",
