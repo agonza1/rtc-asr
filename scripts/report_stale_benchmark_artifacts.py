@@ -718,6 +718,27 @@ SUMMARY_SORTS = (
     "name-reverse-first",
     "a-z",
     "z-a",
+    "age-bucket",
+    "age-bucket-desc",
+    "age-bucket-asc",
+    "age-range",
+    "age-range-desc",
+    "age-range-asc",
+    "stale-age-bucket",
+    "stale-age-bucket-desc",
+    "stale-age-bucket-asc",
+    "staleness-bucket",
+    "staleness-bucket-desc",
+    "staleness-bucket-asc",
+    "age",
+    "age-desc",
+    "age-asc",
+    "stale",
+    "stale-first",
+    "stalest",
+    "stalest-first",
+    "freshest",
+    "freshest-first",
 )
 
 SUMMARY_SORT_ALIASES = {
@@ -801,6 +822,24 @@ SUMMARY_SORT_ALIASES = {
     "name-reverse-first": "name-desc",
     "a-z": "name-asc",
     "z-a": "name-desc",
+    "age-range": "age-bucket-desc",
+    "age-range-desc": "age-bucket-desc",
+    "age-range-asc": "age-bucket-asc",
+    "stale-age-bucket": "age-bucket-desc",
+    "stale-age-bucket-desc": "age-bucket-desc",
+    "stale-age-bucket-asc": "age-bucket-asc",
+    "staleness-bucket": "age-bucket-desc",
+    "staleness-bucket-desc": "age-bucket-desc",
+    "staleness-bucket-asc": "age-bucket-asc",
+    "age": "age-bucket-desc",
+    "age-desc": "age-bucket-desc",
+    "age-asc": "age-bucket-asc",
+    "stale": "age-bucket-desc",
+    "stale-first": "age-bucket-desc",
+    "stalest": "age-bucket-desc",
+    "stalest-first": "age-bucket-desc",
+    "freshest": "age-bucket-asc",
+    "freshest-first": "age-bucket-asc",
 }
 
 
@@ -4115,6 +4154,15 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
     )
     name = str(bucket.get(bucket_key, ""))
     average_size = bucket["total_size_bytes"] / bucket["count"] if bucket["count"] else 0
+    if bucket_key == "age_bucket" and sort_by == "age-bucket-asc":
+        return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
+    if bucket_key == "age_bucket" and sort_by == "age-bucket-desc":
+        known_order = AGE_BUCKET_ORDER.get(name)
+        return (-known_order if known_order is not None else sys.maxsize, name)
+    if sort_by == "age-bucket-asc":
+        return (name,)
+    if sort_by == "age-bucket-desc":
+        return (*(-ord(character) for character in name), -len(name))
     if bucket_key == "age_bucket" and sort_by in {"name", "name-asc"}:
         return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
     if bucket_key == "age_bucket" and sort_by == "name-desc":
