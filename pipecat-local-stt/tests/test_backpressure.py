@@ -373,6 +373,7 @@ async def _test_cancel_suppresses_stale_results() -> None:
     final_frames = [frame for frame, _ in pushed_frames if isinstance(frame, TranscriptionFrame)]
     assert final_frames == []
     assert service.metrics.local_stt_transcripts_suppressed_total == 1
+    assert service.metrics.local_stt_cancel_messages_sent_total == 1
 
 
 def test_warning_events_are_counted_without_reconnect() -> None:
@@ -724,6 +725,7 @@ async def _test_cancel_send_failure_does_not_replay_cancel_on_reconnect() -> Non
     assert first_control_types == ["cancel"]
     assert second_control_types == ["start"]
     assert service.metrics.local_stt_reconnects_total == 1
+    assert service.metrics.local_stt_cancel_messages_sent_total == 1
 
 
 def test_start_send_failure_reconnect_does_not_reenter_start_lock() -> None:

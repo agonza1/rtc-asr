@@ -107,6 +107,7 @@ class LocalStreamingSTTService(STTService):
     async def stop(self, frame: EndFrame) -> None:
         if self._websocket is not None:
             await self._send_json({"type": "close"})
+            self.metrics.local_stt_close_messages_sent_total += 1
         await self._disconnect()
         stop = getattr(super(), "stop", None)
         if callable(stop):
@@ -151,6 +152,7 @@ class LocalStreamingSTTService(STTService):
             return
         final_event = self._final_events.setdefault(generation, asyncio.Event())
         await self._send_control({"type": "finalize"}, ensure_started=False)
+        self.metrics.local_stt_finalize_messages_sent_total += 1
         self._utterance_active = False
         try:
             if self.config.final_timeout_s > 0:
@@ -173,6 +175,7 @@ class LocalStreamingSTTService(STTService):
         self._release_final_waiters()
         if self._websocket is not None:
             await self._send_control({"type": "cancel"}, ensure_started=False)
+            self.metrics.local_stt_cancel_messages_sent_total += 1
 
     def metrics_snapshot(self) -> dict[str, int | float]:
         return self.metrics.as_dict()
@@ -291,6 +294,7 @@ class LocalStreamingSTTService(STTService):
                 ),
                 start_after_reconnect=False,
             )
+            self.metrics.local_stt_start_messages_sent_total += 1
             try:
                 await asyncio.wait_for(self._ready_event.wait(), timeout=self.config.connect_timeout_s)
             except asyncio.TimeoutError:
