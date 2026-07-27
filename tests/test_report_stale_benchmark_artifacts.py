@@ -64,6 +64,12 @@ def test_summary_groups_accept_comma_separated_values() -> None:
     }
 
 
+def test_parse_args_accepts_plural_summary_groups_alias() -> None:
+    args = parse_args(["--summary-groups", "status, backend"])
+
+    assert args.summary_group == ["status, backend"]
+
+
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, MONTH"]) == {
         "status",

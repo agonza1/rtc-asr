@@ -1790,6 +1790,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-group",
+        "--summary-groups",
         action="append",
         default=None,
         help="With --summary-only, only print this grouping; repeat or comma-separate to include multiple groups; use 'all' for every grouping",
