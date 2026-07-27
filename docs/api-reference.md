@@ -25,7 +25,13 @@ Example response:
   "ready": true,
   "model_loaded": false,
   "preload_enabled": false,
-  "preload_error": null
+  "preload_error": null,
+  "default_protocol": "local-stt.v1",
+  "default_transport": {
+    "protocol": "local-stt.v1",
+    "transport": "websocket",
+    "path": "/v1/stt/stream"
+  }
 }
 ```
 
@@ -46,7 +52,53 @@ Example response:
   "ready": true,
   "model_loaded": true,
   "preload_enabled": true,
-  "preload_error": null
+  "preload_error": null,
+  "default_protocol": "local-stt.v1",
+  "default_transport": {
+    "protocol": "local-stt.v1",
+    "transport": "websocket",
+    "path": "/v1/stt/stream"
+  }
+}
+```
+
+## List Protocols
+
+```http
+GET /api/protocols
+```
+
+Use this endpoint when a client needs to choose the recommended streaming contract without loading backend-specific model details. `default_transport` points to the active Local STT v1 route. When `LOCAL_STT_SOCKET_MODE=uds` or `LOCAL_STT_TRANSPORT=uds_ws` is configured, the transport changes to `uds_ws` and includes `uds_path`.
+
+Example response:
+
+```json
+{
+  "status": "ready",
+  "ready": true,
+  "default_protocol": "local-stt.v1",
+  "default_transport": {
+    "protocol": "local-stt.v1",
+    "transport": "websocket",
+    "path": "/v1/stt/stream"
+  },
+  "legacy_protocols": ["rtc-asr-stream.v1"],
+  "protocols": [
+    {
+      "id": "rtc-asr-stream.v1",
+      "transport": "websocket",
+      "path": "/ws/stream",
+      "status": "legacy",
+      "recommended": false
+    },
+    {
+      "id": "local-stt.v1",
+      "transport": "websocket",
+      "path": "/v1/stt/stream",
+      "status": "preview",
+      "recommended": true
+    }
+  ]
 }
 ```
 
