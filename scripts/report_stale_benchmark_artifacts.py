@@ -92,6 +92,7 @@ SUMMARY_GROUP_ALIASES = {
     "artifact-file-name": "artifact-name",
     "artifact-file-stem": "artifact-stem",
     "current-path": "current-artifact",
+    "current-artifact-path": "current-artifact",
     "current-basename": "current-artifact-name",
     "current-filename": "current-artifact-name",
     "current-file-name": "current-artifact-name",
@@ -340,6 +341,9 @@ STALE_SORT_ALIASES = {
     "current-file-name": "current-path-name",
     "current-file-name-asc": "current-path-name-asc",
     "current-file-name-desc": "current-path-name-desc",
+    "current-artifact-path": "current-path",
+    "current-artifact-path-asc": "current-path-asc",
+    "current-artifact-path-desc": "current-path-desc",
     "current-artifact-directory": "current-path-dir",
     "current-artifact-directory-asc": "current-path-dir-asc",
     "current-artifact-directory-desc": "current-path-dir-desc",
@@ -1134,6 +1138,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "current-artifact",
             "current-artifact-asc",
             "current-artifact-desc",
+            "current-artifact-path",
+            "current-artifact-path-asc",
+            "current-artifact-path-desc",
             "current-path-name",
             "current-path-name-asc",
             "current-path-name-desc",
@@ -1311,6 +1318,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--current-path",
         "--current-artifact",
+        "--current-artifact-path",
         action="append",
         default=None,
         help=(
@@ -1321,6 +1329,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--current-path-contains",
         "--current-artifact-contains",
+        "--current-artifact-path-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact path contains this text; repeat to include multiple matches",

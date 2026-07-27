@@ -88,7 +88,9 @@ def test_summary_groups_accept_all_alias_with_specific_groups() -> None:
 
 
 def test_summary_groups_accept_current_path_aliases() -> None:
-    assert normalize_summary_groups(["current-path, current-path-name, current-path-stem, current-file-stem"]) == {
+    assert normalize_summary_groups(
+        ["current-path, current-artifact-path, current-path-name, current-path-stem, current-file-stem"]
+    ) == {
         "current-artifact",
         "current-artifact-name",
         "current-artifact-stem",
@@ -769,6 +771,7 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "track-status-asc",
         "current-path-asc",
         "current-artifact-asc",
+        "current-artifact-path-asc",
         "current-path-name-asc",
         "current-artifact-name-asc",
         "current-filename-asc",
@@ -8622,6 +8625,12 @@ def test_main_fail_on_stale_honors_current_path_filter(monkeypatch) -> None:
         )
         == 1
     )
+    assert (
+        report_module.main(
+            ["--fail-on-stale", "--current-artifact-path", "benchmark-results/base-current.json"]
+        )
+        == 1
+    )
 
 
 def test_main_fail_on_stale_honors_current_path_text_filter(monkeypatch) -> None:
@@ -8651,6 +8660,7 @@ def test_main_fail_on_stale_honors_current_path_text_filter(monkeypatch) -> None
 
     assert report_module.main(["--fail-on-stale", "--current-path-contains", "qwen"]) == 0
     assert report_module.main(["--fail-on-stale", "--current-path-contains", "whisper"]) == 1
+    assert report_module.main(["--fail-on-stale", "--current-artifact-path-contains", "whisper"]) == 1
 
 
 def test_main_fail_on_stale_honors_track_state_filter(monkeypatch) -> None:
