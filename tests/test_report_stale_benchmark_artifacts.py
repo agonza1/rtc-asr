@@ -3836,6 +3836,41 @@ def test_parse_args_accepts_summary_csv_output_flag() -> None:
     assert parse_args(["--summary-csv", "--summary-share"]).summary_csv is True
 
 
+def test_render_summary_csv_includes_average_size_for_average_sorts() -> None:
+    rendered = render_summary_csv(
+        [
+            {"artifact_path": "benchmark-results/base-a.json", "slug": "base", "artifact_size_bytes": 50},
+            {"artifact_path": "benchmark-results/base-b.json", "slug": "base", "artifact_size_bytes": 70},
+        ],
+        groups=["slug"],
+        summary_sort="average-size",
+    )
+
+    assert rendered.splitlines() == [
+        "group,bucket,count,total_size_bytes,total_size,average_size_bytes,average_size,count_share_percent,size_share_percent",
+        "slug,base,2,120,120 B,60.0,60 B,,",
+    ]
+
+
+def test_render_summary_markdown_includes_average_size_for_average_sorts() -> None:
+    rendered = render_summary_markdown(
+        [
+            {"artifact_path": "benchmark-results/base-a.json", "slug": "base", "artifact_size_bytes": 50},
+            {"artifact_path": "benchmark-results/base-b.json", "slug": "base", "artifact_size_bytes": 70},
+        ],
+        groups=["slug"],
+        summary_sort="avg-size",
+    )
+
+    assert rendered.splitlines() == [
+        "Found 2 stale benchmark artifacts (120 B, 120 bytes).",
+        "",
+        "| Group | Bucket | Count | Total size | Average size | Count share | Size share |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+        "| slug | base | 2 | 120 B | 60 B | unknown | unknown |",
+    ]
+
+
 def test_parse_args_accepts_output_path() -> None:
     assert parse_args(["--output", "cleanup/report.txt"]).output == Path("cleanup/report.txt")
 

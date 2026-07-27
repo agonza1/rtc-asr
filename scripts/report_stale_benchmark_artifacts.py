@@ -3570,9 +3570,10 @@ def render_summary_csv(
         "count",
         "total_size_bytes",
         "total_size",
-        "count_share_percent",
-        "size_share_percent",
     ]
+    if is_average_summary_sort(summary_sort):
+        fieldnames.extend(["average_size_bytes", "average_size"])
+    fieldnames.extend(["count_share_percent", "size_share_percent"])
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
     for group in SUMMARY_GROUPS:
@@ -3589,6 +3590,8 @@ def render_summary_csv(
             min_size_bytes=summary_min_size_bytes,
             max_size_bytes=summary_max_size_bytes,
         )
+        if is_average_summary_sort(summary_sort):
+            buckets = with_summary_average_sizes(buckets)
         if include_share:
             buckets = with_summary_shares(
                 buckets,
@@ -3596,17 +3599,19 @@ def render_summary_csv(
                 total_size_bytes=summary["total_size_bytes"],
             )
         for bucket in buckets:
-            writer.writerow(
-                {
-                    "group": group,
-                    "bucket": bucket.get(bucket_key),
-                    "count": bucket["count"],
-                    "total_size_bytes": bucket["total_size_bytes"],
-                    "total_size": bucket["total_size"],
-                    "count_share_percent": bucket.get("count_share_percent", ""),
-                    "size_share_percent": bucket.get("size_share_percent", ""),
-                }
-            )
+            row = {
+                "group": group,
+                "bucket": bucket.get(bucket_key),
+                "count": bucket["count"],
+                "total_size_bytes": bucket["total_size_bytes"],
+                "total_size": bucket["total_size"],
+                "count_share_percent": bucket.get("count_share_percent", ""),
+                "size_share_percent": bucket.get("size_share_percent", ""),
+            }
+            if is_average_summary_sort(summary_sort):
+                row["average_size_bytes"] = bucket.get("average_size_bytes", "")
+                row["average_size"] = bucket.get("average_size", "")
+            writer.writerow(row)
     return output.getvalue()
 
 
@@ -3633,6 +3638,14 @@ def render_summary_markdown(
     )
     selected_groups = normalize_summary_groups(groups)
     summary = stale_summary(stale)
+    include_average_size = is_average_summary_sort(summary_sort)
+    header = "| Group | Bucket | Count | Total size |"
+    divider = "| --- | --- | ---: | ---: |"
+    if include_average_size:
+        header += " Average size |"
+        divider += " ---: |"
+    header += " Count share | Size share |"
+    divider += " ---: | ---: |"
     lines = [
         "Found {count} stale benchmark {noun} ({size}, {bytes} bytes).".format(
             count=summary["count"],
@@ -3641,8 +3654,8 @@ def render_summary_markdown(
             bytes=summary["total_size_bytes"],
         ),
         "",
-        "| Group | Bucket | Count | Total size | Count share | Size share |",
-        "| --- | --- | ---: | ---: | ---: | ---: |",
+        header,
+        divider,
     ]
     for group in SUMMARY_GROUPS:
         if group not in selected_groups:
@@ -3658,6 +3671,8 @@ def render_summary_markdown(
             min_size_bytes=summary_min_size_bytes,
             max_size_bytes=summary_max_size_bytes,
         )
+        if include_average_size:
+            buckets = with_summary_average_sizes(buckets)
         if include_share:
             buckets = with_summary_shares(
                 buckets,
@@ -3665,12 +3680,19 @@ def render_summary_markdown(
                 total_size_bytes=summary["total_size_bytes"],
             )
         for bucket in buckets:
+            average_size_cell = ""
+            if include_average_size:
+                average_size_cell = f" {markdown_cell(bucket.get('average_size', ''))} |"
             lines.append(
-                "| {group} | {bucket} | {count} | {total_size} | {count_share} | {size_share} |".format(
+                (
+                    "| {group} | {bucket} | {count} | {total_size} |"
+                    "{average_size_cell} {count_share} | {size_share} |"
+                ).format(
                     group=markdown_cell(group),
                     bucket=markdown_cell(bucket.get(bucket_key)),
                     count=bucket["count"],
                     total_size=markdown_cell(bucket["total_size"]),
+                    average_size_cell=average_size_cell,
                     count_share=markdown_cell(bucket.get("count_share_percent", "")),
                     size_share=markdown_cell(bucket.get("size_share_percent", "")),
                 )
