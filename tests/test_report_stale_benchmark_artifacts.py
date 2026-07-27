@@ -552,9 +552,36 @@ def test_parse_args_accepts_readable_size_thresholds() -> None:
     assert args.summary_max_size_bytes == 4 * 1024**4
 
 
+def test_parse_args_accepts_long_readable_size_units() -> None:
+    args = parse_args(
+        [
+            "--min-size-bytes",
+            "1.5 kibibytes",
+            "--max-size-bytes",
+            "2 megabytes",
+            "--summary-min-size-bytes",
+            "3 kilobytes",
+            "--summary-max-size-bytes",
+            "4 tebibytes",
+        ]
+    )
+
+    assert args.min_size_bytes == 1536
+    assert args.max_size_bytes == 2_000_000
+    assert args.summary_min_size_bytes == 3000
+    assert args.summary_max_size_bytes == 4 * 1024**4
+
+
 def test_parse_size_bytes_accepts_digit_separators() -> None:
     assert parse_size_bytes("1,024") == 1024
     assert parse_size_bytes("1_500 KB") == 1_500_000
+
+
+def test_parse_size_bytes_accepts_long_unit_names() -> None:
+    assert parse_size_bytes("1 byte") == 1
+    assert parse_size_bytes("2 bytes") == 2
+    assert parse_size_bytes("3 gigabytes") == 3_000_000_000
+    assert parse_size_bytes("4 gibibytes") == 4 * 1024**3
 
 
 def test_parse_args_accepts_readable_age_filter_aliases() -> None:
