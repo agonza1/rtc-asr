@@ -620,6 +620,33 @@ def test_parse_args_accepts_readable_name_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_age_bucket_summary_sort_aliases() -> None:
+    for alias in [
+        "age-bucket",
+        "age-bucket-desc",
+        "age-bucket-asc",
+        "age-range",
+        "age-range-desc",
+        "age-range-asc",
+        "stale-age-bucket",
+        "stale-age-bucket-desc",
+        "stale-age-bucket-asc",
+        "staleness-bucket",
+        "staleness-bucket-desc",
+        "staleness-bucket-asc",
+        "age",
+        "age-desc",
+        "age-asc",
+        "stale",
+        "stale-first",
+        "stalest",
+        "stalest-first",
+        "freshest",
+        "freshest-first",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_render_json_summary_accepts_readable_name_sort_aliases() -> None:
     stale = [
         {
@@ -649,6 +676,37 @@ def test_render_json_summary_accepts_readable_name_sort_aliases() -> None:
     assert [bucket["slug"] for bucket in reverse_alphabetical["by_slug"]] == ["zulu", "alpha"]
     assert [bucket["slug"] for bucket in reverse["by_slug"]] == ["zulu", "alpha"]
     assert [bucket["slug"] for bucket in name_reverse["by_slug"]] == ["zulu", "alpha"]
+
+
+def test_render_json_summary_accepts_age_bucket_summary_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/new.json",
+            "status": "legacy",
+            "age_bucket": "0-6d",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/old.json",
+            "status": "legacy",
+            "age_bucket": "90d+",
+            "artifact_size_bytes": 80,
+        },
+        {
+            "artifact_path": "benchmark-results/mid.json",
+            "status": "legacy",
+            "age_bucket": "30-89d",
+            "artifact_size_bytes": 60,
+        },
+    ]
+
+    stale_first = json.loads(render_json_summary(stale, groups=["age-bucket"], summary_sort="stale"))
+    freshest_first = json.loads(render_json_summary(stale, groups=["age-bucket"], summary_sort="freshest"))
+    age_range = json.loads(render_json_summary(stale, groups=["age-bucket"], summary_sort="age-range-asc"))
+
+    assert [bucket["age_bucket"] for bucket in stale_first["by_age_bucket"]] == ["90d+", "30-89d", "0-6d"]
+    assert [bucket["age_bucket"] for bucket in freshest_first["by_age_bucket"]] == ["0-6d", "30-89d", "90d+"]
+    assert [bucket["age_bucket"] for bucket in age_range["by_age_bucket"]] == ["0-6d", "30-89d", "90d+"]
 
 
 def test_parse_args_accepts_readable_size_thresholds() -> None:
