@@ -523,8 +523,8 @@ def test_render_json_summary_accepts_total_count_sort_aliases() -> None:
         },
     ]
 
-    descending = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="total-count"))
-    ascending = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="artifact-count-asc"))
+    descending = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="file-count"))
+    ascending = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="items-asc"))
 
     assert [bucket["slug"] for bucket in descending["by_slug"]] == ["base", "qwen"]
     assert [bucket["slug"] for bucket in ascending["by_slug"]] == ["qwen", "base"]
@@ -584,6 +584,15 @@ def test_parse_args_accepts_readable_count_summary_sort_aliases() -> None:
         "artifact-count",
         "artifact-count-desc",
         "artifact-count-asc",
+        "file-count",
+        "file-count-desc",
+        "file-count-asc",
+        "files",
+        "files-desc",
+        "files-asc",
+        "items",
+        "items-desc",
+        "items-asc",
         "most",
         "most-first",
         "most-artifacts",
