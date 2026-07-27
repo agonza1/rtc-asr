@@ -246,6 +246,12 @@ def test_parse_args_accepts_total_size_summary_sort_aliases() -> None:
         "total-bytes",
         "total-bytes-desc",
         "total-bytes-asc",
+        "file-size",
+        "file-size-desc",
+        "file-size-asc",
+        "file-bytes",
+        "file-bytes-desc",
+        "file-bytes-asc",
         "artifact-size",
         "artifact-size-desc",
         "artifact-size-asc",
@@ -891,6 +897,12 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "total-bytes",
         "total-bytes-desc",
         "total-bytes-asc",
+        "file-size",
+        "file-size-desc",
+        "file-size-asc",
+        "file-bytes",
+        "file-bytes-desc",
+        "file-bytes-asc",
         "artifact-size",
         "artifact-size-desc",
         "artifact-size-asc",
@@ -2742,9 +2754,12 @@ def test_stale_artifacts_accepts_size_sort_aliases() -> None:
     descending = stale_artifacts(manifest, sort_by="disk-size-desc")
     ascending = stale_artifacts(manifest, sort_by="disk-size-asc")
     largest = stale_artifacts(manifest, sort_by="largest")
+    file_size = stale_artifacts(manifest, sort_by="file-size")
+    file_bytes_desc = stale_artifacts(manifest, sort_by="file-bytes-desc")
     heaviest = stale_artifacts(manifest, sort_by="heaviest")
     heaviest_first = stale_artifacts(manifest, sort_by="heaviest-first")
     smallest = stale_artifacts(manifest, sort_by="smallest")
+    file_size_asc = stale_artifacts(manifest, sort_by="file-size-asc")
     lightest = stale_artifacts(manifest, sort_by="lightest")
     lightest_first = stale_artifacts(manifest, sort_by="lightest-first")
 
@@ -2753,6 +2768,14 @@ def test_stale_artifacts_accepts_size_sort_aliases() -> None:
         "benchmark-results/small.json",
     ]
     assert [entry["artifact_path"] for entry in largest] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
+    assert [entry["artifact_path"] for entry in file_size] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
+    assert [entry["artifact_path"] for entry in file_bytes_desc] == [
         "benchmark-results/large.json",
         "benchmark-results/small.json",
     ]
@@ -2769,6 +2792,10 @@ def test_stale_artifacts_accepts_size_sort_aliases() -> None:
         "benchmark-results/large.json",
     ]
     assert [entry["artifact_path"] for entry in smallest] == [
+        "benchmark-results/small.json",
+        "benchmark-results/large.json",
+    ]
+    assert [entry["artifact_path"] for entry in file_size_asc] == [
         "benchmark-results/small.json",
         "benchmark-results/large.json",
     ]
