@@ -67,6 +67,12 @@ Example response:
   "ready": true,
   "preload_enabled": true,
   "preload_error": null,
+  "default_protocol": "local-stt.v1",
+  "default_transport": {
+    "protocol": "local-stt.v1",
+    "transport": "websocket",
+    "path": "/v1/stt/stream"
+  },
   "streaming": {
     "transport": "websocket",
     "path": "/ws/stream",
@@ -140,7 +146,7 @@ Example response:
 }
 ```
 
-Capability metadata changes by backend. The top-level `streaming` and `audio` keys provide the active transport contract clients can read without digging into nested capability blobs, while backend-specific details remain under `capabilities`. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields. Voxtral also exposes `model_card`, `runtime_aliases`, `attn_implementation`, `max_new_tokens`, and `realtime_profile` so clients can discover the Mini 4B realtime alias without hard-coding issue notes.
+Capability metadata changes by backend. The top-level `default_protocol` and `default_transport` keys expose the recommended live STT route directly, while `protocols` carries the full catalog and `streaming` keeps the backend's legacy buffered websocket capability. Backend-specific details remain under `capabilities`. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields. Voxtral also exposes `model_card`, `runtime_aliases`, `attn_implementation`, `max_new_tokens`, and `realtime_profile` so clients can discover the Mini 4B realtime alias without hard-coding issue notes.
 
 ## List Protocols
 
