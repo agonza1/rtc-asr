@@ -906,7 +906,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--sort",
-        type=lowercase_cli_choice,
+        type=normalize_cli_token,
         choices=(
             "size",
             "size-desc",
@@ -1914,7 +1914,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-sort",
-        type=lowercase_cli_choice,
+        type=normalize_cli_token,
         choices=SUMMARY_SORTS,
         default="size",
         help=(

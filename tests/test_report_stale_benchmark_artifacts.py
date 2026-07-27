@@ -258,6 +258,11 @@ def test_parse_args_accepts_case_insensitive_summary_sort_aliases() -> None:
     assert parse_args(["--summary-sort", "Avg-Size-Asc"]).summary_sort == "avg-size-asc"
 
 
+def test_parse_args_accepts_underscore_summary_sort_aliases() -> None:
+    assert parse_args(["--summary-sort", "avg_bytes_asc"]).summary_sort == "avg-bytes-asc"
+    assert parse_args(["--summary-sort", "largest_bytes_first"]).summary_sort == "largest-bytes-first"
+
+
 def test_parse_args_accepts_least_count_summary_sort_aliases() -> None:
     for alias in ["least", "least-first", "least-artifacts", "least-artifacts-first"]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
@@ -1259,6 +1264,11 @@ def test_parse_args_accepts_case_insensitive_stale_sort_aliases() -> None:
     assert parse_args(["--sort", "CURRENT-ARTIFACT-FILE-EXTENSION-DESC"]).sort == (
         "current-artifact-file-extension-desc"
     )
+
+
+def test_parse_args_accepts_underscore_stale_sort_aliases() -> None:
+    assert parse_args(["--sort", "current_artifact_name_desc"]).sort == "current-artifact-name-desc"
+    assert parse_args(["--sort", "artifact_file_extension_asc"]).sort == "artifact-file-extension-asc"
 
 
 def test_parse_args_accepts_readable_age_sort_aliases() -> None:
