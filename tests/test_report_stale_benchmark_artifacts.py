@@ -76,12 +76,15 @@ def test_parse_args_accepts_short_group_aliases() -> None:
 
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
-    assert normalize_summary_groups(["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, MONTH"]) == {
+    assert normalize_summary_groups(
+        ["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, MONTH, AGE-RANGE"]
+    ) == {
         "status",
         "current-artifact-name",
         "detail-page",
         "track-state",
         "measured-month",
+        "age-bucket",
     }
 
 
@@ -844,6 +847,10 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "current-artifact-extension-asc",
         "measured-month-asc",
         "age-bucket-asc",
+        "age-range-asc",
+        "age-range-bucket-asc",
+        "stale-age-bucket-asc",
+        "staleness-bucket-asc",
         "artifact-filename-asc",
         "artifact-basename-asc",
         "artifact-file-name-asc",
@@ -1264,6 +1271,7 @@ def test_parse_args_accepts_case_insensitive_stale_sort_aliases() -> None:
     assert parse_args(["--sort", "CURRENT-ARTIFACT-FILE-EXTENSION-DESC"]).sort == (
         "current-artifact-file-extension-desc"
     )
+    assert parse_args(["--sort", "AGE-RANGE-DESC"]).sort == "age-range-desc"
 
 
 def test_parse_args_accepts_underscore_stale_sort_aliases() -> None:
@@ -1786,6 +1794,23 @@ def test_age_bucket_uses_cleanup_review_ranges() -> None:
     assert age_bucket(7) == "7-29d"
     assert age_bucket(30) == "30-89d"
     assert age_bucket(90) == "90d+"
+
+
+def test_parse_args_accepts_age_bucket_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--age-range",
+            "0-6d",
+            "--age-range-bucket",
+            "7-29d",
+            "--stale-age-bucket",
+            "30-89d",
+            "--staleness-bucket",
+            "90d+",
+        ]
+    )
+
+    assert args.age_bucket == ["0-6d", "7-29d", "30-89d", "90d+"]
 
 
 def test_format_age_days_handles_plural_and_unknown() -> None:
@@ -4321,6 +4346,37 @@ def test_stale_artifacts_can_sort_by_age_bucket_then_age() -> None:
         "benchmark-results/week-old.json",
         "benchmark-results/month-old.json",
         "benchmark-results/unknown.json",
+    ]
+
+
+def test_stale_artifacts_accepts_age_bucket_sort_aliases() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/month-old.json",
+                "status": "legacy",
+                "measured_at": "2026-05-20T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/recent.json",
+                "status": "legacy",
+                "measured_at": "2026-06-18T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(
+        manifest,
+        now=datetime(2026, 6, 20, tzinfo=UTC),
+        sort_by="age_range_bucket_desc",
+    )
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/month-old.json",
+        "benchmark-results/recent.json",
     ]
 
 
