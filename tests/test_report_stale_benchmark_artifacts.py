@@ -122,7 +122,8 @@ def test_summary_groups_accept_file_stem_aliases() -> None:
     assert normalize_summary_groups(
         [
             "artifact-file-stem, path-stem, path-file-stem, current-file-stem, "
-            "detail-file-stem, detail-stem, detail-page-file-stem"
+            "artifact-path-stem, artifact-path-file-stem, detail-file-stem, "
+            "detail-stem, detail-page-file-stem"
         ]
     ) == {
         "artifact-stem",
@@ -136,7 +137,8 @@ def test_summary_groups_accept_filename_aliases() -> None:
         [
             (
                 "artifact-filename, artifact-basename, artifact-file-name, path-name, "
-                "path-basename, path-filename, path-file-name"
+                "path-basename, path-filename, path-file-name, artifact-path-name, "
+                "artifact-path-basename, artifact-path-filename, artifact-path-file-name"
             ),
             "current-filename, current-basename, current-file-name",
             (
@@ -155,7 +157,9 @@ def test_summary_groups_accept_directory_aliases() -> None:
     assert normalize_summary_groups(
         [
             "artifact-directory, artifact-dirname, artifact-folder, artifact-folder-name, "
-            "path-dir, path-directory, path-dirname, path-folder, path-folder-name",
+            "path-dir, path-directory, path-dirname, path-folder, path-folder-name, "
+            "artifact-path-dir, artifact-path-directory, artifact-path-dirname, "
+            "artifact-path-folder, artifact-path-folder-name",
             (
                 "current-artifact-directory, current-path-directory, current-artifact-dirname, "
                 "current-path-dirname, current-artifact-folder, current-path-folder, "
@@ -179,7 +183,8 @@ def test_summary_groups_accept_extension_aliases() -> None:
         [
             (
                 "artifact-ext, artifact-file-ext, artifact-file-extension, path-extension, "
-                "path-ext, path-file-ext, path-file-extension"
+                "path-ext, path-file-ext, path-file-extension, artifact-path-extension, "
+                "artifact-path-ext, artifact-path-file-ext, artifact-path-file-extension"
             ),
             "current-extension, current-ext, current-artifact-ext, current-file-ext",
             "current-file-extension, current-path-ext, current-path-file-ext, "
@@ -943,6 +948,21 @@ def test_parse_args_accepts_explicit_ascending_stale_sort_aliases() -> None:
         "artifact-filename-asc",
         "artifact-basename-asc",
         "artifact-file-name-asc",
+        "artifact-path-name-asc",
+        "artifact-path-basename-asc",
+        "artifact-path-filename-asc",
+        "artifact-path-file-name-asc",
+        "artifact-path-stem-asc",
+        "artifact-path-file-stem-asc",
+        "artifact-path-dir-asc",
+        "artifact-path-directory-asc",
+        "artifact-path-dirname-asc",
+        "artifact-path-folder-asc",
+        "artifact-path-folder-name-asc",
+        "artifact-path-extension-asc",
+        "artifact-path-ext-asc",
+        "artifact-path-file-ext-asc",
+        "artifact-path-file-extension-asc",
         "artifact-ext-asc",
         "artifact-file-ext-asc",
         "artifact-file-extension-asc",
