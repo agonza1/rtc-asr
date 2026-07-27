@@ -3875,6 +3875,10 @@ def test_parse_args_accepts_output_path() -> None:
     assert parse_args(["--output", "cleanup/report.txt"]).output == Path("cleanup/report.txt")
 
 
+def test_parse_args_accepts_stdout_output_marker() -> None:
+    assert parse_args(["--output", "-"]).output == Path("-")
+
+
 def test_stale_artifacts_can_sort_smallest_first() -> None:
     manifest = {
         "tracks": [],
@@ -9258,6 +9262,29 @@ def test_main_output_writes_rendered_report_without_stdout(monkeypatch, tmp_path
 
     assert capsys.readouterr().out == ""
     assert output_path.read_text(encoding="utf-8") == "benchmark-results/base.json\n"
+
+
+def test_main_output_dash_writes_rendered_report_to_stdout(monkeypatch, tmp_path, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        report_module,
+        "build_manifest",
+        lambda _results_dir, _tracks: {
+            "tracks": [],
+            "artifacts": [
+                {
+                    "artifact_path": "benchmark-results/base.json",
+                    "status": "legacy",
+                    "artifact_size_bytes": 90,
+                }
+            ],
+        },
+    )
+
+    assert report_module.main(["--paths-only", "--output", "-"]) == 0
+
+    assert capsys.readouterr().out == "benchmark-results/base.json\n"
+    assert not Path("-").exists()
 
 
 def test_main_null_paths_output_preserves_null_separators(monkeypatch, tmp_path, capsys) -> None:
