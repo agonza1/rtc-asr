@@ -1838,7 +1838,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--output",
         type=Path,
         default=None,
-        help="Write the rendered stale artifact report to this file instead of stdout",
+        help="Write the rendered stale artifact report to this file instead of stdout; use '-' for stdout",
     )
     return parser.parse_args(argv)
 
@@ -5156,7 +5156,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             + "\n"
         )
-    if args.output:
+    if args.output and str(args.output) != "-":
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered_output, encoding="utf-8")
     else:
