@@ -12,6 +12,7 @@ import pytest
 from pipecat_local_stt import LocalSTTConfig, LocalStreamingSTTService
 from pipecat_local_stt.pipecat_compat import (
     AudioRawFrame,
+    EndFrame,
     FrameDirection,
     InterimTranscriptionFrame,
     StartFrame,
@@ -151,7 +152,7 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     await wait_for(lambda: InterimTranscriptionFrame in pushed_frame_types(pushed_frames))
     await service.process_frame(VADUserStoppedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await wait_for(lambda: TranscriptionFrame in pushed_frame_types(pushed_frames))
-    await service.cleanup()
+    await service.stop(EndFrame())
 
     sent_start = json.loads(next(item for item in websocket.sent if isinstance(item, str)))
     binary_messages = [item for item in websocket.sent if isinstance(item, bytes)]
@@ -169,6 +170,9 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     assert service.metrics.local_stt_ready_latency_ms >= 0
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
+    assert service.metrics.local_stt_start_messages_sent_total == 1
+    assert service.metrics.local_stt_finalize_messages_sent_total == 1
+    assert service.metrics.local_stt_close_messages_sent_total == 1
 
 
 async def _test_service_counts_ready_timeout() -> None:
@@ -189,6 +193,7 @@ async def _test_service_counts_ready_timeout() -> None:
     await service.cleanup()
 
     assert service.metrics.local_stt_ready_timeouts_total == 1
+    assert service.metrics.local_stt_start_messages_sent_total == 1
 
 
 def test_raw_uds_public_api_verifies_start_audio_finalize_and_transcript_mapping(tmp_path: Path) -> None:

@@ -64,6 +64,8 @@ async def _test_vad_lifecycle_reuses_one_connection_and_batches_audio() -> None:
     assert control_types(websocket).count("finalize") == 2
     assert binary_messages(websocket)[0] == (b"i" * 640) + (b"a" * 640) + (b"b" * 640)
     assert binary_messages(websocket)[1] == b"c" * 640
+    assert service.metrics.local_stt_start_messages_sent_total == 2
+    assert service.metrics.local_stt_finalize_messages_sent_total == 2
 
 
 def test_interruption_frame_does_not_cancel_or_discard_user_asr() -> None:
