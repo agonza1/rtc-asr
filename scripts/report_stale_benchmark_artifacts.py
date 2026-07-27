@@ -691,12 +691,12 @@ def format_average_bytes(size_bytes: float) -> str:
 
 
 def parse_size_bytes(value: str) -> int:
-    match = re.fullmatch(r"\s*(-?\d+(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
+    match = re.fullmatch(r"\s*(-?(?:\d+(?:[,_]\d{3})+|\d+)(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
     if match is None:
         raise argparse.ArgumentTypeError("size must be bytes or a value with KB, KiB, MB, MiB, GB, GiB, TB, or TiB")
 
     amount_text, unit_text = match.groups()
-    amount = float(amount_text)
+    amount = float(amount_text.replace(",", "").replace("_", ""))
     if amount < 0:
         raise argparse.ArgumentTypeError("size must not be negative")
 
