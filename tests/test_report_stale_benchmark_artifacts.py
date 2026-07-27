@@ -541,6 +541,12 @@ def test_parse_age_days_accepts_month_suffixes() -> None:
     assert parse_age_days("3 months") == 90
 
 
+def test_parse_age_days_accepts_quarter_suffixes() -> None:
+    assert parse_age_days("1q") == 90
+    assert parse_age_days("2 qtr") == 180
+    assert parse_age_days("3 quarters") == 270
+
+
 def test_parse_age_days_accepts_year_suffixes() -> None:
     assert parse_age_days("1y") == 365
     assert parse_age_days("2 yr") == 730
