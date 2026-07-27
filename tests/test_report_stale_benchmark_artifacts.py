@@ -39,6 +39,7 @@ normalize_filter_values = report_module.normalize_filter_values
 normalize_summary_groups = report_module.normalize_summary_groups
 validate_summary_options = report_module.validate_summary_options
 measured_month = report_module.measured_month
+measured_year = report_module.measured_year
 age_bucket = report_module.age_bucket
 parse_args = report_module.parse_args
 
@@ -77,12 +78,13 @@ def test_parse_args_accepts_short_group_aliases() -> None:
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
-        ["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, MONTH, AGE-RANGE"]
+        ["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, YEAR, MONTH, AGE-RANGE"]
     ) == {
         "status",
         "current-artifact-name",
         "detail-page",
         "track-state",
+        "measured-year",
         "measured-month",
         "age-bucket",
     }
@@ -1867,6 +1869,11 @@ def test_measured_month_uses_utc_month_or_unknown() -> None:
     assert measured_month(None) == "unknown"
 
 
+def test_measured_year_uses_utc_year_or_unknown() -> None:
+    assert measured_year("2026-12-31T23:30:00-02:00") == "2027"
+    assert measured_year(None) == "unknown"
+
+
 def test_age_bucket_uses_cleanup_review_ranges() -> None:
     assert age_bucket(None) == "unknown"
     assert age_bucket(6) == "0-6d"
@@ -1938,6 +1945,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "backend": None,
             "status": "legacy",
             "measured_at": "2026-06-10T00:00:00Z",
+            "measured_year": "2026",
             "measured_month": "2026-06",
             "age_days": 10,
             "age_bucket": "7-29d",
@@ -4063,8 +4071,8 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026-06,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026,2026-06,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B',
     ]
 
 
@@ -5224,6 +5232,50 @@ def test_stale_summary_groups_artifact_size_by_measured_month() -> None:
         },
         {
             "measured_month": "unknown",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
+def test_stale_summary_groups_artifact_size_by_measured_year() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/old-large.json",
+            "measured_at": "2025-12-15T00:00:00Z",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/new.json",
+            "measured_at": "2026-01-01T00:00:00Z",
+            "artifact_size_bytes": 30,
+        },
+        {
+            "artifact_path": "benchmark-results/old-small.json",
+            "measured_at": "2025-06-20",
+            "artifact_size_bytes": 10,
+        },
+        {"artifact_path": "benchmark-results/unknown.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_measured_year"] == [
+        {
+            "measured_year": "2025",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "measured_year": "2026",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "measured_year": "unknown",
             "count": 1,
             "total_size_bytes": 5,
             "total_size": "5 B",
@@ -9550,8 +9602,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_month,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B\r\n'
     )
 
 
