@@ -437,6 +437,12 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "ready": True,
         "preload_enabled": True,
         "preload_error": None,
+        "default_protocol": PROTOCOL_VERSION,
+        "default_transport": {
+            "protocol": PROTOCOL_VERSION,
+            "transport": "websocket",
+            "path": "/v1/stt/stream",
+        },
         "protocols": DEFAULT_PROTOCOLS,
         "streaming": {
             "transport": "websocket",
@@ -553,6 +559,23 @@ def test_api_protocols_reports_active_uds_default_transport(tmp_path: Path) -> N
 
     assert protocols.status_code == 200
     assert protocols.json()["default_transport"] == {
+        "protocol": PROTOCOL_VERSION,
+        "transport": "uds_ws",
+        "path": "/v1/stt/stream",
+        "uds_path": str(socket_path),
+    }
+
+
+def test_api_models_reports_active_default_transport(tmp_path: Path) -> None:
+    socket_path = tmp_path / "stt.sock"
+    config = AppConfig(local_stt_socket_mode="uds", local_stt_uds_path=str(socket_path))
+
+    with TestClient(create_app(config=config, transcriber=FakeTranscriber())) as client:
+        models = client.get("/api/models")
+
+    assert models.status_code == 200
+    assert models.json()["default_protocol"] == PROTOCOL_VERSION
+    assert models.json()["default_transport"] == {
         "protocol": PROTOCOL_VERSION,
         "transport": "uds_ws",
         "path": "/v1/stt/stream",

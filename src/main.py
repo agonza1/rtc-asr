@@ -317,22 +317,26 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
     ]
 
 
-def _protocol_discovery_payload(services: AppServices) -> dict[str, object]:
-    local_stt_transport = _local_stt_server_transport(services.config)
+def _default_transport_payload(config: AppConfig) -> dict[str, object]:
+    local_stt_transport = _local_stt_server_transport(config)
     default_transport_name = "websocket"
     if local_stt_transport["transport"] == "uds_ws":
         default_transport_name = local_stt_transport["transport"]
+    return {
+        "protocol": PROTOCOL_VERSION,
+        "transport": default_transport_name,
+        "path": local_stt_transport["path"],
+        **({"uds_path": local_stt_transport["uds_path"]} if "uds_path" in local_stt_transport else {}),
+    }
+
+
+def _protocol_discovery_payload(services: AppServices) -> dict[str, object]:
     protocols = _protocol_catalog(services.config)
     return {
         "status": _backend_status(services),
         "ready": _accepting_traffic(services),
         "default_protocol": PROTOCOL_VERSION,
-        "default_transport": {
-            "protocol": PROTOCOL_VERSION,
-            "transport": default_transport_name,
-            "path": local_stt_transport["path"],
-            **({"uds_path": local_stt_transport["uds_path"]} if "uds_path" in local_stt_transport else {}),
-        },
+        "default_transport": _default_transport_payload(services.config),
         "legacy_protocols": ["rtc-asr-stream.v1"],
         "protocols": protocols,
     }
@@ -567,6 +571,8 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             "ready": _accepting_traffic(current),
             "preload_enabled": current.config.asr_preload_model,
             "preload_error": current.preload_error,
+            "default_protocol": PROTOCOL_VERSION,
+            "default_transport": _default_transport_payload(current.config),
             "protocols": _protocol_catalog(current.config),
             "streaming": streaming,
             "audio": audio,
