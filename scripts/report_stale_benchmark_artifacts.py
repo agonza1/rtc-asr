@@ -719,7 +719,7 @@ def parse_size_bytes(value: str) -> int:
 
 def parse_age_days(value: str) -> int:
     match = re.fullmatch(
-        r"\s*(-?\d+)\s*(d|day|days|w|wk|wks|week|weeks|q|qtr|qtrs|quarter|quarters|mo|mon|month|months|y|yr|yrs|year|years)?\s*",
+        r"\s*(-?\d+)\s*(d|day|days|w|wk|wks|week|weeks|fortnight|fortnights|biweek|biweeks|biweekly|q|qtr|qtrs|quarter|quarters|mo|mon|month|months|y|yr|yrs|year|years)?\s*",
         value,
         flags=re.IGNORECASE,
     )
@@ -734,6 +734,8 @@ def parse_age_days(value: str) -> int:
         unit = unit_text.lower()
         if unit in {"w", "wk", "wks", "week", "weeks"}:
             days *= 7
+        elif unit in {"fortnight", "fortnights", "biweek", "biweeks", "biweekly"}:
+            days *= 14
         elif unit in {"q", "qtr", "qtrs", "quarter", "quarters"}:
             days *= 90
         elif unit in {"mo", "mon", "month", "months"}:
