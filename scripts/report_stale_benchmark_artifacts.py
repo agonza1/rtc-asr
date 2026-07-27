@@ -1923,19 +1923,23 @@ def lowercase_cli_choice(value: str) -> str:
     return value.strip().lower()
 
 
+def normalize_cli_token(value: str) -> str:
+    return value.strip().lower().replace("_", "-")
+
+
 def normalize_stale_sort(sort_by: str) -> str:
-    normalized = sort_by.strip().lower()
+    normalized = normalize_cli_token(sort_by)
     return STALE_SORT_ALIASES.get(normalized, normalized)
 
 
 def normalize_summary_sort(sort_by: str) -> str:
-    normalized = sort_by.strip().lower()
+    normalized = normalize_cli_token(sort_by)
     return SUMMARY_SORT_ALIASES.get(normalized, normalized)
 
 
 def normalize_summary_groups(groups: list[str] | None) -> set[str]:
     selected_groups = {
-        SUMMARY_GROUP_ALIASES.get(group.strip().lower(), group.strip().lower())
+        SUMMARY_GROUP_ALIASES.get(normalize_cli_token(group), normalize_cli_token(group))
         for value in (groups or list(SUMMARY_GROUPS))
         for group in value.split(",")
         if group.strip()

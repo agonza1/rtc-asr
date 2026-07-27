@@ -74,6 +74,15 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     }
 
 
+def test_summary_groups_accept_underscore_values_and_aliases() -> None:
+    assert normalize_summary_groups(["artifact_path, current_path_name, detail_page_path, track_status"]) == {
+        "artifact-path",
+        "current-artifact-name",
+        "detail-page",
+        "track-state",
+    }
+
+
 def test_summary_groups_accept_all_alias_with_specific_groups() -> None:
     assert normalize_summary_groups(["status, all"]) == set(report_module.SUMMARY_GROUPS)
 
@@ -287,6 +296,33 @@ def test_render_json_summary_accepts_short_average_summary_sort_aliases() -> Non
     assert [bucket["slug"] for bucket in avg_asc["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in mean_desc["by_slug"]] == ["base", "qwen"]
     assert average["by_slug"][0]["average_size"] == "100 B"
+
+
+def test_render_json_summary_accepts_underscore_summary_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 80,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 120,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 60,
+        },
+    ]
+
+    summary = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="avg_bytes_asc"))
+
+    assert [bucket["slug"] for bucket in summary["by_slug"]] == ["qwen", "base"]
 
 
 def test_render_json_summary_exposes_average_size_for_buckets() -> None:
