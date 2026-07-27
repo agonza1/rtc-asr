@@ -26,6 +26,7 @@ render_paths = report_module.render_paths
 render_json_lines = report_module.render_json_lines
 render_json_summary = report_module.render_json_summary
 render_summary_csv = report_module.render_summary_csv
+render_summary_markdown = report_module.render_summary_markdown
 render_csv = report_module.render_csv
 render_markdown = report_module.render_markdown
 render_summary = report_module.render_summary
@@ -308,6 +309,34 @@ def test_render_json_summary_exposes_average_size_for_buckets() -> None:
 
     assert summary["by_slug"][0]["average_size_bytes"] == 60
     assert summary["by_slug"][0]["average_size"] == "60 B"
+
+
+def test_render_summary_markdown_formats_group_table_with_shares() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "blocked",
+            "slug": "qwen",
+            "artifact_size_bytes": 60,
+        },
+    ]
+
+    markdown = render_summary_markdown(
+        stale,
+        groups=["status"],
+        summary_sort="count",
+        include_share=True,
+    )
+
+    assert "| Group | Bucket | Count | Total size | Count share | Size share |" in markdown
+    assert "| status | blocked | 1 | 60 B | 50.0 | 60.0 |" in markdown
+    assert "| status | legacy | 1 | 40 B | 50.0 | 40.0 |" in markdown
 
 
 def test_render_json_summary_formats_fractional_average_size() -> None:

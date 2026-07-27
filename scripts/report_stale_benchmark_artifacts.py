@@ -1743,6 +1743,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Emit stale artifact summary groups as CSV for spreadsheet cleanup review",
     )
     parser.add_argument(
+        "--summary-markdown",
+        action="store_true",
+        help="Emit stale artifact summary groups as a Markdown table for issues and PRs",
+    )
+    parser.add_argument(
         "--json-lines",
         "--jsonl",
         "--ndjson",
@@ -3604,6 +3609,74 @@ def render_summary_csv(
     return output.getvalue()
 
 
+def render_summary_markdown(
+    stale: list[dict[str, Any]],
+    *,
+    groups: list[str] | None = None,
+    summary_limit: int | None = None,
+    summary_sort: str = "size",
+    summary_min_count: int | None = None,
+    summary_max_count: int | None = None,
+    summary_min_size_bytes: int | None = None,
+    summary_max_size_bytes: int | None = None,
+    include_share: bool = False,
+) -> str:
+    summary_sort = normalize_summary_sort(summary_sort)
+    validate_summary_options(
+        summary_limit=summary_limit,
+        summary_sort=summary_sort,
+        summary_min_count=summary_min_count,
+        summary_max_count=summary_max_count,
+        summary_min_size_bytes=summary_min_size_bytes,
+        summary_max_size_bytes=summary_max_size_bytes,
+    )
+    selected_groups = normalize_summary_groups(groups)
+    summary = stale_summary(stale)
+    lines = [
+        "Found {count} stale benchmark {noun} ({size}, {bytes} bytes).".format(
+            count=summary["count"],
+            noun="artifact" if summary["count"] == 1 else "artifacts",
+            size=summary["total_size"],
+            bytes=summary["total_size_bytes"],
+        ),
+        "",
+        "| Group | Bucket | Count | Total size | Count share | Size share |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
+    ]
+    for group in SUMMARY_GROUPS:
+        if group not in selected_groups:
+            continue
+        summary_key = SUMMARY_GROUP_KEYS[group]
+        bucket_key = summary_key.removeprefix("by_")
+        buckets = limit_summary_buckets(
+            summary[summary_key],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        if include_share:
+            buckets = with_summary_shares(
+                buckets,
+                total_count=summary["count"],
+                total_size_bytes=summary["total_size_bytes"],
+            )
+        for bucket in buckets:
+            lines.append(
+                "| {group} | {bucket} | {count} | {total_size} | {count_share} | {size_share} |".format(
+                    group=markdown_cell(group),
+                    bucket=markdown_cell(bucket.get(bucket_key)),
+                    count=bucket["count"],
+                    total_size=markdown_cell(bucket["total_size"]),
+                    count_share=markdown_cell(bucket.get("count_share_percent", "")),
+                    size_share=markdown_cell(bucket.get("size_share_percent", "")),
+                )
+            )
+    return "\n".join(lines)
+
+
 def is_average_summary_sort(sort_by: str) -> bool:
     return normalize_summary_sort(sort_by) in {
         "average-size",
@@ -4759,16 +4832,26 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-csv and --json cannot be used together")
     if args.summary_csv and args.json_summary:
         raise ValueError("--summary-csv and --json-summary cannot be used together")
+    if args.summary_markdown and args.json_summary:
+        raise ValueError("--summary-markdown and --json-summary cannot be used together")
+    if args.summary_markdown and args.summary_csv:
+        raise ValueError("--summary-markdown and --summary-csv cannot be used together")
+    if args.summary_markdown and args.json:
+        raise ValueError("--summary-markdown and --json cannot be used together")
     if args.json_summary and args.paths_only:
         raise ValueError("--json-summary and --paths-only cannot be used together")
     if args.summary_csv and args.paths_only:
         raise ValueError("--summary-csv and --paths-only cannot be used together")
+    if args.summary_markdown and args.paths_only:
+        raise ValueError("--summary-markdown and --paths-only cannot be used together")
     if args.json_lines and args.json:
         raise ValueError("--json-lines and --json cannot be used together")
     if args.json_lines and args.json_summary:
         raise ValueError("--json-lines and --json-summary cannot be used together")
     if args.json_lines and args.summary_csv:
         raise ValueError("--json-lines and --summary-csv cannot be used together")
+    if args.json_lines and args.summary_markdown:
+        raise ValueError("--json-lines and --summary-markdown cannot be used together")
     if args.json_lines and args.paths_only:
         raise ValueError("--json-lines and --paths-only cannot be used together")
     if args.csv and args.json:
@@ -4777,6 +4860,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--csv and --json-summary cannot be used together")
     if args.csv and args.summary_csv:
         raise ValueError("--csv and --summary-csv cannot be used together")
+    if args.csv and args.summary_markdown:
+        raise ValueError("--csv and --summary-markdown cannot be used together")
     if args.csv and args.json_lines:
         raise ValueError("--csv and --json-lines cannot be used together")
     if args.csv and args.paths_only:
@@ -4787,6 +4872,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--count-only and --json-summary cannot be used together")
     if args.count_only and args.summary_csv:
         raise ValueError("--count-only and --summary-csv cannot be used together")
+    if args.count_only and args.summary_markdown:
+        raise ValueError("--count-only and --summary-markdown cannot be used together")
     if args.count_only and args.json_lines:
         raise ValueError("--count-only and --json-lines cannot be used together")
     if args.count_only and args.csv:
@@ -4799,6 +4886,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--total-bytes-only and --json-summary cannot be used together")
     if args.total_bytes_only and args.summary_csv:
         raise ValueError("--total-bytes-only and --summary-csv cannot be used together")
+    if args.total_bytes_only and args.summary_markdown:
+        raise ValueError("--total-bytes-only and --summary-markdown cannot be used together")
     if args.total_bytes_only and args.json_lines:
         raise ValueError("--total-bytes-only and --json-lines cannot be used together")
     if args.total_bytes_only and args.csv:
@@ -4813,6 +4902,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-only and --json-summary cannot be used together")
     if args.summary_only and args.summary_csv:
         raise ValueError("--summary-only and --summary-csv cannot be used together")
+    if args.summary_only and args.summary_markdown:
+        raise ValueError("--summary-only and --summary-markdown cannot be used together")
     if args.summary_only and args.json_lines:
         raise ValueError("--summary-only and --json-lines cannot be used together")
     if args.summary_only and args.csv:
@@ -4829,6 +4920,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--markdown and --json-summary cannot be used together")
     if args.markdown and args.summary_csv:
         raise ValueError("--markdown and --summary-csv cannot be used together")
+    if args.markdown and args.summary_markdown:
+        raise ValueError("--markdown and --summary-markdown cannot be used together")
     if args.markdown and args.json_lines:
         raise ValueError("--markdown and --json-lines cannot be used together")
     if args.markdown and args.csv:
@@ -4841,7 +4934,7 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--markdown and --total-bytes-only cannot be used together")
     if args.markdown and args.summary_only:
         raise ValueError("--markdown and --summary-only cannot be used together")
-    summary_output_requested = args.summary_only or args.json_summary or args.summary_csv
+    summary_output_requested = args.summary_only or args.json_summary or args.summary_csv or args.summary_markdown
     if args.summary_group and not summary_output_requested:
         raise ValueError("--summary-group requires --summary-only, --json-summary, or --summary-csv")
     if args.summary_limit is not None and not summary_output_requested:
@@ -4854,8 +4947,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--summary-min-size-bytes requires --summary-only, --json-summary, or --summary-csv")
     if args.summary_max_size_bytes is not None and not summary_output_requested:
         raise ValueError("--summary-max-size-bytes requires --summary-only, --json-summary, or --summary-csv")
-    if args.summary_share and not (args.json_summary or args.summary_csv):
-        raise ValueError("--summary-share requires --json-summary or --summary-csv")
+    if args.summary_share and not (args.json_summary or args.summary_csv or args.summary_markdown):
+        raise ValueError("--summary-share requires --json-summary, --summary-csv, or --summary-markdown")
     if args.include_detail_pages and not args.paths_only:
         raise ValueError("--include-detail-pages requires --paths-only")
     if args.detail_pages_only and not args.paths_only:
@@ -4976,6 +5069,21 @@ def main(argv: list[str] | None = None) -> int:
             summary_min_size_bytes=args.summary_min_size_bytes,
             summary_max_size_bytes=args.summary_max_size_bytes,
             include_share=args.summary_share,
+        )
+    elif args.summary_markdown:
+        rendered_output = (
+            render_summary_markdown(
+                stale,
+                groups=args.summary_group,
+                summary_limit=args.summary_limit,
+                summary_sort=args.summary_sort,
+                summary_min_count=args.summary_min_count,
+                summary_max_count=args.summary_max_count,
+                summary_min_size_bytes=args.summary_min_size_bytes,
+                summary_max_size_bytes=args.summary_max_size_bytes,
+                include_share=args.summary_share,
+            )
+            + "\n"
         )
     elif args.paths_only:
         rendered_paths = render_paths(
