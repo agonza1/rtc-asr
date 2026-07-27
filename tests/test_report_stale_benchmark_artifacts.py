@@ -511,6 +511,11 @@ def test_parse_args_accepts_readable_size_thresholds() -> None:
     assert args.summary_max_size_bytes == 4 * 1024**4
 
 
+def test_parse_size_bytes_accepts_digit_separators() -> None:
+    assert parse_size_bytes("1,024") == 1024
+    assert parse_size_bytes("1_500 KB") == 1_500_000
+
+
 def test_parse_args_accepts_readable_age_filter_aliases() -> None:
     args = parse_args(["--older-than", "2 months", "--newer-than", "1year"])
 
