@@ -15,8 +15,10 @@ from pipecat_local_stt.protocol import (
     build_start_message,
     decode_raw_uds_frame,
     decode_raw_uds_json_payload,
+    encode_raw_uds_audio_frame,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    parse_raw_uds_client_frame,
     parse_raw_uds_server_frame,
     parse_transcript_event,
     validate_raw_uds_audio_payload,
@@ -167,6 +169,17 @@ def test_package_exports_raw_uds_json_decoder_and_server_parser() -> None:
     assert package.parse_raw_uds_server_frame(decoded) == {"type": "ready"}
 
 
+def test_package_exports_raw_uds_client_helpers() -> None:
+    import pipecat_local_stt as package
+
+    encoded_audio = package.encode_raw_uds_audio_frame(memoryview(b"\x00\x01"))
+    audio_frame = package.decode_raw_uds_frame(encoded_audio)
+    ping_frame = package.decode_raw_uds_frame(package.encode_raw_uds_frame(package.RawUdsFrameType.PING, b""))
+
+    assert package.parse_raw_uds_client_frame(audio_frame) == b"\x00\x01"
+    assert package.parse_raw_uds_client_frame(ping_frame) == {"type": "ping"}
+
+
 @pytest.mark.parametrize("frame_type", [RawUdsFrameType.PING, RawUdsFrameType.PONG])
 def test_raw_uds_server_parser_accepts_empty_keepalive_frames(frame_type: RawUdsFrameType) -> None:
     frame = decode_raw_uds_frame(encode_raw_uds_frame(frame_type, b""))
@@ -179,6 +192,15 @@ def test_raw_uds_server_parser_rejects_mismatched_keepalive_payload_type() -> No
 
     with pytest.raises(LocalSTTProtocolError) as excinfo:
         parse_raw_uds_server_frame(frame)
+
+    assert excinfo.value.code == "raw_uds_heartbeat_type_mismatch"
+
+
+def test_raw_uds_client_parser_rejects_mismatched_keepalive_payload_type() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_json_frame(RawUdsFrameType.PONG, {"type": "finalize"}))
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        parse_raw_uds_client_frame(frame)
 
     assert excinfo.value.code == "raw_uds_heartbeat_type_mismatch"
 
@@ -220,6 +242,13 @@ def test_raw_uds_json_frame_codec_rejects_audio_frame_type() -> None:
         encode_raw_uds_json_frame(RawUdsFrameType.AUDIO_PCM16, {"type": "close"})
 
     assert excinfo.value.code == "raw_uds_invalid_json_frame_type"
+
+
+def test_raw_uds_audio_frame_encoder_rejects_invalid_pcm16_payloads() -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        encode_raw_uds_audio_frame(b"\x00")
+
+    assert excinfo.value.code == "invalid_audio_chunk"
 
 
 @pytest.mark.parametrize("payload", [["not-object"], "not-object", None])

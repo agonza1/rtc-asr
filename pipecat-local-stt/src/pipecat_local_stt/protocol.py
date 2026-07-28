@@ -112,6 +112,10 @@ def encode_raw_uds_frame(frame_type: RawUdsFrameType | int, payload: bytes | byt
     return struct.pack("<BI", int(resolved_type), len(payload_bytes)) + payload_bytes
 
 
+def encode_raw_uds_audio_frame(payload: bytes | bytearray | memoryview) -> bytes:
+    return encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, validate_raw_uds_audio_payload(payload))
+
+
 def validate_raw_uds_audio_payload(payload: bytes | bytearray | memoryview) -> bytes:
     payload_bytes = _coerce_bytes_like(payload, context="Raw UDS audio payload")
     if not payload_bytes:
@@ -188,6 +192,28 @@ def decode_raw_uds_json_payload(frame: RawUdsFrame) -> dict[str, Any]:
         ) from exc
     if not isinstance(payload, dict):
         raise LocalSTTProtocolError("Raw UDS JSON payload must be an object", code="raw_uds_invalid_json")
+    return payload
+
+
+def parse_raw_uds_client_frame(frame: RawUdsFrame) -> dict[str, Any] | bytes:
+    if frame.frame_type not in RAW_UDS_CLIENT_FRAME_TYPES:
+        raise LocalSTTProtocolError(
+            f"Raw UDS frame type {frame.frame_type.name} is not a client frame",
+            code="raw_uds_invalid_client_frame_type",
+        )
+    if frame.frame_type == RawUdsFrameType.AUDIO_PCM16:
+        return validate_raw_uds_audio_payload(frame.payload)
+    if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG} and not frame.payload:
+        return {"type": frame.frame_type.name.lower()}
+    payload = decode_raw_uds_json_payload(frame)
+    if frame.frame_type in {RawUdsFrameType.PING, RawUdsFrameType.PONG}:
+        frame_event_type = frame.frame_type.name.lower()
+        event_type = payload.setdefault("type", frame_event_type)
+        if event_type != frame_event_type:
+            raise LocalSTTProtocolError(
+                f"Raw UDS {frame.frame_type.name} frame cannot carry a {event_type!r} control message",
+                code="raw_uds_heartbeat_type_mismatch",
+            )
     return payload
 
 
