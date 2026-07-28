@@ -158,6 +158,32 @@ def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
     return encode_raw_uds_json_frame(frame_type, payload)
 
 
+def encode_raw_uds_server_message(payload: dict[str, Any]) -> bytes:
+    if not isinstance(payload, dict):
+        raise LocalSTTProtocolError("Raw UDS server message payload must be an object", code="raw_uds_invalid_json")
+    parse_server_message(payload)
+    payload = _compact_raw_uds_message_payload(payload)
+    heartbeat_frame_types = {"ping": RawUdsFrameType.PING, "pong": RawUdsFrameType.PONG}
+    frame_type = heartbeat_frame_types.get(payload.get("type"), RawUdsFrameType.JSON_EVENT)
+    if payload.get("type") == "error":
+        frame_type = RawUdsFrameType.ERROR
+    if frame_type in heartbeat_frame_types.values() and payload == {"type": payload.get("type")}:
+        return encode_raw_uds_frame(frame_type, b"")
+    return encode_raw_uds_json_frame(frame_type, payload)
+
+
+def encode_raw_uds_protocol_error(exc: LocalSTTProtocolError) -> bytes:
+    return encode_raw_uds_server_message(
+        {
+            "type": "error",
+            "code": exc.code,
+            "message": exc.message,
+            "fatal": exc.fatal,
+            "metadata": dict(exc.metadata),
+        }
+    )
+
+
 def decode_raw_uds_frame(data: bytes | bytearray | memoryview) -> RawUdsFrame:
     frame_bytes = _coerce_bytes_like(data, context="Raw UDS frame")
     if len(frame_bytes) < RAW_UDS_HEADER_BYTES:

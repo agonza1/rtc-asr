@@ -19,6 +19,8 @@ from pipecat_local_stt.protocol import (
     encode_raw_uds_client_message,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
+    encode_raw_uds_protocol_error,
+    encode_raw_uds_server_message,
     parse_raw_uds_client_frame,
     parse_raw_uds_server_frame,
     parse_transcript_event,
@@ -329,6 +331,59 @@ def test_raw_uds_server_parser_stringifies_non_string_mismatched_error_payload_t
         "frame_message_type": "error",
         "payload_message_type": "{'code': 'bad'}",
     }
+
+
+def test_raw_uds_server_message_encoder_selects_event_error_and_keepalive_frames() -> None:
+    ready = decode_raw_uds_frame(encode_raw_uds_server_message({"type": "ready"}))
+    error = decode_raw_uds_frame(
+        encode_raw_uds_server_message({"type": "error", "code": "backend_unavailable", "metadata": {}})
+    )
+    bare_pong = decode_raw_uds_frame(encode_raw_uds_server_message({"type": "pong", "metadata": {}}))
+    pong = decode_raw_uds_frame(encode_raw_uds_server_message({"type": "pong", "ping_id": "client-1"}))
+
+    assert ready.frame_type == RawUdsFrameType.JSON_EVENT
+    assert ready.payload == b'{"type":"ready"}'
+    assert error.frame_type == RawUdsFrameType.ERROR
+    assert decode_raw_uds_json_payload(error) == {"type": "error", "code": "backend_unavailable"}
+    assert bare_pong.frame_type == RawUdsFrameType.PONG
+    assert bare_pong.payload == b""
+    assert pong.frame_type == RawUdsFrameType.PONG
+    assert decode_raw_uds_json_payload(pong) == {"type": "pong", "ping_id": "client-1"}
+
+
+def test_raw_uds_protocol_error_encoder_emits_parseable_error_frame() -> None:
+    exc = LocalSTTProtocolError(
+        "bad control frame",
+        code="raw_uds_malformed_json_control",
+        fatal=False,
+        metadata={"original_code": "raw_uds_invalid_json"},
+    )
+
+    frame = decode_raw_uds_frame(encode_raw_uds_protocol_error(exc))
+
+    assert frame.frame_type == RawUdsFrameType.ERROR
+    assert parse_raw_uds_server_frame(frame) == {
+        "type": "error",
+        "code": "raw_uds_malformed_json_control",
+        "message": "bad control frame",
+        "fatal": False,
+        "metadata": {"original_code": "raw_uds_invalid_json"},
+    }
+
+
+def test_package_exports_raw_uds_server_encoders() -> None:
+    import pipecat_local_stt as package
+
+    assert package.encode_raw_uds_server_message is encode_raw_uds_server_message
+    assert package.encode_raw_uds_protocol_error is encode_raw_uds_protocol_error
+
+
+@pytest.mark.parametrize("payload", [["ready"], "ready", None])
+def test_raw_uds_server_message_encoder_rejects_non_object_payloads(payload: object) -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        encode_raw_uds_server_message(payload)
+
+    assert excinfo.value.code == "raw_uds_invalid_json"
 
 
 def test_package_exports_raw_uds_direction_catalog() -> None:
