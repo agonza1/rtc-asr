@@ -299,6 +299,18 @@ def test_parse_args_accepts_least_count_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_bucket_name_summary_sort_aliases() -> None:
+    for alias in [
+        "bucket",
+        "bucket-asc",
+        "bucket-desc",
+        "bucket-name",
+        "bucket-name-asc",
+        "bucket-name-desc",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_render_json_summary_accepts_case_insensitive_summary_sort() -> None:
     stale = [
         {
@@ -4429,6 +4441,35 @@ def test_render_summary_can_sort_group_rows_by_name() -> None:
     assert rendered.splitlines()[1:3] == [
         "- base: 1 artifact (10 B, 10 bytes)",
         "- zeta: 1 artifact (90 B, 90 bytes)",
+    ]
+
+
+def test_render_summary_accepts_bucket_name_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/zeta.json",
+            "status": "legacy",
+            "slug": "zeta",
+            "artifact_size_bytes": 90,
+        },
+        {
+            "artifact_path": "benchmark-results/base.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 10,
+        },
+    ]
+
+    by_bucket = render_summary(stale, groups=["slug"], summary_sort="bucket")
+    by_bucket_desc = render_summary(stale, groups=["slug"], summary_sort="bucket-name-desc")
+
+    assert by_bucket.splitlines()[1:3] == [
+        "- base: 1 artifact (10 B, 10 bytes)",
+        "- zeta: 1 artifact (90 B, 90 bytes)",
+    ]
+    assert by_bucket_desc.splitlines()[1:3] == [
+        "- zeta: 1 artifact (90 B, 90 bytes)",
+        "- base: 1 artifact (10 B, 10 bytes)",
     ]
 
 
