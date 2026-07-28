@@ -231,7 +231,12 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> dict[str, Any]:
                     code="raw_uds_heartbeat_type_mismatch",
                 )
         elif frame.frame_type == RawUdsFrameType.ERROR:
-            payload.setdefault("type", "error")
+            event_type = payload.setdefault("type", "error")
+            if event_type != "error":
+                raise LocalSTTProtocolError(
+                    f"Raw UDS ERROR frame cannot carry a {event_type!r} event",
+                    code="raw_uds_heartbeat_type_mismatch",
+                )
         return parse_server_message(payload)
     raise LocalSTTProtocolError(
         f"Raw UDS frame type {frame.frame_type.name} is not a server frame",
