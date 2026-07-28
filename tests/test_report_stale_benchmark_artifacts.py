@@ -949,12 +949,26 @@ def test_render_json_summary_accepts_measured_day_summary_sort_aliases() -> None
 
     ascending = json.loads(render_json_summary(stale, groups=["date"], summary_sort="day-asc"))
     descending = json.loads(render_json_summary(stale, groups=["date"], summary_sort="measurement-date-desc"))
+    calendar_ascending = json.loads(
+        render_json_summary(stale, groups=["calendar-day"], summary_sort="calendar-date-asc")
+    )
+    calendar_descending = json.loads(
+        render_json_summary(stale, groups=["calendar-day"], summary_sort="calendar-day-desc")
+    )
 
     assert [bucket["measured_day"] for bucket in ascending["by_measured_day"]] == [
         "2026-06-20",
         "2026-06-21",
     ]
     assert [bucket["measured_day"] for bucket in descending["by_measured_day"]] == [
+        "2026-06-21",
+        "2026-06-20",
+    ]
+    assert [bucket["measured_day"] for bucket in calendar_ascending["by_measured_day"]] == [
+        "2026-06-20",
+        "2026-06-21",
+    ]
+    assert [bucket["measured_day"] for bucket in calendar_descending["by_measured_day"]] == [
         "2026-06-21",
         "2026-06-20",
     ]
