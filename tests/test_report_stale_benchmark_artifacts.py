@@ -6804,6 +6804,34 @@ def test_stale_artifacts_can_sort_by_current_artifact_file_stem_descending_then_
     ]
 
 
+def test_stale_artifacts_accepts_current_artifact_directory_sort_aliases() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/tracks/qwen-current.json"},
+            {"slug": "base", "artifact_path": "benchmark-results/archive/base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    expected = stale_artifacts(manifest, sort_by="current-path-dir-desc")
+
+    assert stale_artifacts(manifest, sort_by="current-artifact-directory-desc") == expected
+    assert stale_artifacts(manifest, sort_by="current-artifact-folder-name-desc") == expected
+
+
 def test_stale_artifacts_can_sort_by_current_artifact_extension_then_path() -> None:
     manifest = {
         "tracks": [
@@ -6841,6 +6869,34 @@ def test_stale_artifacts_can_sort_by_current_artifact_extension_then_path() -> N
         "benchmark-results/qwen-old.json",
     ]
     assert [entry["current_artifact_extension"] for entry in stale] == ["none", ".json", ".wav"]
+
+
+def test_stale_artifacts_accepts_current_artifact_extension_sort_aliases() -> None:
+    manifest = {
+        "tracks": [
+            {"slug": "qwen", "artifact_path": "benchmark-results/qwen-current.wav"},
+            {"slug": "base", "artifact_path": "benchmark-results/base-current.json"},
+        ],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    expected = stale_artifacts(manifest, sort_by="current-path-extension-desc")
+
+    assert stale_artifacts(manifest, sort_by="current-artifact-ext-desc") == expected
+    assert stale_artifacts(manifest, sort_by="current-artifact-file-extension-desc") == expected
 
 
 def test_stale_artifacts_can_sort_by_current_artifact_extension_descending_then_path() -> None:
