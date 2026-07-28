@@ -1441,6 +1441,18 @@ def test_parse_args_accepts_measured_month_filter_aliases() -> None:
     assert args.measured_month == ["2026-06", "2026-07"]
 
 
+def test_parse_args_accepts_measured_week_filter_aliases() -> None:
+    args = parse_args(["--week", "2026-W27", "--iso-week", "2026-W28", "--measurement-week", "2026-W29"])
+
+    assert args.measured_week == ["2026-W27", "2026-W28", "2026-W29"]
+
+
+def test_parse_args_accepts_measured_day_filter_aliases() -> None:
+    args = parse_args(["--day", "2026-07-01", "--date", "2026-07-02", "--measurement-date", "2026-07-03"])
+
+    assert args.measured_day == ["2026-07-01", "2026-07-02", "2026-07-03"]
+
+
 def test_parse_args_accepts_measured_year_filter_aliases() -> None:
     args = parse_args(["--year", "2025", "--measurement-year", "2026"])
 
@@ -7750,6 +7762,70 @@ def test_stale_artifacts_can_filter_by_measured_year() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_measured_week() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/week-27-late.json",
+                "status": "legacy",
+                "measured_at": "2026-07-05T23:30:00-02:00",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/week-28.json",
+                "status": "legacy",
+                "measured_at": "2026-07-06T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, measured_weeks=["2026-W28"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/week-27-late.json",
+        "benchmark-results/week-28.json",
+    ]
+
+
+def test_stale_artifacts_can_filter_by_measured_day() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/late.json",
+                "status": "legacy",
+                "measured_at": "2026-07-04T23:30:00-02:00",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/day.json",
+                "status": "legacy",
+                "measured_at": "2026-07-05T12:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, measured_days=["2026-07-05"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/late.json",
+        "benchmark-results/day.json",
+    ]
+
+
 def test_stale_artifacts_rejects_invalid_measured_month_filter() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, measured_months=["2026"])
@@ -7766,6 +7842,24 @@ def test_stale_artifacts_rejects_invalid_measured_year_filter() -> None:
         assert str(error) == "measured_year values must use YYYY"
     else:
         raise AssertionError("invalid measured-year filters should fail")
+
+
+def test_stale_artifacts_rejects_invalid_measured_week_filter() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, measured_weeks=["2026-27"])
+    except ValueError as error:
+        assert str(error) == "measured_week values must use YYYY-Www"
+    else:
+        raise AssertionError("invalid measured-week filters should fail")
+
+
+def test_stale_artifacts_rejects_invalid_measured_day_filter() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, measured_days=["2026-7-5"])
+    except ValueError as error:
+        assert str(error) == "measured_day values must use YYYY-MM-DD"
+    else:
+        raise AssertionError("invalid measured-day filters should fail")
 
 
 def test_stale_artifacts_uses_stricter_cutoff_when_age_and_measured_before_are_set() -> None:
