@@ -682,6 +682,48 @@ def test_parse_args_accepts_age_bucket_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_measured_year_summary_sort_aliases() -> None:
+    for alias in [
+        "year",
+        "year-desc",
+        "year-asc",
+        "calendar-year",
+        "calendar-year-desc",
+        "calendar-year-asc",
+        "measurement-year",
+        "measurement-year-desc",
+        "measurement-year-asc",
+        "measured-at-year",
+        "measured-at-year-desc",
+        "measured-at-year-asc",
+        "measured-year",
+        "measured-year-desc",
+        "measured-year-asc",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
+def test_parse_args_accepts_measured_month_summary_sort_aliases() -> None:
+    for alias in [
+        "month",
+        "month-desc",
+        "month-asc",
+        "calendar-month",
+        "calendar-month-desc",
+        "calendar-month-asc",
+        "measurement-month",
+        "measurement-month-desc",
+        "measurement-month-asc",
+        "measured-at-month",
+        "measured-at-month-desc",
+        "measured-at-month-asc",
+        "measured-month",
+        "measured-month-desc",
+        "measured-month-asc",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_parse_args_accepts_measured_day_summary_sort_aliases() -> None:
     for alias in [
         "date",
