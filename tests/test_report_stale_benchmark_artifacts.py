@@ -79,7 +79,13 @@ def test_parse_args_accepts_short_group_aliases() -> None:
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
-        ["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, YEAR, MONTH, DAY, AGE-RANGE"]
+        [
+            (
+                "Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, "
+                "YEAR, CALENDAR-YEAR, MONTH, CALENDAR-MONTH, DAY, CALENDAR-DAY, "
+                "CALENDAR-DATE, AGE-RANGE"
+            )
+        ]
     ) == {
         "status",
         "current-artifact-name",
@@ -680,9 +686,15 @@ def test_parse_args_accepts_measured_day_summary_sort_aliases() -> None:
         "date",
         "date-desc",
         "date-asc",
+        "calendar-date",
+        "calendar-date-desc",
+        "calendar-date-asc",
         "day",
         "day-desc",
         "day-asc",
+        "calendar-day",
+        "calendar-day-desc",
+        "calendar-day-asc",
         "measurement-date",
         "measurement-date-desc",
         "measurement-date-asc",
@@ -1230,6 +1242,9 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "year",
         "year-asc",
         "year-desc",
+        "calendar-year",
+        "calendar-year-asc",
+        "calendar-year-desc",
         "measurement-year",
         "measurement-year-asc",
         "measurement-year-desc",
@@ -1239,6 +1254,9 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "month",
         "month-asc",
         "month-desc",
+        "calendar-month",
+        "calendar-month-asc",
+        "calendar-month-desc",
         "measurement-month",
         "measurement-month-asc",
         "measurement-month-desc",
@@ -1248,9 +1266,15 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "date",
         "date-asc",
         "date-desc",
+        "calendar-date",
+        "calendar-date-asc",
+        "calendar-date-desc",
         "day",
         "day-asc",
         "day-desc",
+        "calendar-day",
+        "calendar-day-asc",
+        "calendar-day-desc",
         "measurement-date",
         "measurement-date-asc",
         "measurement-date-desc",
