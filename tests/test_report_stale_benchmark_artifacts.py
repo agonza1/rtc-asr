@@ -39,6 +39,7 @@ normalize_filter_values = report_module.normalize_filter_values
 normalize_summary_groups = report_module.normalize_summary_groups
 validate_summary_options = report_module.validate_summary_options
 measured_month = report_module.measured_month
+measured_quarter = report_module.measured_quarter
 measured_week = report_module.measured_week
 measured_day = report_module.measured_day
 measured_year = report_module.measured_year
@@ -724,6 +725,27 @@ def test_parse_args_accepts_measured_month_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_measured_quarter_summary_sort_aliases() -> None:
+    for alias in [
+        "quarter",
+        "quarter-desc",
+        "quarter-asc",
+        "calendar-quarter",
+        "calendar-quarter-desc",
+        "calendar-quarter-asc",
+        "measurement-quarter",
+        "measurement-quarter-desc",
+        "measurement-quarter-asc",
+        "measured-at-quarter",
+        "measured-at-quarter-desc",
+        "measured-at-quarter-asc",
+        "measured-quarter",
+        "measured-quarter-desc",
+        "measured-quarter-asc",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_parse_args_accepts_measured_day_summary_sort_aliases() -> None:
     for alias in [
         "date",
@@ -1374,6 +1396,21 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "measured-at-year",
         "measured-at-year-asc",
         "measured-at-year-desc",
+        "quarter",
+        "quarter-asc",
+        "quarter-desc",
+        "calendar-quarter",
+        "calendar-quarter-asc",
+        "calendar-quarter-desc",
+        "measurement-quarter",
+        "measurement-quarter-asc",
+        "measurement-quarter-desc",
+        "measured-at-quarter",
+        "measured-at-quarter-asc",
+        "measured-at-quarter-desc",
+        "measured-quarter",
+        "measured-quarter-asc",
+        "measured-quarter-desc",
         "month",
         "month-asc",
         "month-desc",
@@ -1441,6 +1478,12 @@ def test_parse_args_accepts_measured_month_filter_aliases() -> None:
     assert args.measured_month == ["2026-06", "2026-07"]
 
 
+def test_parse_args_accepts_measured_quarter_filter_aliases() -> None:
+    args = parse_args(["--quarter", "2026-Q2", "--measurement-quarter", "2026-Q3"])
+
+    assert args.measured_quarter == ["2026-Q2", "2026-Q3"]
+
+
 def test_parse_args_accepts_measured_week_filter_aliases() -> None:
     args = parse_args(["--week", "2026-W27", "--iso-week", "2026-W28", "--measurement-week", "2026-W29"])
 
@@ -1487,6 +1530,58 @@ def test_stale_artifacts_accept_measured_month_sort_aliases() -> None:
         "benchmark-results/july.json",
         "benchmark-results/june.json",
     ]
+
+
+def test_stale_artifacts_accept_measured_quarter_sort_aliases() -> None:
+    manifest = {
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/q2.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T00:00:00Z",
+            },
+            {
+                "artifact_path": "benchmark-results/q3.json",
+                "status": "legacy",
+                "measured_at": "2026-07-01T00:00:00Z",
+            },
+        ],
+        "tracks": [],
+    }
+
+    ascending = stale_artifacts(manifest, sort_by="quarter")
+    descending = stale_artifacts(manifest, sort_by="measurement-quarter-desc")
+
+    assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/q2.json",
+        "benchmark-results/q3.json",
+    ]
+    assert [entry["artifact_path"] for entry in descending] == [
+        "benchmark-results/q3.json",
+        "benchmark-results/q2.json",
+    ]
+
+
+def test_stale_artifacts_filters_by_measured_quarter() -> None:
+    manifest = {
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/q2.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T00:00:00Z",
+            },
+            {
+                "artifact_path": "benchmark-results/q3.json",
+                "status": "legacy",
+                "measured_at": "2026-07-01T00:00:00Z",
+            },
+        ],
+        "tracks": [],
+    }
+
+    filtered = stale_artifacts(manifest, measured_quarters=["2026-q3"])
+
+    assert [entry["artifact_path"] for entry in filtered] == ["benchmark-results/q3.json"]
 
 
 def test_stale_artifacts_accept_measured_day_sort_aliases() -> None:
@@ -2313,6 +2408,11 @@ def test_measured_month_uses_utc_month_or_unknown() -> None:
     assert measured_month(None) == "unknown"
 
 
+def test_measured_quarter_uses_utc_quarter_or_unknown() -> None:
+    assert measured_quarter("2026-06-30T23:30:00-02:00") == "2026-Q3"
+    assert measured_quarter(None) == "unknown"
+
+
 def test_measured_year_uses_utc_year_or_unknown() -> None:
     assert measured_year("2026-12-31T23:30:00-02:00") == "2027"
     assert measured_year(None) == "unknown"
@@ -2390,6 +2490,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "status": "legacy",
             "measured_at": "2026-06-10T00:00:00Z",
             "measured_year": "2026",
+            "measured_quarter": "2026-Q2",
             "measured_month": "2026-06",
             "measured_week": "2026-W24",
             "measured_day": "2026-06-10",
@@ -4519,8 +4620,8 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_month,measured_week,measured_day,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026,2026-06,2026-W24,2026-06-10,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_quarter,measured_month,measured_week,measured_day,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026,2026-Q2,2026-06,2026-W24,2026-06-10,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B',
     ]
 
 
@@ -10233,8 +10334,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_month,measured_week,measured_day,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,unknown,unknown,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_quarter,measured_month,measured_week,measured_day,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,unknown,unknown,unknown,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B\r\n'
     )
 
 
