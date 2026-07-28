@@ -237,6 +237,12 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                     "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                     "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                     "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                    "limits": {
+                        "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                        "max_buffer_bytes": stream_max_buffer_bytes,
+                        "active_streams_per_connection": 1,
+                        "binary_audio_chunk_bytes_multiple": 2,
+                    },
                     "frame_format": "uint8_type_uint32_len_le",
                     "audio_payload": {
                         "frame_type": "AUDIO_PCM16",
