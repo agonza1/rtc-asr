@@ -223,7 +223,11 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> dict[str, Any] | bytes:
         if event_type != frame_event_type:
             raise LocalSTTProtocolError(
                 f"Raw UDS {frame.frame_type.name} frame cannot carry a {event_type!r} control message",
-                code="raw_uds_heartbeat_type_mismatch",
+                code="raw_uds_frame_type_mismatch",
+                metadata={
+                    "frame_message_type": frame_event_type,
+                    "payload_message_type": str(event_type),
+                },
             )
     return payload
 
@@ -239,14 +243,22 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> dict[str, Any]:
             if event_type != frame_event_type:
                 raise LocalSTTProtocolError(
                     f"Raw UDS {frame.frame_type.name} frame cannot carry a {event_type!r} event",
-                    code="raw_uds_heartbeat_type_mismatch",
+                    code="raw_uds_frame_type_mismatch",
+                    metadata={
+                        "frame_message_type": frame_event_type,
+                        "payload_message_type": str(event_type),
+                    },
                 )
         elif frame.frame_type == RawUdsFrameType.ERROR:
             event_type = payload.setdefault("type", "error")
             if event_type != "error":
                 raise LocalSTTProtocolError(
                     f"Raw UDS ERROR frame cannot carry a {event_type!r} event",
-                    code="raw_uds_heartbeat_type_mismatch",
+                    code="raw_uds_frame_type_mismatch",
+                    metadata={
+                        "frame_message_type": "error",
+                        "payload_message_type": str(event_type),
+                    },
                 )
         return parse_server_message(payload)
     raise LocalSTTProtocolError(
