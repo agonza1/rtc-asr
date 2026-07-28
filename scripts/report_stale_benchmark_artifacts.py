@@ -40,6 +40,7 @@ SUMMARY_GROUPS = (
     "detail-page-extension",
     "measured-year",
     "measured-month",
+    "measured-day",
     "age-bucket",
 )
 
@@ -68,6 +69,7 @@ SUMMARY_GROUP_KEYS = {
     "detail-page-extension": "by_detail_page_extension",
     "measured-year": "by_measured_year",
     "measured-month": "by_measured_month",
+    "measured-day": "by_measured_day",
     "age-bucket": "by_age_bucket",
 }
 
@@ -184,6 +186,12 @@ SUMMARY_GROUP_ALIASES = {
     "month": "measured-month",
     "measurement-month": "measured-month",
     "measured-at-month": "measured-month",
+    "date": "measured-day",
+    "day": "measured-day",
+    "measurement-date": "measured-day",
+    "measurement-day": "measured-day",
+    "measured-at-date": "measured-day",
+    "measured-at-day": "measured-day",
     "age-range": "age-bucket",
     "age-range-bucket": "age-bucket",
     "stale-age-bucket": "age-bucket",
@@ -2288,6 +2296,13 @@ def measured_month(value: Any) -> str:
     return parsed.strftime("%Y-%m")
 
 
+def measured_day(value: Any) -> str:
+    parsed = parse_timestamp(value)
+    if parsed is None:
+        return "unknown"
+    return parsed.strftime("%Y-%m-%d")
+
+
 def measured_year(value: Any) -> str:
     parsed = parse_timestamp(value)
     if parsed is None:
@@ -2775,6 +2790,7 @@ def stale_artifacts(
         measured_timestamp = parse_timestamp(measured_at)
         artifact_measured_year = measured_year(measured_at)
         artifact_measured_month = measured_month(measured_at)
+        artifact_measured_day = measured_day(measured_at)
         artifact_age_days = None
         if measured_timestamp is not None:
             artifact_age_days = max((age_reference - measured_timestamp).days, 0)
@@ -2816,6 +2832,7 @@ def stale_artifacts(
                 "measured_at": measured_at,
                 "measured_year": artifact_measured_year,
                 "measured_month": artifact_measured_month,
+                "measured_day": artifact_measured_day,
                 "age_days": artifact_age_days,
                 "age_bucket": artifact_age_bucket,
                 "age": format_age_days(artifact_age_days),
@@ -3328,6 +3345,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_detail_page_extension: dict[str, dict[str, Any]] = {}
     by_measured_year: dict[str, dict[str, Any]] = {}
     by_measured_month: dict[str, dict[str, Any]] = {}
+    by_measured_day: dict[str, dict[str, Any]] = {}
     by_age_bucket: dict[str, dict[str, Any]] = {}
     for entry in stale:
         slug = str(entry.get("slug") or "untracked")
@@ -3656,6 +3674,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         month_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         month_bucket["total_size"] = format_bytes(month_bucket["total_size_bytes"])
 
+        day = str(entry.get("measured_day") or measured_day(entry.get("measured_at")))
+        day_bucket = by_measured_day.setdefault(
+            day,
+            {
+                "measured_day": day,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        day_bucket["count"] += 1
+        day_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        day_bucket["total_size"] = format_bytes(day_bucket["total_size_bytes"])
+
         age_bucket_name = str(entry.get("age_bucket") or age_bucket(entry.get("age_days")))
         age_bucket_entry = by_age_bucket.setdefault(
             age_bucket_name,
@@ -3765,6 +3797,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_measured_month": sorted(
             by_measured_month.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["measured_month"]),
+        ),
+        "by_measured_day": sorted(
+            by_measured_day.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["measured_day"]),
         ),
         "by_age_bucket": sorted(
             by_age_bucket.values(),
@@ -4215,6 +4251,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "measured_at",
         "measured_year",
         "measured_month",
+        "measured_day",
         "age_days",
         "age_bucket",
         "age",
@@ -4241,6 +4278,8 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             "artifact_stem": entry.get("artifact_stem") or Path(entry.get("artifact_path") or "").stem,
             "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
             "measured_year": entry.get("measured_year") or measured_year(entry.get("measured_at")),
+            "measured_month": entry.get("measured_month") or measured_month(entry.get("measured_at")),
+            "measured_day": entry.get("measured_day") or measured_day(entry.get("measured_at")),
             "current_artifact_name": entry.get("current_artifact_name")
             or Path(entry.get("current_artifact_path") or "").name,
             "current_artifact_stem": entry.get("current_artifact_stem")
