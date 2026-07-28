@@ -232,6 +232,19 @@ def test_raw_uds_server_parser_rejects_mismatched_keepalive_payload_type() -> No
     }
 
 
+def test_raw_uds_server_parser_stringifies_non_string_mismatched_keepalive_payload_type() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_json_frame(RawUdsFrameType.PING, {"type": ["transcript"]}))
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        parse_raw_uds_server_frame(frame)
+
+    assert excinfo.value.code == "raw_uds_frame_type_mismatch"
+    assert excinfo.value.metadata == {
+        "frame_message_type": "ping",
+        "payload_message_type": "['transcript']",
+    }
+
+
 def test_raw_uds_client_parser_rejects_mismatched_keepalive_payload_type() -> None:
     frame = decode_raw_uds_frame(encode_raw_uds_json_frame(RawUdsFrameType.PONG, {"type": "finalize"}))
 
@@ -242,6 +255,19 @@ def test_raw_uds_client_parser_rejects_mismatched_keepalive_payload_type() -> No
     assert excinfo.value.metadata == {
         "frame_message_type": "pong",
         "payload_message_type": "finalize",
+    }
+
+
+def test_raw_uds_client_parser_stringifies_non_string_mismatched_keepalive_payload_type() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_json_frame(RawUdsFrameType.PONG, {"type": None}))
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        parse_raw_uds_client_frame(frame)
+
+    assert excinfo.value.code == "raw_uds_frame_type_mismatch"
+    assert excinfo.value.metadata == {
+        "frame_message_type": "pong",
+        "payload_message_type": "None",
     }
 
 
@@ -289,6 +315,19 @@ def test_raw_uds_server_parser_rejects_mismatched_error_payload_type() -> None:
     assert excinfo.value.metadata == {
         "frame_message_type": "error",
         "payload_message_type": "transcript",
+    }
+
+
+def test_raw_uds_server_parser_stringifies_non_string_mismatched_error_payload_type() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_json_frame(RawUdsFrameType.ERROR, {"type": {"code": "bad"}}))
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        parse_raw_uds_server_frame(frame)
+
+    assert excinfo.value.code == "raw_uds_frame_type_mismatch"
+    assert excinfo.value.metadata == {
+        "frame_message_type": "error",
+        "payload_message_type": "{'code': 'bad'}",
     }
 
 

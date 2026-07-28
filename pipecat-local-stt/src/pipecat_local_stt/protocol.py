@@ -226,7 +226,7 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> dict[str, Any] | bytes:
                 code="raw_uds_frame_type_mismatch",
                 metadata={
                     "frame_message_type": frame_event_type,
-                    "payload_message_type": event_type,
+                    "payload_message_type": str(event_type),
                 },
             )
     return payload
@@ -246,7 +246,7 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> dict[str, Any]:
                     code="raw_uds_frame_type_mismatch",
                     metadata={
                         "frame_message_type": frame_event_type,
-                        "payload_message_type": event_type,
+                        "payload_message_type": str(event_type),
                     },
                 )
         elif frame.frame_type == RawUdsFrameType.ERROR:
@@ -257,7 +257,7 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> dict[str, Any]:
                     code="raw_uds_frame_type_mismatch",
                     metadata={
                         "frame_message_type": "error",
-                        "payload_message_type": event_type,
+                        "payload_message_type": str(event_type),
                     },
                 )
         return parse_server_message(payload)
