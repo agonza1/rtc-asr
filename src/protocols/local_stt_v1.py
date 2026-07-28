@@ -75,6 +75,15 @@ def _require_boolean_field(value: Any) -> Any:
     return value
 
 
+def _require_metadata_object(value: Any) -> Any:
+    if not isinstance(value, dict):
+        raise PydanticCustomError(
+            "invalid_metadata_field",
+            "must be a JSON object",
+        )
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class RawUdsFrame:
     frame_type: RawUdsFrameType
@@ -136,6 +145,11 @@ class RawUdsFrameDecoder:
 
 class LocalSttModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
+
+    @field_validator("metadata", mode="before", check_fields=False)
+    @classmethod
+    def require_metadata_object(cls, value: Any) -> Any:
+        return _require_metadata_object(value)
 
 
 class AudioFormat(LocalSttModel):
@@ -765,6 +779,7 @@ def _error_code_from_validation(error: dict[str, Any]) -> str:
         "invalid_integer_field",
         "invalid_numeric_field",
         "invalid_boolean_field",
+        "invalid_metadata_field",
     }:
         return error_type
     if error_type == "union_tag_invalid":

@@ -140,6 +140,22 @@ def test_start_message_unsupported_required_audio_field_maps_to_protocol_error()
     }
 
 
+@pytest.mark.parametrize("metadata", [None, [], "turn=abc"])
+def test_message_metadata_must_be_object(metadata: object) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": build_hot_path_audio_format().model_dump(),
+                "metadata": metadata,
+            }
+        )
+
+    assert excinfo.value.code == "invalid_metadata_field"
+    assert excinfo.value.message == "metadata: must be a JSON object"
+
+
 def test_transcript_message_validates_required_fields_and_ignores_unknown_optionals() -> None:
     message = parse_server_message(
         {
