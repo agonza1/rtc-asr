@@ -557,7 +557,12 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
     async def readiness_check() -> JSONResponse:
         current = app.state.services
         payload = _health_payload(current)
-        return JSONResponse(status_code=200 if payload["ready"] else 503, content=payload)
+        headers = {"Retry-After": "5"} if not payload["ready"] else None
+        return JSONResponse(
+            status_code=200 if payload["ready"] else 503,
+            content=payload,
+            headers=headers,
+        )
 
     @app.get("/api/protocols")
     async def list_protocols() -> dict[str, object]:

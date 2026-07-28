@@ -1195,6 +1195,7 @@ def test_ready_returns_503_when_preload_is_degraded() -> None:
         "protocols": DEFAULT_PROTOCOLS,
     }
     assert ready.status_code == 503
+    assert ready.headers["Retry-After"] == "5"
     assert ready.json() == {
         "status": "degraded",
         "service": "realtime-asr",
