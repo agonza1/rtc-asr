@@ -585,6 +585,9 @@ def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
     start = decode_raw_uds_frame(encode_raw_uds_client_message(build_start_message().model_dump()))
     bare_ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping"}))
     ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping", "ping_id": "p1"}))
+    metadata_ping = decode_raw_uds_frame(
+        encode_raw_uds_client_message({"type": "ping", "metadata": {"client_ping": "client-1"}})
+    )
     bare_pong = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "pong"}))
     pong = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "pong", "ping_id": "server-1"}))
     metadata_pong = decode_raw_uds_frame(
@@ -598,6 +601,8 @@ def test_raw_uds_client_encoders_select_control_ping_and_audio_frames() -> None:
     assert parse_raw_uds_client_frame(bare_ping).type == "ping"
     assert ping.frame_type == RawUdsFrameType.PING
     assert decode_raw_uds_json_payload(ping) == {"type": "ping", "ping_id": "p1"}
+    assert metadata_ping.frame_type == RawUdsFrameType.PING
+    assert decode_raw_uds_json_payload(metadata_ping) == {"type": "ping", "metadata": {"client_ping": "client-1"}}
     assert bare_pong.frame_type == RawUdsFrameType.PONG
     assert bare_pong.payload == b""
     assert parse_raw_uds_client_frame(bare_pong).type == "pong"
@@ -631,15 +636,24 @@ def test_raw_uds_server_helpers_support_server_initiated_ping_frames() -> None:
     encoded = encode_raw_uds_server_message({"type": "ping", "ping_id": "server-1"})
     frame = decode_raw_uds_frame(encoded)
     bare_ping = decode_raw_uds_frame(encode_raw_uds_server_message({"type": "ping", "metadata": {}}))
+    metadata_ping = decode_raw_uds_frame(
+        encode_raw_uds_server_message({"type": "ping", "metadata": {"deadline_ms": 5000}})
+    )
 
     assert frame.frame_type == RawUdsFrameType.PING
     assert parse_raw_uds_server_frame(frame).model_dump(exclude_none=True) == {
         "type": "ping",
         "ping_id": "server-1",
+        "metadata": {},
     }
     assert bare_ping.frame_type == RawUdsFrameType.PING
     assert bare_ping.payload == b""
-    assert parse_raw_uds_server_frame(bare_ping).model_dump(exclude_none=True) == {"type": "ping"}
+    assert parse_raw_uds_server_frame(bare_ping).model_dump(exclude_none=True) == {"type": "ping", "metadata": {}}
+    assert metadata_ping.frame_type == RawUdsFrameType.PING
+    assert parse_raw_uds_server_frame(metadata_ping).model_dump(exclude_none=True) == {
+        "type": "ping",
+        "metadata": {"deadline_ms": 5000},
+    }
 
 
 def test_raw_uds_client_encoder_accepts_issue_88_flat_start_payload() -> None:

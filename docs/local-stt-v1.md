@@ -162,7 +162,8 @@ Required behavior:
 {
   "type": "ping",
   "ping_id": "heartbeat-1",
-  "timestamp_ms": 1710000000
+  "timestamp_ms": 1710000000,
+  "metadata": {}
 }
 ```
 
