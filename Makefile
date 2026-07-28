@@ -123,7 +123,7 @@ help:
 	@echo "  make benchmark-site-check - Fail when benchmark manifest, homepage, detail pages, sitemap, robots.txt, or llms.txt are stale"
 	@echo "  make benchmark-artifact-report - List legacy benchmark artifacts that are no longer current"
 	@echo "  make benchmark-artifact-cleanup-summary - Summarize stale benchmark cleanup candidates older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days"
-	@echo "  make benchmark-artifact-cleanup-plan - Print existing stale benchmark artifact/detail paths older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days"
+	@echo "  make benchmark-artifact-cleanup-plan - Print repo-relative stale benchmark artifact/detail paths older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days"
 	@echo "  make benchmark-artifact-cleanup-check - Fail when stale benchmark cleanup candidates older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days exist"
 	@echo "  make docs           - Build documentation snapshot"
 	@echo "  make start          - Start docker compose stack, including the browser Pipecat demo"
@@ -547,7 +547,7 @@ benchmark-artifact-cleanup-summary:
 	@python3 scripts/report_stale_benchmark_artifacts.py --results-dir $(BENCHMARK_RESULTS_DIR) --tracks $(BENCHMARK_RESULTS_DIR)/tracks.json --older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) --json-summary --summary-share $(BENCHMARK_ARTIFACT_REPORT_FLAGS)
 
 benchmark-artifact-cleanup-plan:
-	@python3 scripts/report_stale_benchmark_artifacts.py --results-dir $(BENCHMARK_RESULTS_DIR) --tracks $(BENCHMARK_RESULTS_DIR)/tracks.json --older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) --paths-only --include-detail-pages --existing-paths-only $(BENCHMARK_ARTIFACT_REPORT_FLAGS)
+	@python3 scripts/report_stale_benchmark_artifacts.py --results-dir $(BENCHMARK_RESULTS_DIR) --tracks $(BENCHMARK_RESULTS_DIR)/tracks.json --older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) --paths-only --include-detail-pages --existing-paths-only --repo-relative-paths $(BENCHMARK_ARTIFACT_REPORT_FLAGS)
 
 benchmark-artifact-cleanup-check:
 	@python3 scripts/report_stale_benchmark_artifacts.py --results-dir $(BENCHMARK_RESULTS_DIR) --tracks $(BENCHMARK_RESULTS_DIR)/tracks.json --older-than-days $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) --fail-on-stale $(BENCHMARK_ARTIFACT_REPORT_FLAGS)
