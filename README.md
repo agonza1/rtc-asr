@@ -240,6 +240,7 @@ For fair comparisons, benchmark the warmed service path when possible. One-shot 
 The benchmark harness now defaults to preloaded runs. Managed benchmark servers start with `ASR_PRELOAD_MODEL=true`, and benchmarks against an existing service fail by default unless `/api/models` reports `preload_enabled=true`. Use `--allow-unpreloaded-service` only when you intentionally want a cold-path diagnostic run.
 
 Use `make benchmark-artifact-cleanup-check` in CI or release prep to fail when legacy benchmark artifacts older than `BENCHMARK_ARTIFACT_CLEANUP_DAYS` still need cleanup.
+Use `make benchmark-artifact-cleanup-plan` when you want the matching artifact and detail-page paths printed relative to the repo root for a reviewable cleanup commit.
 
 ## Project Structure
 
