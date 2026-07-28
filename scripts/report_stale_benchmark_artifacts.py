@@ -1944,6 +1944,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts measured in this UTC YYYY-MM month; repeat to include multiple months",
     )
     parser.add_argument(
+        "--measured-week",
+        "--week",
+        "--iso-week",
+        "--measurement-week",
+        action="append",
+        default=None,
+        help="Only include stale artifacts measured in this UTC YYYY-Www ISO week; repeat to include multiple weeks",
+    )
+    parser.add_argument(
+        "--measured-day",
+        "--day",
+        "--date",
+        "--measurement-day",
+        "--measurement-date",
+        action="append",
+        default=None,
+        help="Only include stale artifacts measured on this UTC YYYY-MM-DD day; repeat to include multiple days",
+    )
+    parser.add_argument(
         "--measured-year",
         "--year",
         "--measurement-year",
@@ -2687,6 +2706,8 @@ def stale_artifacts(
     track_state: str = "any",
     measured_years: list[str] | None = None,
     measured_months: list[str] | None = None,
+    measured_weeks: list[str] | None = None,
+    measured_days: list[str] | None = None,
     age_buckets: list[str] | None = None,
     artifact_paths: list[str] | None = None,
     artifact_path_contains: list[str] | None = None,
@@ -2733,6 +2754,8 @@ def stale_artifacts(
     models = normalize_filter_values(models)
     measured_years = normalize_filter_values(measured_years)
     measured_months = normalize_filter_values(measured_months)
+    measured_weeks = normalize_filter_values(measured_weeks)
+    measured_days = normalize_filter_values(measured_days)
     age_buckets = normalize_filter_values(age_buckets)
     current_paths = normalize_filter_values(current_paths)
     current_path_contains = normalize_filter_values(current_path_contains)
@@ -2777,6 +2800,26 @@ def stale_artifacts(
         invalid_months = [month for month in allowed_measured_months if len(month) != 7 or month[4] != "-"]
         if invalid_months:
             raise ValueError("measured_month values must use YYYY-MM")
+    allowed_measured_weeks = None
+    if measured_weeks is not None:
+        allowed_measured_weeks = {week.strip() for week in measured_weeks if week.strip()}
+        invalid_weeks = [
+            week
+            for week in allowed_measured_weeks
+            if len(week) != 8 or week[4:6] != "-W" or not week[:4].isdigit() or not week[6:].isdigit()
+        ]
+        if invalid_weeks:
+            raise ValueError("measured_week values must use YYYY-Www")
+    allowed_measured_days = None
+    if measured_days is not None:
+        allowed_measured_days = {day.strip() for day in measured_days if day.strip()}
+        invalid_days = [
+            day
+            for day in allowed_measured_days
+            if len(day) != 10 or day[4] != "-" or day[7] != "-" or not day.replace("-", "").isdigit()
+        ]
+        if invalid_days:
+            raise ValueError("measured_day values must use YYYY-MM-DD")
     allowed_age_buckets = None
     if age_buckets is not None:
         allowed_age_buckets = {bucket.lower() for bucket in age_buckets}
@@ -3089,6 +3132,10 @@ def stale_artifacts(
         if allowed_measured_years is not None and artifact_measured_year not in allowed_measured_years:
             continue
         if allowed_measured_months is not None and artifact_measured_month not in allowed_measured_months:
+            continue
+        if allowed_measured_weeks is not None and artifact_measured_week not in allowed_measured_weeks:
+            continue
+        if allowed_measured_days is not None and artifact_measured_day not in allowed_measured_days:
             continue
         if allowed_age_buckets is not None and artifact_age_bucket.lower() not in allowed_age_buckets:
             continue
@@ -5891,6 +5938,8 @@ def main(argv: list[str] | None = None) -> int:
         models=args.model,
         measured_years=args.measured_year,
         measured_months=args.measured_month,
+        measured_weeks=args.measured_week,
+        measured_days=args.measured_day,
         age_buckets=args.age_bucket,
         current_paths=args.current_path,
         current_path_contains=args.current_path_contains,
