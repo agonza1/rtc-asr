@@ -1547,6 +1547,40 @@ def test_parse_args_accepts_measured_year_filter_aliases() -> None:
     assert args.measured_year == ["2025", "2026"]
 
 
+def test_parse_args_accepts_measured_window_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--measured-since",
+            "2026-06-01",
+            "--measured-until",
+            "2026-07-01",
+        ]
+    )
+    alternate_args = parse_args(
+        [
+            "--measured-from",
+            "2026-06-02",
+            "--measured-to",
+            "2026-07-02",
+        ]
+    )
+    date_args = parse_args(
+        [
+            "--measured-after-date",
+            "2026-06-03",
+            "--measured-before-date",
+            "2026-07-03",
+        ]
+    )
+
+    assert args.measured_after == "2026-06-01"
+    assert args.measured_before == "2026-07-01"
+    assert alternate_args.measured_after == "2026-06-02"
+    assert alternate_args.measured_before == "2026-07-02"
+    assert date_args.measured_after == "2026-06-03"
+    assert date_args.measured_before == "2026-07-03"
+
+
 def test_stale_artifacts_accept_measured_month_sort_aliases() -> None:
     manifest = {
         "artifacts": [
