@@ -180,6 +180,37 @@ def test_package_exports_raw_uds_client_helpers() -> None:
     assert package.parse_raw_uds_client_frame(ping_frame) == {"type": "ping"}
 
 
+def test_package_exports_protocol_error_and_event_helpers() -> None:
+    import pipecat_local_stt as package
+
+    payload = {
+        "type": "transcript",
+        "text": "hello",
+        "is_final": False,
+        "speech_final": False,
+        "revision": 1,
+        "audio_received_ms": 40,
+        "audio_transcribed_ms": 20,
+        "metadata": {"turn_id": "turn-1"},
+    }
+
+    event = package.parse_transcript_event(payload)
+
+    assert event == package.LocalSTTTranscriptEvent(
+        text="hello",
+        is_final=False,
+        speech_final=False,
+        revision=1,
+        audio_received_ms=40,
+        audio_transcribed_ms=20,
+        metadata={"turn_id": "turn-1"},
+        raw=payload,
+    )
+    assert package.build_start_message(package.LocalSTTConfig(), client_stream_id="turn-1")["client_stream_id"] == "turn-1"
+    assert package.validate_raw_uds_audio_payload(b"\x00\x01") == b"\x00\x01"
+    assert issubclass(package.LocalSTTProtocolError, ValueError)
+
+
 @pytest.mark.parametrize("frame_type", [RawUdsFrameType.PING, RawUdsFrameType.PONG])
 def test_raw_uds_server_parser_accepts_empty_keepalive_frames(frame_type: RawUdsFrameType) -> None:
     frame = decode_raw_uds_frame(encode_raw_uds_frame(frame_type, b""))
