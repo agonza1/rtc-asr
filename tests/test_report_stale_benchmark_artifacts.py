@@ -8021,6 +8021,15 @@ def test_stale_artifacts_rejects_invalid_measured_month_filter() -> None:
         raise AssertionError("invalid measured-month filters should fail")
 
 
+def test_stale_artifacts_rejects_impossible_measured_month_filter() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, measured_months=["2026-13"])
+    except ValueError as error:
+        assert str(error) == "measured_month values must use YYYY-MM"
+    else:
+        raise AssertionError("impossible measured-month filters should fail")
+
+
 def test_stale_artifacts_rejects_invalid_measured_year_filter() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, measured_years=["202"])
@@ -8039,6 +8048,15 @@ def test_stale_artifacts_rejects_invalid_measured_week_filter() -> None:
         raise AssertionError("invalid measured-week filters should fail")
 
 
+def test_stale_artifacts_rejects_impossible_measured_week_filter() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, measured_weeks=["2026-W54"])
+    except ValueError as error:
+        assert str(error) == "measured_week values must use YYYY-Www"
+    else:
+        raise AssertionError("impossible measured-week filters should fail")
+
+
 def test_stale_artifacts_rejects_invalid_measured_day_filter() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, measured_days=["2026-7-5"])
@@ -8046,6 +8064,15 @@ def test_stale_artifacts_rejects_invalid_measured_day_filter() -> None:
         assert str(error) == "measured_day values must use YYYY-MM-DD"
     else:
         raise AssertionError("invalid measured-day filters should fail")
+
+
+def test_stale_artifacts_rejects_impossible_measured_day_filter() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, measured_days=["2026-02-30"])
+    except ValueError as error:
+        assert str(error) == "measured_day values must use YYYY-MM-DD"
+    else:
+        raise AssertionError("impossible measured-day filters should fail")
 
 
 def test_stale_artifacts_uses_stricter_cutoff_when_age_and_measured_before_are_set() -> None:
