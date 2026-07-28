@@ -305,6 +305,24 @@ STALE_SORT_ALIASES = {
     "measured-at-month": "measured-month",
     "measured-at-month-asc": "measured-month-asc",
     "measured-at-month-desc": "measured-month-desc",
+    "date": "measured-day",
+    "date-asc": "measured-day-asc",
+    "date-desc": "measured-day-desc",
+    "day": "measured-day",
+    "day-asc": "measured-day-asc",
+    "day-desc": "measured-day-desc",
+    "measurement-date": "measured-day",
+    "measurement-date-asc": "measured-day-asc",
+    "measurement-date-desc": "measured-day-desc",
+    "measurement-day": "measured-day",
+    "measurement-day-asc": "measured-day-asc",
+    "measurement-day-desc": "measured-day-desc",
+    "measured-at-date": "measured-day",
+    "measured-at-date-asc": "measured-day-asc",
+    "measured-at-date-desc": "measured-day-desc",
+    "measured-at-day": "measured-day",
+    "measured-at-day-asc": "measured-day-asc",
+    "measured-at-day-desc": "measured-day-desc",
     "age-range": "age-bucket",
     "age-range-asc": "age-bucket-asc",
     "age-range-desc": "age-bucket-desc",
@@ -840,6 +858,27 @@ SUMMARY_SORTS = (
     "stalest-first",
     "freshest",
     "freshest-first",
+    "date",
+    "date-desc",
+    "date-asc",
+    "day",
+    "day-desc",
+    "day-asc",
+    "measurement-date",
+    "measurement-date-desc",
+    "measurement-date-asc",
+    "measurement-day",
+    "measurement-day-desc",
+    "measurement-day-asc",
+    "measured-at-date",
+    "measured-at-date-desc",
+    "measured-at-date-asc",
+    "measured-at-day",
+    "measured-at-day-desc",
+    "measured-at-day-asc",
+    "measured-day",
+    "measured-day-desc",
+    "measured-day-asc",
 )
 
 SUMMARY_SORT_ALIASES = {
@@ -960,6 +999,24 @@ SUMMARY_SORT_ALIASES = {
     "stalest-first": "age-bucket-desc",
     "freshest": "age-bucket-asc",
     "freshest-first": "age-bucket-asc",
+    "date": "measured-day",
+    "date-asc": "measured-day-asc",
+    "date-desc": "measured-day-desc",
+    "day": "measured-day",
+    "day-asc": "measured-day-asc",
+    "day-desc": "measured-day-desc",
+    "measurement-date": "measured-day",
+    "measurement-date-asc": "measured-day-asc",
+    "measurement-date-desc": "measured-day-desc",
+    "measurement-day": "measured-day",
+    "measurement-day-asc": "measured-day-asc",
+    "measurement-day-desc": "measured-day-desc",
+    "measured-at-date": "measured-day",
+    "measured-at-date-asc": "measured-day-asc",
+    "measured-at-date-desc": "measured-day-desc",
+    "measured-at-day": "measured-day",
+    "measured-at-day-asc": "measured-day-asc",
+    "measured-at-day-desc": "measured-day-desc",
 }
 
 
@@ -1608,6 +1665,27 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "measured-month",
             "measured-month-asc",
             "measured-month-desc",
+            "date",
+            "date-asc",
+            "date-desc",
+            "day",
+            "day-asc",
+            "day-desc",
+            "measurement-date",
+            "measurement-date-asc",
+            "measurement-date-desc",
+            "measurement-day",
+            "measurement-day-asc",
+            "measurement-day-desc",
+            "measured-at-date",
+            "measured-at-date-asc",
+            "measured-at-date-desc",
+            "measured-at-day",
+            "measured-at-day-asc",
+            "measured-at-day-desc",
+            "measured-day",
+            "measured-day-asc",
+            "measured-day-desc",
             "age-bucket",
             "age-bucket-asc",
             "age-bucket-desc",
@@ -3297,6 +3375,22 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by in {"measured-day", "measured-day-asc"}:
+        return sorted(
+            stale,
+            key=lambda entry: (
+                entry.get("measured_day") or "unknown",
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "measured-day-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                tuple(-ord(character) for character in str(entry.get("measured_day") or "unknown")),
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by in {"age-bucket", "age-bucket-asc"}:
         return sorted(
             stale,
@@ -4416,6 +4510,17 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
     if sort_by == "age-bucket-asc":
         return (name,)
     if sort_by == "age-bucket-desc":
+        return (*(-ord(character) for character in name), -len(name))
+    if sort_by in {
+        "measured-year",
+        "measured-year-asc",
+        "measured-month",
+        "measured-month-asc",
+        "measured-day",
+        "measured-day-asc",
+    }:
+        return (name,)
+    if sort_by in {"measured-year-desc", "measured-month-desc", "measured-day-desc"}:
         return (*(-ord(character) for character in name), -len(name))
     if bucket_key == "age_bucket" and sort_by in {"name", "name-asc"}:
         return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)

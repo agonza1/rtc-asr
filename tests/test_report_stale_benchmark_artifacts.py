@@ -675,6 +675,33 @@ def test_parse_args_accepts_age_bucket_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_measured_day_summary_sort_aliases() -> None:
+    for alias in [
+        "date",
+        "date-desc",
+        "date-asc",
+        "day",
+        "day-desc",
+        "day-asc",
+        "measurement-date",
+        "measurement-date-desc",
+        "measurement-date-asc",
+        "measurement-day",
+        "measurement-day-desc",
+        "measurement-day-asc",
+        "measured-at-date",
+        "measured-at-date-desc",
+        "measured-at-date-asc",
+        "measured-at-day",
+        "measured-at-day-desc",
+        "measured-at-day-asc",
+        "measured-day",
+        "measured-day-desc",
+        "measured-day-asc",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_render_json_summary_accepts_readable_name_sort_aliases() -> None:
     stale = [
         {
@@ -780,6 +807,35 @@ def test_render_json_summary_groups_by_measured_day_aliases() -> None:
             "total_size_bytes": 80,
             "total_size": "80 B",
         },
+    ]
+
+
+def test_render_json_summary_accepts_measured_day_summary_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/early.json",
+            "status": "legacy",
+            "measured_at": "2026-06-20T10:00:00Z",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/late.json",
+            "status": "legacy",
+            "measured_at": "2026-06-21T11:00:00Z",
+            "artifact_size_bytes": 60,
+        },
+    ]
+
+    ascending = json.loads(render_json_summary(stale, groups=["date"], summary_sort="day-asc"))
+    descending = json.loads(render_json_summary(stale, groups=["date"], summary_sort="measurement-date-desc"))
+
+    assert [bucket["measured_day"] for bucket in ascending["by_measured_day"]] == [
+        "2026-06-20",
+        "2026-06-21",
+    ]
+    assert [bucket["measured_day"] for bucket in descending["by_measured_day"]] == [
+        "2026-06-21",
+        "2026-06-20",
     ]
 
 
@@ -1189,6 +1245,27 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "measured-at-month",
         "measured-at-month-asc",
         "measured-at-month-desc",
+        "date",
+        "date-asc",
+        "date-desc",
+        "day",
+        "day-asc",
+        "day-desc",
+        "measurement-date",
+        "measurement-date-asc",
+        "measurement-date-desc",
+        "measurement-day",
+        "measurement-day-asc",
+        "measurement-day-desc",
+        "measured-at-date",
+        "measured-at-date-asc",
+        "measured-at-date-desc",
+        "measured-at-day",
+        "measured-at-day-asc",
+        "measured-at-day-desc",
+        "measured-day",
+        "measured-day-asc",
+        "measured-day-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
@@ -1226,6 +1303,36 @@ def test_stale_artifacts_accept_measured_month_sort_aliases() -> None:
     assert [entry["artifact_path"] for entry in descending] == [
         "benchmark-results/july.json",
         "benchmark-results/june.json",
+    ]
+
+
+def test_stale_artifacts_accept_measured_day_sort_aliases() -> None:
+    manifest = {
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/early.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T23:00:00Z",
+            },
+            {
+                "artifact_path": "benchmark-results/late.json",
+                "status": "legacy",
+                "measured_at": "2026-06-21T01:00:00Z",
+            },
+        ],
+        "tracks": [],
+    }
+
+    ascending = stale_artifacts(manifest, sort_by="day")
+    descending = stale_artifacts(manifest, sort_by="measurement-date-desc")
+
+    assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/early.json",
+        "benchmark-results/late.json",
+    ]
+    assert [entry["artifact_path"] for entry in descending] == [
+        "benchmark-results/late.json",
+        "benchmark-results/early.json",
     ]
 
 
