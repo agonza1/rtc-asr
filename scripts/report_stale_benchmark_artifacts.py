@@ -1363,11 +1363,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--measured-before",
+        "--measured-until",
+        "--measured-to",
+        "--measured-before-date",
         default=None,
         help="Only include stale artifacts measured before this ISO timestamp or date",
     )
     parser.add_argument(
         "--measured-after",
+        "--measured-since",
+        "--measured-from",
+        "--measured-after-date",
         default=None,
         help="Only include stale artifacts measured after this ISO timestamp or date",
     )
