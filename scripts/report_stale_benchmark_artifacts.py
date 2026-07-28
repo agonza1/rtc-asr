@@ -1944,6 +1944,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Only include stale artifacts measured in this UTC YYYY-MM month; repeat to include multiple months",
     )
     parser.add_argument(
+        "--measured-year",
+        "--year",
+        "--measurement-year",
+        action="append",
+        default=None,
+        help="Only include stale artifacts measured in this UTC YYYY year; repeat to include multiple years",
+    )
+    parser.add_argument(
         "--age-bucket",
         "--age-range",
         "--age-range-bucket",
@@ -2677,6 +2685,7 @@ def stale_artifacts(
     current_path_extensions: list[str] | None = None,
     current_path_extension_contains: list[str] | None = None,
     track_state: str = "any",
+    measured_years: list[str] | None = None,
     measured_months: list[str] | None = None,
     age_buckets: list[str] | None = None,
     artifact_paths: list[str] | None = None,
@@ -2722,6 +2731,7 @@ def stale_artifacts(
     labels = normalize_filter_values(labels)
     backends = normalize_filter_values(backends)
     models = normalize_filter_values(models)
+    measured_years = normalize_filter_values(measured_years)
     measured_months = normalize_filter_values(measured_months)
     age_buckets = normalize_filter_values(age_buckets)
     current_paths = normalize_filter_values(current_paths)
@@ -2755,6 +2765,12 @@ def stale_artifacts(
     detail_page_extensions = normalize_filter_values(detail_page_extensions)
     detail_page_extension_contains = normalize_filter_values(detail_page_extension_contains)
     status_contains = normalize_filter_values(status_contains)
+    allowed_measured_years = None
+    if measured_years is not None:
+        allowed_measured_years = {year.strip() for year in measured_years if year.strip()}
+        invalid_years = [year for year in allowed_measured_years if len(year) != 4 or not year.isdigit()]
+        if invalid_years:
+            raise ValueError("measured_year values must use YYYY")
     allowed_measured_months = None
     if measured_months is not None:
         allowed_measured_months = {month.strip() for month in measured_months if month.strip()}
@@ -3070,6 +3086,8 @@ def stale_artifacts(
         if measured_timestamp is not None:
             artifact_age_days = max((age_reference - measured_timestamp).days, 0)
         artifact_age_bucket = age_bucket(artifact_age_days)
+        if allowed_measured_years is not None and artifact_measured_year not in allowed_measured_years:
+            continue
         if allowed_measured_months is not None and artifact_measured_month not in allowed_measured_months:
             continue
         if allowed_age_buckets is not None and artifact_age_bucket.lower() not in allowed_age_buckets:
@@ -5871,6 +5889,7 @@ def main(argv: list[str] | None = None) -> int:
         labels=args.label,
         backends=args.backend,
         models=args.model,
+        measured_years=args.measured_year,
         measured_months=args.measured_month,
         age_buckets=args.age_bucket,
         current_paths=args.current_path,
