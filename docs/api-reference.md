@@ -64,6 +64,10 @@ Example response:
 }
 ```
 
+When the service is not ready, this endpoint returns `503` with the same status payload
+and a `Retry-After: 5` header so probes and traffic managers can back off briefly
+before checking again.
+
 ## List Protocols
 
 ```http
