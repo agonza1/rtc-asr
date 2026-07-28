@@ -442,6 +442,8 @@ def load_audio_input(*, input_wav: Path | None, input_raw_pcm: Path | None, samp
     else:
         assert input_raw_pcm is not None
         pcm_bytes = input_raw_pcm.read_bytes()
+        if len(pcm_bytes) % 2 != 0:
+            raise ValueError("input raw PCM must contain an even number of bytes for pcm_s16le audio")
         resolved_rate = sample_rate
         source = str(input_raw_pcm)
 

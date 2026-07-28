@@ -196,6 +196,38 @@ def test_audio_duration_uses_actual_pcm_bytes_for_tail_frames() -> None:
     assert benchmark_module.audio_duration_ms(audio) == 30.0
 
 
+def test_load_audio_input_accepts_even_raw_pcm_tail_frame(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"a" * 640 + b"b" * 320)
+
+    audio = benchmark_module.load_audio_input(
+        input_wav=None,
+        input_raw_pcm=pcm_path,
+        sample_rate=16000,
+        frame_ms=20,
+    )
+
+    assert audio.frames == [b"a" * 640, b"b" * 320]
+    assert benchmark_module.audio_duration_ms(audio) == 30.0
+
+
+def test_load_audio_input_rejects_odd_byte_raw_pcm(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 641)
+
+    try:
+        benchmark_module.load_audio_input(
+            input_wav=None,
+            input_raw_pcm=pcm_path,
+            sample_rate=16000,
+            frame_ms=20,
+        )
+    except ValueError as exc:
+        assert "even number of bytes" in str(exc)
+    else:
+        raise AssertionError("expected odd-byte raw PCM to fail")
+
+
 def test_parse_args_accepts_optional_power_and_thermal_signals(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
