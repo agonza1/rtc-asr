@@ -1441,6 +1441,12 @@ def test_parse_args_accepts_measured_month_filter_aliases() -> None:
     assert args.measured_month == ["2026-06", "2026-07"]
 
 
+def test_parse_args_accepts_measured_year_filter_aliases() -> None:
+    args = parse_args(["--year", "2025", "--measurement-year", "2026"])
+
+    assert args.measured_year == ["2025", "2026"]
+
+
 def test_stale_artifacts_accept_measured_month_sort_aliases() -> None:
     manifest = {
         "artifacts": [
@@ -7712,6 +7718,38 @@ def test_stale_artifacts_can_filter_by_measured_month() -> None:
     ]
 
 
+def test_stale_artifacts_can_filter_by_measured_year() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/old.json",
+                "status": "legacy",
+                "measured_at": "2025-12-31T23:30:00-02:00",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/current.json",
+                "status": "legacy",
+                "measured_at": "2026-07-10T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+            {
+                "artifact_path": "benchmark-results/unknown.json",
+                "status": "legacy",
+                "artifact_size_bytes": 30,
+            },
+        ],
+    }
+
+    stale = stale_artifacts(manifest, measured_years=["2026"])
+
+    assert [entry["artifact_path"] for entry in stale] == [
+        "benchmark-results/old.json",
+        "benchmark-results/current.json",
+    ]
+
+
 def test_stale_artifacts_rejects_invalid_measured_month_filter() -> None:
     try:
         stale_artifacts({"tracks": [], "artifacts": []}, measured_months=["2026"])
@@ -7719,6 +7757,15 @@ def test_stale_artifacts_rejects_invalid_measured_month_filter() -> None:
         assert str(error) == "measured_month values must use YYYY-MM"
     else:
         raise AssertionError("invalid measured-month filters should fail")
+
+
+def test_stale_artifacts_rejects_invalid_measured_year_filter() -> None:
+    try:
+        stale_artifacts({"tracks": [], "artifacts": []}, measured_years=["202"])
+    except ValueError as error:
+        assert str(error) == "measured_year values must use YYYY"
+    else:
+        raise AssertionError("invalid measured-year filters should fail")
 
 
 def test_stale_artifacts_uses_stricter_cutoff_when_age_and_measured_before_are_set() -> None:
