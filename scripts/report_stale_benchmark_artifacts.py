@@ -39,6 +39,7 @@ SUMMARY_GROUPS = (
     "detail-page-dir",
     "detail-page-extension",
     "measured-year",
+    "measured-quarter",
     "measured-month",
     "measured-week",
     "measured-day",
@@ -69,6 +70,7 @@ SUMMARY_GROUP_KEYS = {
     "detail-page-dir": "by_detail_page_dir",
     "detail-page-extension": "by_detail_page_extension",
     "measured-year": "by_measured_year",
+    "measured-quarter": "by_measured_quarter",
     "measured-month": "by_measured_month",
     "measured-week": "by_measured_week",
     "measured-day": "by_measured_day",
@@ -186,6 +188,10 @@ SUMMARY_GROUP_ALIASES = {
     "calendar-year": "measured-year",
     "measurement-year": "measured-year",
     "measured-at-year": "measured-year",
+    "quarter": "measured-quarter",
+    "calendar-quarter": "measured-quarter",
+    "measurement-quarter": "measured-quarter",
+    "measured-at-quarter": "measured-quarter",
     "month": "measured-month",
     "calendar-month": "measured-month",
     "measurement-month": "measured-month",
@@ -3823,6 +3829,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_detail_page_dir: dict[str, dict[str, Any]] = {}
     by_detail_page_extension: dict[str, dict[str, Any]] = {}
     by_measured_year: dict[str, dict[str, Any]] = {}
+    by_measured_quarter: dict[str, dict[str, Any]] = {}
     by_measured_month: dict[str, dict[str, Any]] = {}
     by_measured_week: dict[str, dict[str, Any]] = {}
     by_measured_day: dict[str, dict[str, Any]] = {}
@@ -4140,6 +4147,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         year_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         year_bucket["total_size"] = format_bytes(year_bucket["total_size_bytes"])
 
+        quarter = str(entry.get("measured_quarter") or measured_quarter(entry.get("measured_at")))
+        quarter_bucket = by_measured_quarter.setdefault(
+            quarter,
+            {
+                "measured_quarter": quarter,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        quarter_bucket["count"] += 1
+        quarter_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        quarter_bucket["total_size"] = format_bytes(quarter_bucket["total_size_bytes"])
+
         month = measured_month(entry.get("measured_at"))
         month_bucket = by_measured_month.setdefault(
             month,
@@ -4287,6 +4308,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_measured_year": sorted(
             by_measured_year.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["measured_year"]),
+        ),
+        "by_measured_quarter": sorted(
+            by_measured_quarter.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["measured_quarter"]),
         ),
         "by_measured_month": sorted(
             by_measured_month.values(),
@@ -5772,6 +5797,40 @@ def render_summary(
         append_omitted_summary_buckets(
             lines,
             summary["by_detail_page_extension"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+    if "measured-quarter" in selected_groups and summary["by_measured_quarter"]:
+        lines.append("By measured quarter:")
+    if "measured-quarter" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_measured_quarter"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {measured_quarter}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    measured_quarter=bucket["measured_quarter"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_measured_quarter"],
             shown_buckets,
             limit=summary_limit,
             sort_by=summary_sort,
