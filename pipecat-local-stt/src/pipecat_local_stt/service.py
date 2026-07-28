@@ -35,9 +35,9 @@ from .protocol import (
     LocalSTTTranscriptEvent,
     build_start_message,
     decode_raw_uds_frame,
+    encode_raw_uds_client_message,
     encode_raw_uds_frame,
     parse_raw_uds_server_frame,
-    encode_raw_uds_json_frame,
     parse_server_message,
     validate_raw_uds_audio_payload,
     parse_transcript_event,
@@ -617,14 +617,7 @@ class RawUdsConnectionAdapter:
                     "Raw UDS JSON control payload must be an object",
                     code="raw_uds_invalid_json",
                 )
-            heartbeat_frame_types = {"ping": RawUdsFrameType.PING, "pong": RawUdsFrameType.PONG}
-            frame_type = heartbeat_frame_types.get(payload.get("type"), RawUdsFrameType.JSON_CONTROL)
-            if frame_type in heartbeat_frame_types.values():
-                payload = _compact_raw_uds_heartbeat_payload(payload)
-            if frame_type in heartbeat_frame_types.values() and payload == {"type": payload.get("type")}:
-                frame = encode_raw_uds_frame(frame_type, b"")
-            else:
-                frame = encode_raw_uds_json_frame(frame_type, payload)
+            frame = encode_raw_uds_client_message(payload)
         self._writer.write(frame)
         await self._writer.drain()
 
@@ -667,13 +660,6 @@ class RawUdsConnectionAdapter:
     async def close(self, code: int = 1000) -> None:
         self._writer.close()
         await self._writer.wait_closed()
-
-
-def _compact_raw_uds_heartbeat_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    compacted = dict(payload)
-    if compacted.get("metadata") == {}:
-        compacted.pop("metadata")
-    return compacted
 
 
 def _pong_payload(payload: dict[str, Any]) -> dict[str, Any]:

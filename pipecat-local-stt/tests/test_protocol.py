@@ -16,6 +16,7 @@ from pipecat_local_stt.protocol import (
     decode_raw_uds_frame,
     decode_raw_uds_json_payload,
     encode_raw_uds_audio_frame,
+    encode_raw_uds_client_message,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
     parse_raw_uds_client_frame,
@@ -174,7 +175,7 @@ def test_package_exports_raw_uds_client_helpers() -> None:
 
     encoded_audio = package.encode_raw_uds_audio_frame(memoryview(b"\x00\x01"))
     audio_frame = package.decode_raw_uds_frame(encoded_audio)
-    ping_frame = package.decode_raw_uds_frame(package.encode_raw_uds_frame(package.RawUdsFrameType.PING, b""))
+    ping_frame = package.decode_raw_uds_frame(package.encode_raw_uds_client_message({"type": "ping"}))
 
     assert package.parse_raw_uds_client_frame(audio_frame) == b"\x00\x01"
     assert package.parse_raw_uds_client_frame(ping_frame) == {"type": "ping"}
@@ -234,6 +235,27 @@ def test_raw_uds_client_parser_rejects_mismatched_keepalive_payload_type() -> No
         parse_raw_uds_client_frame(frame)
 
     assert excinfo.value.code == "raw_uds_heartbeat_type_mismatch"
+
+
+def test_raw_uds_client_message_encoder_selects_control_and_compact_keepalive_frames() -> None:
+    control = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "close", "metadata": {}}))
+    bare_ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping", "metadata": {}}))
+    pong = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "pong", "ping_id": "server-1"}))
+
+    assert control.frame_type == RawUdsFrameType.JSON_CONTROL
+    assert control.payload == b'{"type":"close"}'
+    assert bare_ping.frame_type == RawUdsFrameType.PING
+    assert bare_ping.payload == b""
+    assert pong.frame_type == RawUdsFrameType.PONG
+    assert decode_raw_uds_json_payload(pong) == {"type": "pong", "ping_id": "server-1"}
+
+
+@pytest.mark.parametrize("payload", [["ping"], "ping", None])
+def test_raw_uds_client_message_encoder_rejects_non_object_payloads(payload: object) -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        encode_raw_uds_client_message(payload)
+
+    assert excinfo.value.code == "raw_uds_invalid_json"
 
 
 def test_raw_uds_server_parser_defaults_error_event_type() -> None:
