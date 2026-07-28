@@ -121,6 +121,12 @@ DEFAULT_PROTOCOLS = [
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                 "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                "limits": {
+                    "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+                    "max_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
+                    "active_streams_per_connection": 1,
+                    "binary_audio_chunk_bytes_multiple": 2,
+                },
                 "frame_format": "uint8_type_uint32_len_le",
                 "audio_payload": {
                     "frame_type": "AUDIO_PCM16",
@@ -740,6 +746,12 @@ def test_api_models_reports_enabled_raw_uds_server_path(tmp_path: Path) -> None:
     assert raw_uds["plugin_config"] == {"transport": "raw_uds", "uds_path": str(raw_socket_path)}
     assert raw_uds["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
     assert raw_uds["max_payload_bytes"] == RAW_UDS_MAX_PAYLOAD_BYTES
+    assert raw_uds["limits"] == {
+        "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
+        "max_buffer_bytes": config.stream_max_buffer_bytes,
+        "active_streams_per_connection": 1,
+        "binary_audio_chunk_bytes_multiple": 2,
+    }
     assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
     assert not raw_socket_path.exists()
 
