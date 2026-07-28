@@ -338,26 +338,42 @@ class AsyncLocalSttClient:
         websocket = self._require_websocket()
         await websocket.send(json.dumps({"type": "cancel"}))
 
-    async def ping(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> dict[str, Any]:
+    async def ping(
+        self,
+        *,
+        ping_id: str | None = None,
+        timestamp_ms: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         websocket = self._require_websocket()
         payload: dict[str, Any] = {"type": "ping"}
         if ping_id is not None:
             payload["ping_id"] = ping_id
         if timestamp_ms is not None:
             payload["timestamp_ms"] = timestamp_ms
+        if metadata:
+            payload["metadata"] = dict(metadata)
         await websocket.send(json.dumps(payload))
         pong_event = await self._recv_json()
         if pong_event.get("type") != "pong":
             raise RuntimeError(f"Expected pong event, got: {pong_event}")
         return pong_event
 
-    async def pong(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> None:
+    async def pong(
+        self,
+        *,
+        ping_id: str | None = None,
+        timestamp_ms: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         websocket = self._require_websocket()
         payload: dict[str, Any] = {"type": "pong"}
         if ping_id is not None:
             payload["ping_id"] = ping_id
         if timestamp_ms is not None:
             payload["timestamp_ms"] = timestamp_ms
+        if metadata:
+            payload["metadata"] = dict(metadata)
         await websocket.send(json.dumps(payload))
 
     async def recv_event(
@@ -487,24 +503,40 @@ class AsyncRawUdsLocalSttClient:
     async def cancel(self) -> None:
         await self._send_client_message({"type": "cancel"})
 
-    async def ping(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> dict[str, Any]:
+    async def ping(
+        self,
+        *,
+        ping_id: str | None = None,
+        timestamp_ms: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {"type": "ping"}
         if ping_id is not None:
             payload["ping_id"] = ping_id
         if timestamp_ms is not None:
             payload["timestamp_ms"] = timestamp_ms
+        if metadata:
+            payload["metadata"] = dict(metadata)
         await self._send_client_message(payload)
         pong_event = await self._recv_json()
         if pong_event.get("type") != "pong":
             raise RuntimeError(f"Expected pong event, got: {pong_event}")
         return pong_event
 
-    async def pong(self, *, ping_id: str | None = None, timestamp_ms: int | None = None) -> None:
+    async def pong(
+        self,
+        *,
+        ping_id: str | None = None,
+        timestamp_ms: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
         payload: dict[str, Any] = {"type": "pong"}
         if ping_id is not None:
             payload["ping_id"] = ping_id
         if timestamp_ms is not None:
             payload["timestamp_ms"] = timestamp_ms
+        if metadata:
+            payload["metadata"] = dict(metadata)
         await self._send_client_message(payload)
 
     async def recv_event(
