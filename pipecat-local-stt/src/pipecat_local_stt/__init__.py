@@ -6,9 +6,12 @@ from .protocol import (
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
     RAW_UDS_SERVER_FRAME_TYPES,
+    LocalSTTProtocolError,
+    LocalSTTTranscriptEvent,
     RawUdsFrame,
     RawUdsFrameDecoder,
     RawUdsFrameType,
+    build_start_message,
     decode_raw_uds_frame,
     decode_raw_uds_json_payload,
     encode_raw_uds_audio_frame,
@@ -16,6 +19,8 @@ from .protocol import (
     encode_raw_uds_json_frame,
     parse_raw_uds_client_frame,
     parse_raw_uds_server_frame,
+    parse_transcript_event,
+    validate_raw_uds_audio_payload,
 )
 from .rtc_asr import RtcAsrSTTService
 from .service import LocalStreamingSTTService
@@ -29,10 +34,13 @@ __all__ = [
     "RAW_UDS_HEADER_BYTES",
     "RAW_UDS_MAX_PAYLOAD_BYTES",
     "RAW_UDS_SERVER_FRAME_TYPES",
+    "LocalSTTProtocolError",
+    "LocalSTTTranscriptEvent",
     "RawUdsFrame",
     "RawUdsFrameDecoder",
     "RawUdsFrameType",
     "RtcAsrSTTService",
+    "build_start_message",
     "decode_raw_uds_frame",
     "decode_raw_uds_json_payload",
     "encode_raw_uds_audio_frame",
@@ -40,4 +48,6 @@ __all__ = [
     "encode_raw_uds_json_frame",
     "parse_raw_uds_client_frame",
     "parse_raw_uds_server_frame",
+    "parse_transcript_event",
+    "validate_raw_uds_audio_payload",
 ]
