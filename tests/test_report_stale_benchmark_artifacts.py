@@ -84,7 +84,7 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
         [
             (
                 "Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, "
-                "YEAR, CALENDAR-YEAR, MONTH, CALENDAR-MONTH, DAY, CALENDAR-DAY, "
+                "YEAR, CALENDAR-YEAR, QUARTER, CALENDAR-QUARTER, MONTH, CALENDAR-MONTH, DAY, CALENDAR-DAY, "
                 "CALENDAR-DATE, AGE-RANGE"
             )
         ]
@@ -94,6 +94,7 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
         "detail-page",
         "track-state",
         "measured-year",
+        "measured-quarter",
         "measured-month",
         "measured-day",
         "age-bucket",
@@ -946,6 +947,46 @@ def test_render_json_summary_groups_by_measured_week_aliases() -> None:
         },
         {
             "measured_week": "2026-W26",
+            "count": 1,
+            "total_size_bytes": 80,
+            "total_size": "80 B",
+        },
+    ]
+
+
+def test_render_json_summary_groups_by_measured_quarter_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/q2-a.json",
+            "status": "legacy",
+            "measured_at": "2026-06-20T10:00:00Z",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/q2-b.json",
+            "status": "legacy",
+            "measured_at": "2026-04-01T11:00:00Z",
+            "artifact_size_bytes": 60,
+        },
+        {
+            "artifact_path": "benchmark-results/q3.json",
+            "status": "legacy",
+            "measured_at": "2026-07-01T10:00:00Z",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    summary = json.loads(render_json_summary(stale, groups=["calendar-quarter"], summary_sort="size"))
+
+    assert summary["by_measured_quarter"] == [
+        {
+            "measured_quarter": "2026-Q2",
+            "count": 2,
+            "total_size_bytes": 100,
+            "total_size": "100 B",
+        },
+        {
+            "measured_quarter": "2026-Q3",
             "count": 1,
             "total_size_bytes": 80,
             "total_size": "80 B",
@@ -5832,6 +5873,50 @@ def test_stale_summary_groups_artifact_size_by_measured_year() -> None:
     ]
 
 
+def test_stale_summary_groups_artifact_size_by_measured_quarter() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/q2-large.json",
+            "measured_at": "2026-06-15T00:00:00Z",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/q3.json",
+            "measured_at": "2026-07-01T00:00:00Z",
+            "artifact_size_bytes": 30,
+        },
+        {
+            "artifact_path": "benchmark-results/q2-small.json",
+            "measured_at": "2026-04-20",
+            "artifact_size_bytes": 10,
+        },
+        {"artifact_path": "benchmark-results/unknown.json", "artifact_size_bytes": 5},
+    ]
+
+    summary = stale_summary(stale)
+
+    assert summary["by_measured_quarter"] == [
+        {
+            "measured_quarter": "2026-Q2",
+            "count": 2,
+            "total_size_bytes": 50,
+            "total_size": "50 B",
+        },
+        {
+            "measured_quarter": "2026-Q3",
+            "count": 1,
+            "total_size_bytes": 30,
+            "total_size": "30 B",
+        },
+        {
+            "measured_quarter": "unknown",
+            "count": 1,
+            "total_size_bytes": 5,
+            "total_size": "5 B",
+        },
+    ]
+
+
 def test_stale_artifacts_can_sort_oldest_measured_first() -> None:
     manifest = {
         "tracks": [],
@@ -8880,6 +8965,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- missing: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page extension:\n"
         "- none: 3 artifacts (65 B, 65 bytes)\n"
+        "By measured quarter:\n"
+        "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By measured month:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By measured week:\n"
@@ -10144,6 +10231,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- benchmark-results/pages: 2 artifacts (100 B, 100 bytes)\n"
         "By detail page extension:\n"
         "- .html: 2 artifacts (100 B, 100 bytes)\n"
+        "By measured quarter:\n"
+        "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By measured month:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By measured week:\n"
