@@ -68,6 +68,7 @@ def test_transcript_event_ignores_boolean_integer_fields() -> None:
             "type": "transcript",
             "text": "hello",
             "is_final": False,
+            "language": 123,
             "stream_id": True,
             "chunks_received": True,
             "buffered_bytes": False,
@@ -91,6 +92,27 @@ def test_transcript_event_ignores_boolean_integer_fields() -> None:
     assert event.revision is None
     assert event.audio_received_ms is None
     assert event.audio_transcribed_ms is None
+    assert event.language is None
+
+
+def test_transcript_event_preserves_language_metadata() -> None:
+    event = TranscriptEvent.from_payload(
+        {
+            "type": "transcript",
+            "text": "hola",
+            "is_final": True,
+            "speech_final": True,
+            "revision": 2,
+            "audio_received_ms": 640,
+            "audio_transcribed_ms": 640,
+            "language": "es",
+            "metadata": {"stream_id": 9},
+        }
+    )
+
+    assert event.type == "final"
+    assert event.language == "es"
+    assert event.raw["language"] == "es"
 
 
 def test_async_asr_client_stream_flow() -> None:

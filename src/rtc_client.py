@@ -96,6 +96,7 @@ class TranscriptEvent:
     revision: int | None = None
     audio_received_ms: int | None = None
     audio_transcribed_ms: int | None = None
+    language: str | None = None
     metadata: dict[str, Any] | None = None
     raw: dict[str, Any] | None = None
 
@@ -118,6 +119,7 @@ class TranscriptEvent:
             revision=_maybe_int(payload.get("revision")),
             audio_received_ms=_maybe_int(payload.get("audio_received_ms")),
             audio_transcribed_ms=_maybe_int(payload.get("audio_transcribed_ms")),
+            language=_maybe_str(payload.get("language")),
             metadata=metadata or None,
             raw=payload,
         )
@@ -655,6 +657,10 @@ async def _default_raw_uds_connect(uds_path: str) -> tuple[asyncio.StreamReader,
 
 def _maybe_int(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _maybe_str(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
 
 
 def _validate_positive_number(value: Any, *, field_name: str) -> None:
