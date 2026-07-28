@@ -2688,6 +2688,33 @@ def measured_year(value: Any) -> str:
     return parsed.strftime("%Y")
 
 
+def valid_measured_month(value: str) -> bool:
+    if len(value) != 7 or value[4] != "-":
+        return False
+    year, month = value.split("-", 1)
+    return year.isdigit() and month.isdigit() and 1 <= int(month) <= 12
+
+
+def valid_measured_week(value: str) -> bool:
+    if len(value) != 8 or value[4:6] != "-W" or not value[:4].isdigit() or not value[6:].isdigit():
+        return False
+    try:
+        datetime.fromisocalendar(int(value[:4]), int(value[6:]), 1)
+    except ValueError:
+        return False
+    return True
+
+
+def valid_measured_day(value: str) -> bool:
+    if len(value) != 10 or value[4] != "-" or value[7] != "-" or not value.replace("-", "").isdigit():
+        return False
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        return False
+    return True
+
+
 def age_bucket(age_days: int | None) -> str:
     if age_days is None:
         return "unknown"
@@ -2889,27 +2916,19 @@ def stale_artifacts(
     allowed_measured_months = None
     if measured_months is not None:
         allowed_measured_months = {month.strip() for month in measured_months if month.strip()}
-        invalid_months = [month for month in allowed_measured_months if len(month) != 7 or month[4] != "-"]
+        invalid_months = [month for month in allowed_measured_months if not valid_measured_month(month)]
         if invalid_months:
             raise ValueError("measured_month values must use YYYY-MM")
     allowed_measured_weeks = None
     if measured_weeks is not None:
         allowed_measured_weeks = {week.strip() for week in measured_weeks if week.strip()}
-        invalid_weeks = [
-            week
-            for week in allowed_measured_weeks
-            if len(week) != 8 or week[4:6] != "-W" or not week[:4].isdigit() or not week[6:].isdigit()
-        ]
+        invalid_weeks = [week for week in allowed_measured_weeks if not valid_measured_week(week)]
         if invalid_weeks:
             raise ValueError("measured_week values must use YYYY-Www")
     allowed_measured_days = None
     if measured_days is not None:
         allowed_measured_days = {day.strip() for day in measured_days if day.strip()}
-        invalid_days = [
-            day
-            for day in allowed_measured_days
-            if len(day) != 10 or day[4] != "-" or day[7] != "-" or not day.replace("-", "").isdigit()
-        ]
+        invalid_days = [day for day in allowed_measured_days if not valid_measured_day(day)]
         if invalid_days:
             raise ValueError("measured_day values must use YYYY-MM-DD")
     allowed_age_buckets = None
