@@ -28,6 +28,13 @@ def positive_int(value: str) -> int:
     return parsed
 
 
+def non_negative_float(value: str) -> float:
+    parsed = float(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("value must be greater than or equal to 0")
+    return parsed
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark Parakeet MLX ASR latency")
     parser.add_argument("--model", required=True, help="Parakeet MLX model identifier to load")
@@ -39,6 +46,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Speech text used when synthesizing a benchmark clip on macOS",
     )
     parser.add_argument("--command", default="parakeet-mlx", help="CLI entry point to execute")
+    parser.add_argument(
+        "--package-power-watts",
+        type=non_negative_float,
+        help="Optional externally measured average package power draw in watts",
+    )
+    parser.add_argument("--thermal-state", help="Optional externally observed sustained thermal state")
+    parser.add_argument(
+        "--thermal-duration-minutes",
+        type=non_negative_float,
+        help="Optional duration covered by the sustained thermal observation",
+    )
     parser.add_argument("--output", type=Path, help="Optional JSON artifact path")
     return parser.parse_args(argv)
 
@@ -58,7 +76,12 @@ def summarize(values: list[float]) -> dict[str, float]:
     }
 
 
-def describe_environment() -> dict[str, Any]:
+def describe_environment(
+    *,
+    package_power_watts: float | None = None,
+    thermal_state: str | None = None,
+    thermal_duration_minutes: float | None = None,
+) -> dict[str, Any]:
     memory_total_mb: float | None = None
     process_rss_mb: float | None = None
     try:
@@ -81,6 +104,9 @@ def describe_environment() -> dict[str, Any]:
         "process_rss_mb": process_rss_mb,
         "process_metrics_pid": os.getpid(),
         "peak_rss_mb": process_rss_mb,
+        "package_power_watts": package_power_watts,
+        "thermal_state": thermal_state,
+        "thermal_duration_minutes": thermal_duration_minutes,
     }
 
 
@@ -156,7 +182,17 @@ def _resolve_audio_file(audio_file: Path | None, *, speech_text: str) -> tuple[P
     return synthesized, scratch
 
 
-def run_benchmark(*, model_name: str, sample_count: int, audio_file: Path | None, speech_text: str, command: str) -> dict[str, Any]:
+def run_benchmark(
+    *,
+    model_name: str,
+    sample_count: int,
+    audio_file: Path | None,
+    speech_text: str,
+    command: str,
+    package_power_watts: float | None = None,
+    thermal_state: str | None = None,
+    thermal_duration_minutes: float | None = None,
+) -> dict[str, Any]:
     cli = _resolve_cli(command)
     resolved_audio_file, audio_scratch = _resolve_audio_file(audio_file, speech_text=speech_text)
 
@@ -215,7 +251,11 @@ def run_benchmark(*, model_name: str, sample_count: int, audio_file: Path | None
             },
             "samples": samples,
             "summary": summarize(latencies_ms),
-            "environment": describe_environment(),
+            "environment": describe_environment(
+                package_power_watts=package_power_watts,
+                thermal_state=thermal_state,
+                thermal_duration_minutes=thermal_duration_minutes,
+            ),
         }
     finally:
         if audio_scratch is not None:
@@ -230,6 +270,9 @@ def main(argv: list[str] | None = None) -> int:
         audio_file=args.audio_file,
         speech_text=args.speech_text,
         command=args.command,
+        package_power_watts=args.package_power_watts,
+        thermal_state=args.thermal_state,
+        thermal_duration_minutes=args.thermal_duration_minutes,
     )
     payload = json.dumps(artifact, indent=2)
     if args.output:

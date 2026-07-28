@@ -22,7 +22,7 @@ def test_run_benchmark_serializes_parakeet_mlx_output(monkeypatch, tmp_path: Pat
     audio_path.write_bytes(b"RIFF")
 
     monkeypatch.setattr(benchmark_module.shutil, "which", lambda command: f"/mock/bin/{command}")
-    monkeypatch.setattr(benchmark_module, "describe_environment", lambda: {"platform": "test"})
+    monkeypatch.setattr(benchmark_module, "describe_environment", lambda **kwargs: {"platform": "test", **kwargs})
 
     def fake_run(command: list[str], *, check: bool, capture_output: bool, text: bool, **kwargs):
         assert check is True
@@ -44,6 +44,12 @@ def test_run_benchmark_serializes_parakeet_mlx_output(monkeypatch, tmp_path: Pat
             "2",
             "--audio-file",
             str(audio_path),
+            "--package-power-watts",
+            "4.8",
+            "--thermal-state",
+            "nominal",
+            "--thermal-duration-minutes",
+            "5",
             "--output",
             str(output_path),
         ]
@@ -64,6 +70,9 @@ def test_run_benchmark_serializes_parakeet_mlx_output(monkeypatch, tmp_path: Pat
     assert len(payload["samples"]) == 2
     assert payload["samples"][0]["transcript"] == "hello from parakeet"
     assert payload["summary"]["mean_ms"] >= 0
+    assert payload["environment"]["package_power_watts"] == 4.8
+    assert payload["environment"]["thermal_state"] == "nominal"
+    assert payload["environment"]["thermal_duration_minutes"] == 5.0
     commands = calls["commands"]
     assert len(commands) == 2
     assert commands[0][0] == "/mock/bin/parakeet-mlx"
@@ -133,6 +142,48 @@ def test_describe_environment_reports_mlx_host_capacity(monkeypatch) -> None:
     assert payload["process_rss_mb"] == 512.0
     assert payload["process_metrics_pid"] == 4321
     assert payload["peak_rss_mb"] == 512.0
+    assert payload["package_power_watts"] is None
+    assert payload["thermal_state"] is None
+    assert payload["thermal_duration_minutes"] is None
+
+
+def test_parse_args_accepts_external_low_power_observations(tmp_path: Path) -> None:
+    args = benchmark_module.parse_args(
+        [
+            "--model",
+            "mlx-community/parakeet-tdt-0.6b-v3",
+            "--audio-file",
+            str(tmp_path / "clip.wav"),
+            "--package-power-watts",
+            "4.8",
+            "--thermal-state",
+            "nominal",
+            "--thermal-duration-minutes",
+            "5",
+        ]
+    )
+
+    assert args.package_power_watts == 4.8
+    assert args.thermal_state == "nominal"
+    assert args.thermal_duration_minutes == 5.0
+
+
+def test_parse_args_rejects_negative_low_power_observations(tmp_path: Path) -> None:
+    for flag in ("--package-power-watts", "--thermal-duration-minutes"):
+        try:
+            benchmark_module.parse_args(
+                [
+                    "--model",
+                    "mlx-community/parakeet-tdt-0.6b-v3",
+                    "--audio-file",
+                    str(tmp_path / "clip.wav"),
+                    flag,
+                    "-1",
+                ]
+            )
+        except SystemExit:
+            continue
+        raise AssertionError(f"Expected SystemExit for {flag}")
 
 
 def test_coerce_transcript_prefers_explicit_empty_text_field() -> None:
@@ -145,7 +196,7 @@ def test_run_benchmark_synthesizes_speech_when_audio_file_is_omitted(monkeypatch
     synthesized_path.write_bytes(b"RIFF")
 
     monkeypatch.setattr(benchmark_module.shutil, "which", lambda command: f"/mock/bin/{command}")
-    monkeypatch.setattr(benchmark_module, "describe_environment", lambda: {"platform": "test"})
+    monkeypatch.setattr(benchmark_module, "describe_environment", lambda **kwargs: {"platform": "test", **kwargs})
 
     class Scratch:
         def cleanup(self) -> None:
