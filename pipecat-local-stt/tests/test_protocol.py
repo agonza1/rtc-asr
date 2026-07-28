@@ -247,6 +247,17 @@ def test_raw_uds_server_parser_defaults_error_event_type() -> None:
     }
 
 
+def test_raw_uds_server_parser_rejects_mismatched_error_payload_type() -> None:
+    frame = decode_raw_uds_frame(
+        encode_raw_uds_json_frame(RawUdsFrameType.ERROR, {"type": "transcript", "text": "not an error"})
+    )
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        parse_raw_uds_server_frame(frame)
+
+    assert excinfo.value.code == "raw_uds_heartbeat_type_mismatch"
+
+
 def test_package_exports_raw_uds_direction_catalog() -> None:
     import pipecat_local_stt as package
 
