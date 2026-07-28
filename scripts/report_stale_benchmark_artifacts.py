@@ -310,6 +310,18 @@ STALE_SORT_ALIASES = {
     "measured-at-year": "measured-year",
     "measured-at-year-asc": "measured-year-asc",
     "measured-at-year-desc": "measured-year-desc",
+    "quarter": "measured-quarter",
+    "quarter-asc": "measured-quarter-asc",
+    "quarter-desc": "measured-quarter-desc",
+    "calendar-quarter": "measured-quarter",
+    "calendar-quarter-asc": "measured-quarter-asc",
+    "calendar-quarter-desc": "measured-quarter-desc",
+    "measurement-quarter": "measured-quarter",
+    "measurement-quarter-asc": "measured-quarter-asc",
+    "measurement-quarter-desc": "measured-quarter-desc",
+    "measured-at-quarter": "measured-quarter",
+    "measured-at-quarter-asc": "measured-quarter-asc",
+    "measured-at-quarter-desc": "measured-quarter-desc",
     "month": "measured-month",
     "month-asc": "measured-month-asc",
     "month-desc": "measured-month-desc",
@@ -932,6 +944,21 @@ SUMMARY_SORTS = (
     "measured-year",
     "measured-year-desc",
     "measured-year-asc",
+    "quarter",
+    "quarter-desc",
+    "quarter-asc",
+    "calendar-quarter",
+    "calendar-quarter-desc",
+    "calendar-quarter-asc",
+    "measurement-quarter",
+    "measurement-quarter-desc",
+    "measurement-quarter-asc",
+    "measured-at-quarter",
+    "measured-at-quarter-desc",
+    "measured-at-quarter-asc",
+    "measured-quarter",
+    "measured-quarter-desc",
+    "measured-quarter-asc",
     "month",
     "month-desc",
     "month-asc",
@@ -1124,6 +1151,18 @@ SUMMARY_SORT_ALIASES = {
     "measured-at-year": "measured-year",
     "measured-at-year-asc": "measured-year-asc",
     "measured-at-year-desc": "measured-year-desc",
+    "quarter": "measured-quarter",
+    "quarter-asc": "measured-quarter-asc",
+    "quarter-desc": "measured-quarter-desc",
+    "calendar-quarter": "measured-quarter",
+    "calendar-quarter-asc": "measured-quarter-asc",
+    "calendar-quarter-desc": "measured-quarter-desc",
+    "measurement-quarter": "measured-quarter",
+    "measurement-quarter-asc": "measured-quarter-asc",
+    "measurement-quarter-desc": "measured-quarter-desc",
+    "measured-at-quarter": "measured-quarter",
+    "measured-at-quarter-asc": "measured-quarter-asc",
+    "measured-at-quarter-desc": "measured-quarter-desc",
     "month": "measured-month",
     "month-asc": "measured-month-asc",
     "month-desc": "measured-month-desc",
@@ -1814,6 +1853,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "measured-year",
             "measured-year-asc",
             "measured-year-desc",
+            "quarter",
+            "quarter-asc",
+            "quarter-desc",
+            "calendar-quarter",
+            "calendar-quarter-asc",
+            "calendar-quarter-desc",
+            "measurement-quarter",
+            "measurement-quarter-asc",
+            "measurement-quarter-desc",
+            "measured-at-quarter",
+            "measured-at-quarter-asc",
+            "measured-at-quarter-desc",
+            "measured-quarter",
+            "measured-quarter-asc",
+            "measured-quarter-desc",
             "month",
             "month-asc",
             "month-desc",
@@ -1969,6 +2023,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         default=None,
         help="Only include stale artifacts measured in this UTC YYYY year; repeat to include multiple years",
+    )
+    parser.add_argument(
+        "--measured-quarter",
+        "--quarter",
+        "--calendar-quarter",
+        "--measurement-quarter",
+        action="append",
+        default=None,
+        help="Only include stale artifacts measured in this UTC YYYY-Qn quarter; repeat to include multiple quarters",
     )
     parser.add_argument(
         "--age-bucket",
@@ -2589,6 +2652,14 @@ def measured_month(value: Any) -> str:
     return parsed.strftime("%Y-%m")
 
 
+def measured_quarter(value: Any) -> str:
+    parsed = parse_timestamp(value)
+    if parsed is None:
+        return "unknown"
+    quarter = ((parsed.month - 1) // 3) + 1
+    return f"{parsed.year}-Q{quarter}"
+
+
 def measured_week(value: Any) -> str:
     parsed = parse_timestamp(value)
     if parsed is None:
@@ -2705,6 +2776,7 @@ def stale_artifacts(
     current_path_extension_contains: list[str] | None = None,
     track_state: str = "any",
     measured_years: list[str] | None = None,
+    measured_quarters: list[str] | None = None,
     measured_months: list[str] | None = None,
     measured_weeks: list[str] | None = None,
     measured_days: list[str] | None = None,
@@ -2753,6 +2825,7 @@ def stale_artifacts(
     backends = normalize_filter_values(backends)
     models = normalize_filter_values(models)
     measured_years = normalize_filter_values(measured_years)
+    measured_quarters = normalize_filter_values(measured_quarters)
     measured_months = normalize_filter_values(measured_months)
     measured_weeks = normalize_filter_values(measured_weeks)
     measured_days = normalize_filter_values(measured_days)
@@ -2794,6 +2867,19 @@ def stale_artifacts(
         invalid_years = [year for year in allowed_measured_years if len(year) != 4 or not year.isdigit()]
         if invalid_years:
             raise ValueError("measured_year values must use YYYY")
+    allowed_measured_quarters = None
+    if measured_quarters is not None:
+        allowed_measured_quarters = {quarter.strip().upper() for quarter in measured_quarters if quarter.strip()}
+        invalid_quarters = [
+            quarter
+            for quarter in allowed_measured_quarters
+            if len(quarter) != 7
+            or quarter[4:6] != "-Q"
+            or not quarter[:4].isdigit()
+            or quarter[6] not in {"1", "2", "3", "4"}
+        ]
+        if invalid_quarters:
+            raise ValueError("measured_quarter values must use YYYY-Qn")
     allowed_measured_months = None
     if measured_months is not None:
         allowed_measured_months = {month.strip() for month in measured_months if month.strip()}
@@ -3122,6 +3208,7 @@ def stale_artifacts(
         measured_at = artifact.get("measured_at")
         measured_timestamp = parse_timestamp(measured_at)
         artifact_measured_year = measured_year(measured_at)
+        artifact_measured_quarter = measured_quarter(measured_at)
         artifact_measured_month = measured_month(measured_at)
         artifact_measured_week = measured_week(measured_at)
         artifact_measured_day = measured_day(measured_at)
@@ -3130,6 +3217,8 @@ def stale_artifacts(
             artifact_age_days = max((age_reference - measured_timestamp).days, 0)
         artifact_age_bucket = age_bucket(artifact_age_days)
         if allowed_measured_years is not None and artifact_measured_year not in allowed_measured_years:
+            continue
+        if allowed_measured_quarters is not None and artifact_measured_quarter not in allowed_measured_quarters:
             continue
         if allowed_measured_months is not None and artifact_measured_month not in allowed_measured_months:
             continue
@@ -3171,6 +3260,7 @@ def stale_artifacts(
                 "status": artifact.get("status"),
                 "measured_at": measured_at,
                 "measured_year": artifact_measured_year,
+                "measured_quarter": artifact_measured_quarter,
                 "measured_month": artifact_measured_month,
                 "measured_week": artifact_measured_week,
                 "measured_day": artifact_measured_day,
@@ -3619,6 +3709,22 @@ def stale_artifacts(
             stale,
             key=lambda entry: (
                 tuple(-ord(character) for character in str(entry.get("measured_year") or "unknown")),
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by in {"measured-quarter", "measured-quarter-asc"}:
+        return sorted(
+            stale,
+            key=lambda entry: (
+                entry.get("measured_quarter") or "unknown",
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "measured-quarter-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                tuple(-ord(character) for character in str(entry.get("measured_quarter") or "unknown")),
                 entry.get("artifact_path") or "",
             ),
         )
@@ -4642,6 +4748,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "status",
         "measured_at",
         "measured_year",
+        "measured_quarter",
         "measured_month",
         "measured_week",
         "measured_day",
@@ -4671,6 +4778,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             "artifact_stem": entry.get("artifact_stem") or Path(entry.get("artifact_path") or "").stem,
             "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
             "measured_year": entry.get("measured_year") or measured_year(entry.get("measured_at")),
+            "measured_quarter": entry.get("measured_quarter") or measured_quarter(entry.get("measured_at")),
             "measured_month": entry.get("measured_month") or measured_month(entry.get("measured_at")),
             "measured_week": entry.get("measured_week") or measured_week(entry.get("measured_at")),
             "measured_day": entry.get("measured_day") or measured_day(entry.get("measured_at")),
@@ -4814,6 +4922,8 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
     if sort_by in {
         "measured-year",
         "measured-year-asc",
+        "measured-quarter",
+        "measured-quarter-asc",
         "measured-month",
         "measured-month-asc",
         "measured-week",
@@ -4822,7 +4932,13 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
         "measured-day-asc",
     }:
         return (name,)
-    if sort_by in {"measured-year-desc", "measured-month-desc", "measured-week-desc", "measured-day-desc"}:
+    if sort_by in {
+        "measured-year-desc",
+        "measured-quarter-desc",
+        "measured-month-desc",
+        "measured-week-desc",
+        "measured-day-desc",
+    }:
         return (*(-ord(character) for character in name), -len(name))
     if bucket_key == "age_bucket" and sort_by in {"name", "name-asc"}:
         return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
@@ -5937,6 +6053,7 @@ def main(argv: list[str] | None = None) -> int:
         backends=args.backend,
         models=args.model,
         measured_years=args.measured_year,
+        measured_quarters=args.measured_quarter,
         measured_months=args.measured_month,
         measured_weeks=args.measured_week,
         measured_days=args.measured_day,
