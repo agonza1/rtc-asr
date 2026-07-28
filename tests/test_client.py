@@ -287,8 +287,15 @@ def test_async_local_stt_client_stream_flow() -> None:
             max_buffer_seconds=6.0,
             metadata={"turn_id": "turn-1", "tenant": "demo"},
         )
-        pong_event = await client.ping(ping_id="heartbeat-1", timestamp_ms=1234)
-        await client.pong(ping_id="server-heartbeat-1")
+        pong_event = await client.ping(
+            ping_id="heartbeat-1",
+            timestamp_ms=1234,
+            metadata={"turn_id": "turn-1"},
+        )
+        await client.pong(
+            ping_id="server-heartbeat-1",
+            metadata={"turn_id": "turn-1", "direction": "client_ack"},
+        )
         await client.send_audio(b"\x00\x01")
         partial_event = await client.recv_event()
         await client.send_audio(b"\x02\x03")
@@ -334,8 +341,17 @@ def test_async_local_stt_client_stream_flow() -> None:
                 "client_stream_id": "turn-1",
                 "metadata": {"turn_id": "turn-1", "tenant": "demo"},
             },
-            {"type": "ping", "ping_id": "heartbeat-1", "timestamp_ms": 1234},
-            {"type": "pong", "ping_id": "server-heartbeat-1"},
+            {
+                "type": "ping",
+                "ping_id": "heartbeat-1",
+                "timestamp_ms": 1234,
+                "metadata": {"turn_id": "turn-1"},
+            },
+            {
+                "type": "pong",
+                "ping_id": "server-heartbeat-1",
+                "metadata": {"turn_id": "turn-1", "direction": "client_ack"},
+            },
             b"\x00\x01",
             b"\x02\x03",
             {"type": "cancel"},
@@ -540,8 +556,8 @@ def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
         async with server:
             client = AsyncRawUdsLocalSttClient(str(socket_path))
             ready_event = await client.start(client_stream_id="turn-raw", partial_interval_ms=100)
-            pong_event = await client.ping(ping_id="raw-1")
-            await client.pong(ping_id="server-raw-1")
+            pong_event = await client.ping(ping_id="raw-1", metadata={"transport": "raw_uds"})
+            await client.pong(ping_id="server-raw-1", metadata={"transport": "raw_uds", "ack": True})
             await client.pong()
             await client.send_audio(b"\x00\x01")
             await client.finalize()
@@ -578,8 +594,11 @@ def test_async_raw_uds_local_stt_client_stream_flow(tmp_path) -> None:
                 "client_stream_id": "turn-raw",
             },
         ),
-        (RawUdsFrameType.PING, {"type": "ping", "ping_id": "raw-1"}),
-        (RawUdsFrameType.PONG, {"type": "pong", "ping_id": "server-raw-1"}),
+        (RawUdsFrameType.PING, {"type": "ping", "ping_id": "raw-1", "metadata": {"transport": "raw_uds"}}),
+        (
+            RawUdsFrameType.PONG,
+            {"type": "pong", "ping_id": "server-raw-1", "metadata": {"transport": "raw_uds", "ack": True}},
+        ),
         (RawUdsFrameType.PONG, b""),
         (RawUdsFrameType.AUDIO_PCM16, b"\x00\x01"),
         (RawUdsFrameType.JSON_CONTROL, {"type": "finalize"}),
@@ -618,7 +637,7 @@ def test_async_raw_uds_local_stt_client_decodes_server_ping_for_acknowledgement(
 
         assert ping_event is not None
         assert ping_event.type == "ping"
-        assert ping_event.raw == {"type": "ping"}
+        assert ping_event.raw == {"type": "ping", "metadata": {}}
 
     asyncio.run(scenario())
 
