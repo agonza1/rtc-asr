@@ -84,8 +84,9 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
         [
             (
                 "Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, "
-                "YEAR, CALENDAR-YEAR, QUARTER, CALENDAR-QUARTER, MONTH, CALENDAR-MONTH, DAY, CALENDAR-DAY, "
-                "CALENDAR-DATE, AGE-RANGE"
+                "YEAR, CALENDAR-YEAR, QUARTER, CALENDAR-QUARTER, MONTH, CALENDAR-MONTH, "
+                "WEEK, CALENDAR-WEEK, ISO-WEEK, MEASURED-AT-ISO-WEEK, MEASUREMENT-ISO-WEEK, "
+                "DAY, CALENDAR-DAY, CALENDAR-DATE, AGE-RANGE"
             )
         ]
     ) == {
@@ -96,6 +97,7 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
         "measured-year",
         "measured-quarter",
         "measured-month",
+        "measured-week",
         "measured-day",
         "age-bucket",
     }
@@ -283,11 +285,13 @@ def test_parse_args_accepts_total_size_summary_sort_aliases() -> None:
 def test_parse_args_accepts_case_insensitive_summary_sort_aliases() -> None:
     assert parse_args(["--summary-sort", "LARGEST"]).summary_sort == "largest"
     assert parse_args(["--summary-sort", "Avg-Size-Asc"]).summary_sort == "avg-size-asc"
+    assert parse_args(["--summary-sort", "MEASURED-AT-ISO-WEEK-DESC"]).summary_sort == "measured-at-iso-week-desc"
 
 
 def test_parse_args_accepts_underscore_summary_sort_aliases() -> None:
     assert parse_args(["--summary-sort", "avg_bytes_asc"]).summary_sort == "avg-bytes-asc"
     assert parse_args(["--summary-sort", "largest_bytes_first"]).summary_sort == "largest-bytes-first"
+    assert parse_args(["--summary-sort", "measurement_iso_week_asc"]).summary_sort == "measurement-iso-week-asc"
 
 
 def test_parse_args_accepts_least_count_summary_sort_aliases() -> None:
