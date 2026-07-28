@@ -79,7 +79,13 @@ def test_parse_args_accepts_short_group_aliases() -> None:
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
-        ["Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, YEAR, MONTH, DAY, AGE-RANGE"]
+        [
+            (
+                "Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, "
+                "YEAR, CALENDAR-YEAR, MONTH, CALENDAR-MONTH, DAY, CALENDAR-DAY, "
+                "CALENDAR-DATE, AGE-RANGE"
+            )
+        ]
     ) == {
         "status",
         "current-artifact-name",
