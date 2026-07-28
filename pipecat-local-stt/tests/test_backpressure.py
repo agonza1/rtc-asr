@@ -352,6 +352,30 @@ async def _test_drop_oldest_queue_overflow_is_explicit_and_counted() -> None:
     await service.cleanup()
 
 
+def test_block_policy_counts_oversized_chunks_without_dropping() -> None:
+    asyncio.run(_test_block_policy_counts_oversized_chunks_without_dropping())
+
+
+async def _test_block_policy_counts_oversized_chunks_without_dropping() -> None:
+    websocket = SlowSendWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=40, max_send_queue_ms=20, drop_policy="block"),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 1280, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await eventually(lambda: any(isinstance(item, bytes) for item in websocket.sent))
+
+    assert service.metrics.local_stt_audio_frames_dropped_total == 0
+    assert service.metrics.local_stt_oversized_audio_chunks_total == 1
+    assert service.metrics.local_stt_oversized_audio_ms_total == 40
+    assert service.metrics.local_stt_send_queue_utilization_high_water_ratio == 1.0
+    websocket.release_binary_send.set()
+    await service.cleanup()
+
+
 def test_cancel_suppresses_stale_results() -> None:
     asyncio.run(_test_cancel_suppresses_stale_results())
 

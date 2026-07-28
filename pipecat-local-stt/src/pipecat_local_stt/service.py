@@ -227,6 +227,7 @@ class LocalStreamingSTTService(STTService):
         if self.config.drop_policy == "block":
             while self._queued_audio_ms + chunk.duration_ms > self.config.max_send_queue_ms:
                 if self._send_queue.empty() and chunk.duration_ms > self.config.max_send_queue_ms:
+                    self._record_oversized_audio_ms(chunk.duration_ms)
                     break
                 await asyncio.sleep(self.config.frame_ms / 1000.0)
             await self._put_chunk(chunk)
@@ -578,6 +579,13 @@ class LocalStreamingSTTService(STTService):
     def _record_dropped_audio_ms(self, duration_ms: float) -> None:
         self.metrics.local_stt_audio_dropped_ms_total = round(
             self.metrics.local_stt_audio_dropped_ms_total + duration_ms,
+            3,
+        )
+
+    def _record_oversized_audio_ms(self, duration_ms: float) -> None:
+        self.metrics.local_stt_oversized_audio_chunks_total += 1
+        self.metrics.local_stt_oversized_audio_ms_total = round(
+            self.metrics.local_stt_oversized_audio_ms_total + duration_ms,
             3,
         )
 
