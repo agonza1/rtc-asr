@@ -40,6 +40,7 @@ SUMMARY_GROUPS = (
     "detail-page-extension",
     "measured-year",
     "measured-month",
+    "measured-week",
     "measured-day",
     "age-bucket",
 )
@@ -69,6 +70,7 @@ SUMMARY_GROUP_KEYS = {
     "detail-page-extension": "by_detail_page_extension",
     "measured-year": "by_measured_year",
     "measured-month": "by_measured_month",
+    "measured-week": "by_measured_week",
     "measured-day": "by_measured_day",
     "age-bucket": "by_age_bucket",
 }
@@ -188,6 +190,11 @@ SUMMARY_GROUP_ALIASES = {
     "calendar-month": "measured-month",
     "measurement-month": "measured-month",
     "measured-at-month": "measured-month",
+    "week": "measured-week",
+    "calendar-week": "measured-week",
+    "iso-week": "measured-week",
+    "measurement-week": "measured-week",
+    "measured-at-week": "measured-week",
     "date": "measured-day",
     "calendar-date": "measured-day",
     "day": "measured-day",
@@ -315,6 +322,21 @@ STALE_SORT_ALIASES = {
     "measured-at-month": "measured-month",
     "measured-at-month-asc": "measured-month-asc",
     "measured-at-month-desc": "measured-month-desc",
+    "week": "measured-week",
+    "week-asc": "measured-week-asc",
+    "week-desc": "measured-week-desc",
+    "calendar-week": "measured-week",
+    "calendar-week-asc": "measured-week-asc",
+    "calendar-week-desc": "measured-week-desc",
+    "iso-week": "measured-week",
+    "iso-week-asc": "measured-week-asc",
+    "iso-week-desc": "measured-week-desc",
+    "measurement-week": "measured-week",
+    "measurement-week-asc": "measured-week-asc",
+    "measurement-week-desc": "measured-week-desc",
+    "measured-at-week": "measured-week",
+    "measured-at-week-asc": "measured-week-asc",
+    "measured-at-week-desc": "measured-week-desc",
     "date": "measured-day",
     "date-asc": "measured-day-asc",
     "date-desc": "measured-day-desc",
@@ -901,6 +923,24 @@ SUMMARY_SORTS = (
     "measured-day",
     "measured-day-desc",
     "measured-day-asc",
+    "week",
+    "week-desc",
+    "week-asc",
+    "calendar-week",
+    "calendar-week-desc",
+    "calendar-week-asc",
+    "iso-week",
+    "iso-week-desc",
+    "iso-week-asc",
+    "measurement-week",
+    "measurement-week-desc",
+    "measurement-week-asc",
+    "measured-at-week",
+    "measured-at-week-desc",
+    "measured-at-week-asc",
+    "measured-week",
+    "measured-week-desc",
+    "measured-week-asc",
 )
 
 SUMMARY_SORT_ALIASES = {
@@ -1039,6 +1079,21 @@ SUMMARY_SORT_ALIASES = {
     "measured-at-day": "measured-day",
     "measured-at-day-asc": "measured-day-asc",
     "measured-at-day-desc": "measured-day-desc",
+    "week": "measured-week",
+    "week-asc": "measured-week-asc",
+    "week-desc": "measured-week-desc",
+    "calendar-week": "measured-week",
+    "calendar-week-asc": "measured-week-asc",
+    "calendar-week-desc": "measured-week-desc",
+    "iso-week": "measured-week",
+    "iso-week-asc": "measured-week-asc",
+    "iso-week-desc": "measured-week-desc",
+    "measurement-week": "measured-week",
+    "measurement-week-asc": "measured-week-asc",
+    "measurement-week-desc": "measured-week-desc",
+    "measured-at-week": "measured-week",
+    "measured-at-week-asc": "measured-week-asc",
+    "measured-at-week-desc": "measured-week-desc",
 }
 
 
@@ -1693,6 +1748,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "measured-month",
             "measured-month-asc",
             "measured-month-desc",
+            "week",
+            "week-asc",
+            "week-desc",
+            "calendar-week",
+            "calendar-week-asc",
+            "calendar-week-desc",
+            "iso-week",
+            "iso-week-asc",
+            "iso-week-desc",
+            "measurement-week",
+            "measurement-week-asc",
+            "measurement-week-desc",
+            "measured-at-week",
+            "measured-at-week-asc",
+            "measured-at-week-desc",
+            "measured-week",
+            "measured-week-asc",
+            "measured-week-desc",
             "date",
             "date-asc",
             "date-desc",
@@ -2408,6 +2481,14 @@ def measured_month(value: Any) -> str:
     return parsed.strftime("%Y-%m")
 
 
+def measured_week(value: Any) -> str:
+    parsed = parse_timestamp(value)
+    if parsed is None:
+        return "unknown"
+    iso_year, iso_week, _ = parsed.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
+
+
 def measured_day(value: Any) -> str:
     parsed = parse_timestamp(value)
     if parsed is None:
@@ -2902,6 +2983,7 @@ def stale_artifacts(
         measured_timestamp = parse_timestamp(measured_at)
         artifact_measured_year = measured_year(measured_at)
         artifact_measured_month = measured_month(measured_at)
+        artifact_measured_week = measured_week(measured_at)
         artifact_measured_day = measured_day(measured_at)
         artifact_age_days = None
         if measured_timestamp is not None:
@@ -2944,6 +3026,7 @@ def stale_artifacts(
                 "measured_at": measured_at,
                 "measured_year": artifact_measured_year,
                 "measured_month": artifact_measured_month,
+                "measured_week": artifact_measured_week,
                 "measured_day": artifact_measured_day,
                 "age_days": artifact_age_days,
                 "age_bucket": artifact_age_bucket,
@@ -3409,6 +3492,22 @@ def stale_artifacts(
                 entry.get("artifact_path") or "",
             ),
         )
+    if sort_by in {"measured-week", "measured-week-asc"}:
+        return sorted(
+            stale,
+            key=lambda entry: (
+                entry.get("measured_week") or "unknown",
+                entry.get("artifact_path") or "",
+            ),
+        )
+    if sort_by == "measured-week-desc":
+        return sorted(
+            stale,
+            key=lambda entry: (
+                tuple(-ord(character) for character in str(entry.get("measured_week") or "unknown")),
+                entry.get("artifact_path") or "",
+            ),
+        )
     if sort_by in {"measured-day", "measured-day-asc"}:
         return sorted(
             stale,
@@ -3473,6 +3572,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
     by_detail_page_extension: dict[str, dict[str, Any]] = {}
     by_measured_year: dict[str, dict[str, Any]] = {}
     by_measured_month: dict[str, dict[str, Any]] = {}
+    by_measured_week: dict[str, dict[str, Any]] = {}
     by_measured_day: dict[str, dict[str, Any]] = {}
     by_age_bucket: dict[str, dict[str, Any]] = {}
     for entry in stale:
@@ -3802,6 +3902,20 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         month_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         month_bucket["total_size"] = format_bytes(month_bucket["total_size_bytes"])
 
+        week = str(entry.get("measured_week") or measured_week(entry.get("measured_at")))
+        week_bucket = by_measured_week.setdefault(
+            week,
+            {
+                "measured_week": week,
+                "count": 0,
+                "total_size_bytes": 0,
+                "total_size": "0 B",
+            },
+        )
+        week_bucket["count"] += 1
+        week_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
+        week_bucket["total_size"] = format_bytes(week_bucket["total_size_bytes"])
+
         day = str(entry.get("measured_day") or measured_day(entry.get("measured_at")))
         day_bucket = by_measured_day.setdefault(
             day,
@@ -3925,6 +4039,10 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         "by_measured_month": sorted(
             by_measured_month.values(),
             key=lambda entry: (-entry["total_size_bytes"], entry["measured_month"]),
+        ),
+        "by_measured_week": sorted(
+            by_measured_week.values(),
+            key=lambda entry: (-entry["total_size_bytes"], entry["measured_week"]),
         ),
         "by_measured_day": sorted(
             by_measured_day.values(),
@@ -4379,6 +4497,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
         "measured_at",
         "measured_year",
         "measured_month",
+        "measured_week",
         "measured_day",
         "age_days",
         "age_bucket",
@@ -4407,6 +4526,7 @@ def render_csv(stale: list[dict[str, Any]]) -> str:
             "artifact_dir": entry.get("artifact_dir") or str(Path(entry.get("artifact_path") or "").parent),
             "measured_year": entry.get("measured_year") or measured_year(entry.get("measured_at")),
             "measured_month": entry.get("measured_month") or measured_month(entry.get("measured_at")),
+            "measured_week": entry.get("measured_week") or measured_week(entry.get("measured_at")),
             "measured_day": entry.get("measured_day") or measured_day(entry.get("measured_at")),
             "current_artifact_name": entry.get("current_artifact_name")
             or Path(entry.get("current_artifact_path") or "").name,
@@ -4550,11 +4670,13 @@ def summary_bucket_sort_key(bucket: dict[str, Any], sort_by: str) -> tuple[Any, 
         "measured-year-asc",
         "measured-month",
         "measured-month-asc",
+        "measured-week",
+        "measured-week-asc",
         "measured-day",
         "measured-day-asc",
     }:
         return (name,)
-    if sort_by in {"measured-year-desc", "measured-month-desc", "measured-day-desc"}:
+    if sort_by in {"measured-year-desc", "measured-month-desc", "measured-week-desc", "measured-day-desc"}:
         return (*(-ord(character) for character in name), -len(name))
     if bucket_key == "age_bucket" and sort_by in {"name", "name-asc"}:
         return (AGE_BUCKET_ORDER.get(name, sys.maxsize), name)
@@ -5422,6 +5544,40 @@ def render_summary(
         append_omitted_summary_buckets(
             lines,
             summary["by_measured_month"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+    if "measured-week" in selected_groups and summary["by_measured_week"]:
+        lines.append("By measured week:")
+    if "measured-week" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_measured_week"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {measured_week}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    measured_week=bucket["measured_week"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_measured_week"],
             shown_buckets,
             limit=summary_limit,
             sort_by=summary_sort,

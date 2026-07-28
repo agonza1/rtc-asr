@@ -39,6 +39,7 @@ normalize_filter_values = report_module.normalize_filter_values
 normalize_summary_groups = report_module.normalize_summary_groups
 validate_summary_options = report_module.validate_summary_options
 measured_month = report_module.measured_month
+measured_week = report_module.measured_week
 measured_day = report_module.measured_day
 measured_year = report_module.measured_year
 age_bucket = report_module.age_bucket
@@ -714,6 +715,30 @@ def test_parse_args_accepts_measured_day_summary_sort_aliases() -> None:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
+def test_parse_args_accepts_measured_week_summary_sort_aliases() -> None:
+    for alias in [
+        "week",
+        "week-desc",
+        "week-asc",
+        "calendar-week",
+        "calendar-week-desc",
+        "calendar-week-asc",
+        "iso-week",
+        "iso-week-desc",
+        "iso-week-asc",
+        "measurement-week",
+        "measurement-week-desc",
+        "measurement-week-asc",
+        "measured-at-week",
+        "measured-at-week-desc",
+        "measured-at-week-asc",
+        "measured-week",
+        "measured-week-desc",
+        "measured-week-asc",
+    ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
 def test_render_json_summary_accepts_readable_name_sort_aliases() -> None:
     stale = [
         {
@@ -815,6 +840,48 @@ def test_render_json_summary_groups_by_measured_day_aliases() -> None:
         },
         {
             "measured_day": "2026-06-21",
+            "count": 1,
+            "total_size_bytes": 80,
+            "total_size": "80 B",
+        },
+    ]
+
+
+def test_render_json_summary_groups_by_measured_week_aliases() -> None:
+    assert measured_week("2026-06-20T23:59:59Z") == "2026-W25"
+
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "measured_at": "2026-06-20T10:00:00Z",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "measured_at": "2026-06-21T11:00:00Z",
+            "artifact_size_bytes": 60,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "legacy",
+            "measured_at": "2026-06-22T10:00:00Z",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    summary = json.loads(render_json_summary(stale, groups=["calendar-week"], summary_sort="size"))
+
+    assert summary["by_measured_week"] == [
+        {
+            "measured_week": "2026-W25",
+            "count": 2,
+            "total_size_bytes": 100,
+            "total_size": "100 B",
+        },
+        {
+            "measured_week": "2026-W26",
             "count": 1,
             "total_size_bytes": 80,
             "total_size": "80 B",
@@ -1263,6 +1330,24 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "measured-at-month",
         "measured-at-month-asc",
         "measured-at-month-desc",
+        "week",
+        "week-asc",
+        "week-desc",
+        "calendar-week",
+        "calendar-week-asc",
+        "calendar-week-desc",
+        "iso-week",
+        "iso-week-asc",
+        "iso-week-desc",
+        "measurement-week",
+        "measurement-week-asc",
+        "measurement-week-desc",
+        "measured-at-week",
+        "measured-at-week-asc",
+        "measured-at-week-desc",
+        "measured-week",
+        "measured-week-asc",
+        "measured-week-desc",
         "date",
         "date-asc",
         "date-desc",
@@ -1357,6 +1442,36 @@ def test_stale_artifacts_accept_measured_day_sort_aliases() -> None:
     assert [entry["artifact_path"] for entry in descending] == [
         "benchmark-results/late.json",
         "benchmark-results/early.json",
+    ]
+
+
+def test_stale_artifacts_accept_measured_week_sort_aliases() -> None:
+    manifest = {
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/week-25.json",
+                "status": "legacy",
+                "measured_at": "2026-06-20T23:00:00Z",
+            },
+            {
+                "artifact_path": "benchmark-results/week-26.json",
+                "status": "legacy",
+                "measured_at": "2026-06-22T01:00:00Z",
+            },
+        ],
+        "tracks": [],
+    }
+
+    ascending = stale_artifacts(manifest, sort_by="week")
+    descending = stale_artifacts(manifest, sort_by="measurement-week-desc")
+
+    assert [entry["artifact_path"] for entry in ascending] == [
+        "benchmark-results/week-25.json",
+        "benchmark-results/week-26.json",
+    ]
+    assert [entry["artifact_path"] for entry in descending] == [
+        "benchmark-results/week-26.json",
+        "benchmark-results/week-25.json",
     ]
 
 
@@ -2202,6 +2317,7 @@ def test_stale_artifacts_excludes_current_track_artifact() -> None:
             "measured_at": "2026-06-10T00:00:00Z",
             "measured_year": "2026",
             "measured_month": "2026-06",
+            "measured_week": "2026-W24",
             "measured_day": "2026-06-10",
             "age_days": 10,
             "age_bucket": "7-29d",
@@ -4329,8 +4445,8 @@ def test_render_csv_emits_header_and_artifact_rows() -> None:
     )
 
     assert rendered.splitlines() == [
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_month,measured_day,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size",
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026,2026-06,2026-06-10,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B',
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_month,measured_week,measured_day,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size",
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,2026-06-10T00:00:00Z,2026,2026-06,2026-W24,2026-06-10,10,7-29d,10 days,benchmark-results/current.json,current.json,current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B',
     ]
 
 
@@ -8412,6 +8528,8 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- none: 3 artifacts (65 B, 65 bytes)\n"
         "By measured month:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
+        "By measured week:\n"
+        "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By age bucket:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)"
     )
@@ -9674,6 +9792,8 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- .html: 2 artifacts (100 B, 100 bytes)\n"
         "By measured month:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
+        "By measured week:\n"
+        "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By age bucket:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
     )
@@ -9860,8 +9980,8 @@ def test_main_csv_reports_limited_artifact_rows(monkeypatch, capsys) -> None:
     assert report_module.main(["--csv", "--limit", "1"]) == 0
 
     assert capsys.readouterr().out == (
-        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_month,measured_day,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
-        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,unknown,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B\r\n'
+        "artifact_path,artifact_name,artifact_stem,artifact_dir,artifact_extension,slug,label,backend,model,status,measured_at,measured_year,measured_month,measured_week,measured_day,age_days,age_bucket,age,current_artifact_path,current_artifact_name,current_artifact_stem,current_artifact_dir,current_artifact_extension,track_state,detail_page_path,detail_page_name,detail_page_stem,detail_page_dir,detail_page_extension,artifact_size_bytes,artifact_size\r\n"
+        'benchmark-results/large.json,large.json,large,benchmark-results,.json,base,"Faster, Whisper",,,legacy,,unknown,unknown,unknown,unknown,,unknown,unknown,benchmark-results/base-current.json,base-current.json,base-current,benchmark-results,.json,tracked,benchmark-results/pages/large.html,large.html,large,benchmark-results/pages,.html,90,90 B\r\n'
     )
 
 
