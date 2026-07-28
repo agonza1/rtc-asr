@@ -391,6 +391,9 @@ class LocalStreamingSTTService(STTService):
             self.metrics.local_stt_warning_events_total += 1
             logger.warning("Local STT protocol warning: %s", payload.get("message", payload))
             return
+        if event_type == "closed":
+            self.metrics.local_stt_closed_events_total += 1
+            return
         if event_type == "error":
             self.metrics.local_stt_protocol_errors_total += 1
             logger.warning("Local STT protocol error: %s", payload.get("message", payload))

@@ -141,6 +141,15 @@ def test_service_accepts_matching_ready_generation() -> None:
     assert service.metrics.local_stt_stale_ready_events_total == 0
 
 
+def test_service_counts_closed_acknowledgements() -> None:
+    service = LocalStreamingSTTService()
+
+    asyncio.run(service._handle_server_payload({"type": "closed", "reason": "client_close"}))
+
+    assert service.metrics.local_stt_closed_events_total == 1
+    assert service.metrics_snapshot()["local_stt_closed_events_total"] == 1
+
+
 async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping() -> None:
     websocket = FakeLocalSTTWebSocket()
     service = LocalStreamingSTTService(LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20), connect_fn=lambda _url: asyncio.sleep(0, websocket))

@@ -33,6 +33,7 @@ class LocalSTTMetrics:
     local_stt_ping_events_total: int = 0
     local_stt_pong_events_total: int = 0
     local_stt_pong_events_sent_total: int = 0
+    local_stt_closed_events_total: int = 0
     local_stt_protocol_errors_total: int = 0
     local_stt_start_messages_sent_total: int = 0
     local_stt_finalize_messages_sent_total: int = 0
