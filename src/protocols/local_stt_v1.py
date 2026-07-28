@@ -224,6 +224,7 @@ class PingMessage(LocalSttModel):
     type: Literal["ping"]
     ping_id: str | None = None
     timestamp_ms: int | None = Field(default=None, ge=0)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("timestamp_ms", mode="before")
     @classmethod
