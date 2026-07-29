@@ -263,6 +263,15 @@ def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
         "mean-bytes",
         "mean-bytes-desc",
         "mean-bytes-asc",
+        "per-file-size",
+        "per-file-size-desc",
+        "per-file-size-asc",
+        "size-per-file",
+        "size-per-file-desc",
+        "size-per-file-asc",
+        "bytes-per-file",
+        "bytes-per-file-desc",
+        "bytes-per-file-asc",
     ]:
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
@@ -377,6 +386,36 @@ def test_render_json_summary_accepts_short_average_summary_sort_aliases() -> Non
     assert [bucket["slug"] for bucket in avg_asc["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in mean_desc["by_slug"]] == ["base", "qwen"]
     assert average["by_slug"][0]["average_size"] == "100 B"
+
+
+def test_render_json_summary_accepts_per_file_average_sort_aliases() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 150,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "slug": "base",
+            "artifact_size_bytes": 50,
+        },
+        {
+            "artifact_path": "benchmark-results/qwen.json",
+            "status": "legacy",
+            "slug": "qwen",
+            "artifact_size_bytes": 80,
+        },
+    ]
+
+    descending = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="size-per-file"))
+    ascending = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="bytes-per-file-asc"))
+
+    assert [bucket["slug"] for bucket in descending["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in ascending["by_slug"]] == ["qwen", "base"]
+    assert descending["by_slug"][0]["average_size"] == "100 B"
 
 
 def test_render_json_summary_accepts_underscore_summary_sort_aliases() -> None:
