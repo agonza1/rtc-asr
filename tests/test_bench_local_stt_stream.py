@@ -282,6 +282,35 @@ def test_parse_args_accepts_scenario_label(tmp_path) -> None:
     assert args.scenario == "warm-service-regression"
 
 
+def test_parse_args_accepts_repeated_metadata_labels(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    args = benchmark_module.parse_args([
+        "--input-raw-pcm",
+        str(pcm_path),
+        "--metadata",
+        "device=mac-mini-m2",
+        "--metadata",
+        "profile=warm-service",
+    ])
+
+    assert args.metadata == {"device": "mac-mini-m2", "profile": "warm-service"}
+
+
+def test_parse_args_rejects_malformed_metadata(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    for metadata in ("missing-separator", "=missing-key"):
+        try:
+            benchmark_module.parse_args(["--input-raw-pcm", str(pcm_path), "--metadata", metadata])
+        except SystemExit as exc:
+            assert exc.code == 2
+        else:
+            raise AssertionError(f"expected malformed metadata {metadata!r} to fail")
+
+
 def test_parse_args_accepts_readable_transport_aliases(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
@@ -579,6 +608,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
             realtime_pace=False,
             client_factory=FakeLocalSttClient,
             scenario="warm-service-regression",
+            metadata={"profile": "warm", "device": "test-host"},
         )
     )
 
@@ -602,6 +632,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
         "receive_timeout_seconds": 5,
         "realtime_pace": False,
         "scenario": "warm-service-regression",
+        "metadata": {"device": "test-host", "profile": "warm"},
     }
     assert sample["audio_frames_sent"] == 2
     assert sample["audio_frames_dropped"] == 0
@@ -1299,6 +1330,7 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
         audio_seen["audio"] = kwargs["audio"]
         audio_seen["metrics_pid"] = kwargs["metrics_pid"]
         audio_seen["scenario"] = kwargs["scenario"]
+        audio_seen["metadata"] = kwargs["metadata"]
         return {
             "kind": "local-stt-v1-latency-benchmark",
             "samples": [],
@@ -1325,6 +1357,8 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
             "4321",
             "--scenario",
             "raw-pcm-smoke",
+            "--metadata",
+            "device=test-host",
             "--no-realtime-pace",
         ]
     )
@@ -1336,3 +1370,4 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
     assert audio_seen["audio"].frames == [b"a" * 640]
     assert audio_seen["metrics_pid"] == 4321
     assert audio_seen["scenario"] == "raw-pcm-smoke"
+    assert audio_seen["metadata"] == {"device": "test-host"}

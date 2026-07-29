@@ -156,6 +156,14 @@ def nonnegative_float(value: str) -> float:
     return parsed
 
 
+def metadata_pair(value: str) -> tuple[str, str]:
+    key, separator, metadata_value = value.partition("=")
+    key = key.strip()
+    if not separator or not key:
+        raise argparse.ArgumentTypeError("metadata must use KEY=VALUE with a non-empty key")
+    return key, metadata_value.strip()
+
+
 def normalize_transport(value: str) -> str:
     normalized = value.strip().lower().replace("_", "-")
     canonical = normalized.replace("-", "_")
@@ -187,6 +195,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--scenario",
         help="Optional short label to record in the artifact settings, for example warmup or regression-check",
+    )
+    parser.add_argument(
+        "--metadata",
+        action="append",
+        default=[],
+        type=metadata_pair,
+        metavar="KEY=VALUE",
+        help="Optional artifact metadata to record under settings.metadata; repeat for multiple values.",
     )
     parser.add_argument(
         "--receive-timeout-seconds",
@@ -229,6 +245,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--no-realtime-pace", action="store_true", help="Send frames without sleeping between frames")
     args = parser.parse_args(argv)
     validate_transport_args(args.transport, args.uds_path)
+    args.metadata = dict(args.metadata)
     return args
 
 
@@ -590,6 +607,7 @@ async def run_benchmark(
     thermal_observation: str | None = None,
     thermal_duration_minutes: float | None = None,
     scenario: str | None = None,
+    metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     validate_transport_args(transport, Path(uds_path) if uds_path is not None else None)
     factory = client_factory or make_client_factory(transport=transport, uds_path=uds_path)
@@ -644,6 +662,7 @@ async def run_benchmark(
             "receive_timeout_seconds": receive_timeout_seconds,
             "realtime_pace": realtime_pace,
             "scenario": scenario,
+            "metadata": dict(sorted((metadata or {}).items())),
         },
         "runs": runs,
         "samples": samples,
@@ -1059,6 +1078,7 @@ def main(argv: list[str] | None = None) -> int:
             thermal_observation=args.thermal_observation,
             thermal_duration_minutes=args.thermal_duration_minutes,
             scenario=args.scenario,
+            metadata=args.metadata,
         )
     )
     if args.output is not None:
