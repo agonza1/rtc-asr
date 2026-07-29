@@ -79,6 +79,18 @@ def test_parse_args_accepts_short_group_aliases() -> None:
     assert parse_args(["--groups", "status, backend"]).summary_group == ["status, backend"]
 
 
+def test_parse_args_accepts_summary_share_aliases() -> None:
+    for alias in [
+        "--summary-share",
+        "--summary-shares",
+        "--include-summary-share",
+        "--include-summary-shares",
+        "--share",
+        "--shares",
+    ]:
+        assert parse_args([alias]).summary_share is True
+
+
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
         [
