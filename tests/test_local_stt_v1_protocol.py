@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from src.protocols.local_stt_v1 import (
     HOT_PATH_BYTES_PER_FRAME,
@@ -115,6 +116,21 @@ def test_builders_emit_control_messages_for_keepalive_and_close() -> None:
         "reason": "shutdown",
         "metadata": {"drain": True},
     }
+
+
+@pytest.mark.parametrize(
+    ("builder", "kwargs"),
+    [
+        (build_start_message, {"metadata": []}),
+        (build_ready_message, {"metadata": ""}),
+        (build_ping_message, {"metadata": []}),
+        (build_pong_message, {"metadata": ""}),
+        (build_closed_message, {"metadata": []}),
+    ],
+)
+def test_builders_reject_non_object_metadata(builder, kwargs: dict[str, object]) -> None:
+    with pytest.raises(ValidationError, match="metadata"):
+        builder(**kwargs)
 
 
 def test_protocol_package_exports_control_message_builders() -> None:
