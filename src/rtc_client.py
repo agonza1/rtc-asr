@@ -295,6 +295,7 @@ class AsyncLocalSttClient:
         _validate_positive_integer(partial_interval_ms, field_name="partial_interval_ms")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
         _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
+        _validate_metadata_object(metadata)
         websocket = await self.connect()
         payload: dict[str, Any] = {
             "type": "start",
@@ -346,6 +347,8 @@ class AsyncLocalSttClient:
         timestamp_ms: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        _validate_nonnegative_integer(timestamp_ms, field_name="timestamp_ms")
+        _validate_metadata_object(metadata)
         websocket = self._require_websocket()
         payload: dict[str, Any] = {"type": "ping"}
         if ping_id is not None:
@@ -367,6 +370,8 @@ class AsyncLocalSttClient:
         timestamp_ms: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
+        _validate_nonnegative_integer(timestamp_ms, field_name="timestamp_ms")
+        _validate_metadata_object(metadata)
         websocket = self._require_websocket()
         payload: dict[str, Any] = {"type": "pong"}
         if ping_id is not None:
@@ -466,6 +471,7 @@ class AsyncRawUdsLocalSttClient:
         _validate_positive_integer(partial_interval_ms, field_name="partial_interval_ms")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
         _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
+        _validate_metadata_object(metadata)
         payload: dict[str, Any] = {
             "type": "start",
             "version": PROTOCOL_VERSION,
@@ -512,6 +518,8 @@ class AsyncRawUdsLocalSttClient:
         timestamp_ms: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        _validate_nonnegative_integer(timestamp_ms, field_name="timestamp_ms")
+        _validate_metadata_object(metadata)
         payload: dict[str, Any] = {"type": "ping"}
         if ping_id is not None:
             payload["ping_id"] = ping_id
@@ -532,6 +540,8 @@ class AsyncRawUdsLocalSttClient:
         timestamp_ms: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
+        _validate_nonnegative_integer(timestamp_ms, field_name="timestamp_ms")
+        _validate_metadata_object(metadata)
         payload: dict[str, Any] = {"type": "pong"}
         if ping_id is not None:
             payload["ping_id"] = ping_id
@@ -683,9 +693,21 @@ def _validate_nonnegative_number(value: Any, *, field_name: str) -> None:
         raise ValueError(f"{field_name} must be zero or a finite positive number")
 
 
+def _validate_nonnegative_integer(value: Any, *, field_name: str) -> None:
+    if value is None:
+        return
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ValueError(f"{field_name} must be a nonnegative integer")
+
+
 def _validate_boolean(value: Any, *, field_name: str) -> None:
     if not isinstance(value, bool):
         raise ValueError(f"{field_name} must be boolean")
+
+
+def _validate_metadata_object(value: Any) -> None:
+    if value is not None and not isinstance(value, dict):
+        raise ValueError("metadata must be a JSON object")
 
 
 def _local_stt_protocol_error_from_payload(payload: dict[str, Any]) -> LocalSttProtocolError:
