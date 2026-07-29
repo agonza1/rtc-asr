@@ -4792,6 +4792,13 @@ def test_parse_args_accepts_summary_csv_output_flag() -> None:
     assert parse_args(["--summary-csv", "--summary-share"]).summary_csv is True
 
 
+def test_parse_args_accepts_summary_markdown_share_flag() -> None:
+    args = parse_args(["--summary-markdown", "--summary-share"])
+
+    assert args.summary_markdown is True
+    assert args.summary_share is True
+
+
 def test_render_summary_csv_includes_average_size_for_average_sorts() -> None:
     rendered = render_summary_csv(
         [
