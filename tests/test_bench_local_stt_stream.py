@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-from src.protocols import RAW_UDS_HEADER_BYTES, RAW_UDS_MAX_PAYLOAD_BYTES
+from src.protocols import RAW_UDS_FRAME_DIRECTION, RAW_UDS_HEADER_BYTES, RAW_UDS_MAX_PAYLOAD_BYTES
 from src.rtc_client import TranscriptEvent
 
 
@@ -1044,6 +1044,7 @@ def test_describe_transport_contract_records_raw_uds_framing() -> None:
         "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
         "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
         "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
+        "frame_direction": RAW_UDS_FRAME_DIRECTION,
         "frame_type_codes": {
             "JSON_CONTROL": 1,
             "AUDIO_PCM16": 2,
@@ -1193,6 +1194,7 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
         "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
         "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
         "frame_types": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
+        "frame_direction": RAW_UDS_FRAME_DIRECTION,
         "frame_type_codes": {
             "JSON_CONTROL": 1,
             "AUDIO_PCM16": 2,
@@ -1258,6 +1260,7 @@ def test_run_benchmark_records_raw_uds_target_contract_with_injected_client() ->
     assert payload["target_contract"]["frame_format"] == "uint8_type_uint32_len_le"
     assert payload["target_contract"]["frame_header_bytes"] == RAW_UDS_HEADER_BYTES
     assert payload["target_contract"]["per_frame_overhead_bytes"] == RAW_UDS_HEADER_BYTES
+    assert payload["target_contract"]["frame_direction"] == RAW_UDS_FRAME_DIRECTION
     assert payload["target_contract"]["start_control_payload"] == {
         "type": "start",
         "protocol": "local-stt-v1",
