@@ -37,7 +37,7 @@ def average_scores(*values: float | None) -> float | None:
     return round(sum(present) / len(present), 1)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build the benchmark site manifest")
     parser.add_argument(
         "--results-dir",
@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero when the checked-in manifest does not match generated output",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def render_manifest(manifest: dict[str, Any]) -> str:
