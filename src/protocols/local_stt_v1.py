@@ -84,6 +84,21 @@ def _require_metadata_object(value: Any) -> Any:
     return value
 
 
+def _require_string_field(value: Any) -> Any:
+    if not isinstance(value, str):
+        raise PydanticCustomError(
+            "invalid_string_field",
+            "must be a string",
+        )
+    return value
+
+
+def _require_optional_string_field(value: Any) -> Any:
+    if value is None:
+        return value
+    return _require_string_field(value)
+
+
 @dataclass(frozen=True, slots=True)
 class RawUdsFrame:
     frame_type: RawUdsFrameType
@@ -226,6 +241,11 @@ class StartMessage(LocalSttModel):
     def require_boolean_fields(cls, value: Any) -> Any:
         return _require_boolean_field(value)
 
+    @field_validator("language", "client_stream_id", mode="before")
+    @classmethod
+    def require_optional_string_fields(cls, value: Any) -> Any:
+        return _require_optional_string_field(value)
+
 
 class FinalizeMessage(LocalSttModel):
     type: Literal["finalize"]
@@ -249,6 +269,11 @@ class PingMessage(LocalSttModel):
     @classmethod
     def reject_boolean_integer_fields(cls, value: Any) -> Any:
         return _reject_boolean_integer_field(value)
+
+    @field_validator("ping_id", mode="before")
+    @classmethod
+    def require_optional_string_fields(cls, value: Any) -> Any:
+        return _require_optional_string_field(value)
 
 
 class ReadyMessage(LocalSttModel):
@@ -285,6 +310,16 @@ class TranscriptMessage(LocalSttModel):
     def require_boolean_fields(cls, value: Any) -> Any:
         return _require_boolean_field(value)
 
+    @field_validator("text", mode="before")
+    @classmethod
+    def require_string_fields(cls, value: Any) -> Any:
+        return _require_string_field(value)
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def require_optional_string_fields(cls, value: Any) -> Any:
+        return _require_optional_string_field(value)
+
     @model_validator(mode="after")
     def validate_timing(self) -> "TranscriptMessage":
         if self.audio_transcribed_ms > self.audio_received_ms:
@@ -312,6 +347,11 @@ class WarningMessage(LocalSttModel):
     def require_boolean_fields(cls, value: Any) -> Any:
         return _require_boolean_field(value)
 
+    @field_validator("code", "message", mode="before")
+    @classmethod
+    def require_string_fields(cls, value: Any) -> Any:
+        return _require_string_field(value)
+
 
 class ErrorMessage(LocalSttModel):
     type: Literal["error"]
@@ -326,6 +366,11 @@ class ErrorMessage(LocalSttModel):
     def require_boolean_fields(cls, value: Any) -> Any:
         return _require_boolean_field(value)
 
+    @field_validator("code", "message", mode="before")
+    @classmethod
+    def require_string_fields(cls, value: Any) -> Any:
+        return _require_string_field(value)
+
 
 class PongMessage(LocalSttModel):
     type: Literal["pong"]
@@ -338,11 +383,21 @@ class PongMessage(LocalSttModel):
     def reject_boolean_integer_fields(cls, value: Any) -> Any:
         return _reject_boolean_integer_field(value)
 
+    @field_validator("ping_id", mode="before")
+    @classmethod
+    def require_optional_string_fields(cls, value: Any) -> Any:
+        return _require_optional_string_field(value)
+
 
 class ClosedMessage(LocalSttModel):
     type: Literal["closed"]
     reason: str
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def require_string_fields(cls, value: Any) -> Any:
+        return _require_string_field(value)
 
 
 ClientMessage: TypeAlias = Annotated[
@@ -824,6 +879,7 @@ def _error_code_from_validation(error: dict[str, Any]) -> str:
         "invalid_integer_field",
         "invalid_numeric_field",
         "invalid_boolean_field",
+        "invalid_string_field",
         "invalid_metadata_field",
     }:
         return error_type
