@@ -255,6 +255,19 @@ def test_async_asr_client_rejects_invalid_response_timeout(response_timeout: flo
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("partial_interval_chunks", [0, 1.5, True])
+def test_async_asr_client_rejects_invalid_partial_interval_before_connecting(partial_interval_chunks: object) -> None:
+    async def fail_connect(_url: str) -> FakeWebSocket:
+        raise AssertionError("invalid start should not open the websocket")
+
+    async def scenario() -> None:
+        client = AsyncASRClient("ws://example.test/ws/stream", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match="partial_interval_chunks must be a positive integer"):
+            await client.start(partial_interval_chunks=partial_interval_chunks)  # type: ignore[arg-type]
+
+    asyncio.run(scenario())
+
+
 def test_async_local_stt_client_stream_flow() -> None:
     websocket = FakeWebSocket([
         {
@@ -442,6 +455,19 @@ def test_async_local_stt_client_rejects_non_boolean_interim_results_before_conne
         client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fail_connect)
         with pytest.raises(ValueError, match="interim_results must be boolean"):
             await client.start(interim_results=1)
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("partial_interval_ms", [0, 1.5, True])
+def test_async_local_stt_client_rejects_invalid_partial_interval_before_connecting(partial_interval_ms: object) -> None:
+    async def fail_connect(_url: str) -> FakeWebSocket:
+        raise AssertionError("invalid start should not open the websocket")
+
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match="partial_interval_ms must be a positive integer"):
+            await client.start(partial_interval_ms=partial_interval_ms)  # type: ignore[arg-type]
 
     asyncio.run(scenario())
 
@@ -718,6 +744,19 @@ def test_async_raw_uds_client_rejects_non_boolean_interim_results_before_connect
         client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=fail_connect)
         with pytest.raises(ValueError, match="interim_results must be boolean"):
             await client.start(interim_results=1)
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("partial_interval_ms", [0, 1.5, True])
+def test_async_raw_uds_client_rejects_invalid_partial_interval_before_connecting(partial_interval_ms: object) -> None:
+    async def fail_connect(_path: str):
+        raise AssertionError("invalid start should not open the raw UDS socket")
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match="partial_interval_ms must be a positive integer"):
+            await client.start(partial_interval_ms=partial_interval_ms)  # type: ignore[arg-type]
 
     asyncio.run(scenario())
 

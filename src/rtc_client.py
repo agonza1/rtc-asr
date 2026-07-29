@@ -156,10 +156,8 @@ class AsyncASRClient:
         max_buffer_seconds: float | None = None,
         send_binary_frames: bool = False,
     ) -> dict[str, Any]:
-        if sample_rate < 1:
-            raise ValueError("sample_rate must be a positive integer")
-        if partial_interval_chunks < 1:
-            raise ValueError("partial_interval_chunks must be a positive integer")
+        _validate_positive_integer(sample_rate, field_name="sample_rate")
+        _validate_positive_integer(partial_interval_chunks, field_name="partial_interval_chunks")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
         _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
         websocket = await self.connect()
@@ -294,8 +292,7 @@ class AsyncLocalSttClient:
         if sample_rate != HOT_PATH_SAMPLE_RATE:
             raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
         _validate_boolean(interim_results, field_name="interim_results")
-        if partial_interval_ms < 1:
-            raise ValueError("partial_interval_ms must be a positive integer")
+        _validate_positive_integer(partial_interval_ms, field_name="partial_interval_ms")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
         _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
         websocket = await self.connect()
@@ -466,8 +463,7 @@ class AsyncRawUdsLocalSttClient:
         if sample_rate != HOT_PATH_SAMPLE_RATE:
             raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
         _validate_boolean(interim_results, field_name="interim_results")
-        if partial_interval_ms < 1:
-            raise ValueError("partial_interval_ms must be a positive integer")
+        _validate_positive_integer(partial_interval_ms, field_name="partial_interval_ms")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
         _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
         payload: dict[str, Any] = {
@@ -673,6 +669,11 @@ def _validate_positive_number(value: Any, *, field_name: str) -> None:
         return
     if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0 or not math.isfinite(value):
         raise ValueError(f"{field_name} must be a positive finite number")
+
+
+def _validate_positive_integer(value: Any, *, field_name: str) -> None:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ValueError(f"{field_name} must be a positive integer")
 
 
 def _validate_nonnegative_number(value: Any, *, field_name: str) -> None:
