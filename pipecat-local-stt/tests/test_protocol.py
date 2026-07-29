@@ -97,6 +97,20 @@ def test_parse_transcript_event_rejects_invalid_timing() -> None:
         })
 
 
+def test_parse_transcript_event_rejects_non_string_text() -> None:
+    with pytest.raises(LocalSTTProtocolError, match="text must be a string"):
+        parse_transcript_event({
+            "type": "transcript",
+            "text": 123,
+            "is_final": False,
+            "speech_final": False,
+            "revision": 1,
+            "audio_received_ms": 40,
+            "audio_transcribed_ms": 20,
+            "metadata": {},
+        })
+
+
 @pytest.mark.parametrize("field", ["is_final", "speech_final"])
 def test_parse_transcript_event_rejects_non_boolean_final_flags(field: str) -> None:
     payload = {

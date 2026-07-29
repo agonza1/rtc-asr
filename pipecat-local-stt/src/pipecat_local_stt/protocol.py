@@ -442,7 +442,7 @@ def parse_transcript_event(payload: dict[str, Any]) -> LocalSTTTranscriptEvent:
     metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
     try:
         event = LocalSTTTranscriptEvent(
-            text=str(payload["text"]),
+            text=_parse_str_field(payload["text"], "text"),
             is_final=_parse_bool_field(payload["is_final"], "is_final"),
             speech_final=_parse_bool_field(payload.get("speech_final", payload["is_final"]), "speech_final"),
             revision=_parse_int_field(payload["revision"], "revision"),
@@ -471,6 +471,12 @@ def _parse_bool_field(value: Any, field_name: str) -> bool:
     if isinstance(value, bool):
         return value
     raise LocalSTTProtocolError(f"Transcript event {field_name} must be a boolean")
+
+
+def _parse_str_field(value: Any, field_name: str) -> str:
+    if isinstance(value, str):
+        return value
+    raise LocalSTTProtocolError(f"Transcript event {field_name} must be a string")
 
 
 def _parse_int_field(value: Any, field_name: str) -> int:
