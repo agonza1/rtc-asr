@@ -478,7 +478,7 @@ def build_start_message(
         partial_window_seconds=partial_window_seconds,
         max_buffer_seconds=max_buffer_seconds,
         client_stream_id=client_stream_id,
-        metadata=metadata or {},
+        metadata={} if metadata is None else metadata,
     )
 
 
@@ -492,7 +492,7 @@ def build_ready_message(
         version=PROTOCOL_VERSION,
         audio=build_hot_path_audio_format(),
         interim_results=interim_results,
-        metadata=metadata or {},
+        metadata={} if metadata is None else metadata,
     )
 
 
@@ -506,7 +506,7 @@ def build_ping_message(
         type="ping",
         ping_id=ping_id,
         timestamp_ms=timestamp_ms,
-        metadata=metadata or {},
+        metadata={} if metadata is None else metadata,
     )
 
 
@@ -520,7 +520,7 @@ def build_pong_message(
         type="pong",
         ping_id=ping_id,
         timestamp_ms=timestamp_ms,
-        metadata=metadata or {},
+        metadata={} if metadata is None else metadata,
     )
 
 
@@ -532,7 +532,7 @@ def build_closed_message(
     return ClosedMessage(
         type="closed",
         reason=reason,
-        metadata=metadata or {},
+        metadata={} if metadata is None else metadata,
     )
 
 
