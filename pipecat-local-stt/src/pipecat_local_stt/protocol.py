@@ -379,8 +379,9 @@ def build_start_message(
     }
     if client_stream_id is not None:
         payload["client_stream_id"] = client_stream_id
-    if metadata:
-        payload["metadata"] = dict(metadata)
+    metadata_payload = _copy_metadata(metadata, context="start message metadata")
+    if metadata_payload:
+        payload["metadata"] = metadata_payload
     return payload
 
 
@@ -395,8 +396,9 @@ def build_ping_message(
         payload["ping_id"] = ping_id
     if timestamp_ms is not None:
         payload["timestamp_ms"] = timestamp_ms
-    if metadata:
-        payload["metadata"] = dict(metadata)
+    metadata_payload = _copy_metadata(metadata, context="ping metadata")
+    if metadata_payload:
+        payload["metadata"] = metadata_payload
     return payload
 
 
@@ -411,8 +413,9 @@ def build_pong_message(
         payload["ping_id"] = ping_id
     if timestamp_ms is not None:
         payload["timestamp_ms"] = timestamp_ms
-    if metadata:
-        payload["metadata"] = dict(metadata)
+    metadata_payload = _copy_metadata(metadata, context="pong metadata")
+    if metadata_payload:
+        payload["metadata"] = metadata_payload
     return payload
 
 
@@ -422,8 +425,9 @@ def build_closed_message(
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {"type": "closed", "reason": reason}
-    if metadata:
-        payload["metadata"] = dict(metadata)
+    metadata_payload = _copy_metadata(metadata, context="closed metadata")
+    if metadata_payload:
+        payload["metadata"] = metadata_payload
     return payload
 
 
@@ -439,7 +443,7 @@ def parse_server_message(payload: Any) -> dict[str, Any]:
 def parse_transcript_event(payload: dict[str, Any]) -> LocalSTTTranscriptEvent:
     if payload.get("type") != "transcript":
         raise LocalSTTProtocolError("Expected a transcript event")
-    metadata = payload.get("metadata") if isinstance(payload.get("metadata"), dict) else {}
+    metadata = _copy_metadata(payload.get("metadata"), context="Transcript event metadata")
     try:
         event = LocalSTTTranscriptEvent(
             text=_parse_str_field(payload["text"], "text"),
@@ -483,3 +487,11 @@ def _parse_int_field(value: Any, field_name: str) -> int:
     if isinstance(value, bool):
         raise LocalSTTProtocolError(f"Transcript event {field_name} must be an integer, not a boolean")
     return int(value)
+
+
+def _copy_metadata(value: Any, *, context: str) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise LocalSTTProtocolError(f"{context} must be a JSON object", code="invalid_metadata_field")
+    return dict(value)
