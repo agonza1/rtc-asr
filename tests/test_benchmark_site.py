@@ -24,6 +24,7 @@ extract_system_signals = manifest_module.extract_system_signals
 extract_experimental_transports = manifest_module.extract_experimental_transports
 load_catalog = manifest_module.load_catalog
 render_manifest = manifest_module.render_manifest
+parse_args = manifest_module.parse_args
 
 PRERENDER_MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prerender_benchmark_homepage.py"
 PRERENDER_SPEC = importlib.util.spec_from_file_location("rtc_asr_prerender_benchmark_homepage", PRERENDER_MODULE_PATH)
@@ -1988,6 +1989,29 @@ def test_render_manifest_matches_checked_in_output() -> None:
     checked_in = json.loads((RESULTS_DIR / "manifest.json").read_text(encoding="utf-8"))
 
     assert comparable_manifest(generated) == comparable_manifest(checked_in)
+
+
+def test_manifest_parse_args_accepts_explicit_paths_and_check_flag(tmp_path: Path) -> None:
+    results_dir = tmp_path / "results"
+    tracks_path = tmp_path / "tracks.json"
+    output_path = tmp_path / "manifest.json"
+
+    args = parse_args(
+        [
+            "--results-dir",
+            str(results_dir),
+            "--tracks",
+            str(tracks_path),
+            "--output",
+            str(output_path),
+            "--check",
+        ]
+    )
+
+    assert args.results_dir == results_dir
+    assert args.tracks == tracks_path
+    assert args.output == output_path
+    assert args.check is True
 
 
 def test_manifest_write_preserves_generated_at_when_content_is_unchanged(tmp_path: Path) -> None:
