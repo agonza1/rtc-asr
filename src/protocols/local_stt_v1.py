@@ -686,10 +686,9 @@ def encode_raw_uds_json_frame(frame_type: RawUdsFrameType | int, payload: dict[s
     return encode_raw_uds_frame(resolved_type, json_payload)
 
 
-def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
-    if not isinstance(payload, dict):
-        raise LocalSttProtocolError("Raw UDS client message payload must be an object", code="raw_uds_invalid_json")
-    normalized = _normalize_raw_uds_control_payload(dict(payload))
+def encode_raw_uds_client_message(payload: dict[str, Any] | ClientMessage) -> bytes:
+    payload = _raw_uds_message_payload(payload, context="Raw UDS client message payload")
+    normalized = _normalize_raw_uds_control_payload(payload)
     message = parse_client_message(normalized)
     if (
         isinstance(message, (PingMessage, PongMessage))
@@ -857,9 +856,8 @@ def _apply_raw_uds_envelope_type(payload: dict[str, Any], expected_type: str) ->
     payload["type"] = expected_type
 
 
-def encode_raw_uds_server_message(payload: dict[str, Any]) -> bytes:
-    if not isinstance(payload, dict):
-        raise LocalSttProtocolError("Raw UDS server message payload must be an object", code="raw_uds_invalid_json")
+def encode_raw_uds_server_message(payload: dict[str, Any] | ServerMessage) -> bytes:
+    payload = _raw_uds_message_payload(payload, context="Raw UDS server message payload")
     message = parse_server_message(payload)
     if (
         isinstance(message, (PingMessage, PongMessage))
@@ -910,6 +908,14 @@ def _coerce_bytes_like(value: Any, *, context: str) -> bytes:
             code="raw_uds_invalid_bytes",
         )
     return bytes(value)
+
+
+def _raw_uds_message_payload(value: Any, *, context: str) -> dict[str, Any]:
+    if isinstance(value, LocalSttModel):
+        return value.model_dump(exclude_none=True)
+    if not isinstance(value, dict):
+        raise LocalSttProtocolError(f"{context} must be an object", code="raw_uds_invalid_json")
+    return dict(value)
 
 
 def _compact_raw_uds_message_payload(message: LocalSttModel) -> dict[str, Any]:
