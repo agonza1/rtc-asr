@@ -1491,6 +1491,18 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "oldest-first",
         "earliest",
         "earliest-first",
+        "measurement-time",
+        "measurement-time-asc",
+        "measurement-time-desc",
+        "measured-time",
+        "measured-time-asc",
+        "measured-time-desc",
+        "timestamp",
+        "timestamp-asc",
+        "timestamp-desc",
+        "time",
+        "time-asc",
+        "time-desc",
         "newest",
         "newest-first",
         "latest",
@@ -6195,11 +6207,27 @@ def test_stale_artifacts_accepts_readable_measured_time_sort_aliases() -> None:
         "benchmark-results/older.json",
         "benchmark-results/newer.json",
     ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="measurement-time")] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="timestamp-asc")] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+    ]
     assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="newest")] == [
         "benchmark-results/newer.json",
         "benchmark-results/older.json",
     ]
     assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="latest-first")] == [
+        "benchmark-results/newer.json",
+        "benchmark-results/older.json",
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="measured-time-desc")] == [
+        "benchmark-results/newer.json",
+        "benchmark-results/older.json",
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="time-desc")] == [
         "benchmark-results/newer.json",
         "benchmark-results/older.json",
     ]
