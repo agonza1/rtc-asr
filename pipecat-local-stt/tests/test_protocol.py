@@ -162,6 +162,18 @@ def test_package_exports_raw_uds_codec_contract() -> None:
     assert decoder.feed(encoded)[0] == decoded
 
 
+def test_raw_uds_decoder_reset_discards_partial_frame() -> None:
+    decoder = RawUdsFrameDecoder()
+    encoded = encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "close"})
+
+    assert decoder.feed(encoded[:3]) == []
+    assert decoder.buffered_bytes == 3
+    assert decoder.reset() == 3
+    assert decoder.buffered_bytes == 0
+    assert decoder.feed(encoded) == [decode_raw_uds_frame(encoded)]
+    assert decoder.reset() == 0
+
+
 def test_package_exports_raw_uds_json_decoder_and_server_parser() -> None:
     import pipecat_local_stt as package
 

@@ -47,6 +47,18 @@ def test_raw_uds_direction_constants_match_parsers() -> None:
     assert RawUdsFrameType.JSON_CONTROL not in RAW_UDS_SERVER_FRAME_TYPES
 
 
+def test_raw_uds_decoder_reset_discards_partial_frame() -> None:
+    decoder = RawUdsFrameDecoder()
+    encoded = encode_raw_uds_frame(RawUdsFrameType.JSON_CONTROL, b'{"type":"close"}')
+
+    assert decoder.feed(encoded[:4]) == []
+    assert decoder.buffered_bytes == 4
+    assert decoder.reset() == 4
+    assert decoder.buffered_bytes == 0
+    assert decoder.feed(encoded) == [decode_raw_uds_frame(encoded)]
+    assert decoder.reset() == 0
+
+
 def test_builders_emit_hot_path_messages_for_clients_and_servers() -> None:
     start = build_start_message(
         partial_interval_ms=100,
