@@ -40,6 +40,8 @@ RAW_UDS_FRAME_DIRECTION = {
     "client_to_server": [frame_type.name for frame_type in RAW_UDS_CLIENT_FRAME_TYPES],
     "server_to_client": [frame_type.name for frame_type in RAW_UDS_SERVER_FRAME_TYPES],
 }
+_CLIENT_MESSAGE_TYPES = {"start", "finalize", "cancel", "close", "ping", "pong"}
+_SERVER_MESSAGE_TYPES = {"ready", "transcript", "warning", "error", "ping", "pong", "closed"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +158,7 @@ def encode_raw_uds_client_message(payload: dict[str, Any]) -> bytes:
     if not isinstance(payload, dict):
         raise LocalSTTProtocolError("Raw UDS client message payload must be an object", code="raw_uds_invalid_json")
     payload = _compact_raw_uds_message_payload(payload)
+    _require_message_type(payload, allowed_types=_CLIENT_MESSAGE_TYPES, direction="client")
     heartbeat_frame_types = {"ping": RawUdsFrameType.PING, "pong": RawUdsFrameType.PONG}
     frame_type = heartbeat_frame_types.get(payload.get("type"), RawUdsFrameType.JSON_CONTROL)
     if frame_type in heartbeat_frame_types.values() and payload == {"type": payload.get("type")}:
@@ -260,6 +263,7 @@ def parse_raw_uds_client_frame(frame: RawUdsFrame) -> dict[str, Any] | bytes:
                     "payload_message_type": str(event_type),
                 },
             )
+    _require_message_type(payload, allowed_types=_CLIENT_MESSAGE_TYPES, direction="client")
     return payload
 
 
@@ -434,9 +438,7 @@ def build_closed_message(
 def parse_server_message(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise LocalSTTProtocolError("Local STT v1 server messages must be JSON objects")
-    event_type = payload.get("type")
-    if not isinstance(event_type, str) or not event_type:
-        raise LocalSTTProtocolError("Local STT v1 server message is missing type")
+    _require_message_type(payload, allowed_types=_SERVER_MESSAGE_TYPES, direction="server")
     return payload
 
 
@@ -489,6 +491,18 @@ def _parse_int_field(value: Any, field_name: str) -> int:
     if not isinstance(value, int):
         raise LocalSTTProtocolError(f"Transcript event {field_name} must be an integer")
     return value
+
+
+def _require_message_type(payload: dict[str, Any], *, allowed_types: set[str], direction: str) -> str:
+    event_type = payload.get("type")
+    if not isinstance(event_type, str) or not event_type:
+        raise LocalSTTProtocolError(f"Local STT v1 {direction} message is missing type")
+    if event_type not in allowed_types:
+        raise LocalSTTProtocolError(
+            f"Unsupported Local STT v1 {direction} message type: {event_type}",
+            code="unsupported_message_type",
+        )
+    return event_type
 
 
 def _copy_metadata(value: Any, *, context: str) -> dict[str, Any]:
