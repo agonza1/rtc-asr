@@ -406,17 +406,20 @@ class AsyncLocalSttClient:
         if self._websocket is None:
             return None
 
+        websocket = self._websocket
         closed_event: dict[str, Any] | None = None
-        if graceful:
-            websocket = self._require_websocket()
-            await websocket.send(json.dumps({"type": "close"}))
-            closed_event = await self._recv_json(allow_error=True)
-            if closed_event.get("type") != "closed":
-                raise RuntimeError(f"Expected closed event, got: {closed_event}")
-
-        await self._websocket.close(code=1000)
-        self._websocket = None
-        return closed_event
+        try:
+            if graceful:
+                await websocket.send(json.dumps({"type": "close"}))
+                closed_event = await self._recv_json(allow_error=True)
+                if closed_event.get("type") != "closed":
+                    raise RuntimeError(f"Expected closed event, got: {closed_event}")
+            return closed_event
+        finally:
+            try:
+                await websocket.close(code=1000)
+            finally:
+                self._websocket = None
 
     async def _recv_json(self, *, allow_error: bool = False) -> dict[str, Any]:
         websocket = self._require_websocket()
