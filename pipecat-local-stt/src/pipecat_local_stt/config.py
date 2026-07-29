@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 
 DropPolicy = Literal["drop_oldest", "block", "raise"]
@@ -37,6 +37,32 @@ class LocalSTTConfig:
     enable_timing_metadata: bool = True
 
     def __post_init__(self) -> None:
+        for field_name in (
+            "sample_rate",
+            "channels",
+            "frame_ms",
+            "aggregation_ms",
+            "pre_roll_ms",
+            "partial_interval_ms",
+            "max_send_queue_ms",
+        ):
+            _reject_boolean_number(getattr(self, field_name), field_name)
+        for field_name in (
+            "partial_window_seconds",
+            "max_buffer_seconds",
+            "final_timeout_s",
+            "connect_timeout_s",
+        ):
+            _reject_boolean_number(getattr(self, field_name), field_name)
+        for field_name in (
+            "interim_results",
+            "reconnect_on_error",
+            "emit_interim_frames",
+            "emit_final_frames",
+            "pass_audio_downstream",
+            "enable_timing_metadata",
+        ):
+            _require_boolean(getattr(self, field_name), field_name)
         if self.transport not in {"tcp_ws", "uds_ws", "raw_uds"}:
             raise ValueError("transport must be tcp_ws, uds_ws, or raw_uds")
         if not self.url:
@@ -91,3 +117,13 @@ class LocalSTTConfig:
     @property
     def max_queue_bytes(self) -> int:
         return max(1, int(self.bytes_per_second * (self.max_send_queue_ms / 1000.0)))
+
+
+def _reject_boolean_number(value: Any, field_name: str) -> None:
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be numeric, not boolean")
+
+
+def _require_boolean(value: Any, field_name: str) -> None:
+    if not isinstance(value, bool):
+        raise ValueError(f"{field_name} must be boolean")

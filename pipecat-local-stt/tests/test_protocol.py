@@ -124,6 +124,18 @@ def test_rtc_asr_wrapper_accepts_stream_tuning_overrides() -> None:
     assert service.config.partial_window_seconds == 1.5
 
 
+@pytest.mark.parametrize("field", ["sample_rate", "channels", "frame_ms", "partial_interval_ms"])
+def test_local_stt_config_rejects_boolean_numeric_fields(field: str) -> None:
+    with pytest.raises(ValueError, match=f"{field} must be numeric, not boolean"):
+        LocalSTTConfig(**{field: True})
+
+
+@pytest.mark.parametrize("field", ["interim_results", "emit_interim_frames", "pass_audio_downstream"])
+def test_local_stt_config_rejects_non_boolean_flags(field: str) -> None:
+    with pytest.raises(ValueError, match=f"{field} must be boolean"):
+        LocalSTTConfig(**{field: 1})
+
+
 def test_rtc_asr_wrapper_accepts_optional_uds_transport() -> None:
     service = RtcAsrSTTService(
         transport="uds_ws",
