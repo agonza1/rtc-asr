@@ -177,6 +177,23 @@ def test_builders_emit_control_messages_for_keepalive_and_close() -> None:
     }
 
 
+def test_raw_uds_encoders_accept_protocol_model_instances() -> None:
+    start = build_start_message(client_stream_id="turn-abc", metadata={"turn_id": "abc"})
+    ready = build_ready_message(metadata={"session_id": "session-1"})
+    transcript = build_transcript_message(
+        text="hello",
+        is_final=False,
+        speech_final=False,
+        revision=1,
+        audio_received_ms=400,
+        audio_transcribed_ms=360,
+    )
+
+    assert parse_raw_uds_client_frame(decode_raw_uds_frame(encode_raw_uds_client_message(start))) == start
+    assert parse_raw_uds_server_frame(decode_raw_uds_frame(encode_raw_uds_server_message(ready))) == ready
+    assert parse_raw_uds_server_frame(decode_raw_uds_frame(encode_raw_uds_server_message(transcript))) == transcript
+
+
 @pytest.mark.parametrize(
     ("builder", "kwargs"),
     [
