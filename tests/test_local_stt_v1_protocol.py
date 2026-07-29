@@ -22,6 +22,9 @@ from src.protocols.local_stt_v1 import (
     parse_client_message,
     parse_server_message,
     build_hot_path_audio_format,
+    build_closed_message,
+    build_ping_message,
+    build_pong_message,
     build_ready_message,
     build_start_message,
     decode_raw_uds_frame,
@@ -88,6 +91,40 @@ def test_builders_emit_hot_path_messages_for_clients_and_servers() -> None:
         "interim_results": True,
         "metadata": {"session_id": "session-1"},
     }
+
+
+def test_builders_emit_control_messages_for_keepalive_and_close() -> None:
+    ping = build_ping_message(ping_id="client-1", timestamp_ms=123, metadata={"side": "client"})
+    pong = build_pong_message(ping_id="server-1", timestamp_ms=456, metadata={"side": "server"})
+    closed = build_closed_message(reason="shutdown", metadata={"drain": True})
+
+    assert ping.model_dump() == {
+        "type": "ping",
+        "ping_id": "client-1",
+        "timestamp_ms": 123,
+        "metadata": {"side": "client"},
+    }
+    assert pong.model_dump() == {
+        "type": "pong",
+        "ping_id": "server-1",
+        "timestamp_ms": 456,
+        "metadata": {"side": "server"},
+    }
+    assert closed.model_dump() == {
+        "type": "closed",
+        "reason": "shutdown",
+        "metadata": {"drain": True},
+    }
+
+
+def test_protocol_package_exports_control_message_builders() -> None:
+    from src.protocols import build_closed_message as exported_build_closed
+    from src.protocols import build_ping_message as exported_build_ping
+    from src.protocols import build_pong_message as exported_build_pong
+
+    assert exported_build_ping is build_ping_message
+    assert exported_build_pong is build_pong_message
+    assert exported_build_closed is build_closed_message
 
 
 def test_start_message_validates_and_ignores_unknown_optional_fields() -> None:

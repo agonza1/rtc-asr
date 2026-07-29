@@ -436,6 +436,46 @@ def build_ready_message(
     )
 
 
+def build_ping_message(
+    *,
+    ping_id: str | None = None,
+    timestamp_ms: int | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> PingMessage:
+    return PingMessage(
+        type="ping",
+        ping_id=ping_id,
+        timestamp_ms=timestamp_ms,
+        metadata=metadata or {},
+    )
+
+
+def build_pong_message(
+    *,
+    ping_id: str | None = None,
+    timestamp_ms: int | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> PongMessage:
+    return PongMessage(
+        type="pong",
+        ping_id=ping_id,
+        timestamp_ms=timestamp_ms,
+        metadata=metadata or {},
+    )
+
+
+def build_closed_message(
+    *,
+    reason: str = "client_close",
+    metadata: dict[str, Any] | None = None,
+) -> ClosedMessage:
+    return ClosedMessage(
+        type="closed",
+        reason=reason,
+        metadata=metadata or {},
+    )
+
+
 def validate_audio_chunk(chunk: Any) -> bytes:
     if isinstance(chunk, str):
         raise LocalSttProtocolError(
