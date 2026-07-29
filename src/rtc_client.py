@@ -293,6 +293,7 @@ class AsyncLocalSttClient:
     ) -> dict[str, Any]:
         if sample_rate != HOT_PATH_SAMPLE_RATE:
             raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
+        _validate_boolean(interim_results, field_name="interim_results")
         if partial_interval_ms < 1:
             raise ValueError("partial_interval_ms must be a positive integer")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
@@ -464,6 +465,7 @@ class AsyncRawUdsLocalSttClient:
     ) -> dict[str, Any]:
         if sample_rate != HOT_PATH_SAMPLE_RATE:
             raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
+        _validate_boolean(interim_results, field_name="interim_results")
         if partial_interval_ms < 1:
             raise ValueError("partial_interval_ms must be a positive integer")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
@@ -678,6 +680,11 @@ def _validate_nonnegative_number(value: Any, *, field_name: str) -> None:
         return
     if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0 or not math.isfinite(value):
         raise ValueError(f"{field_name} must be zero or a finite positive number")
+
+
+def _validate_boolean(value: Any, *, field_name: str) -> None:
+    if not isinstance(value, bool):
+        raise ValueError(f"{field_name} must be boolean")
 
 
 def _local_stt_protocol_error_from_payload(payload: dict[str, Any]) -> LocalSttProtocolError:
