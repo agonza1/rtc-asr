@@ -90,6 +90,11 @@ class RawUdsFrameDecoder:
     def buffered_bytes(self) -> int:
         return len(self._buffer)
 
+    def reset(self) -> int:
+        buffered = len(self._buffer)
+        self._buffer.clear()
+        return buffered
+
     def finish(self) -> None:
         if not self._buffer:
             return
