@@ -397,6 +397,36 @@ def test_start_message_rejects_coerced_interim_results() -> None:
     assert excinfo.value.as_event().message == "interim_results: must be a boolean"
 
 
+@pytest.mark.parametrize("field", ["language", "client_stream_id"])
+def test_start_message_rejects_bytes_string_fields(field: str) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": {
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                },
+                field: b"decoded-by-pydantic",
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_string_field"
+    assert excinfo.value.as_event().message == f"{field}: must be a string"
+
+
+@pytest.mark.parametrize("message_type", ["ping", "pong"])
+def test_heartbeat_messages_reject_bytes_ping_id(message_type: str) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message({"type": message_type, "ping_id": b"decoded-by-pydantic"})
+
+    assert excinfo.value.as_event().code == "invalid_string_field"
+    assert excinfo.value.as_event().message == "ping_id: must be a string"
+
+
 @pytest.mark.parametrize("field", ["is_final", "speech_final"])
 def test_transcript_message_rejects_coerced_boolean_fields(field: str) -> None:
     payload = {
@@ -418,6 +448,28 @@ def test_transcript_message_rejects_coerced_boolean_fields(field: str) -> None:
     assert excinfo.value.as_event().message == f"{field}: must be a boolean"
 
 
+@pytest.mark.parametrize("field", ["text", "language"])
+def test_transcript_message_rejects_bytes_string_fields(field: str) -> None:
+    payload = {
+        "type": "transcript",
+        "text": "hello world",
+        "is_final": False,
+        "speech_final": False,
+        "revision": 1,
+        "audio_received_ms": 1000,
+        "audio_transcribed_ms": 900,
+        "metadata": {},
+        "language": "en",
+    }
+    payload[field] = b"decoded-by-pydantic"
+
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_server_message(payload)
+
+    assert excinfo.value.as_event().code == "invalid_string_field"
+    assert excinfo.value.as_event().message == f"{field}: must be a string"
+
+
 @pytest.mark.parametrize("field", ["retryable", "fatal"])
 def test_error_message_rejects_coerced_boolean_fields(field: str) -> None:
     payload = {
@@ -435,6 +487,24 @@ def test_error_message_rejects_coerced_boolean_fields(field: str) -> None:
 
     assert excinfo.value.as_event().code == "invalid_boolean_field"
     assert excinfo.value.as_event().message == f"{field}: must be a boolean"
+
+
+@pytest.mark.parametrize(
+    ("payload", "field"),
+    [
+        ({"type": "warning", "code": b"partial_dropped", "message": "dropped"}, "code"),
+        ({"type": "warning", "code": "partial_dropped", "message": b"dropped"}, "message"),
+        ({"type": "error", "code": b"backend_unavailable", "message": "backend unavailable"}, "code"),
+        ({"type": "error", "code": "backend_unavailable", "message": b"backend unavailable"}, "message"),
+        ({"type": "closed", "reason": b"client_close"}, "reason"),
+    ],
+)
+def test_status_messages_reject_bytes_string_fields(payload: dict[str, object], field: str) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_server_message(payload)
+
+    assert excinfo.value.as_event().code == "invalid_string_field"
+    assert excinfo.value.as_event().message == f"{field}: must be a string"
 
 
 
