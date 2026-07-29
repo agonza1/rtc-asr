@@ -134,7 +134,7 @@ def test_summary_groups_accept_current_path_aliases() -> None:
 def test_summary_groups_accept_file_stem_aliases() -> None:
     assert normalize_summary_groups(
         [
-            "artifact-file-stem, path-stem, path-file-stem, current-file-stem, "
+            "stem, file-stem, artifact-file-stem, path-stem, path-file-stem, current-file-stem, "
             "artifact-path-stem, artifact-path-file-stem, detail-file-stem, "
             "detail-stem, detail-page-file-stem"
         ]
@@ -149,7 +149,7 @@ def test_summary_groups_accept_filename_aliases() -> None:
     assert normalize_summary_groups(
         [
             (
-                "artifact-filename, artifact-basename, artifact-file-name, path-name, "
+                "filename, file-name, basename, artifact-filename, artifact-basename, artifact-file-name, path-name, "
                 "path-basename, path-filename, path-file-name, artifact-path-name, "
                 "artifact-path-basename, artifact-path-filename, artifact-path-file-name"
             ),
@@ -169,7 +169,8 @@ def test_summary_groups_accept_filename_aliases() -> None:
 def test_summary_groups_accept_directory_aliases() -> None:
     assert normalize_summary_groups(
         [
-            "artifact-directory, artifact-dirname, artifact-folder, artifact-folder-name, "
+            "directory, dirname, folder, folder-name, artifact-directory, artifact-dirname, "
+            "artifact-folder, artifact-folder-name, "
             "path-dir, path-directory, path-dirname, path-folder, path-folder-name, "
             "artifact-path-dir, artifact-path-directory, artifact-path-dirname, "
             "artifact-path-folder, artifact-path-folder-name",
@@ -195,7 +196,8 @@ def test_summary_groups_accept_extension_aliases() -> None:
     assert normalize_summary_groups(
         [
             (
-                "artifact-ext, artifact-file-ext, artifact-file-extension, path-extension, "
+                "extension, ext, file-ext, file-extension, artifact-ext, "
+                "artifact-file-ext, artifact-file-extension, path-extension, "
                 "path-ext, path-file-ext, path-file-extension, artifact-path-extension, "
                 "artifact-path-ext, artifact-path-file-ext, artifact-path-file-extension"
             ),
