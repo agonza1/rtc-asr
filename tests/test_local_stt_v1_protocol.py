@@ -327,6 +327,25 @@ def test_start_message_rejects_boolean_audio_integer_fields(field: str) -> None:
     assert excinfo.value.as_event().message == f"audio.{field}: must be an integer, not a boolean"
 
 
+def test_start_message_rejects_bytes_audio_format_field() -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": {
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": b"pcm_s16le",
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                },
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_string_field"
+    assert excinfo.value.as_event().message == "audio.format: must be a string"
+
+
 def test_start_message_rejects_boolean_partial_interval_ms() -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:
         parse_client_message(
