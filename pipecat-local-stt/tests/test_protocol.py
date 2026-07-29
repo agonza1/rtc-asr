@@ -12,6 +12,9 @@ from pipecat_local_stt.protocol import (
     RawUdsFrame,
     RawUdsFrameDecoder,
     RawUdsFrameType,
+    build_closed_message,
+    build_ping_message,
+    build_pong_message,
     build_start_message,
     decode_raw_uds_frame,
     decode_raw_uds_json_payload,
@@ -48,6 +51,36 @@ def test_build_start_message_uses_required_flat_local_stt_v1_shape() -> None:
         "client_stream_id": "turn-1",
         "metadata": {"k": "v"},
     }
+
+
+def test_control_message_builders_emit_compact_payloads() -> None:
+    assert build_ping_message(ping_id="client-1", timestamp_ms=123, metadata={"side": "client"}) == {
+        "type": "ping",
+        "ping_id": "client-1",
+        "timestamp_ms": 123,
+        "metadata": {"side": "client"},
+    }
+    assert build_pong_message(ping_id="server-1", timestamp_ms=456, metadata={"side": "server"}) == {
+        "type": "pong",
+        "ping_id": "server-1",
+        "timestamp_ms": 456,
+        "metadata": {"side": "server"},
+    }
+    assert build_closed_message(reason="shutdown", metadata={"drain": True}) == {
+        "type": "closed",
+        "reason": "shutdown",
+        "metadata": {"drain": True},
+    }
+    assert build_ping_message() == {"type": "ping"}
+    assert build_pong_message(metadata={}) == {"type": "pong"}
+
+
+def test_package_exports_control_message_builders() -> None:
+    import pipecat_local_stt as package
+
+    assert package.build_ping_message is build_ping_message
+    assert package.build_pong_message is build_pong_message
+    assert package.build_closed_message is build_closed_message
 
 
 def test_parse_transcript_event_rejects_invalid_timing() -> None:

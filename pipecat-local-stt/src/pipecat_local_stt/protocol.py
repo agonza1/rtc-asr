@@ -384,6 +384,49 @@ def build_start_message(
     return payload
 
 
+def build_ping_message(
+    *,
+    ping_id: str | None = None,
+    timestamp_ms: int | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"type": "ping"}
+    if ping_id is not None:
+        payload["ping_id"] = ping_id
+    if timestamp_ms is not None:
+        payload["timestamp_ms"] = timestamp_ms
+    if metadata:
+        payload["metadata"] = dict(metadata)
+    return payload
+
+
+def build_pong_message(
+    *,
+    ping_id: str | None = None,
+    timestamp_ms: int | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"type": "pong"}
+    if ping_id is not None:
+        payload["ping_id"] = ping_id
+    if timestamp_ms is not None:
+        payload["timestamp_ms"] = timestamp_ms
+    if metadata:
+        payload["metadata"] = dict(metadata)
+    return payload
+
+
+def build_closed_message(
+    *,
+    reason: str = "client_close",
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"type": "closed", "reason": reason}
+    if metadata:
+        payload["metadata"] = dict(metadata)
+    return payload
+
+
 def parse_server_message(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise LocalSTTProtocolError("Local STT v1 server messages must be JSON objects")
