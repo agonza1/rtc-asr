@@ -751,9 +751,10 @@ def parse_raw_uds_server_frame(frame: RawUdsFrame) -> ServerMessage:
 
 
 def _normalize_raw_uds_control_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    if payload.get("type") != "start" or "audio" in payload or "version" in payload:
+    if payload.get("type") != "start" or "audio" in payload:
         return payload
-    if payload.get("protocol") not in {"local-stt-v1", PROTOCOL_VERSION}:
+    protocol = payload.get("protocol", payload.get("version"))
+    if protocol not in {"local-stt-v1", PROTOCOL_VERSION}:
         return payload
     return {
         "type": "start",

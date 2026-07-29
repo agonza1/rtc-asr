@@ -872,6 +872,28 @@ def test_raw_uds_client_encoder_accepts_canonical_flat_start_protocol() -> None:
     assert start.client_stream_id == "canonical-protocol"
 
 
+def test_raw_uds_client_encoder_accepts_canonical_flat_start_version() -> None:
+    encoded = encode_raw_uds_client_message(
+        {
+            "type": "start",
+            "version": PROTOCOL_VERSION,
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "channels": HOT_PATH_CHANNELS,
+            "format": HOT_PATH_PCM_FORMAT,
+            "frame_ms": HOT_PATH_FRAME_MS,
+            "client_stream_id": "canonical-version",
+        }
+    )
+    frame = decode_raw_uds_frame(encoded)
+    payload = decode_raw_uds_json_payload(frame)
+    start = parse_raw_uds_client_frame(frame)
+
+    assert payload["version"] == PROTOCOL_VERSION
+    assert payload["audio"]["sample_rate"] == HOT_PATH_SAMPLE_RATE
+    assert start.type == "start"
+    assert start.client_stream_id == "canonical-version"
+
+
 def test_raw_uds_audio_encoder_rejects_invalid_pcm16_payloads() -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:
         encode_raw_uds_audio_frame(b"\x00")
