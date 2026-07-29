@@ -67,6 +67,10 @@ RAW_UDS_REQUIRED_FRAME_TYPE_CODES = {
     "PING": 0x05,
     "PONG": 0x06,
 }
+RAW_UDS_REQUIRED_FRAME_DIRECTION = {
+    "client_to_server": ("JSON_CONTROL", "AUDIO_PCM16", "PING", "PONG"),
+    "server_to_client": ("JSON_EVENT", "ERROR", "PING", "PONG"),
+}
 RAW_UDS_REQUIRED_LIFECYCLE = ("start", "audio", "transcript", "finalize", "cancel", "close")
 RAW_UDS_LIFECYCLE_ORDER = {
     event: position for position, event in enumerate(RAW_UDS_REQUIRED_LIFECYCLE)
@@ -702,6 +706,21 @@ def raw_uds_frame_contract_gaps(transports: dict[str, dict[str, Any]]) -> list[s
         gaps.append(f"raw_uds missing target.per_frame_overhead_bytes={RAW_UDS_PER_FRAME_OVERHEAD_BYTES}")
     if raw_uds.get("max_payload_bytes") != RAW_UDS_MAX_PAYLOAD_BYTES:
         gaps.append(f"raw_uds missing target.max_payload_bytes={RAW_UDS_MAX_PAYLOAD_BYTES}")
+    frame_direction = raw_uds.get("frame_direction")
+    if not isinstance(frame_direction, dict):
+        gaps.append("raw_uds missing target.frame_direction")
+    else:
+        for direction, expected_frame_types in RAW_UDS_REQUIRED_FRAME_DIRECTION.items():
+            observed_frame_types = raw_uds_frame_type_names(frame_direction.get(direction))
+            if observed_frame_types is None:
+                gaps.append(f"raw_uds missing target.frame_direction.{direction} coverage")
+                continue
+            missing = [frame_type for frame_type in expected_frame_types if frame_type not in observed_frame_types]
+            if missing:
+                gaps.append(f"raw_uds missing {direction} frame direction coverage: {','.join(missing)}")
+            unexpected = [frame_type for frame_type in observed_frame_types if frame_type not in expected_frame_types]
+            if unexpected:
+                gaps.append(f"raw_uds unexpected {direction} frame direction coverage: {','.join(unexpected)}")
     return gaps
 
 
@@ -1449,6 +1468,7 @@ def compare_artifacts(
             or target_semantic_lifecycle
         )
         target_frame_types = artifact["target"].get("frame_types") or target_contract.get("frame_types")
+        target_frame_direction = artifact["target"].get("frame_direction") or target_contract.get("frame_direction")
         target_frame_type_codes = artifact["target"].get("frame_type_codes") or target_contract.get("frame_type_codes")
         target_error_handling = artifact["target"].get("error_handling") or target_contract.get("error_handling")
         target_error_codes = artifact["target"].get("error_codes") or target_contract.get("error_codes")
@@ -1478,6 +1498,7 @@ def compare_artifacts(
             "max_payload_bytes": artifact["target"].get("max_payload_bytes")
             or target_contract.get("max_payload_bytes"),
             "frame_types": target_frame_types,
+            "frame_direction": target_frame_direction,
             "frame_type_codes": target_frame_type_codes,
             "lifecycle": target_lifecycle,
             "semantic_lifecycle": target_semantic_lifecycle,

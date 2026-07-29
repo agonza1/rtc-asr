@@ -26,6 +26,7 @@ from src.protocols import (
     HOT_PATH_BYTES_PER_FRAME,
     HOT_PATH_FRAME_MS,
     HOT_PATH_SAMPLE_RATE,
+    RAW_UDS_FRAME_DIRECTION,
     RAW_UDS_HEADER_BYTES,
     RAW_UDS_MAX_PAYLOAD_BYTES,
     RawUdsFrameType,
@@ -308,6 +309,7 @@ def describe_transport_contract(transport: str) -> dict[str, Any]:
             "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
             "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
             "frame_types": list(frame_type_codes),
+            "frame_direction": RAW_UDS_FRAME_DIRECTION,
             "frame_type_codes": frame_type_codes,
             "benchmark_command": (
                 "python scripts/bench_local_stt_stream.py --transport raw_uds "
@@ -396,6 +398,7 @@ def describe_benchmark_target(*, transport: str, url: str, uds_path: str | None)
                 "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
                 "frame_types": list(frame_type_codes),
+                "frame_direction": RAW_UDS_FRAME_DIRECTION,
                 "frame_type_codes": frame_type_codes,
                 "benchmark_command": (
                     "python scripts/bench_local_stt_stream.py --transport raw_uds "
