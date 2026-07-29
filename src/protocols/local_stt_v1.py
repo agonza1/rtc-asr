@@ -184,6 +184,11 @@ class AudioFormat(LocalSttModel):
     def reject_boolean_integer_fields(cls, value: Any) -> Any:
         return _reject_boolean_integer_field(value)
 
+    @field_validator("format", mode="before")
+    @classmethod
+    def require_string_fields(cls, value: Any) -> Any:
+        return _require_string_field(value)
+
     @model_validator(mode="after")
     def validate_hot_path(self) -> "AudioFormat":
         if self.sample_rate != HOT_PATH_SAMPLE_RATE:
