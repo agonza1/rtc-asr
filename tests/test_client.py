@@ -435,6 +435,40 @@ def test_async_local_stt_client_stream_flow() -> None:
     asyncio.run(scenario())
 
 
+def test_async_local_stt_client_clears_connection_after_bad_close_ack() -> None:
+    websocket = FakeWebSocket([
+        {
+            "type": "ready",
+            "backend": "fake-whisper",
+            "model": "fixture-adapter",
+            "metadata": {"stream_id": 1},
+        },
+        {
+            "type": "error",
+            "code": "close_failed",
+            "message": "close failed",
+            "metadata": {},
+        },
+    ])
+
+    async def fake_connect(_: str) -> FakeWebSocket:
+        return websocket
+
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fake_connect)
+        await client.start()
+
+        with pytest.raises(RuntimeError, match="Expected closed event"):
+            await client.close()
+
+        assert client._websocket is None
+
+    asyncio.run(scenario())
+
+    assert websocket.sent[-1] == {"type": "close"}
+    assert websocket.closed_with == 1000
+
+
 @pytest.mark.parametrize("timeout", [-0.1, float("inf"), float("nan"), False])
 def test_async_local_stt_client_rejects_invalid_recv_timeout(timeout: float | bool) -> None:
     async def scenario() -> None:
