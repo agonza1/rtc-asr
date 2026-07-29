@@ -718,6 +718,9 @@ def raw_uds_frame_contract_gaps(transports: dict[str, dict[str, Any]]) -> list[s
             missing = [frame_type for frame_type in expected_frame_types if frame_type not in observed_frame_types]
             if missing:
                 gaps.append(f"raw_uds missing {direction} frame direction coverage: {','.join(missing)}")
+            unexpected = [frame_type for frame_type in observed_frame_types if frame_type not in expected_frame_types]
+            if unexpected:
+                gaps.append(f"raw_uds unexpected {direction} frame direction coverage: {','.join(unexpected)}")
     return gaps
 
 

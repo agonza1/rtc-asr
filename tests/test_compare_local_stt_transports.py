@@ -868,6 +868,30 @@ def test_compare_artifacts_requires_raw_uds_frame_direction_coverage(tmp_path: P
     ]
 
 
+def test_compare_artifacts_rejects_raw_uds_frame_types_in_wrong_direction(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 12.0)
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["target"]["frame_direction"] = {
+        "client_to_server": ["JSON_CONTROL", "AUDIO_PCM16", "JSON_EVENT", "ERROR", "PING", "PONG"],
+        "server_to_client": ["JSON_CONTROL", "JSON_EVENT", "ERROR", "PING", "PONG"],
+    }
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["raw_uds_frame_contract_gaps"] == [
+        "raw_uds unexpected client_to_server frame direction coverage: JSON_EVENT,ERROR",
+        "raw_uds unexpected server_to_client frame direction coverage: JSON_CONTROL",
+    ]
+    assert comparison["blocking_gaps"] == comparison["raw_uds_frame_contract_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "frame_contract:raw_uds unexpected client_to_server frame direction coverage: JSON_EVENT,ERROR",
+        "frame_contract:raw_uds unexpected server_to_client frame direction coverage: JSON_CONTROL",
+    ]
+
+
 def test_compare_artifacts_accepts_raw_uds_frame_direction_from_benchmark_contract(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
