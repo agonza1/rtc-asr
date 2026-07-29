@@ -396,7 +396,8 @@ async def _test_cancel_suppresses_stale_results() -> None:
 
     final_frames = [frame for frame, _ in pushed_frames if isinstance(frame, TranscriptionFrame)]
     assert final_frames == []
-    assert service.metrics.local_stt_transcripts_suppressed_total == 1
+    assert service.metrics.local_stt_stale_transcript_events_total == 1
+    assert service.metrics.local_stt_transcripts_suppressed_total == 0
     assert service.metrics.local_stt_cancel_messages_sent_total == 1
 
 

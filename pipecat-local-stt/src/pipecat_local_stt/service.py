@@ -375,7 +375,10 @@ class LocalStreamingSTTService(STTService):
             return
         if event_type == "transcript":
             event = parse_transcript_event(payload)
-            if self._should_drop_transcript(event):
+            if self._is_stale_transcript(event):
+                self.metrics.local_stt_stale_transcript_events_total += 1
+                return
+            if self._suppress_transcripts:
                 self.metrics.local_stt_transcripts_suppressed_total += 1
                 return
             await self._push_transcript(event)
@@ -415,11 +418,9 @@ class LocalStreamingSTTService(STTService):
                 generation = client_metadata.get("local_stt_generation")
         return generation if isinstance(generation, int) else None
 
-    def _should_drop_transcript(self, event: LocalSTTTranscriptEvent) -> bool:
+    def _is_stale_transcript(self, event: LocalSTTTranscriptEvent) -> bool:
         generation = self._event_generation(event)
-        if isinstance(generation, int) and generation != self._generation:
-            return True
-        return self._suppress_transcripts
+        return isinstance(generation, int) and generation != self._generation
 
     async def _push_transcript(self, event: LocalSTTTranscriptEvent) -> None:
         timestamp = datetime.now(timezone.utc).isoformat()
