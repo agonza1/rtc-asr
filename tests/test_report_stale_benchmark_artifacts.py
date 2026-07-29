@@ -230,6 +230,13 @@ def test_validate_summary_options_rejects_invalid_ranges() -> None:
         validate_summary_options(summary_min_size_bytes=20, summary_max_size_bytes=10)
 
 
+def test_parse_args_accepts_short_summary_size_filter_aliases() -> None:
+    args = parse_args(["--summary-min-size", "1 KiB", "--summary-max-size", "2 KiB"])
+
+    assert args.summary_min_size_bytes == 1024
+    assert args.summary_max_size_bytes == 2048
+
+
 def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
     for alias in [
         "average-size",
