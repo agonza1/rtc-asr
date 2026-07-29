@@ -191,6 +191,7 @@ class AsyncASRClient:
         response_timeout: float = 0.1,
         on_sent: Callable[[], None] | None = None,
     ) -> TranscriptEvent | None:
+        _validate_nonnegative_number(response_timeout, field_name="response_timeout")
         websocket = self._require_websocket()
         use_binary = self._send_binary_frames if binary is None else binary
         if use_binary:
@@ -384,6 +385,7 @@ class AsyncLocalSttClient:
         timeout: float | None = None,
         allow_error: bool = True,
     ) -> TranscriptEvent | None:
+        _validate_nonnegative_number(timeout, field_name="timeout")
         if timeout is None:
             payload = await self._recv_json(allow_error=allow_error)
         else:
@@ -547,6 +549,7 @@ class AsyncRawUdsLocalSttClient:
         timeout: float | None = None,
         allow_error: bool = True,
     ) -> TranscriptEvent | None:
+        _validate_nonnegative_number(timeout, field_name="timeout")
         if timeout is None:
             payload = await self._recv_json(allow_error=allow_error)
         else:
@@ -668,6 +671,13 @@ def _validate_positive_number(value: Any, *, field_name: str) -> None:
         return
     if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0 or not math.isfinite(value):
         raise ValueError(f"{field_name} must be a positive finite number")
+
+
+def _validate_nonnegative_number(value: Any, *, field_name: str) -> None:
+    if value is None:
+        return
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0 or not math.isfinite(value):
+        raise ValueError(f"{field_name} must be zero or a finite positive number")
 
 
 def _local_stt_protocol_error_from_payload(payload: dict[str, Any]) -> LocalSttProtocolError:

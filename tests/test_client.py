@@ -245,6 +245,16 @@ def test_async_asr_client_can_send_binary_audio_frames() -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("response_timeout", [-0.1, float("inf"), float("nan"), True])
+def test_async_asr_client_rejects_invalid_response_timeout(response_timeout: float | bool) -> None:
+    async def scenario() -> None:
+        client = AsyncASRClient("ws://example.test/ws/stream")
+        with pytest.raises(ValueError, match="response_timeout must be zero or a finite positive number"):
+            await client.send_audio(b"hi", response_timeout=response_timeout)
+
+    asyncio.run(scenario())
+
+
 def test_async_local_stt_client_stream_flow() -> None:
     websocket = FakeWebSocket([
         {
@@ -396,6 +406,16 @@ def test_async_local_stt_client_stream_flow() -> None:
             {"type": "close"},
         ]
         assert websocket.closed_with == 1000
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("timeout", [-0.1, float("inf"), float("nan"), False])
+def test_async_local_stt_client_rejects_invalid_recv_timeout(timeout: float | bool) -> None:
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream")
+        with pytest.raises(ValueError, match="timeout must be zero or a finite positive number"):
+            await client.recv_event(timeout=timeout)
 
     asyncio.run(scenario())
 
@@ -674,6 +694,16 @@ def test_async_raw_uds_client_rejects_invalid_pcm16_without_connecting() -> None
             await client.send_audio(b"\x00")
 
         assert excinfo.value.as_event().code == "invalid_audio_chunk"
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("timeout", [-0.1, float("inf"), float("nan"), True])
+def test_async_raw_uds_client_rejects_invalid_recv_timeout(timeout: float | bool) -> None:
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock")
+        with pytest.raises(ValueError, match="timeout must be zero or a finite positive number"):
+            await client.recv_event(timeout=timeout)
 
     asyncio.run(scenario())
 
