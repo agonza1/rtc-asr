@@ -496,6 +496,64 @@ def build_ready_message(
     )
 
 
+def build_transcript_message(
+    *,
+    text: str,
+    is_final: bool,
+    speech_final: bool,
+    revision: int,
+    audio_received_ms: int,
+    audio_transcribed_ms: int,
+    metadata: dict[str, Any] | None = None,
+    language: str | None = None,
+) -> TranscriptMessage:
+    return TranscriptMessage(
+        type="transcript",
+        text=text,
+        is_final=is_final,
+        speech_final=speech_final,
+        revision=revision,
+        audio_received_ms=audio_received_ms,
+        audio_transcribed_ms=audio_transcribed_ms,
+        metadata={} if metadata is None else metadata,
+        language=language,
+    )
+
+
+def build_warning_message(
+    *,
+    code: str,
+    message: str,
+    metadata: dict[str, Any] | None = None,
+    retryable: bool = False,
+) -> WarningMessage:
+    return WarningMessage(
+        type="warning",
+        code=code,
+        message=message,
+        metadata={} if metadata is None else metadata,
+        retryable=retryable,
+    )
+
+
+def build_error_message(
+    *,
+    code: str,
+    message: str,
+    metadata: dict[str, Any] | None = None,
+    retryable: bool = False,
+    fatal: bool = True,
+) -> ErrorMessage:
+    return ErrorMessage(
+        type="error",
+        code=code,
+        message=message,
+        metadata={} if metadata is None else metadata,
+        retryable=retryable,
+        fatal=fatal,
+    )
+
+
 def build_ping_message(
     *,
     ping_id: str | None = None,
