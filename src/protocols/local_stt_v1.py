@@ -482,6 +482,18 @@ def build_start_message(
     )
 
 
+def build_finalize_message() -> FinalizeMessage:
+    return FinalizeMessage(type="finalize")
+
+
+def build_cancel_message() -> CancelMessage:
+    return CancelMessage(type="cancel")
+
+
+def build_close_message() -> CloseMessage:
+    return CloseMessage(type="close")
+
+
 def build_ready_message(
     *,
     interim_results: bool = True,

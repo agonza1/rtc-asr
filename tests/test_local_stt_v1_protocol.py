@@ -22,9 +22,12 @@ from src.protocols.local_stt_v1 import (
     TranscriptMessage,
     parse_client_message,
     parse_server_message,
+    build_cancel_message,
+    build_close_message,
     build_hot_path_audio_format,
     build_closed_message,
     build_error_message,
+    build_finalize_message,
     build_ping_message,
     build_pong_message,
     build_ready_message,
@@ -204,13 +207,21 @@ def test_builders_reject_non_object_metadata(builder, kwargs: dict[str, object])
 
 
 def test_protocol_package_exports_control_message_builders() -> None:
+    from src.protocols import build_cancel_message as exported_build_cancel
+    from src.protocols import build_close_message as exported_build_close
     from src.protocols import build_closed_message as exported_build_closed
     from src.protocols import build_error_message as exported_build_error
+    from src.protocols import build_finalize_message as exported_build_finalize
     from src.protocols import build_ping_message as exported_build_ping
     from src.protocols import build_pong_message as exported_build_pong
+    from src.protocols import build_start_message as exported_build_start
     from src.protocols import build_transcript_message as exported_build_transcript
     from src.protocols import build_warning_message as exported_build_warning
 
+    assert exported_build_start is build_start_message
+    assert exported_build_finalize is build_finalize_message
+    assert exported_build_cancel is build_cancel_message
+    assert exported_build_close is build_close_message
     assert exported_build_ping is build_ping_message
     assert exported_build_pong is build_pong_message
     assert exported_build_closed is build_closed_message
