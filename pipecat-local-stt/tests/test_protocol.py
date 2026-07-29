@@ -398,6 +398,16 @@ def test_raw_uds_client_parser_stringifies_non_string_mismatched_keepalive_paylo
     }
 
 
+def test_raw_uds_client_parser_rejects_server_event_payload_type() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_json_frame(RawUdsFrameType.JSON_CONTROL, {"type": "ready"}))
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        parse_raw_uds_client_frame(frame)
+
+    assert excinfo.value.code == "unsupported_message_type"
+    assert excinfo.value.message == "Unsupported Local STT v1 client message type: ready"
+
+
 def test_raw_uds_client_message_encoder_selects_control_and_compact_keepalive_frames() -> None:
     control = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "close", "metadata": {}}))
     bare_ping = decode_raw_uds_frame(encode_raw_uds_client_message({"type": "ping", "metadata": {}}))
@@ -417,6 +427,14 @@ def test_raw_uds_client_message_encoder_rejects_non_object_payloads(payload: obj
         encode_raw_uds_client_message(payload)
 
     assert excinfo.value.code == "raw_uds_invalid_json"
+
+
+def test_raw_uds_client_message_encoder_rejects_server_event_payload_type() -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        encode_raw_uds_client_message({"type": "transcript", "text": "wrong direction"})
+
+    assert excinfo.value.code == "unsupported_message_type"
+    assert excinfo.value.message == "Unsupported Local STT v1 client message type: transcript"
 
 
 def test_raw_uds_server_parser_defaults_error_event_type() -> None:
@@ -456,6 +474,16 @@ def test_raw_uds_server_parser_stringifies_non_string_mismatched_error_payload_t
         "frame_message_type": "error",
         "payload_message_type": "{'code': 'bad'}",
     }
+
+
+def test_raw_uds_server_parser_rejects_client_control_payload_type() -> None:
+    frame = decode_raw_uds_frame(encode_raw_uds_json_frame(RawUdsFrameType.JSON_EVENT, {"type": "start"}))
+
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        parse_raw_uds_server_frame(frame)
+
+    assert excinfo.value.code == "unsupported_message_type"
+    assert excinfo.value.message == "Unsupported Local STT v1 server message type: start"
 
 
 def test_raw_uds_server_message_encoder_selects_event_error_and_keepalive_frames() -> None:
@@ -509,6 +537,14 @@ def test_raw_uds_server_message_encoder_rejects_non_object_payloads(payload: obj
         encode_raw_uds_server_message(payload)
 
     assert excinfo.value.code == "raw_uds_invalid_json"
+
+
+def test_raw_uds_server_message_encoder_rejects_client_control_payload_type() -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        encode_raw_uds_server_message({"type": "cancel"})
+
+    assert excinfo.value.code == "unsupported_message_type"
+    assert excinfo.value.message == "Unsupported Local STT v1 server message type: cancel"
 
 
 def test_package_exports_raw_uds_direction_catalog() -> None:
