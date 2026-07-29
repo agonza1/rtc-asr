@@ -156,6 +156,7 @@ class AsyncASRClient:
         max_buffer_seconds: float | None = None,
         send_binary_frames: bool = False,
     ) -> dict[str, Any]:
+        _validate_optional_string(language, field_name="language")
         _validate_positive_integer(sample_rate, field_name="sample_rate")
         _validate_positive_integer(partial_interval_chunks, field_name="partial_interval_chunks")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
@@ -291,6 +292,8 @@ class AsyncLocalSttClient:
     ) -> dict[str, Any]:
         if sample_rate != HOT_PATH_SAMPLE_RATE:
             raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
+        _validate_optional_string(language, field_name="language")
+        _validate_optional_string(client_stream_id, field_name="client_stream_id")
         _validate_boolean(interim_results, field_name="interim_results")
         _validate_positive_integer(partial_interval_ms, field_name="partial_interval_ms")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
@@ -347,6 +350,7 @@ class AsyncLocalSttClient:
         timestamp_ms: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        _validate_optional_string(ping_id, field_name="ping_id")
         _validate_nonnegative_integer(timestamp_ms, field_name="timestamp_ms")
         _validate_metadata_object(metadata)
         websocket = self._require_websocket()
@@ -370,6 +374,7 @@ class AsyncLocalSttClient:
         timestamp_ms: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
+        _validate_optional_string(ping_id, field_name="ping_id")
         _validate_nonnegative_integer(timestamp_ms, field_name="timestamp_ms")
         _validate_metadata_object(metadata)
         websocket = self._require_websocket()
@@ -467,6 +472,8 @@ class AsyncRawUdsLocalSttClient:
     ) -> dict[str, Any]:
         if sample_rate != HOT_PATH_SAMPLE_RATE:
             raise ValueError(f"sample_rate must be {HOT_PATH_SAMPLE_RATE}")
+        _validate_optional_string(language, field_name="language")
+        _validate_optional_string(client_stream_id, field_name="client_stream_id")
         _validate_boolean(interim_results, field_name="interim_results")
         _validate_positive_integer(partial_interval_ms, field_name="partial_interval_ms")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
@@ -518,6 +525,7 @@ class AsyncRawUdsLocalSttClient:
         timestamp_ms: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        _validate_optional_string(ping_id, field_name="ping_id")
         _validate_nonnegative_integer(timestamp_ms, field_name="timestamp_ms")
         _validate_metadata_object(metadata)
         payload: dict[str, Any] = {"type": "ping"}
@@ -540,6 +548,7 @@ class AsyncRawUdsLocalSttClient:
         timestamp_ms: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
+        _validate_optional_string(ping_id, field_name="ping_id")
         _validate_nonnegative_integer(timestamp_ms, field_name="timestamp_ms")
         _validate_metadata_object(metadata)
         payload: dict[str, Any] = {"type": "pong"}
@@ -703,6 +712,11 @@ def _validate_nonnegative_integer(value: Any, *, field_name: str) -> None:
 def _validate_boolean(value: Any, *, field_name: str) -> None:
     if not isinstance(value, bool):
         raise ValueError(f"{field_name} must be boolean")
+
+
+def _validate_optional_string(value: Any, *, field_name: str) -> None:
+    if value is not None and not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string")
 
 
 def _validate_metadata_object(value: Any) -> None:

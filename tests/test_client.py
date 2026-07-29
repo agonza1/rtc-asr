@@ -268,6 +268,18 @@ def test_async_asr_client_rejects_invalid_partial_interval_before_connecting(par
     asyncio.run(scenario())
 
 
+def test_async_asr_client_rejects_invalid_language_before_connecting() -> None:
+    async def fail_connect(_url: str) -> FakeWebSocket:
+        raise AssertionError("invalid start should not open the websocket")
+
+    async def scenario() -> None:
+        client = AsyncASRClient("ws://example.test/ws/stream", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match="language must be a string"):
+            await client.start(language=123)  # type: ignore[arg-type]
+
+    asyncio.run(scenario())
+
+
 def test_async_local_stt_client_stream_flow() -> None:
     websocket = FakeWebSocket([
         {
@@ -468,6 +480,33 @@ def test_async_local_stt_client_rejects_invalid_partial_interval_before_connecti
         client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fail_connect)
         with pytest.raises(ValueError, match="partial_interval_ms must be a positive integer"):
             await client.start(partial_interval_ms=partial_interval_ms)  # type: ignore[arg-type]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(("field", "value"), [("language", 123), ("client_stream_id", 123)])
+def test_async_local_stt_client_rejects_invalid_start_strings_before_connecting(field: str, value: object) -> None:
+    async def fail_connect(_url: str) -> FakeWebSocket:
+        raise AssertionError("invalid start should not open the websocket")
+
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match=f"{field} must be a string"):
+            await client.start(**{field: value})  # type: ignore[arg-type]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("method_name", ["ping", "pong"])
+def test_async_local_stt_client_rejects_invalid_ping_ids_before_connecting(method_name: str) -> None:
+    async def fail_connect(_url: str) -> FakeWebSocket:
+        raise AssertionError("invalid control should not open the websocket")
+
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fail_connect)
+        method = getattr(client, method_name)
+        with pytest.raises(ValueError, match="ping_id must be a string"):
+            await method(ping_id=123)
 
     asyncio.run(scenario())
 
@@ -761,6 +800,33 @@ def test_async_raw_uds_client_rejects_invalid_partial_interval_before_connecting
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize(("field", "value"), [("language", 123), ("client_stream_id", 123)])
+def test_async_raw_uds_client_rejects_invalid_start_strings_before_connecting(field: str, value: object) -> None:
+    async def fail_connect(_path: str):
+        raise AssertionError("invalid start should not open the raw UDS socket")
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match=f"{field} must be a string"):
+            await client.start(**{field: value})  # type: ignore[arg-type]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("method_name", ["ping", "pong"])
+def test_async_raw_uds_client_rejects_invalid_ping_ids_before_connecting(method_name: str) -> None:
+    async def fail_connect(_path: str):
+        raise AssertionError("invalid control should not open the raw UDS socket")
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=fail_connect)
+        method = getattr(client, method_name)
+        with pytest.raises(ValueError, match="ping_id must be a string"):
+            await method(ping_id=123)
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("timeout", [-0.1, float("inf"), float("nan"), True])
 def test_async_raw_uds_client_rejects_invalid_recv_timeout(timeout: float | bool) -> None:
     async def scenario() -> None:
@@ -777,11 +843,8 @@ def test_async_raw_uds_client_rejects_invalid_ping_without_connecting() -> None:
 
     async def scenario() -> None:
         client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=fail_connect)
-        with pytest.raises(LocalSttProtocolError) as excinfo:
+        with pytest.raises(ValueError, match="timestamp_ms must be a nonnegative integer"):
             await client.ping(timestamp_ms=-1)
-
-        assert excinfo.value.as_event().code == "invalid_message"
-        assert "timestamp_ms" in excinfo.value.as_event().message
 
     asyncio.run(scenario())
 
