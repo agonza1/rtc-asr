@@ -2646,7 +2646,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--summary-share",
         action="store_true",
-        help="With --json-summary, include count and byte share percentages for each grouping row",
+        help=(
+            "With --json-summary, --summary-csv, or --summary-markdown, include count "
+            "and byte share percentages for each grouping row"
+        ),
     )
     parser.add_argument(
         "--output",
