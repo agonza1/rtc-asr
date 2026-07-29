@@ -486,7 +486,9 @@ def _parse_str_field(value: Any, field_name: str) -> str:
 def _parse_int_field(value: Any, field_name: str) -> int:
     if isinstance(value, bool):
         raise LocalSTTProtocolError(f"Transcript event {field_name} must be an integer, not a boolean")
-    return int(value)
+    if not isinstance(value, int):
+        raise LocalSTTProtocolError(f"Transcript event {field_name} must be an integer")
+    return value
 
 
 def _copy_metadata(value: Any, *, context: str) -> dict[str, Any]:
