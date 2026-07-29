@@ -24,10 +24,13 @@ from src.protocols.local_stt_v1 import (
     parse_server_message,
     build_hot_path_audio_format,
     build_closed_message,
+    build_error_message,
     build_ping_message,
     build_pong_message,
     build_ready_message,
     build_start_message,
+    build_transcript_message,
+    build_warning_message,
     decode_raw_uds_frame,
     decode_raw_uds_json_payload,
     encode_raw_uds_audio_frame,
@@ -94,6 +97,59 @@ def test_builders_emit_hot_path_messages_for_clients_and_servers() -> None:
     }
 
 
+def test_builders_emit_server_result_messages() -> None:
+    transcript = build_transcript_message(
+        text="hello world",
+        is_final=True,
+        speech_final=True,
+        revision=3,
+        audio_received_ms=1200,
+        audio_transcribed_ms=1180,
+        metadata={"client_stream_id": "turn-abc"},
+        language="en",
+    )
+    warning = build_warning_message(
+        code="partial_dropped",
+        message="Dropped one partial due to backpressure",
+        metadata={"revision": 2},
+        retryable=True,
+    )
+    error = build_error_message(
+        code="backend_unavailable",
+        message="ASR backend unavailable",
+        metadata={"backend": "faster-whisper"},
+        retryable=True,
+        fatal=False,
+    )
+
+    assert transcript.model_dump() == {
+        "type": "transcript",
+        "text": "hello world",
+        "is_final": True,
+        "speech_final": True,
+        "revision": 3,
+        "audio_received_ms": 1200,
+        "audio_transcribed_ms": 1180,
+        "metadata": {"client_stream_id": "turn-abc"},
+        "language": "en",
+    }
+    assert warning.model_dump() == {
+        "type": "warning",
+        "code": "partial_dropped",
+        "message": "Dropped one partial due to backpressure",
+        "metadata": {"revision": 2},
+        "retryable": True,
+    }
+    assert error.model_dump() == {
+        "type": "error",
+        "code": "backend_unavailable",
+        "message": "ASR backend unavailable",
+        "metadata": {"backend": "faster-whisper"},
+        "retryable": True,
+        "fatal": False,
+    }
+
+
 def test_builders_emit_control_messages_for_keepalive_and_close() -> None:
     ping = build_ping_message(ping_id="client-1", timestamp_ms=123, metadata={"side": "client"})
     pong = build_pong_message(ping_id="server-1", timestamp_ms=456, metadata={"side": "server"})
@@ -123,6 +179,20 @@ def test_builders_emit_control_messages_for_keepalive_and_close() -> None:
     [
         (build_start_message, {"metadata": []}),
         (build_ready_message, {"metadata": ""}),
+        (
+            build_transcript_message,
+            {
+                "text": "hello",
+                "is_final": False,
+                "speech_final": False,
+                "revision": 1,
+                "audio_received_ms": 100,
+                "audio_transcribed_ms": 80,
+                "metadata": [],
+            },
+        ),
+        (build_warning_message, {"code": "warn", "message": "warning", "metadata": []}),
+        (build_error_message, {"code": "error", "message": "error", "metadata": ""}),
         (build_ping_message, {"metadata": []}),
         (build_pong_message, {"metadata": ""}),
         (build_closed_message, {"metadata": []}),
@@ -135,12 +205,18 @@ def test_builders_reject_non_object_metadata(builder, kwargs: dict[str, object])
 
 def test_protocol_package_exports_control_message_builders() -> None:
     from src.protocols import build_closed_message as exported_build_closed
+    from src.protocols import build_error_message as exported_build_error
     from src.protocols import build_ping_message as exported_build_ping
     from src.protocols import build_pong_message as exported_build_pong
+    from src.protocols import build_transcript_message as exported_build_transcript
+    from src.protocols import build_warning_message as exported_build_warning
 
     assert exported_build_ping is build_ping_message
     assert exported_build_pong is build_pong_message
     assert exported_build_closed is build_closed_message
+    assert exported_build_transcript is build_transcript_message
+    assert exported_build_warning is build_warning_message
+    assert exported_build_error is build_error_message
 
 
 def test_start_message_validates_and_ignores_unknown_optional_fields() -> None:
