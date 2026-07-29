@@ -237,6 +237,16 @@ def test_parse_args_accepts_short_summary_size_filter_aliases() -> None:
     assert args.summary_max_size_bytes == 2048
 
 
+def test_parse_args_accepts_age_range_filter_aliases() -> None:
+    args = parse_args(["--min-age", "2 weeks", "--max-age", "3 months"])
+    readable_args = parse_args(["--at-least-age", "14 days", "--at-most-age", "90 days"])
+
+    assert args.older_than_days == 14
+    assert args.newer_than_days == 90
+    assert readable_args.older_than_days == 14
+    assert readable_args.newer_than_days == 90
+
+
 def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
     for alias in [
         "average-size",
