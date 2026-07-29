@@ -1393,16 +1393,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--older-than-days",
         "--older-than",
+        "--min-age",
+        "--at-least-age",
         type=parse_age_days,
         default=None,
-        help="Only include stale artifacts measured before this age, in days, weeks, months, or years",
+        help="Only include stale artifacts measured before this minimum age, in days, weeks, months, or years",
     )
     parser.add_argument(
         "--newer-than-days",
         "--newer-than",
+        "--max-age",
+        "--at-most-age",
         type=parse_age_days,
         default=None,
-        help="Only include stale artifacts measured within this age, in days, weeks, months, or years",
+        help="Only include stale artifacts measured within this maximum age, in days, weeks, months, or years",
     )
     parser.add_argument(
         "--measured-before",
