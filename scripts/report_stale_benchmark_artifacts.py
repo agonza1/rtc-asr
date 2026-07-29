@@ -2626,7 +2626,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="With --summary-only or --json-summary, only print grouping rows with no more than this many artifacts",
     )
     parser.add_argument(
+        "--summary-min-size",
         "--summary-min-size-bytes",
+        dest="summary_min_size_bytes",
         type=parse_size_bytes,
         default=None,
         help=(
@@ -2635,7 +2637,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--summary-max-size",
         "--summary-max-size-bytes",
+        dest="summary_max_size_bytes",
         type=parse_size_bytes,
         default=None,
         help=(
