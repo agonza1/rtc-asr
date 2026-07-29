@@ -2695,6 +2695,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-share",
+        "--summary-shares",
+        "--include-summary-share",
+        "--include-summary-shares",
+        "--share",
+        "--shares",
+        dest="summary_share",
         action="store_true",
         help=(
             "With --json-summary, --summary-csv, or --summary-markdown, include count "
