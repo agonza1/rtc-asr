@@ -41,7 +41,7 @@ from src.protocols.local_stt_v1 import (
     parse_server_message,
     RawUdsFrameType,
 )
-from src.rtc_client import AsyncRawUdsLocalSttClient
+from src.rtc_client import AsyncLocalSttClient, AsyncRawUdsLocalSttClient
 from src.streaming import ASRWebSocketClient, StreamConfig, TranscriptEvent
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
@@ -937,6 +937,43 @@ def test_raw_uds_ping_and_close_do_not_start_runtime(tmp_path: Path) -> None:
         asyncio.run(scenario())
 
     assert transcriber.calls == []
+
+
+def test_local_stt_clients_reject_non_object_metadata_before_connect() -> None:
+    async def failing_ws_connect(_url: str) -> object:
+        raise AssertionError("websocket connect should not be called")
+
+    async def failing_raw_connect(_path: str) -> object:
+        raise AssertionError("raw UDS connect should not be called")
+
+    async def scenario() -> None:
+        ws_client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=failing_ws_connect)
+        raw_client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=failing_raw_connect)
+
+        with pytest.raises(ValueError, match="metadata must be a JSON object"):
+            await ws_client.start(metadata=[("tenant", "demo")])  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="metadata must be a JSON object"):
+            await raw_client.start(metadata=[("tenant", "demo")])  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="metadata must be a JSON object"):
+            await ws_client.ping(metadata="demo")  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="metadata must be a JSON object"):
+            await raw_client.pong(metadata="demo")  # type: ignore[arg-type]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("value", [-1, True, 1.5, "1"])
+def test_local_stt_clients_reject_invalid_ping_timestamps(value: object) -> None:
+    async def scenario() -> None:
+        ws_client = AsyncLocalSttClient("ws://example.test/v1/stt/stream")
+        raw_client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock")
+
+        with pytest.raises(ValueError, match="timestamp_ms must be a nonnegative integer"):
+            await ws_client.ping(timestamp_ms=value)  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="timestamp_ms must be a nonnegative integer"):
+            await raw_client.pong(timestamp_ms=value)  # type: ignore[arg-type]
+
+    asyncio.run(scenario())
 
 
 def test_raw_uds_pong_and_close_do_not_start_runtime(tmp_path: Path) -> None:
