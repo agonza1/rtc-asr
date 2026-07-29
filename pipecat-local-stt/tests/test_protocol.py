@@ -75,6 +75,23 @@ def test_control_message_builders_emit_compact_payloads() -> None:
     assert build_pong_message(metadata={}) == {"type": "pong"}
 
 
+@pytest.mark.parametrize(
+    ("builder", "kwargs"),
+    [
+        (build_start_message, {"config": LocalSTTConfig(), "metadata": []}),
+        (build_ping_message, {"metadata": ""}),
+        (build_pong_message, {"metadata": ["not", "an", "object"]}),
+        (build_closed_message, {"metadata": 1}),
+    ],
+)
+def test_control_message_builders_reject_non_object_metadata(builder, kwargs: dict[str, object]) -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        builder(**kwargs)
+
+    assert excinfo.value.code == "invalid_metadata_field"
+    assert "metadata must be a JSON object" in excinfo.value.message
+
+
 def test_package_exports_control_message_builders() -> None:
     import pipecat_local_stt as package
 
@@ -109,6 +126,24 @@ def test_parse_transcript_event_rejects_non_string_text() -> None:
             "audio_transcribed_ms": 20,
             "metadata": {},
         })
+
+
+@pytest.mark.parametrize("metadata", [[], "turn=1", 1])
+def test_parse_transcript_event_rejects_non_object_metadata(metadata: object) -> None:
+    with pytest.raises(LocalSTTProtocolError) as excinfo:
+        parse_transcript_event({
+            "type": "transcript",
+            "text": "hello",
+            "is_final": False,
+            "speech_final": False,
+            "revision": 1,
+            "audio_received_ms": 40,
+            "audio_transcribed_ms": 20,
+            "metadata": metadata,
+        })
+
+    assert excinfo.value.code == "invalid_metadata_field"
+    assert excinfo.value.message == "Transcript event metadata must be a JSON object"
 
 
 @pytest.mark.parametrize("field", ["is_final", "speech_final"])
