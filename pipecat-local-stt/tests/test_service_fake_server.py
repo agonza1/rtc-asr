@@ -129,6 +129,26 @@ def test_service_ignores_stale_ready_events() -> None:
     assert service.metrics.local_stt_stale_ready_events_total == 1
 
 
+def test_service_counts_stale_transcript_events_separately_from_suppression() -> None:
+    service = LocalStreamingSTTService()
+    service._generation = 2
+
+    asyncio.run(service._handle_server_payload({
+        "type": "transcript",
+        "text": "old final",
+        "is_final": True,
+        "speech_final": True,
+        "revision": 1,
+        "audio_received_ms": 20,
+        "audio_transcribed_ms": 20,
+        "metadata": {"local_stt_generation": 1},
+    }))
+
+    assert service.metrics.local_stt_stale_transcript_events_total == 1
+    assert service.metrics.local_stt_transcripts_suppressed_total == 0
+    assert service.metrics.local_stt_final_events_total == 0
+
+
 def test_service_accepts_matching_ready_generation() -> None:
     service = LocalStreamingSTTService()
     service._generation = 2
