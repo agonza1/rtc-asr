@@ -434,6 +434,18 @@ def test_async_local_stt_client_rejects_invalid_pcm16_before_connecting() -> Non
     asyncio.run(scenario())
 
 
+def test_async_local_stt_client_rejects_non_boolean_interim_results_before_connecting() -> None:
+    async def fail_connect(_url: str) -> FakeWebSocket:
+        raise AssertionError("invalid start should not open the websocket")
+
+    async def scenario() -> None:
+        client = AsyncLocalSttClient("ws://example.test/v1/stt/stream", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match="interim_results must be boolean"):
+            await client.start(interim_results=1)
+
+    asyncio.run(scenario())
+
+
 def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
     tcp_client = build_async_local_stt_client(LocalSTTConfig(url="ws://example.test/v1/stt/stream"))
     uds_ws_client = build_async_local_stt_client(
@@ -694,6 +706,18 @@ def test_async_raw_uds_client_rejects_invalid_pcm16_without_connecting() -> None
             await client.send_audio(b"\x00")
 
         assert excinfo.value.as_event().code == "invalid_audio_chunk"
+
+    asyncio.run(scenario())
+
+
+def test_async_raw_uds_client_rejects_non_boolean_interim_results_before_connecting() -> None:
+    async def fail_connect(_path: str):
+        raise AssertionError("invalid start should not open the raw UDS socket")
+
+    async def scenario() -> None:
+        client = AsyncRawUdsLocalSttClient("/tmp/stt.raw.sock", connect_fn=fail_connect)
+        with pytest.raises(ValueError, match="interim_results must be boolean"):
+            await client.start(interim_results=1)
 
     asyncio.run(scenario())
 
