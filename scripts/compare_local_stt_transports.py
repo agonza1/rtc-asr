@@ -242,6 +242,7 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         "unix_socket": "uds_ws",
         "unix socket": "uds_ws",
         "unix_ws": "uds_ws",
+        "unix ws": "uds_ws",
         "uds-websocket": "uds_ws",
         "uds_websocket": "uds_ws",
         "uds websocket": "uds_ws",
