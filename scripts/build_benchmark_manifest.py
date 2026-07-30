@@ -341,6 +341,12 @@ def normalized_contract_transport(value: Any) -> Any:
         "tcp secure websocket": "tcp_ws",
         "websocket secure": "tcp_ws",
         "websocket tcp": "tcp_ws",
+        "local stt": "v1-stt-stream",
+        "local stt v1": "v1-stt-stream",
+        "local stt stream": "v1-stt-stream",
+        "local stt v1 stream": "v1-stt-stream",
+        "v1 stt": "v1-stt-stream",
+        "v1 stt stream": "v1-stt-stream",
     }
     return aliases.get(canonical, value)
 
