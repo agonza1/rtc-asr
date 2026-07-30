@@ -1414,7 +1414,7 @@ def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConf
             "metadata": payload.get("metadata", {}),
         }
 
-    legacy_partial_interval_chunks = payload.get("partial_interval_chunks")
+    legacy_partial_interval_chunks = payload.get("partial_interval_chunks") if is_flat_start else None
 
     start = parse_client_message(translated_payload)
     if not isinstance(start, StartMessage):

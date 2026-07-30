@@ -1968,6 +1968,44 @@ def test_local_stt_v1_partial_interval_chunks_remains_supported() -> None:
     ]
 
 
+def test_local_stt_v1_nested_start_ignores_legacy_partial_interval_chunks() -> None:
+    transcriber = FakeTranscriber()
+    chunk = b"x" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "version": PROTOCOL_VERSION,
+                    "audio": {
+                        "sample_rate": HOT_PATH_SAMPLE_RATE,
+                        "channels": HOT_PATH_CHANNELS,
+                        "format": HOT_PATH_PCM_FORMAT,
+                        "frame_ms": HOT_PATH_FRAME_MS,
+                        "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME,
+                    },
+                    "partial_interval_chunks": 10,
+                }
+            )
+            ready = websocket.receive_json()
+            websocket.send_bytes(chunk)
+            partial_message = parse_server_message(websocket.receive_json())
+
+    assert ready["metadata"]["partial_interval_chunks"] == 1
+    assert ready["metadata"]["partial_interval_ms"] == HOT_PATH_FRAME_MS
+    assert partial_message.type == "transcript"
+    assert partial_message.metadata["chunks_received"] == 1
+    assert transcriber.calls == [
+        {
+            "audio_size": len(chunk),
+            "language": None,
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "prefix": chunk[:4],
+        }
+    ]
+
+
 def test_local_stt_v1_partial_interval_chunks_still_emit_after_batched_audio() -> None:
     session = StreamSession(
         stream_id=1,
