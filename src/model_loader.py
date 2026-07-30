@@ -651,6 +651,7 @@ def _normalize_backend_name(value: str) -> str:
         .lower()
         .replace("_", "-")
         .replace(".", "-")
+        .replace("/", "-")
         .split()
     )
 
