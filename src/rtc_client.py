@@ -49,6 +49,8 @@ class LocalSTTConfig:
     def __post_init__(self) -> None:
         transport = _normalize_local_stt_transport(self.transport)
         object.__setattr__(self, "transport", transport)
+        if self.transport not in {"tcp_ws", "uds_ws", "raw_uds"}:
+            raise ValueError("transport must be 'tcp_ws', 'uds_ws', or 'raw_uds'")
         if self.transport in {"tcp_ws", "uds_ws"} and not self.url.strip():
             raise ValueError("url is required for Local STT websocket transports")
         if self.transport in {"uds_ws", "raw_uds"} and not (self.uds_path and self.uds_path.strip()):

@@ -584,6 +584,11 @@ def test_local_stt_config_accepts_readable_transport_aliases(alias: str, expecte
     assert config.transport == expected
 
 
+def test_local_stt_config_rejects_unknown_transport() -> None:
+    with pytest.raises(ValueError, match="transport must be"):
+        LocalSTTConfig(transport="named_pipe")
+
+
 def test_uds_ws_client_opens_unix_websocket(monkeypatch) -> None:
     calls: list[tuple[str, str, int]] = []
     websocket = object()
