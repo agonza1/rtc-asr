@@ -90,8 +90,13 @@ def test_manifest_normalizes_common_transport_aliases() -> None:
     assert normalized_contract_transport("unix-domain-socket") == "uds_ws"
     assert normalized_contract_transport("unix-domain-websocket") == "uds_ws"
     assert normalized_contract_transport("domain.socket.ws") == "uds_ws"
+    assert normalized_contract_transport("unix-domain-socket-ws") == "uds_ws"
     assert normalized_contract_transport("raw unix domain socket") == "raw_uds"
+    assert normalized_contract_transport("raw_uds_transport") == "raw_uds"
+    assert normalized_contract_transport("raw unix domain") == "raw_uds"
     assert normalized_contract_transport("raw-domain-socket") == "raw_uds"
+    assert normalized_contract_transport("/v1/stt/stream") == "v1-stt-stream"
+    assert normalized_contract_transport("local-stt-v1-stream") == "v1-stt-stream"
 
 
 def test_current_benchmark_notes_table_matches_manifest_entries() -> None:
@@ -1506,12 +1511,20 @@ def test_manifest_contract_normalizes_readable_transport_aliases() -> None:
             "target": {"url": "ws://localhost/v1/stt/stream"},
         }
     )
+    local_stt_path_contract = manifest_module.extract_benchmark_contract(
+        {
+            "benchmark": {"mode": "/v1/stt/stream"},
+            "streaming": {"live_metrics_comparable": True},
+        }
+    )
 
     assert raw_contract["transport"] == "raw_uds"
     assert raw_contract["path"] == "raw_uds"
     assert raw_contract["frame_header_bytes"] == 5
     assert ws_contract["transport"] == "tcp_ws"
     assert ws_contract["path"] == "/v1/stt/stream"
+    assert local_stt_path_contract["transport"] == "v1-stt-stream"
+    assert local_stt_path_contract["path"] == "/v1/stt/stream"
 
 
 def test_detail_page_surfaces_evidence_role() -> None:

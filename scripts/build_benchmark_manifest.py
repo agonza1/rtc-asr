@@ -314,7 +314,10 @@ def normalized_contract_transport(value: Any) -> Any:
         "ws": "tcp_ws",
         "wss": "tcp_ws",
         "raw uds": "raw_uds",
+        "raw uds socket": "raw_uds",
+        "raw uds transport": "raw_uds",
         "raw unix": "raw_uds",
+        "raw unix domain": "raw_uds",
         "raw unix socket": "raw_uds",
         "raw unix domain socket": "raw_uds",
         "raw domain socket": "raw_uds",
@@ -326,6 +329,7 @@ def normalized_contract_transport(value: Any) -> Any:
         "unix domain ws": "uds_ws",
         "unix domain websocket": "uds_ws",
         "unix domain socket websocket": "uds_ws",
+        "unix domain socket ws": "uds_ws",
         "unix websocket": "uds_ws",
         "unix ws": "uds_ws",
         "domain socket websocket": "uds_ws",
@@ -337,6 +341,12 @@ def normalized_contract_transport(value: Any) -> Any:
         "tcp secure websocket": "tcp_ws",
         "websocket secure": "tcp_ws",
         "websocket tcp": "tcp_ws",
+        "local stt": "v1-stt-stream",
+        "local stt v1": "v1-stt-stream",
+        "local stt stream": "v1-stt-stream",
+        "local stt v1 stream": "v1-stt-stream",
+        "v1 stt": "v1-stt-stream",
+        "v1 stt stream": "v1-stt-stream",
     }
     return aliases.get(canonical, value)
 
