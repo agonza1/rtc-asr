@@ -1517,6 +1517,12 @@ def test_manifest_contract_normalizes_readable_transport_aliases() -> None:
             "streaming": {"live_metrics_comparable": True},
         }
     )
+    ws_url_contract = manifest_module.extract_benchmark_contract(
+        {
+            "streaming": {"live_metrics_comparable": True},
+            "target": {"url": "wss://stt.example.test/v1/stt/stream"},
+        }
+    )
 
     assert raw_contract["transport"] == "raw_uds"
     assert raw_contract["path"] == "raw_uds"
@@ -1525,6 +1531,8 @@ def test_manifest_contract_normalizes_readable_transport_aliases() -> None:
     assert ws_contract["path"] == "/v1/stt/stream"
     assert local_stt_path_contract["transport"] == "v1-stt-stream"
     assert local_stt_path_contract["path"] == "/v1/stt/stream"
+    assert ws_url_contract["transport"] == "tcp_ws"
+    assert ws_url_contract["path"] == "/v1/stt/stream"
 
 
 def test_detail_page_surfaces_evidence_role() -> None:

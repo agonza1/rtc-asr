@@ -206,7 +206,13 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
         "live_metrics_comparable": bool(streaming.get("live_metrics_comparable", False)),
     }
     transport = normalized_contract_transport(
-        first_defined(target.get("transport"), streaming.get("transport"), integration.get("transport"), benchmark.get("mode"))
+        first_defined(
+            target.get("transport"),
+            streaming.get("transport"),
+            integration.get("transport"),
+            benchmark.get("mode"),
+            target_transport(target.get("url")),
+        )
     )
     if transport is not None:
         contract["transport"] = transport
@@ -356,6 +362,15 @@ def target_path(url: Any) -> str | None:
         return None
     path = urlparse(url).path
     return path or None
+
+
+def target_transport(url: Any) -> str | None:
+    if not isinstance(url, str) or not url:
+        return None
+    scheme = urlparse(url).scheme.lower()
+    if scheme in {"ws", "wss"}:
+        return "tcp_ws"
+    return None
 
 
 def first_defined(*values: Any) -> Any:
