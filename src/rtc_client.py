@@ -56,13 +56,14 @@ class LocalSTTConfig:
 
     @classmethod
     def from_env(cls) -> "LocalSTTConfig":
-        transport = _normalize_local_stt_transport(os.getenv("LOCAL_STT_TRANSPORT", cls.transport))
+        defaults = cls()
+        transport = _normalize_local_stt_transport(os.getenv("LOCAL_STT_TRANSPORT", defaults.transport))
         if transport not in {"tcp_ws", "uds_ws", "raw_uds"}:
             raise ValueError("LOCAL_STT_TRANSPORT must be 'tcp_ws', 'uds_ws', or 'raw_uds'")
         uds_path_env = "LOCAL_STT_RAW_UDS_PATH" if transport == "raw_uds" else "LOCAL_STT_UDS_PATH"
         return cls(
             transport=transport,
-            url=os.getenv("LOCAL_STT_URL", cls.url),
+            url=os.getenv("LOCAL_STT_URL", defaults.url),
             uds_path=os.getenv(uds_path_env),
         )
 
@@ -70,7 +71,7 @@ class LocalSTTConfig:
 def _normalize_local_stt_transport(value: Any) -> Any:
     if not isinstance(value, str):
         return value
-    normalized = value.strip().lower().replace("-", "_").replace(".", "_").replace("/", "_")
+    normalized = "_".join(value.strip().lower().replace("-", "_").replace(".", "_").replace("/", "_").split())
     aliases = {
         "tcp": "tcp_ws",
         "tcp_websocket": "tcp_ws",
@@ -82,7 +83,10 @@ def _normalize_local_stt_transport(value: Any) -> Any:
         "uds_websocket": "uds_ws",
         "unix_ws": "uds_ws",
         "unix_websocket": "uds_ws",
+        "unix_domain_socket": "uds_ws",
+        "unix_domain_websocket": "uds_ws",
         "unix_socket_ws": "uds_ws",
+        "domain_socket": "uds_ws",
         "domain_socket_ws": "uds_ws",
         "raw_uds": "raw_uds",
         "raw_unix_socket": "raw_uds",

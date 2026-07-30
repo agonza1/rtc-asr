@@ -133,7 +133,7 @@ def _require_boolean(value: Any, field_name: str) -> None:
 def _normalize_transport(value: Any) -> Any:
     if not isinstance(value, str):
         return value
-    normalized = value.strip().lower().replace("-", "_").replace(".", "_").replace("/", "_")
+    normalized = "_".join(value.strip().lower().replace("-", "_").replace(".", "_").replace("/", "_").split())
     aliases = {
         "tcp": "tcp_ws",
         "tcp_websocket": "tcp_ws",
@@ -145,7 +145,10 @@ def _normalize_transport(value: Any) -> Any:
         "uds_websocket": "uds_ws",
         "unix_ws": "uds_ws",
         "unix_websocket": "uds_ws",
+        "unix_domain_socket": "uds_ws",
+        "unix_domain_websocket": "uds_ws",
         "unix_socket_ws": "uds_ws",
+        "domain_socket": "uds_ws",
         "domain_socket_ws": "uds_ws",
         "raw_uds": "raw_uds",
         "raw_unix_socket": "raw_uds",

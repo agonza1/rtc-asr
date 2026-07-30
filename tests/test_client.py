@@ -560,7 +560,7 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
 
 def test_local_stt_config_accepts_readable_transport_aliases() -> None:
     tcp = LocalSTTConfig(transport="tcp-wss")
-    uds = LocalSTTConfig(transport="unix-websocket", uds_path="/tmp/stt.sock")
+    uds = LocalSTTConfig(transport="unix-domain-socket", uds_path="/tmp/stt.sock")
     raw = LocalSTTConfig(transport="raw-unix-socket", uds_path="/tmp/stt.raw.sock")
 
     assert tcp.transport == "tcp_ws"
@@ -639,13 +639,13 @@ def test_local_stt_config_from_env_selects_uds_ws(monkeypatch) -> None:
 
 
 def test_local_stt_config_from_env_accepts_readable_transport_alias(monkeypatch) -> None:
-    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "raw-unix-socket")
-    monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", "/tmp/stt.raw.sock")
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "unix domain websocket")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", "/tmp/stt.sock")
 
     config = LocalSTTConfig.from_env()
 
-    assert config.transport == "raw_uds"
-    assert config.uds_path == "/tmp/stt.raw.sock"
+    assert config.transport == "uds_ws"
+    assert config.uds_path == "/tmp/stt.sock"
 
 
 def test_local_stt_config_from_env_rejects_unknown_transport(monkeypatch) -> None:

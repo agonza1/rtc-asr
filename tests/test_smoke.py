@@ -2772,7 +2772,7 @@ def test_local_stt_transport_env_selects_uds_socket_mode(monkeypatch: pytest.Mon
     assert config.local_stt_uds_path == str(socket_path)
 
 
-@pytest.mark.parametrize("transport", ["uds", "unix-websocket", "domain socket ws"])
+@pytest.mark.parametrize("transport", ["uds", "unix-websocket", "unix-domain-socket", "domain socket"])
 def test_local_stt_transport_env_accepts_uds_aliases(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
