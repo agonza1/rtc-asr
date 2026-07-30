@@ -211,6 +211,7 @@ def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
 def normalized_transport(artifact: dict[str, Any]) -> str | None:
     target = artifact.get("target") if isinstance(artifact.get("target"), dict) else {}
     benchmark = artifact.get("benchmark") if isinstance(artifact.get("benchmark"), dict) else {}
+    contract = artifact.get("contract") if isinstance(artifact.get("contract"), dict) else {}
     integration = artifact.get("integration") if isinstance(artifact.get("integration"), dict) else {}
     streaming = artifact.get("streaming") if isinstance(artifact.get("streaming"), dict) else {}
     has_direct_target_transport = isinstance(target.get("transport"), str)
@@ -218,6 +219,9 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         target.get("transport"),
         target.get("transport_type"),
         target.get("socket_mode"),
+        contract.get("transport"),
+        contract.get("transport_type"),
+        contract.get("socket_mode"),
         integration.get("transport"),
         integration.get("transport_type"),
         streaming.get("transport"),
