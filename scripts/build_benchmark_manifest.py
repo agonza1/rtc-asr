@@ -205,7 +205,9 @@ def extract_benchmark_contract(payload: dict[str, Any]) -> dict[str, Any]:
         "sample_rate": audio.get("sample_rate", ready.get("sample_rate")),
         "live_metrics_comparable": bool(streaming.get("live_metrics_comparable", False)),
     }
-    transport = first_defined(target.get("transport"), streaming.get("transport"), integration.get("transport"), benchmark.get("mode"))
+    transport = normalized_contract_transport(
+        first_defined(target.get("transport"), streaming.get("transport"), integration.get("transport"), benchmark.get("mode"))
+    )
     if transport is not None:
         contract["transport"] = transport
     uds_path = target.get("uds_path")
@@ -300,6 +302,25 @@ def extract_experimental_transports(payload: dict[str, Any]) -> list[dict[str, A
             if isinstance(transport, dict) and transport.get("transport"):
                 transports.append(dict(transport))
     return transports
+
+
+def normalized_contract_transport(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    canonical = re.sub(r"[^a-z0-9]+", " ", value.strip().lower()).strip()
+    aliases = {
+        "raw uds": "raw_uds",
+        "raw unix": "raw_uds",
+        "raw unix socket": "raw_uds",
+        "uds websocket": "uds_ws",
+        "uds ws": "uds_ws",
+        "unix websocket": "uds_ws",
+        "unix ws": "uds_ws",
+        "tcp websocket": "tcp_ws",
+        "tcp ws": "tcp_ws",
+        "websocket tcp": "tcp_ws",
+    }
+    return aliases.get(canonical, value)
 
 
 def target_path(url: Any) -> str | None:
