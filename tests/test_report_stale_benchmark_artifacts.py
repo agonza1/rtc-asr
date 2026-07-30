@@ -98,7 +98,7 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
                 "Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, "
                 "YEAR, CALENDAR-YEAR, QUARTER, CALENDAR-QUARTER, MONTH, CALENDAR-MONTH, "
                 "WEEK, CALENDAR-WEEK, ISO-WEEK, MEASURED-AT-ISO-WEEK, MEASUREMENT-ISO-WEEK, "
-                "DAY, CALENDAR-DAY, CALENDAR-DATE, AGE-RANGE"
+                "DAY, CALENDAR-DAY, CALENDAR-DATE, MEASURED-DATE, AGE-RANGE"
             )
         ]
     ) == {
@@ -853,6 +853,9 @@ def test_parse_args_accepts_measured_day_summary_sort_aliases() -> None:
         "measurement-day",
         "measurement-day-desc",
         "measurement-day-asc",
+        "measured-date",
+        "measured-date-desc",
+        "measured-date-asc",
         "measured-at-date",
         "measured-at-date-desc",
         "measured-at-date-asc",
@@ -980,7 +983,7 @@ def test_render_json_summary_groups_by_measured_day_aliases() -> None:
         },
     ]
 
-    summary = json.loads(render_json_summary(stale, groups=["date"], summary_sort="size"))
+    summary = json.loads(render_json_summary(stale, groups=["measured-date"], summary_sort="size"))
 
     assert summary["by_measured_day"] == [
         {
@@ -1097,7 +1100,7 @@ def test_render_json_summary_accepts_measured_day_summary_sort_aliases() -> None
     ]
 
     ascending = json.loads(render_json_summary(stale, groups=["date"], summary_sort="day-asc"))
-    descending = json.loads(render_json_summary(stale, groups=["date"], summary_sort="measurement-date-desc"))
+    descending = json.loads(render_json_summary(stale, groups=["date"], summary_sort="measured-date-desc"))
     calendar_ascending = json.loads(
         render_json_summary(stale, groups=["calendar-day"], summary_sort="calendar-date-asc")
     )
@@ -1598,6 +1601,9 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "measurement-day",
         "measurement-day-asc",
         "measurement-day-desc",
+        "measured-date",
+        "measured-date-asc",
+        "measured-date-desc",
         "measured-at-date",
         "measured-at-date-asc",
         "measured-at-date-desc",
@@ -1630,9 +1636,20 @@ def test_parse_args_accepts_measured_week_filter_aliases() -> None:
 
 
 def test_parse_args_accepts_measured_day_filter_aliases() -> None:
-    args = parse_args(["--day", "2026-07-01", "--date", "2026-07-02", "--measurement-date", "2026-07-03"])
+    args = parse_args(
+        [
+            "--day",
+            "2026-07-01",
+            "--date",
+            "2026-07-02",
+            "--measurement-date",
+            "2026-07-03",
+            "--measured-date",
+            "2026-07-04",
+        ]
+    )
 
-    assert args.measured_day == ["2026-07-01", "2026-07-02", "2026-07-03"]
+    assert args.measured_day == ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04"]
 
 
 def test_parse_args_accepts_measured_year_filter_aliases() -> None:
@@ -1775,7 +1792,7 @@ def test_stale_artifacts_accept_measured_day_sort_aliases() -> None:
     }
 
     ascending = stale_artifacts(manifest, sort_by="day")
-    descending = stale_artifacts(manifest, sort_by="measurement-date-desc")
+    descending = stale_artifacts(manifest, sort_by="measured-date-desc")
 
     assert [entry["artifact_path"] for entry in ascending] == [
         "benchmark-results/early.json",
