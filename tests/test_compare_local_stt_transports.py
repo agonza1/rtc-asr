@@ -52,6 +52,14 @@ def test_normalized_transport_infers_tcp_websocket_from_url_when_transport_missi
     assert compare_module.normalized_transport({"target": {"url": "wss://example.test/v1/stt/stream"}}) == "tcp_ws"
 
 
+def test_normalized_transport_infers_socket_transports_from_url_when_transport_missing() -> None:
+    assert compare_module.normalized_transport({"target": {"url": "unix:///tmp/local-stt.sock"}}) == "uds_ws"
+    assert compare_module.normalized_transport({"target": {"url": "unix+ws:///tmp/local-stt.sock"}}) == "uds_ws"
+    assert compare_module.normalized_transport({"target": {"url": "uds+ws:///tmp/local-stt.sock"}}) == "uds_ws"
+    assert compare_module.normalized_transport({"target": {"url": "raw+unix:///tmp/local-stt.sock"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"url": "raw-uds:///tmp/local-stt.sock"}}) == "raw_uds"
+
+
 def test_parse_args_accepts_readable_raw_uds_win_threshold_aliases() -> None:
     for alias in [
         "--min-raw-uds-win-ms",
