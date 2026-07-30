@@ -215,6 +215,10 @@ def transport_from_url(url: Any) -> str | None:
     scheme = urlparse(url).scheme.lower()
     if scheme in {"ws", "wss"}:
         return "tcp_ws"
+    if scheme in {"unix", "unix+ws", "ws+unix", "uds", "uds+ws", "ws+uds"}:
+        return "uds_ws"
+    if scheme in {"raw+unix", "raw+uds", "raw-uds"}:
+        return "raw_uds"
     return None
 
 
