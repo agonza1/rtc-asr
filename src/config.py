@@ -139,10 +139,10 @@ def _normalize_local_stt_transport(value: str) -> str:
 def _local_stt_socket_mode(default: Literal["tcp", "uds"]) -> Literal["tcp", "uds"]:
     explicit_mode = os.getenv("LOCAL_STT_SOCKET_MODE")
     if explicit_mode is not None:
-        normalized = explicit_mode.strip().lower()
-        if normalized == "tcp":
+        normalized = _normalize_local_stt_transport(explicit_mode)
+        if normalized == "tcp_ws":
             return "tcp"
-        if normalized == "uds":
+        if normalized == "uds_ws":
             return "uds"
         raise ValueError("LOCAL_STT_SOCKET_MODE must be 'tcp' or 'uds'")
 
