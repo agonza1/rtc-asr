@@ -558,16 +558,30 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
     assert raw_client.uds_path == "/tmp/stt.raw.sock"
 
 
-def test_local_stt_config_accepts_readable_transport_aliases() -> None:
-    tcp = LocalSTTConfig(transport="tcp-wss")
-    uds = LocalSTTConfig(transport="unix-domain-socket", uds_path="/tmp/stt.sock")
-    raw = LocalSTTConfig(transport="raw-unix-socket", uds_path="/tmp/stt.raw.sock")
-    shorthand_raw = LocalSTTConfig(transport="raw", uds_path="/tmp/stt.raw.sock")
+@pytest.mark.parametrize(
+    ("alias", "expected"),
+    [
+        ("tcp-wss", "tcp_ws"),
+        ("tcp web socket", "tcp_ws"),
+        ("secure websocket", "tcp_ws"),
+        ("websocket tcp", "tcp_ws"),
+        ("unix-domain-socket", "uds_ws"),
+        ("unix socket", "uds_ws"),
+        ("unix domain socket websocket", "uds_ws"),
+        ("domain socket ws", "uds_ws"),
+        ("raw-unix-socket", "raw_uds"),
+        ("raw unix domain socket", "raw_uds"),
+        ("raw domain socket", "raw_uds"),
+        ("unix raw", "raw_uds"),
+        ("raw", "raw_uds"),
+    ],
+)
+def test_local_stt_config_accepts_readable_transport_aliases(alias: str, expected: str) -> None:
+    kwargs = {"uds_path": "/tmp/stt.sock"} if expected in {"uds_ws", "raw_uds"} else {}
 
-    assert tcp.transport == "tcp_ws"
-    assert uds.transport == "uds_ws"
-    assert raw.transport == "raw_uds"
-    assert shorthand_raw.transport == "raw_uds"
+    config = LocalSTTConfig(transport=alias, **kwargs)
+
+    assert config.transport == expected
 
 
 def test_uds_ws_client_opens_unix_websocket(monkeypatch) -> None:
