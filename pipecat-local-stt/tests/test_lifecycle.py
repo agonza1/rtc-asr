@@ -97,6 +97,16 @@ def test_rejects_non_16khz_mono_pcm16_audio_contract() -> None:
     asyncio.run(_test_rejects_non_16khz_mono_pcm16_audio_contract())
 
 
+def test_local_stt_config_accepts_readable_transport_aliases() -> None:
+    tcp = LocalSTTConfig(transport="tcp-wss")
+    uds = LocalSTTConfig(transport="unix-websocket", uds_path="/tmp/stt.sock")
+    raw = LocalSTTConfig(transport="raw-unix-socket", uds_path="/tmp/stt.raw.sock")
+
+    assert tcp.transport == "tcp_ws"
+    assert uds.transport == "uds_ws"
+    assert raw.transport == "raw_uds"
+
+
 async def _test_rejects_non_16khz_mono_pcm16_audio_contract() -> None:
     websocket = FakeLocalSTTWebSocket()
     service = LocalStreamingSTTService(

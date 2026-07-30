@@ -37,6 +37,7 @@ class LocalSTTConfig:
     enable_timing_metadata: bool = True
 
     def __post_init__(self) -> None:
+        self.transport = _normalize_transport(self.transport)
         for field_name in (
             "sample_rate",
             "channels",
@@ -127,3 +128,27 @@ def _reject_boolean_number(value: Any, field_name: str) -> None:
 def _require_boolean(value: Any, field_name: str) -> None:
     if not isinstance(value, bool):
         raise ValueError(f"{field_name} must be boolean")
+
+
+def _normalize_transport(value: Any) -> Any:
+    if not isinstance(value, str):
+        return value
+    normalized = value.strip().lower().replace("-", "_").replace(".", "_").replace("/", "_")
+    aliases = {
+        "tcp": "tcp_ws",
+        "tcp_websocket": "tcp_ws",
+        "tcp_wss": "tcp_ws",
+        "websocket": "tcp_ws",
+        "ws": "tcp_ws",
+        "wss": "tcp_ws",
+        "uds": "uds_ws",
+        "uds_websocket": "uds_ws",
+        "unix_ws": "uds_ws",
+        "unix_websocket": "uds_ws",
+        "unix_socket_ws": "uds_ws",
+        "domain_socket_ws": "uds_ws",
+        "raw_uds": "raw_uds",
+        "raw_unix_socket": "raw_uds",
+        "raw_unix": "raw_uds",
+    }
+    return aliases.get(normalized, normalized)
