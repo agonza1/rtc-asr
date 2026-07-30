@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -237,15 +238,19 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         "websocket-tcp": "tcp_ws",
         "websocket_tcp": "tcp_ws",
         "websocket tcp": "tcp_ws",
+        "tcp ws": "tcp_ws",
+        "ws tcp": "tcp_ws",
         "uds": "uds_ws",
         "unix-socket": "uds_ws",
         "unix_socket": "uds_ws",
         "unix socket": "uds_ws",
         "unix_ws": "uds_ws",
         "unix ws": "uds_ws",
+        "uds ws": "uds_ws",
         "uds-websocket": "uds_ws",
         "uds_websocket": "uds_ws",
         "uds websocket": "uds_ws",
+        "unix domain ws": "uds_ws",
         "unix-domain-websocket": "uds_ws",
         "unix_domain_websocket": "uds_ws",
         "unix domain websocket": "uds_ws",
@@ -258,8 +263,10 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         "domain-socket-websocket": "uds_ws",
         "domain_socket_websocket": "uds_ws",
         "domain socket websocket": "uds_ws",
+        "domain socket ws": "uds_ws",
         "raw-uds": "raw_uds",
         "raw uds": "raw_uds",
+        "raw uds socket": "raw_uds",
         "raw-unix": "raw_uds",
         "raw_unix": "raw_uds",
         "raw unix": "raw_uds",
@@ -278,7 +285,8 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
     normalized = value.strip().lower()
     if has_direct_target_transport and normalized in {"tcp", "websocket", "ws"}:
         return normalized
-    return aliases.get(normalized, normalized)
+    canonical = re.sub(r"[^a-z0-9]+", " ", normalized).strip()
+    return aliases.get(normalized) or aliases.get(canonical, normalized)
 
 
 def numeric_or_percentile(value: Any) -> float | None:
