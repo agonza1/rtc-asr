@@ -59,6 +59,7 @@ def test_build_transcriber_accepts_qwen_aliases(backend: str) -> None:
         ("PARAKEET-CTC", ParakeetNemoAdapter),
         ("qwen/asr", QwenASRAdapter),
         ("parakeet.mlx", ParakeetMLXAdapter),
+        ("mlx parakeet ctc", ParakeetMLXAdapter),
         ("faster_whisper", FasterWhisperAdapter),
     ],
 )
@@ -104,7 +105,10 @@ def test_build_transcriber_accepts_parakeet_nemo_aliases(backend: str) -> None:
     assert transcriber.model_name == "nvidia/parakeet-tdt_ctc-110m"
 
 
-@pytest.mark.parametrize("backend", ["parakeet-mlx"])
+@pytest.mark.parametrize(
+    "backend",
+    ["parakeet-mlx", "parakeet-mlx-ctc", "parakeet-mlx-tdt", "mlx-parakeet", "mlx-parakeet-ctc"],
+)
 def test_build_transcriber_accepts_parakeet_mlx_aliases(backend: str) -> None:
     transcriber = build_transcriber(
         AppConfig(asr_backend=backend, asr_parakeet_model="mlx-community/parakeet-tdt_ctc-110m"),
@@ -217,6 +221,10 @@ def test_api_reference_lists_supported_runtime_aliases() -> None:
         "`parakeet-nemo-ctc`",
         "`nemo-parakeet`",
         "`nvidia-parakeet-ctc`",
+        "`parakeet-mlx-ctc`",
+        "`parakeet-mlx-tdt`",
+        "`mlx-parakeet`",
+        "`mlx-parakeet-ctc`",
         "`voxtral-realtime`",
         "`voxtral-mini`",
         "`voxtral-mini-4b`",
