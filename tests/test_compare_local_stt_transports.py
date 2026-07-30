@@ -20,6 +20,13 @@ def test_normalized_transport_accepts_direct_target_aliases() -> None:
     assert compare_module.normalized_transport({"target": {"transport": "uds-websocket"}}) == "uds_ws"
 
 
+def test_normalized_transport_accepts_readable_target_transport_aliases() -> None:
+    assert compare_module.normalized_transport({"target": {"transport": "tcp-websocket"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "websocket_tcp"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "unix-socket"}}) == "uds_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "raw-unix-socket"}}) == "raw_uds"
+
+
 def write_artifact(
     path: Path,
     transport: str,
