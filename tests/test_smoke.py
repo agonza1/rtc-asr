@@ -2760,6 +2760,34 @@ def test_local_stt_socket_mode_env_supports_uds(monkeypatch: pytest.MonkeyPatch,
     assert config.local_stt_raw_uds_path == str(raw_socket_path)
 
 
+@pytest.mark.parametrize("socket_mode", ["tcp_ws", "websocket", "tcp-wss"])
+def test_local_stt_socket_mode_env_accepts_tcp_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+    socket_mode: str,
+) -> None:
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", socket_mode)
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_socket_mode == "tcp"
+
+
+@pytest.mark.parametrize("socket_mode", ["uds_ws", "unix-websocket", "unix domain socket"])
+def test_local_stt_socket_mode_env_accepts_uds_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    socket_mode: str,
+) -> None:
+    socket_path = tmp_path / "stt.sock"
+    monkeypatch.setenv("LOCAL_STT_SOCKET_MODE", socket_mode)
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", str(socket_path))
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_socket_mode == "uds"
+    assert config.local_stt_uds_path == str(socket_path)
+
+
 def test_local_stt_transport_env_selects_uds_socket_mode(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     socket_path = tmp_path / "stt.sock"
     monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
