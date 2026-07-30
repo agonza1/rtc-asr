@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import platform
+import re
 import statistics
 import time
 import wave
@@ -47,19 +48,32 @@ SUPPORTED_TRANSPORTS = {"tcp_ws", "uds_ws", "raw_uds"}
 TRANSPORT_ALIASES = {
     "tcp": "tcp_ws",
     "tcp-ws": "tcp_ws",
+    "tcp-wss": "tcp_ws",
     "tcp-websocket": "tcp_ws",
+    "tcp-secure-websocket": "tcp_ws",
     "websocket": "tcp_ws",
+    "websocket-tcp": "tcp_ws",
+    "websocket-secure": "tcp_ws",
     "ws": "tcp_ws",
+    "wss": "tcp_ws",
+    "secure-websocket": "tcp_ws",
     "uds": "uds_ws",
     "uds-ws": "uds_ws",
     "uds-websocket": "uds_ws",
+    "unix-socket": "uds_ws",
     "unix-ws": "uds_ws",
     "unix-websocket": "uds_ws",
+    "unix-domain-socket": "uds_ws",
+    "unix-domain-ws": "uds_ws",
     "unix-domain-websocket": "uds_ws",
+    "domain-socket-ws": "uds_ws",
+    "domain-socket-websocket": "uds_ws",
     "raw": "raw_uds",
     "raw-uds": "raw_uds",
     "raw-unix": "raw_uds",
     "unix-raw": "raw_uds",
+    "raw-domain-socket": "raw_uds",
+    "raw-unix-domain-socket": "raw_uds",
     "raw-unix-socket": "raw_uds",
 }
 LOCAL_STT_AUDIO_CHANNELS = 1
@@ -166,7 +180,7 @@ def metadata_pair(value: str) -> tuple[str, str]:
 
 
 def normalize_transport(value: str) -> str:
-    normalized = value.strip().lower().replace("_", "-")
+    normalized = re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
     canonical = normalized.replace("-", "_")
     if canonical in SUPPORTED_TRANSPORTS:
         return canonical
