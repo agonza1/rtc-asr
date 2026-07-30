@@ -641,6 +641,7 @@ BACKEND_ALIASES = {
     "parakeet-mlx-tdt": "parakeet-mlx",
     "mlx-parakeet": "parakeet-mlx",
     "mlx-parakeet-ctc": "parakeet-mlx",
+    "mlx-parakeet-tdt": "parakeet-mlx",
     "voxtral": "voxtral",
     "voxtral-mini": "voxtral",
     "voxtral-mini-4b": "voxtral",
