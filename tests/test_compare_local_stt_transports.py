@@ -345,6 +345,28 @@ def test_compare_artifacts_accepts_transport_aliases_from_stream_artifacts(tmp_p
     assert sorted(comparison["transports"]) == ["raw_uds", "tcp_ws", "uds_ws"]
 
 
+def test_compare_artifacts_accepts_transport_aliases_from_contract_metadata(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 10.0)
+
+    for path, contract in (
+        (tcp, {"transport": "tcp websocket"}),
+        (uds, {"transport_type": "unix-domain/ws"}),
+        (raw, {"socket_mode": "raw_uds/socket"}),
+    ):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload["target"].pop("transport")
+        payload["contract"] = contract
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["missing_transports"] == []
+    assert comparison["unexpected_transports"] == []
+    assert sorted(comparison["transports"]) == ["raw_uds", "tcp_ws", "uds_ws"]
+
+
 def test_compare_artifacts_accepts_raw_uds_contract_map(tmp_path: Path) -> None:
     tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
     uds = write_artifact(tmp_path / "uds.json", "uds_ws", 16.0)
