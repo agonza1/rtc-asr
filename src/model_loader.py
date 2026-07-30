@@ -645,8 +645,19 @@ BACKEND_ALIASES = {
 }
 
 
+def _normalize_backend_name(value: str) -> str:
+    return "-".join(
+        value.strip()
+        .lower()
+        .replace("_", "-")
+        .replace(".", "-")
+        .split()
+    )
+
+
 def backend_aliases_for(canonical_backend: str) -> list[str]:
     """Return accepted ASR_BACKEND values for a canonical backend name."""
+    canonical_backend = _normalize_backend_name(canonical_backend)
     return [
         alias
         for alias, backend in BACKEND_ALIASES.items()
@@ -775,7 +786,7 @@ def _shared_capabilities(audio_processor: AudioProcessor) -> dict[str, Any]:
 
 
 def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Transcriber:
-    requested_backend = config.asr_backend.strip().lower()
+    requested_backend = _normalize_backend_name(config.asr_backend)
     backend = BACKEND_ALIASES.get(requested_backend, requested_backend)
     if backend == "faster-whisper":
         return FasterWhisperAdapter(config=config, audio_processor=audio_processor)
