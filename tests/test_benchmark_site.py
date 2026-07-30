@@ -1479,6 +1479,28 @@ def test_manifest_contract_marks_raw_uds_without_websocket_url() -> None:
     assert contract["sample_rate"] == 16000
 
 
+def test_manifest_contract_normalizes_readable_transport_aliases() -> None:
+    raw_contract = manifest_module.extract_benchmark_contract(
+        {
+            "benchmark": {"chunk_ms": 20, "mode": "raw unix socket"},
+            "streaming": {"live_metrics_comparable": True},
+            "target": {"uds_path": "/tmp/stt.raw.sock"},
+        }
+    )
+    ws_contract = manifest_module.extract_benchmark_contract(
+        {
+            "streaming": {"transport": "tcp websocket", "live_metrics_comparable": True},
+            "target": {"url": "ws://localhost/v1/stt/stream"},
+        }
+    )
+
+    assert raw_contract["transport"] == "raw_uds"
+    assert raw_contract["path"] == "raw_uds"
+    assert raw_contract["frame_header_bytes"] == 5
+    assert ws_contract["transport"] == "tcp_ws"
+    assert ws_contract["path"] == "/v1/stt/stream"
+
+
 def test_detail_page_surfaces_evidence_role() -> None:
     primary_entry = {
         "label": "Primary",
