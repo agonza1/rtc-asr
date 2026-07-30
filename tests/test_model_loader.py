@@ -60,6 +60,7 @@ def test_build_transcriber_accepts_qwen_aliases(backend: str) -> None:
         ("qwen/asr", QwenASRAdapter),
         ("parakeet.mlx", ParakeetMLXAdapter),
         ("mlx parakeet ctc", ParakeetMLXAdapter),
+        ("mlx/parakeet/tdt", ParakeetMLXAdapter),
         ("faster_whisper", FasterWhisperAdapter),
     ],
 )
@@ -107,7 +108,14 @@ def test_build_transcriber_accepts_parakeet_nemo_aliases(backend: str) -> None:
 
 @pytest.mark.parametrize(
     "backend",
-    ["parakeet-mlx", "parakeet-mlx-ctc", "parakeet-mlx-tdt", "mlx-parakeet", "mlx-parakeet-ctc"],
+    [
+        "parakeet-mlx",
+        "parakeet-mlx-ctc",
+        "parakeet-mlx-tdt",
+        "mlx-parakeet",
+        "mlx-parakeet-ctc",
+        "mlx-parakeet-tdt",
+    ],
 )
 def test_build_transcriber_accepts_parakeet_mlx_aliases(backend: str) -> None:
     transcriber = build_transcriber(
@@ -225,6 +233,7 @@ def test_api_reference_lists_supported_runtime_aliases() -> None:
         "`parakeet-mlx-tdt`",
         "`mlx-parakeet`",
         "`mlx-parakeet-ctc`",
+        "`mlx-parakeet-tdt`",
         "`voxtral-realtime`",
         "`voxtral-mini`",
         "`voxtral-mini-4b`",
