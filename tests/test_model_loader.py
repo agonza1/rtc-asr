@@ -90,7 +90,10 @@ def test_build_transcriber_accepts_parakeet_aliases(backend: str) -> None:
     assert transcriber.model_name == "nvidia/parakeet-tdt-0.6b-v3"
 
 
-@pytest.mark.parametrize("backend", ["parakeet-nemo", "parakeet-ctc"])
+@pytest.mark.parametrize(
+    "backend",
+    ["parakeet-nemo", "parakeet-ctc", "parakeet-nemo-ctc", "nemo-parakeet", "nvidia-parakeet-ctc"],
+)
 def test_build_transcriber_accepts_parakeet_nemo_aliases(backend: str) -> None:
     transcriber = build_transcriber(
         AppConfig(asr_backend=backend, asr_parakeet_model="nvidia/parakeet-tdt_ctc-110m"),
@@ -211,6 +214,9 @@ def test_api_reference_lists_supported_runtime_aliases() -> None:
         "`qwen3-asr`",
         "`parakeet-asr`",
         "`parakeet-ctc`",
+        "`parakeet-nemo-ctc`",
+        "`nemo-parakeet`",
+        "`nvidia-parakeet-ctc`",
         "`voxtral-realtime`",
         "`voxtral-mini`",
         "`voxtral-mini-4b`",
