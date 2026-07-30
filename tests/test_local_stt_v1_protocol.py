@@ -486,6 +486,26 @@ def test_start_message_rejects_boolean_partial_interval_ms() -> None:
     assert excinfo.value.as_event().message == "partial_interval_ms: must be an integer, not a boolean"
 
 
+def test_start_message_rejects_text_partial_interval_ms() -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": {
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                },
+                "partial_interval_ms": "100",
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_integer_field"
+    assert excinfo.value.as_event().message == "partial_interval_ms: must be an integer"
+
+
 @pytest.mark.parametrize("field", ["partial_window_seconds", "max_buffer_seconds"])
 def test_start_message_rejects_boolean_float_tuning_fields(field: str) -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:
@@ -505,6 +525,27 @@ def test_start_message_rejects_boolean_float_tuning_fields(field: str) -> None:
 
     assert excinfo.value.as_event().code == "invalid_numeric_field"
     assert excinfo.value.as_event().message == f"{field}: must be numeric, not a boolean"
+
+
+@pytest.mark.parametrize("field", ["partial_window_seconds", "max_buffer_seconds"])
+def test_start_message_rejects_text_float_tuning_fields(field: str) -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": {
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                },
+                field: "1.5",
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_numeric_field"
+    assert excinfo.value.as_event().message == f"{field}: must be numeric"
 
 
 @pytest.mark.parametrize("field", ["partial_window_seconds", "max_buffer_seconds"])
