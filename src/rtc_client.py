@@ -88,6 +88,7 @@ def _normalize_local_stt_transport(value: Any) -> Any:
         "unix_socket_ws": "uds_ws",
         "domain_socket": "uds_ws",
         "domain_socket_ws": "uds_ws",
+        "raw": "raw_uds",
         "raw_uds": "raw_uds",
         "raw_unix_socket": "raw_uds",
         "raw_unix": "raw_uds",
