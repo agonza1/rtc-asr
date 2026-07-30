@@ -6,6 +6,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 REQUIRED_TRANSPORTS = ("tcp_ws", "uds_ws", "raw_uds")
@@ -208,6 +209,15 @@ def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
     return current
 
 
+def transport_from_url(url: Any) -> str | None:
+    if not isinstance(url, str) or not url:
+        return None
+    scheme = urlparse(url).scheme.lower()
+    if scheme in {"ws", "wss"}:
+        return "tcp_ws"
+    return None
+
+
 def normalized_transport(artifact: dict[str, Any]) -> str | None:
     target = artifact.get("target") if isinstance(artifact.get("target"), dict) else {}
     benchmark = artifact.get("benchmark") if isinstance(artifact.get("benchmark"), dict) else {}
@@ -229,6 +239,11 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         benchmark.get("transport"),
         benchmark.get("transport_type"),
         benchmark.get("mode"),
+        transport_from_url(target.get("url")),
+        transport_from_url(contract.get("url")),
+        transport_from_url(integration.get("url")),
+        transport_from_url(streaming.get("url")),
+        transport_from_url(benchmark.get("url")),
     )
     if not isinstance(value, str):
         return None

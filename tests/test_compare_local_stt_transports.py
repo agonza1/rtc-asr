@@ -47,6 +47,11 @@ def test_normalized_transport_accepts_punctuated_readable_aliases() -> None:
     assert compare_module.normalized_transport({"target": {"transport": "raw_uds/socket"}}) == "raw_uds"
 
 
+def test_normalized_transport_infers_tcp_websocket_from_url_when_transport_missing() -> None:
+    assert compare_module.normalized_transport({"target": {"url": "ws://localhost:8080/v1/stt/stream"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"url": "wss://example.test/v1/stt/stream"}}) == "tcp_ws"
+
+
 def test_parse_args_accepts_readable_raw_uds_win_threshold_aliases() -> None:
     for alias in [
         "--min-raw-uds-win-ms",
