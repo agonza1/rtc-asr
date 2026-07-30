@@ -90,7 +90,10 @@ def test_manifest_normalizes_common_transport_aliases() -> None:
     assert normalized_contract_transport("unix-domain-socket") == "uds_ws"
     assert normalized_contract_transport("unix-domain-websocket") == "uds_ws"
     assert normalized_contract_transport("domain.socket.ws") == "uds_ws"
+    assert normalized_contract_transport("unix-domain-socket-ws") == "uds_ws"
     assert normalized_contract_transport("raw unix domain socket") == "raw_uds"
+    assert normalized_contract_transport("raw_uds_transport") == "raw_uds"
+    assert normalized_contract_transport("raw unix domain") == "raw_uds"
     assert normalized_contract_transport("raw-domain-socket") == "raw_uds"
 
 
