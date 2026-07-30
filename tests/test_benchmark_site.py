@@ -25,6 +25,7 @@ extract_experimental_transports = manifest_module.extract_experimental_transport
 load_catalog = manifest_module.load_catalog
 render_manifest = manifest_module.render_manifest
 parse_args = manifest_module.parse_args
+normalized_contract_transport = manifest_module.normalized_contract_transport
 
 PRERENDER_MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prerender_benchmark_homepage.py"
 PRERENDER_SPEC = importlib.util.spec_from_file_location("rtc_asr_prerender_benchmark_homepage", PRERENDER_MODULE_PATH)
@@ -79,6 +80,15 @@ def metric_pair(mean: float | int | None, p95: float | int | None) -> str:
     assert mean is not None
     assert p95 is not None
     return f"{mean:.1f} ms / {p95:.1f} ms"
+
+
+def test_manifest_normalizes_common_transport_aliases() -> None:
+    assert normalized_contract_transport("tcp secure websocket") == "tcp_ws"
+    assert normalized_contract_transport("websocket-secure") == "tcp_ws"
+    assert normalized_contract_transport("unix-domain-socket") == "uds_ws"
+    assert normalized_contract_transport("domain.socket.ws") == "uds_ws"
+    assert normalized_contract_transport("raw unix domain socket") == "raw_uds"
+    assert normalized_contract_transport("raw-domain-socket") == "raw_uds"
 
 
 def test_current_benchmark_notes_table_matches_manifest_entries() -> None:
