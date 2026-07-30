@@ -2605,17 +2605,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
     parser.add_argument(
         "--json-summary",
+        "--summary-json",
         action="store_true",
+        dest="json_summary",
         help="Emit machine-readable stale artifact totals and summary groups",
     )
     parser.add_argument(
         "--summary-csv",
+        "--csv-summary",
         action="store_true",
+        dest="summary_csv",
         help="Emit stale artifact summary groups as CSV for spreadsheet cleanup review",
     )
     parser.add_argument(
         "--summary-markdown",
+        "--markdown-summary",
         action="store_true",
+        dest="summary_markdown",
         help="Emit stale artifact summary groups as a Markdown table for issues and PRs",
     )
     parser.add_argument(
