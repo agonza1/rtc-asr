@@ -24,6 +24,8 @@ def test_normalized_transport_accepts_readable_target_transport_aliases() -> Non
     assert compare_module.normalized_transport({"target": {"transport": "tcp-websocket"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "websocket_tcp"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "tcp websocket"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "tcp secure websocket"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "websocket-secure"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "unix-socket"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "unix ws"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "unix domain websocket"}}) == "uds_ws"
@@ -37,6 +39,7 @@ def test_normalized_transport_accepts_readable_target_transport_aliases() -> Non
 
 def test_normalized_transport_accepts_punctuated_readable_aliases() -> None:
     assert compare_module.normalized_transport({"target": {"transport": "tcp/ws"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "tcp/wss"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "WS.TCP"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "uds.ws"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "unix-domain/ws"}}) == "uds_ws"
