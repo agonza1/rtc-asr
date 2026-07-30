@@ -50,21 +50,35 @@ RAW_UDS_FRAME_DIRECTION = {
 
 
 def _reject_boolean_integer_field(value: Any) -> Any:
+    if value is None:
+        return value
     if isinstance(value, bool):
         raise PydanticCustomError(
             "invalid_integer_field",
             "must be an integer, not a boolean",
         )
+    if not isinstance(value, int):
+        raise PydanticCustomError(
+            "invalid_integer_field",
+            "must be an integer",
+        )
     return value
 
 
 def _reject_boolean_numeric_field(value: Any) -> Any:
+    if value is None:
+        return value
     if isinstance(value, bool):
         raise PydanticCustomError(
             "invalid_numeric_field",
             "must be numeric, not a boolean",
         )
-    if isinstance(value, (int, float)) and not math.isfinite(value):
+    if not isinstance(value, (int, float)):
+        raise PydanticCustomError(
+            "invalid_numeric_field",
+            "must be numeric",
+        )
+    if not math.isfinite(value):
         raise PydanticCustomError(
             "invalid_numeric_field",
             "must be finite",
