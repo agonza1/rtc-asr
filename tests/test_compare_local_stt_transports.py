@@ -27,6 +27,18 @@ def test_normalized_transport_accepts_readable_target_transport_aliases() -> Non
     assert compare_module.normalized_transport({"target": {"transport": "raw-unix-socket"}}) == "raw_uds"
 
 
+def test_parse_args_accepts_readable_raw_uds_win_threshold_aliases() -> None:
+    for alias in [
+        "--min-raw-uds-win-ms",
+        "--minimum-raw-uds-win-ms",
+        "--raw-uds-minimum-win-ms",
+        "--raw-uds-win-threshold-ms",
+    ]:
+        args = compare_module.parse_args(["tcp.json", "uds.json", "raw.json", alias, "7.5"])
+
+        assert args.raw_uds_min_win_ms == 7.5
+
+
 def write_artifact(
     path: Path,
     transport: str,

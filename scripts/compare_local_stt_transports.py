@@ -129,6 +129,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--raw-uds-min-win-ms",
+        "--min-raw-uds-win-ms",
+        "--minimum-raw-uds-win-ms",
+        "--raw-uds-minimum-win-ms",
+        "--raw-uds-win-threshold-ms",
         type=float,
         default=DEFAULT_RAW_UDS_MIN_WIN_MS,
         help="Minimum first-interim P95 win over UDS websocket before raw UDS can be recommended",
