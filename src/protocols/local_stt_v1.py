@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import struct
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -62,6 +63,22 @@ def _reject_boolean_numeric_field(value: Any) -> Any:
         raise PydanticCustomError(
             "invalid_numeric_field",
             "must be numeric, not a boolean",
+        )
+    if isinstance(value, (int, float)) and not math.isfinite(value):
+        raise PydanticCustomError(
+            "invalid_numeric_field",
+            "must be finite",
+        )
+    return value
+
+
+def _require_finite_numeric_field(value: Any) -> Any:
+    if value is None:
+        return value
+    if not math.isfinite(value):
+        raise PydanticCustomError(
+            "invalid_numeric_field",
+            "must be finite",
         )
     return value
 
@@ -240,6 +257,11 @@ class StartMessage(LocalSttModel):
     @classmethod
     def reject_boolean_numeric_fields(cls, value: Any) -> Any:
         return _reject_boolean_numeric_field(value)
+
+    @field_validator("partial_window_seconds", "max_buffer_seconds")
+    @classmethod
+    def require_finite_numeric_fields(cls, value: Any) -> Any:
+        return _require_finite_numeric_field(value)
 
     @field_validator("interim_results", mode="before")
     @classmethod
