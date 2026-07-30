@@ -83,9 +83,12 @@ def metric_pair(mean: float | int | None, p95: float | int | None) -> str:
 
 
 def test_manifest_normalizes_common_transport_aliases() -> None:
+    assert normalized_contract_transport("wss") == "tcp_ws"
     assert normalized_contract_transport("tcp secure websocket") == "tcp_ws"
     assert normalized_contract_transport("websocket-secure") == "tcp_ws"
+    assert normalized_contract_transport("uds") == "uds_ws"
     assert normalized_contract_transport("unix-domain-socket") == "uds_ws"
+    assert normalized_contract_transport("unix-domain-websocket") == "uds_ws"
     assert normalized_contract_transport("domain.socket.ws") == "uds_ws"
     assert normalized_contract_transport("raw unix domain socket") == "raw_uds"
     assert normalized_contract_transport("raw-domain-socket") == "raw_uds"

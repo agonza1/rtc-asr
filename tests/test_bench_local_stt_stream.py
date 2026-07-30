@@ -342,9 +342,10 @@ def test_parse_args_accepts_comparison_tool_transport_aliases(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
 
+    tcp_args = benchmark_module.parse_args(["--transport", "tcp/wss", "--input-raw-pcm", str(pcm_path)])
     uds_args = benchmark_module.parse_args([
         "--transport",
-        "unix_domain_websocket",
+        "domain.socket.ws",
         "--uds-path",
         "/tmp/stt.sock",
         "--input-raw-pcm",
@@ -359,6 +360,7 @@ def test_parse_args_accepts_comparison_tool_transport_aliases(tmp_path) -> None:
         str(pcm_path),
     ])
 
+    assert tcp_args.transport == "tcp_ws"
     assert uds_args.transport == "uds_ws"
     assert raw_args.transport == "raw_uds"
 
