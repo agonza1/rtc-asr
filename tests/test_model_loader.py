@@ -12,6 +12,7 @@ from src.audio_processor import AudioProcessor
 from src.config import AppConfig
 from src.model_loader import (
     ASRUnavailableError,
+    FasterWhisperAdapter,
     ParakeetAdapter,
     ParakeetMLXAdapter,
     ParakeetNemoAdapter,
@@ -51,13 +52,22 @@ def test_build_transcriber_accepts_qwen_aliases(backend: str) -> None:
     ("backend", "expected_type"),
     [
         (" QWEN ", QwenASRAdapter),
+        ("qwen3_asr", QwenASRAdapter),
         ("Voxtral-Mini-4B", VoxtralAdapter),
+        ("voxtral mini 4b mlx", VoxtralMLXAdapter),
         ("PARAKEET-CTC", ParakeetNemoAdapter),
+        ("parakeet.mlx", ParakeetMLXAdapter),
+        ("faster_whisper", FasterWhisperAdapter),
     ],
 )
 def test_build_transcriber_normalizes_backend_alias_case(
     backend: str,
-    expected_type: type[QwenASRAdapter] | type[VoxtralAdapter] | type[ParakeetNemoAdapter],
+    expected_type: type[QwenASRAdapter]
+    | type[VoxtralAdapter]
+    | type[VoxtralMLXAdapter]
+    | type[ParakeetNemoAdapter]
+    | type[ParakeetMLXAdapter]
+    | type[FasterWhisperAdapter],
 ) -> None:
     transcriber = build_transcriber(
         AppConfig(asr_backend=backend, asr_parakeet_model="nvidia/parakeet-tdt_ctc-110m"),
