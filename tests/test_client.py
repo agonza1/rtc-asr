@@ -562,10 +562,12 @@ def test_local_stt_config_accepts_readable_transport_aliases() -> None:
     tcp = LocalSTTConfig(transport="tcp-wss")
     uds = LocalSTTConfig(transport="unix-domain-socket", uds_path="/tmp/stt.sock")
     raw = LocalSTTConfig(transport="raw-unix-socket", uds_path="/tmp/stt.raw.sock")
+    shorthand_raw = LocalSTTConfig(transport="raw", uds_path="/tmp/stt.raw.sock")
 
     assert tcp.transport == "tcp_ws"
     assert uds.transport == "uds_ws"
     assert raw.transport == "raw_uds"
+    assert shorthand_raw.transport == "raw_uds"
 
 
 def test_uds_ws_client_opens_unix_websocket(monkeypatch) -> None:
