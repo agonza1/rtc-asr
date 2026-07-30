@@ -2772,6 +2772,36 @@ def test_local_stt_transport_env_selects_uds_socket_mode(monkeypatch: pytest.Mon
     assert config.local_stt_uds_path == str(socket_path)
 
 
+@pytest.mark.parametrize("transport", ["uds", "unix-websocket", "domain socket ws"])
+def test_local_stt_transport_env_accepts_uds_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    transport: str,
+) -> None:
+    socket_path = tmp_path / "stt.sock"
+    monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", transport)
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", str(socket_path))
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_socket_mode == "uds"
+    assert config.local_stt_uds_path == str(socket_path)
+
+
+@pytest.mark.parametrize("transport", ["websocket", "tcp-wss", "raw unix"])
+def test_local_stt_transport_env_accepts_tcp_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+    transport: str,
+) -> None:
+    monkeypatch.delenv("LOCAL_STT_SOCKET_MODE", raising=False)
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", transport)
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_socket_mode == "tcp"
+
+
 def test_local_stt_socket_mode_takes_precedence_over_transport_env(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

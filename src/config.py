@@ -103,6 +103,36 @@ def _socket_path_env(name: str, default: str, *, required: bool) -> str:
     return default
 
 
+def _normalize_local_stt_transport(value: str) -> str:
+    normalized = "_".join(
+        value.strip()
+        .lower()
+        .replace("-", "_")
+        .replace(".", "_")
+        .replace("/", "_")
+        .split()
+    )
+    aliases = {
+        "tcp": "tcp_ws",
+        "tcp_websocket": "tcp_ws",
+        "tcp_wss": "tcp_ws",
+        "websocket": "tcp_ws",
+        "ws": "tcp_ws",
+        "wss": "tcp_ws",
+        "uds": "uds_ws",
+        "uds_websocket": "uds_ws",
+        "unix_ws": "uds_ws",
+        "unix_websocket": "uds_ws",
+        "unix_socket_ws": "uds_ws",
+        "domain_socket_ws": "uds_ws",
+        "raw": "raw_uds",
+        "raw_uds": "raw_uds",
+        "raw_unix_socket": "raw_uds",
+        "raw_unix": "raw_uds",
+    }
+    return aliases.get(normalized, normalized)
+
+
 def _local_stt_socket_mode(default: Literal["tcp", "uds"]) -> Literal["tcp", "uds"]:
     explicit_mode = os.getenv("LOCAL_STT_SOCKET_MODE")
     if explicit_mode is not None:
@@ -117,7 +147,7 @@ def _local_stt_socket_mode(default: Literal["tcp", "uds"]) -> Literal["tcp", "ud
     if transport is None:
         return default
 
-    normalized_transport = transport.strip().lower()
+    normalized_transport = _normalize_local_stt_transport(transport)
     if normalized_transport == "uds_ws":
         return "uds"
     if normalized_transport in {"", "tcp_ws", "raw_uds"}:
