@@ -1510,6 +1510,20 @@ def test_make_start_keeps_demo_profile_explicit() -> None:
     assert "Use `make start-demo`" in readme_text
 
 
+def test_make_compose_config_check_covers_supported_compose_profiles() -> None:
+    makefile_text = Path("Makefile").read_text(encoding="utf-8")
+    readme_text = Path("README.md").read_text(encoding="utf-8")
+
+    assert "compose-config-check" in makefile_text
+    assert "docker compose config >/dev/null" in makefile_text
+    assert "docker compose --profile demo config >/dev/null" in makefile_text
+    assert "ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr docker compose config >/dev/null" in makefile_text
+    assert "ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet docker compose config >/dev/null" in makefile_text
+    assert "ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo docker compose config >/dev/null" in makefile_text
+    assert "fast structural check of the default ASR-only config" in readme_text
+    assert "Qwen, Transformers Parakeet, and NeMo Parakeet backend selections" in readme_text
+
+
 def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
     manifest = {
         "generated_at": "2026-06-22T21:30:00Z",
