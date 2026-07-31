@@ -17,6 +17,8 @@ DEFAULT_IMAGES = (
     "realtime-asr:parakeet-nemo-cpu",
 )
 
+SORT_CHOICES = ("input", "tag", "size-desc")
+
 
 @dataclass(frozen=True)
 class ImageSizeRecord:
@@ -71,6 +73,16 @@ def inspect_images(images: Sequence[str]) -> list[ImageSizeRecord]:
             continue
         records.append(_normalize_inspect_entry(image, payload[0]))
     return records
+
+
+def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[ImageSizeRecord]:
+    if sort_by == "input":
+        return list(records)
+    if sort_by == "tag":
+        return sorted(records, key=lambda record: record.tag)
+    if sort_by == "size-desc":
+        return sorted(records, key=lambda record: (record.size_bytes is not None, record.size_bytes or 0), reverse=True)
+    raise ValueError(f"unknown sort mode: {sort_by}")
 
 
 def records_to_json(records: Iterable[ImageSizeRecord]) -> str:
@@ -171,6 +183,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of markdown.")
     parser.add_argument(
+        "--sort-by",
+        choices=SORT_CHOICES,
+        default="input",
+        help="Order output records by input order, image tag, or descending image size.",
+    )
+    parser.add_argument(
         "--summary-only",
         action="store_true",
         help="Emit only the aggregate image count and size summary as JSON.",
@@ -181,7 +199,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    records = inspect_images(args.images)
+    records = sort_records(inspect_images(args.images), args.sort_by)
     if args.summary_only:
         output = records_summary_to_json(records)
     else:
