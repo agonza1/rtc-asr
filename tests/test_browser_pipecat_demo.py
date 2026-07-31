@@ -239,6 +239,18 @@ def test_compose_keeps_browser_demo_profile_opt_in() -> None:
     compose = Path("docker-compose.yml").read_text(encoding="utf-8")
 
     assert "browser-pipecat-demo:\n    profiles:\n      - demo" in compose
+    assert "target: ${ASR_BUILD_TARGET:-asr-faster-whisper-cpu}" in compose
+    assert "target: browser-pipecat-demo" in compose
+
+
+def test_dockerfile_exposes_backend_specific_build_targets() -> None:
+    dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
+
+    assert "AS asr-faster-whisper-cpu" in dockerfile
+    assert "AS asr-qwen-cpu" in dockerfile
+    assert "AS asr-parakeet-transformers-cpu" in dockerfile
+    assert "AS asr-parakeet-nemo-cpu" in dockerfile
+    assert "AS browser-pipecat-demo" in dockerfile
 
 
 def test_browser_pipecat_demo_is_linked_from_repo_docs() -> None:
