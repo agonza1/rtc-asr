@@ -186,6 +186,25 @@ def test_parse_args_rejects_negative_low_power_observations(tmp_path: Path) -> N
         raise AssertionError(f"Expected SystemExit for {flag}")
 
 
+def test_parse_args_rejects_non_finite_low_power_observations(tmp_path: Path) -> None:
+    for flag in ("--package-power-watts", "--thermal-duration-minutes"):
+        for value in ("nan", "inf"):
+            try:
+                benchmark_module.parse_args(
+                    [
+                        "--model",
+                        "mlx-community/parakeet-tdt-0.6b-v3",
+                        "--audio-file",
+                        str(tmp_path / "clip.wav"),
+                        flag,
+                        value,
+                    ]
+                )
+            except SystemExit:
+                continue
+            raise AssertionError(f"Expected SystemExit for {flag}={value}")
+
+
 def test_coerce_transcript_prefers_explicit_empty_text_field() -> None:
     assert benchmark_module._coerce_transcript({"text": ""}) == ""
 
