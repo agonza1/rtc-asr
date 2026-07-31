@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 ARG PYTHON_BASE_IMAGE=python:3.11-slim
 FROM ${PYTHON_BASE_IMAGE}
 
@@ -8,7 +9,8 @@ ARG ENABLE_QWEN_RUNTIME=""
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_CACHE_DIR=/root/.cache/pip \
     PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,7 +31,8 @@ COPY requirements/docker-parakeet-transformers.txt ./requirements/docker-parakee
 COPY requirements/docker-qwen.txt ./requirements/docker-qwen.txt
 COPY requirements/docker-torch-cpu.txt ./requirements/docker-torch-cpu.txt
 COPY examples/browser_pipecat_demo/requirements.txt ./examples/browser_pipecat_demo/requirements.txt
-RUN /opt/venv/bin/pip install --upgrade pip && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    /opt/venv/bin/pip install --upgrade pip && \
     if [ -n "$ENABLE_PIPECAT_DEMO_RUNTIME" ]; then \
       /opt/venv/bin/pip install -r examples/browser_pipecat_demo/requirements.txt; \
     else \
