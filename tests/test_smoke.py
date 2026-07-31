@@ -2872,6 +2872,7 @@ def test_local_stt_transport_env_accepts_uds_aliases(
         "tcp-wss",
         "raw:uds",
         "raw unix",
+        "raw unix socket transport",
         "raw+uds",
         "raw uds transport",
         "raw uds socket",

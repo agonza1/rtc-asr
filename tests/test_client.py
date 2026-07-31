@@ -589,6 +589,7 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
         ("raw+uds", "raw_uds"),
         ("raw uds transport", "raw_uds"),
         ("raw uds socket", "raw_uds"),
+        ("raw unix socket transport", "raw_uds"),
         ("raw unix domain", "raw_uds"),
         ("raw unix domain socket", "raw_uds"),
         ("raw unix domain socket transport", "raw_uds"),

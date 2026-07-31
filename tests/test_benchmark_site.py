@@ -109,6 +109,7 @@ def test_manifest_normalizes_common_transport_aliases() -> None:
     assert normalized_contract_transport("raw unix domain socket transport") == "raw_uds"
     assert normalized_contract_transport("raw_uds_transport") == "raw_uds"
     assert normalized_contract_transport("raw unix domain") == "raw_uds"
+    assert normalized_contract_transport("raw unix socket transport") == "raw_uds"
     assert normalized_contract_transport("raw-domain-socket") == "raw_uds"
     assert normalized_contract_transport("uds raw socket transport") == "raw_uds"
     assert normalized_contract_transport("uds unix socket") == "raw_uds"

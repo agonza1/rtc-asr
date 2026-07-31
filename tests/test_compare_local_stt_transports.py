@@ -43,6 +43,7 @@ def test_normalized_transport_accepts_readable_target_transport_aliases() -> Non
     assert compare_module.normalized_transport({"target": {"transport": "uds raw socket transport"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "uds unix socket"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "raw unix socket"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "raw unix socket transport"}}) == "raw_uds"
 
 
 def test_normalized_transport_accepts_punctuated_readable_aliases() -> None:

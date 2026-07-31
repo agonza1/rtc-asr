@@ -214,6 +214,7 @@ def _normalize_transport(value: Any) -> Any:
         "raw_uds_transport": "raw_uds",
         "raw_uds_socket": "raw_uds",
         "raw_unix_socket": "raw_uds",
+        "raw_unix_socket_transport": "raw_uds",
         "raw_unix": "raw_uds",
         "raw_unix_domain": "raw_uds",
         "raw_unix_domain_transport": "raw_uds",
