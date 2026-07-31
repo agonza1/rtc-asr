@@ -242,6 +242,22 @@ def test_validate_summary_options_rejects_invalid_ranges() -> None:
         validate_summary_options(summary_min_size_bytes=20, summary_max_size_bytes=10)
 
 
+def test_stale_artifacts_error_lists_all_measured_period_sorts() -> None:
+    with pytest.raises(ValueError) as exc_info:
+        stale_artifacts({"asr_benchmarks": []}, sort_by="not-a-sort")
+
+    message = str(exc_info.value)
+    for sort_name in [
+        "measured-quarter",
+        "measured-quarter-desc",
+        "measured-week",
+        "measured-week-desc",
+        "measured-day",
+        "measured-day-desc",
+    ]:
+        assert sort_name in message
+
+
 def test_parse_args_accepts_short_summary_size_filter_aliases() -> None:
     args = parse_args(["--summary-min-size", "1 KiB", "--summary-max-size", "2 KiB"])
 
