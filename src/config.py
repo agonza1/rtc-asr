@@ -109,6 +109,7 @@ def _normalize_local_stt_transport(value: str) -> str:
         .lower()
         .replace("-", "_")
         .replace(".", "_")
+        .replace(":", "_")
         .replace("/", "_")
         .replace("+", "_")
         .split()
