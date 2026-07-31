@@ -2767,8 +2767,10 @@ def test_local_stt_socket_mode_env_supports_uds(monkeypatch: pytest.MonkeyPatch,
         "websocket",
         "tcp-wss",
         "tcp secure web socket",
+        "tcp secure web socket transport",
         "websocket tcp",
         "websocket.secure",
+        "web socket transport",
     ],
 )
 def test_local_stt_socket_mode_env_accepts_tcp_aliases(
@@ -2788,7 +2790,9 @@ def test_local_stt_socket_mode_env_accepts_tcp_aliases(
         "uds_ws",
         "unix-websocket",
         "unix domain socket",
+        "unix domain socket transport",
         "unix domain web socket",
+        "unix domain web socket transport",
         "unix socket",
     ],
 )
@@ -2829,7 +2833,9 @@ def test_local_stt_transport_env_selects_uds_socket_mode(monkeypatch: pytest.Mon
         "domain socket",
         "domain+socket+websocket",
         "unix domain socket websocket",
+        "unix domain socket websocket transport",
         "domain socket websocket",
+        "domain socket websocket transport",
     ],
 )
 def test_local_stt_transport_env_accepts_uds_aliases(
@@ -2859,8 +2865,12 @@ def test_local_stt_transport_env_accepts_uds_aliases(
         "raw uds transport",
         "raw uds socket",
         "raw unix domain",
+        "raw unix domain transport",
+        "raw unix domain socket transport",
         "secure websocket",
+        "secure websocket transport",
         "raw domain socket",
+        "raw domain socket transport",
         "unix raw",
     ],
 )
