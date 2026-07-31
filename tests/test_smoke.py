@@ -2879,6 +2879,9 @@ def test_local_stt_transport_env_accepts_uds_aliases(
         "secure websocket transport",
         "raw domain socket",
         "raw domain socket transport",
+        "uds raw",
+        "uds raw socket",
+        "uds unix socket transport",
         "unix raw",
     ],
 )
