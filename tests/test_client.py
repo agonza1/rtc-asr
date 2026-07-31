@@ -562,6 +562,7 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
     ("alias", "expected"),
     [
         ("tcp-wss", "tcp_ws"),
+        ("tcp:ws", "tcp_ws"),
         ("tcp+ws", "tcp_ws"),
         ("tcp web socket", "tcp_ws"),
         ("tcp websocket transport", "tcp_ws"),
@@ -571,6 +572,7 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
         ("websocket+tcp", "tcp_ws"),
         ("ws tcp", "tcp_ws"),
         ("unix-domain-socket", "uds_ws"),
+        ("uds:ws", "uds_ws"),
         ("unix domain socket transport", "uds_ws"),
         ("uds+websocket", "uds_ws"),
         ("websocket+uds", "uds_ws"),
@@ -583,6 +585,7 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
         ("domain socket web socket transport", "uds_ws"),
         ("domain socket ws", "uds_ws"),
         ("raw-unix-socket", "raw_uds"),
+        ("raw:uds", "raw_uds"),
         ("raw+uds", "raw_uds"),
         ("raw uds transport", "raw_uds"),
         ("raw uds socket", "raw_uds"),
