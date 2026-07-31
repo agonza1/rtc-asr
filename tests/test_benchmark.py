@@ -632,6 +632,22 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "--partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS)" in legacy_mlx_service_block
 
 
+def test_makefile_exposes_compose_image_size_report_target() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "make compose-image-size-report - Report installed Compose backend image sizes" in makefile
+    phony_line = next(line for line in makefile.splitlines() if line.startswith(".PHONY:"))
+    phony_targets = set(phony_line.removeprefix(".PHONY:").split())
+    assert "compose-image-size-report" in phony_targets
+
+    block = makefile.split("compose-image-size-report:\n", 1)[1].split("\n\n", 1)[0]
+    assert "python3 scripts/report_compose_image_sizes.py" in block
+    assert "$(FASTER_WHISPER_COMPOSE_IMAGE)" in block
+    assert "$(QWEN_COMPOSE_IMAGE)" in block
+    assert "$(PARAKEET_COMPOSE_IMAGE)" in block
+    assert "$(PARAKEET_NEMO_COMPOSE_IMAGE)" in block
+
+
 def test_makefile_qwen_compose_target_uses_v1_stream_contract() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
