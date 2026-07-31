@@ -2760,7 +2760,17 @@ def test_local_stt_socket_mode_env_supports_uds(monkeypatch: pytest.MonkeyPatch,
     assert config.local_stt_raw_uds_path == str(raw_socket_path)
 
 
-@pytest.mark.parametrize("socket_mode", ["tcp_ws", "websocket", "tcp-wss"])
+@pytest.mark.parametrize(
+    "socket_mode",
+    [
+        "tcp_ws",
+        "websocket",
+        "tcp-wss",
+        "tcp secure web socket",
+        "websocket tcp",
+        "websocket.secure",
+    ],
+)
 def test_local_stt_socket_mode_env_accepts_tcp_aliases(
     monkeypatch: pytest.MonkeyPatch,
     socket_mode: str,
@@ -2772,7 +2782,16 @@ def test_local_stt_socket_mode_env_accepts_tcp_aliases(
     assert config.local_stt_socket_mode == "tcp"
 
 
-@pytest.mark.parametrize("socket_mode", ["uds_ws", "unix-websocket", "unix domain socket"])
+@pytest.mark.parametrize(
+    "socket_mode",
+    [
+        "uds_ws",
+        "unix-websocket",
+        "unix domain socket",
+        "unix domain web socket",
+        "unix socket",
+    ],
+)
 def test_local_stt_socket_mode_env_accepts_uds_aliases(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -2800,7 +2819,17 @@ def test_local_stt_transport_env_selects_uds_socket_mode(monkeypatch: pytest.Mon
     assert config.local_stt_uds_path == str(socket_path)
 
 
-@pytest.mark.parametrize("transport", ["uds", "unix-websocket", "unix-domain-socket", "domain socket"])
+@pytest.mark.parametrize(
+    "transport",
+    [
+        "uds",
+        "unix-websocket",
+        "unix-domain-socket",
+        "domain socket",
+        "unix domain socket websocket",
+        "domain socket websocket",
+    ],
+)
 def test_local_stt_transport_env_accepts_uds_aliases(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -2817,7 +2846,17 @@ def test_local_stt_transport_env_accepts_uds_aliases(
     assert config.local_stt_uds_path == str(socket_path)
 
 
-@pytest.mark.parametrize("transport", ["websocket", "tcp-wss", "raw unix"])
+@pytest.mark.parametrize(
+    "transport",
+    [
+        "websocket",
+        "tcp-wss",
+        "raw unix",
+        "secure websocket",
+        "raw domain socket",
+        "unix raw",
+    ],
+)
 def test_local_stt_transport_env_accepts_tcp_aliases(
     monkeypatch: pytest.MonkeyPatch,
     transport: str,
