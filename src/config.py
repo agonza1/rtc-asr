@@ -110,6 +110,7 @@ def _normalize_local_stt_transport(value: str) -> str:
         .replace("-", "_")
         .replace(".", "_")
         .replace("/", "_")
+        .replace("+", "_")
         .split()
     )
     aliases = {
