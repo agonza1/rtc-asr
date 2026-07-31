@@ -4,11 +4,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: ${ASR_BUILD_TARGET:-asr-faster-whisper-cpu}
       args:
         PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
-        ENABLE_PARAKEET_RUNTIME: ${ENABLE_PARAKEET_RUNTIME:-}
-        ENABLE_NEMO_RUNTIME: ${ENABLE_NEMO_RUNTIME:-}
-        ENABLE_QWEN_RUNTIME: ${ENABLE_QWEN_RUNTIME:-}
     env_file:
       - path: .env
         required: false
@@ -58,9 +56,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: browser-pipecat-demo
       args:
         PYTHON_BASE_IMAGE: ${PYTHON_BASE_IMAGE:-python:3.11-slim}
-        ENABLE_PIPECAT_DEMO_RUNTIME: 1
     depends_on:
       asr-service:
         condition: service_healthy

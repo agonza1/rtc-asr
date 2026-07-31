@@ -144,7 +144,7 @@ Backend-specific Qwen, Parakeet, NeMo, and Voxtral variables are documented in `
 
 ## Backend-specific Compose builds
 
-The default Dockerfile lane installs `requirements/docker-common.txt` plus `requirements/docker-faster-whisper.txt` only. Optional dependency lanes use separate backend requirement files controlled by build arguments, so the default image does not carry unused Qwen, Transformers Parakeet, or NeMo frameworks.
+The default Dockerfile target installs `requirements/docker-common.txt` plus `requirements/docker-faster-whisper.txt` only. Optional targets use separate backend requirement files, so the default image does not carry unused Qwen, Transformers Parakeet, or NeMo frameworks. The browser Pipecat demo builds from the `browser-pipecat-demo` target and does not install the ASR model stack.
 
 Compose tags backend builds with stable image names by default: `realtime-asr:faster-whisper-cpu`, `realtime-asr:qwen-cpu`, `realtime-asr:parakeet-transformers-cpu`, and `realtime-asr:parakeet-nemo-cpu`. Override `ASR_IMAGE` only when you intentionally want a custom local tag or registry target.
 
@@ -153,7 +153,7 @@ Keep `ASR_PRELOAD_MODEL=true` and `ASR_FAIL_FAST=true` in `.env` for these profi
 Transformers Parakeet:
 
 ```bash
-ENABLE_PARAKEET_RUNTIME=1 \
+ASR_BUILD_TARGET=asr-parakeet-transformers-cpu \
 ASR_BACKEND=parakeet \
 docker compose up -d --build asr-service
 ```
@@ -161,7 +161,7 @@ docker compose up -d --build asr-service
 Qwen ASR:
 
 ```bash
-ENABLE_QWEN_RUNTIME=1 \
+ASR_BUILD_TARGET=asr-qwen-cpu \
 ASR_BACKEND=qwen-asr \
 docker compose up -d --build asr-service
 ```
@@ -169,7 +169,7 @@ docker compose up -d --build asr-service
 NeMo Parakeet:
 
 ```bash
-ENABLE_NEMO_RUNTIME=1 \
+ASR_BUILD_TARGET=asr-parakeet-nemo-cpu \
 ASR_BACKEND=parakeet-nemo \
 docker compose up -d --build asr-service
 ```
@@ -212,7 +212,7 @@ Do not document or publish a GPU profile until it is built and exercised in CI o
 Build and publish immutable tags to the registry used by your environment:
 
 ```bash
-docker build -t registry.example.com/rtc-asr:0.1.0 .
+docker build --target asr-faster-whisper-cpu -t registry.example.com/rtc-asr:0.1.0 .
 docker push registry.example.com/rtc-asr:0.1.0
 ```
 
