@@ -69,6 +69,34 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
     ]
 
 
+def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="realtime-asr:faster-whisper-cpu",
+            image_id="abcdef123456",
+            size_bytes=1_234_567_890,
+            created="2026-07-31T19:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="realtime-asr:qwen-cpu",
+            image_id=None,
+            size_bytes=None,
+            created=None,
+            present=False,
+        ),
+    ]
+
+    assert json.loads(reporter.records_summary_to_json(records)) == {
+        "missing": 1,
+        "missing_tags": ["realtime-asr:qwen-cpu"],
+        "present": 1,
+        "requested": 2,
+        "total_size_bytes": 1_234_567_890,
+        "total_size_mb": 1234.6,
+    }
+
+
 def test_inspect_images_records_missing_images(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(args=args, returncode=1, stdout="", stderr="not found")
@@ -117,3 +145,31 @@ def test_main_allows_missing_images_unless_required(monkeypatch: pytest.MonkeyPa
     assert "| missing:image | no |" in capsys.readouterr().out
 
     assert reporter.main(["--require-present", "missing:image"]) == 1
+
+
+def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(
+                tag=images[0],
+                image_id="abcdef123456",
+                size_bytes=100_000_000,
+                created=None,
+                present=True,
+            )
+        ],
+    )
+
+    assert reporter.main(["--summary-only", "present:image"]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {
+        "missing": 0,
+        "missing_tags": [],
+        "present": 1,
+        "requested": 1,
+        "total_size_bytes": 100_000_000,
+        "total_size_mb": 100.0,
+    }
