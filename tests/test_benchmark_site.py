@@ -1439,7 +1439,9 @@ def test_container_files_keep_uds_runtime_path_writable_and_healthchecked() -> N
     assert "chown -R app:app /app /run/rtc-asr" in dockerfile_text
     assert 'CMD ["python", "-m", "src.main"]' in dockerfile_text
     assert 'ARG ENABLE_QWEN_RUNTIME=""' in dockerfile_text
-    assert "grep -Ev '^(faster-whisper|torch|qwen-asr|transformers==|accelerate|pytest|httpx)'" in dockerfile_text
+    assert "requirements/docker-common.txt" in dockerfile_text
+    assert "requirements/docker-qwen.txt" in dockerfile_text
+    assert "requirements/docker-faster-whisper.txt" in dockerfile_text
     assert 'if [ -n "$ENABLE_QWEN_RUNTIME" ]; then' in dockerfile_text
     assert 'if [ -z "$ENABLE_QWEN_RUNTIME" ] && [ -z "$ENABLE_PARAKEET_RUNTIME" ] && [ -z "$ENABLE_NEMO_RUNTIME" ]; then /opt/venv/bin/pip install' in dockerfile_text
     assert '--unix-socket "${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}"' in dockerfile_text
@@ -1455,6 +1457,28 @@ def test_container_files_keep_uds_runtime_path_writable_and_healthchecked() -> N
     assert compose_text.count("rtc_asr_socket:/run/rtc-asr") == 2
     assert "--unix-socket" in compose_text
     assert "rtc_asr_socket:" in compose_text
+
+
+def test_docker_runtime_requirements_are_backend_specific() -> None:
+    common = Path("requirements/docker-common.txt").read_text(encoding="utf-8")
+    faster_whisper = Path("requirements/docker-faster-whisper.txt").read_text(encoding="utf-8")
+    qwen = Path("requirements/docker-qwen.txt").read_text(encoding="utf-8")
+    parakeet_transformers = Path("requirements/docker-parakeet-transformers.txt").read_text(encoding="utf-8")
+    parakeet_nemo = Path("requirements/docker-parakeet-nemo.txt").read_text(encoding="utf-8")
+    torch_cpu = Path("requirements/docker-torch-cpu.txt").read_text(encoding="utf-8")
+
+    assert "pytest" not in common
+    assert "httpx" not in common
+    assert "faster-whisper" not in common
+    assert "torch" not in common
+    assert "qwen-asr" not in common
+    assert "transformers" not in common
+    assert "faster-whisper>=1.1.0" in faster_whisper
+    assert "qwen-asr>=0.0.6" in qwen
+    assert "transformers==4.57.6" in qwen
+    assert "transformers==5.10.2" in parakeet_transformers
+    assert "nemo_toolkit[asr]>=2.2.0" in parakeet_nemo
+    assert torch_cpu.strip() == "torch"
 
 
 def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
