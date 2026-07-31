@@ -90,6 +90,7 @@ def test_manifest_normalizes_common_transport_aliases() -> None:
     assert normalized_contract_transport("websocket-secure") == "tcp_ws"
     assert normalized_contract_transport("tcp-web-socket") == "tcp_ws"
     assert normalized_contract_transport("tcp web socket transport") == "tcp_ws"
+    assert normalized_contract_transport("ws tcp") == "tcp_ws"
     assert normalized_contract_transport("secure web socket") == "tcp_ws"
     assert normalized_contract_transport("secure websocket transport") == "tcp_ws"
     assert normalized_contract_transport("uds") == "uds_ws"

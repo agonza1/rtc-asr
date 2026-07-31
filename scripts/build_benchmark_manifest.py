@@ -370,6 +370,7 @@ def normalized_contract_transport(value: Any) -> Any:
         "tcp wss": "tcp_ws",
         "web socket": "tcp_ws",
         "web socket transport": "tcp_ws",
+        "ws tcp": "tcp_ws",
         "secure websocket": "tcp_ws",
         "secure websocket transport": "tcp_ws",
         "secure web socket": "tcp_ws",
