@@ -47,7 +47,7 @@ docker compose ps
 docker compose logs -f
 ```
 
-That Compose stack starts the main ASR service on `http://127.0.0.1:8080` and the browser Pipecat demo on `http://127.0.0.1:8090/rtc-asr`. Use `docker compose up -d --build` to run both services locally.
+That Compose stack starts the main ASR service on `http://127.0.0.1:8080`. Use `docker compose --profile demo up -d --build` when you also want the browser Pipecat demo on `http://127.0.0.1:8090/rtc-asr`.
 
 ## Best Low-Power Quick Start
 

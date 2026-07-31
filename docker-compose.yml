@@ -51,6 +51,8 @@ services:
 
 
   browser-pipecat-demo:
+    profiles:
+      - demo
     build:
       context: .
       dockerfile: Dockerfile
