@@ -75,8 +75,7 @@ def inspect_images(images: Sequence[str]) -> list[ImageSizeRecord]:
 
 def records_to_json(records: Iterable[ImageSizeRecord]) -> str:
     record_list = list(records)
-    total_bytes = sum(record.size_bytes or 0 for record in record_list if record.present)
-    missing = [record.tag for record in record_list if not record.present]
+    summary = records_summary(record_list)
     payload = [
         {
             "tag": record.tag,
@@ -88,16 +87,26 @@ def records_to_json(records: Iterable[ImageSizeRecord]) -> str:
         }
         for record in record_list
     ]
+    payload.append({"summary": summary})
+    return json.dumps(payload, indent=2, sort_keys=True)
+
+
+def records_summary(records: Sequence[ImageSizeRecord]) -> dict[str, Any]:
+    total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
+    missing = [record.tag for record in records if not record.present]
     summary = {
-        "requested": len(record_list),
-        "present": len(record_list) - len(missing),
+        "requested": len(records),
+        "present": len(records) - len(missing),
         "missing": len(missing),
         "missing_tags": missing,
         "total_size_bytes": total_bytes,
         "total_size_mb": round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
     }
-    payload.append({"summary": summary})
-    return json.dumps(payload, indent=2, sort_keys=True)
+    return summary
+
+
+def records_summary_to_json(records: Sequence[ImageSizeRecord]) -> str:
+    return json.dumps(records_summary(records), indent=2, sort_keys=True)
 
 
 def records_to_markdown(records: Sequence[ImageSizeRecord]) -> str:
@@ -146,6 +155,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Docker image tags to inspect. Defaults to the supported Compose backend tags.",
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of markdown.")
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Emit only the aggregate image count and size summary as JSON.",
+    )
     parser.add_argument("--require-present", action="store_true", help="Exit non-zero when any requested image is absent.")
     return parser.parse_args(argv)
 
@@ -153,7 +167,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     records = inspect_images(args.images)
-    output = records_to_json(records) if args.json else records_to_markdown(records)
+    if args.summary_only:
+        output = records_summary_to_json(records)
+    else:
+        output = records_to_json(records) if args.json else records_to_markdown(records)
     print(output)
     return 1 if args.require_present and any(not record.present for record in records) else 0
 
