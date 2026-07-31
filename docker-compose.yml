@@ -46,7 +46,7 @@ services:
       retries: 3
       start_period: 10m
     volumes:
-      - ./.cache/huggingface:/app/.cache/huggingface
+      - rtc_asr_hf_cache:/app/.cache/huggingface
       - rtc_asr_socket:/run/rtc-asr
     restart: unless-stopped
 
@@ -84,4 +84,5 @@ services:
     restart: unless-stopped
 
 volumes:
+  rtc_asr_hf_cache:
   rtc_asr_socket:

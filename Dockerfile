@@ -40,7 +40,7 @@ COPY examples ./examples
 COPY config.example ./
 
 RUN useradd --create-home --shell /bin/bash app && \
-    mkdir -p /run/rtc-asr && \
+    mkdir -p /app/.cache/huggingface /run/rtc-asr && \
     chown -R app:app /app /run/rtc-asr
 USER app
 
