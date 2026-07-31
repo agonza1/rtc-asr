@@ -154,6 +154,13 @@ def _normalize_local_stt_transport(value: Any) -> Any:
         "raw_unix_domain_socket_transport": "raw_uds",
         "raw_domain_socket": "raw_uds",
         "raw_domain_socket_transport": "raw_uds",
+        "uds_raw": "raw_uds",
+        "uds_raw_transport": "raw_uds",
+        "uds_raw_socket": "raw_uds",
+        "uds_raw_socket_transport": "raw_uds",
+        "uds_unix": "raw_uds",
+        "uds_unix_socket": "raw_uds",
+        "uds_unix_socket_transport": "raw_uds",
         "unix_raw": "raw_uds",
     }
     return aliases.get(normalized, normalized)
