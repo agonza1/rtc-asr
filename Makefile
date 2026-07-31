@@ -81,7 +81,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan benchmark-artifact-cleanup-check clean lint docs start stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan benchmark-artifact-cleanup-check clean lint docs start start-demo stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -126,7 +126,8 @@ help:
 	@echo "  make benchmark-artifact-cleanup-plan - Print repo-relative stale benchmark artifact/detail paths older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days"
 	@echo "  make benchmark-artifact-cleanup-check - Fail when stale benchmark cleanup candidates older than $(BENCHMARK_ARTIFACT_CLEANUP_DAYS) days exist"
 	@echo "  make docs           - Build documentation snapshot"
-	@echo "  make start          - Start docker compose stack, including the browser Pipecat demo"
+	@echo "  make start          - Start the ASR-only docker compose stack"
+	@echo "  make start-demo     - Start ASR plus the browser Pipecat demo profile"
 	@echo "  make stop           - Stop docker compose stack"
 	@echo "  make status         - Check service status"
 
@@ -189,8 +190,13 @@ dev: venv
 	@$(UVICORN) src.main:app --host 0.0.0.0 --port 8080 --reload --log-level debug
 
 start:
-	@echo "Starting docker compose stack..."
-	docker compose up -d --build
+	@echo "Starting ASR-only docker compose stack..."
+	docker compose up -d --build asr-service
+	@echo "  ✓ ASR service started: http://127.0.0.1:8080"
+
+start-demo:
+	@echo "Starting ASR service with browser Pipecat demo..."
+	docker compose --profile demo up -d --build asr-service browser-pipecat-demo
 	@echo "  ✓ Services started: http://127.0.0.1:8080 and http://127.0.0.1:8090/rtc-asr"
 
 stop:
