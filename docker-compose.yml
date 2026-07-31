@@ -1,5 +1,6 @@
 services:
   asr-service:
+    image: ${ASR_IMAGE:-realtime-asr:faster-whisper-cpu}
     build:
       context: .
       dockerfile: Dockerfile

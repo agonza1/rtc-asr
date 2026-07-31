@@ -608,6 +608,9 @@ def test_makefile_compose_benchmark_targets_use_shared_ten_sample_count() -> Non
     assert "benchmark-parakeet-mlx-service-legacy: mlx-venv" in makefile
     assert "benchmark-parakeet-mlx-service-110m-legacy:" in makefile
     assert makefile.count("ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE=\"$${base_image}\" docker compose up -d --build; \\") == 8
+    assert "ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr" in makefile
+    assert "ASR_IMAGE=$(PARAKEET_COMPOSE_IMAGE) ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet" in makefile
+    assert "ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo" in makefile
     for target_name, target in (("benchmark-compose-qwen: venv", "qwen"), ("benchmark-compose-parakeet: venv", "parakeet"), ("benchmark-compose-parakeet-nemo: venv", "parakeet-nemo-110m")):
         assert target_name in makefile
         line = next(
