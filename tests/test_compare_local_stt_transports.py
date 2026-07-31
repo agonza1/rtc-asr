@@ -32,6 +32,8 @@ def test_normalized_transport_accepts_readable_target_transport_aliases() -> Non
     assert compare_module.normalized_transport({"target": {"transport": "unix domain socket"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "domain socket websocket"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "raw-unix-socket"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "raw uds transport"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "raw unix domain"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "raw unix domain socket"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "raw-domain-socket"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "raw unix socket"}}) == "raw_uds"

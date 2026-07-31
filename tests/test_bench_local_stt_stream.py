@@ -353,7 +353,7 @@ def test_parse_args_accepts_comparison_tool_transport_aliases(tmp_path) -> None:
     ])
     raw_args = benchmark_module.parse_args([
         "--transport",
-        "raw_unix_socket",
+        "raw uds transport",
         "--uds-path",
         "/tmp/stt.raw.sock",
         "--input-raw-pcm",
