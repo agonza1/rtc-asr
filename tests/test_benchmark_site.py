@@ -1442,6 +1442,10 @@ def test_container_files_keep_uds_runtime_path_writable_and_healthchecked() -> N
     assert "requirements/docker-common.txt" in dockerfile_text
     assert "requirements/docker-qwen.txt" in dockerfile_text
     assert "requirements/docker-faster-whisper.txt" in dockerfile_text
+    assert dockerfile_text.startswith("# syntax=docker/dockerfile:1.7")
+    assert "PIP_CACHE_DIR=/root/.cache/pip" in dockerfile_text
+    assert "RUN --mount=type=cache,target=/root/.cache/pip" in dockerfile_text
+    assert "PIP_NO_CACHE_DIR" not in dockerfile_text
     assert 'if [ -n "$ENABLE_QWEN_RUNTIME" ]; then' in dockerfile_text
     assert 'if [ -z "$ENABLE_QWEN_RUNTIME" ] && [ -z "$ENABLE_PARAKEET_RUNTIME" ] && [ -z "$ENABLE_NEMO_RUNTIME" ]; then /opt/venv/bin/pip install' in dockerfile_text
     assert '--unix-socket "${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}"' in dockerfile_text
