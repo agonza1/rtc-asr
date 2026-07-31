@@ -100,6 +100,17 @@ def records_to_markdown(records: Sequence[ImageSizeRecord]) -> str:
                 created=record.created or "",
             )
         )
+    total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
+    if total_bytes:
+        rows.append(
+            "| {tag} | {present} | {size:.1f} | {image_id} | {created} |".format(
+                tag="Total present images",
+                present="",
+                size=round(total_bytes / 1_000_000, 1),
+                image_id="",
+                created="",
+            )
+        )
     return "\n".join(rows)
 
 

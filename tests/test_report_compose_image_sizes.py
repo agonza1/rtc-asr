@@ -31,6 +31,7 @@ def test_records_to_markdown_reports_present_and_missing_images() -> None:
 
     assert "| realtime-asr:faster-whisper-cpu | yes | 1234.6 | abcdef123456 | 2026-07-31T19:00:00Z |" in markdown
     assert "| realtime-asr:qwen-cpu | no |  |  |  |" in markdown
+    assert "| Total present images |  | 1234.6 |  |  |" in markdown
 
 
 def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
