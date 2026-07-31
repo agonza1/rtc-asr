@@ -32,6 +32,8 @@ def test_records_to_markdown_reports_present_and_missing_images() -> None:
     assert "| realtime-asr:faster-whisper-cpu | yes | 1234.6 | abcdef123456 | 2026-07-31T19:00:00Z |" in markdown
     assert "| realtime-asr:qwen-cpu | no |  |  |  |" in markdown
     assert "| Total present images |  | 1234.6 |  |  |" in markdown
+    assert "Summary: 1/2 images present, 1 missing." in markdown
+    assert "Missing images: realtime-asr:qwen-cpu" in markdown
 
 
 def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
@@ -53,7 +55,17 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
             "size_bytes": 987_654_321,
             "size_mb": 987.7,
             "created": "2026-07-31T19:00:00Z",
-        }
+        },
+        {
+            "summary": {
+                "missing": 0,
+                "missing_tags": [],
+                "present": 1,
+                "requested": 1,
+                "total_size_bytes": 987_654_321,
+                "total_size_mb": 987.7,
+            }
+        },
     ]
 
 

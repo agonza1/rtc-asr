@@ -74,6 +74,9 @@ def inspect_images(images: Sequence[str]) -> list[ImageSizeRecord]:
 
 
 def records_to_json(records: Iterable[ImageSizeRecord]) -> str:
+    record_list = list(records)
+    total_bytes = sum(record.size_bytes or 0 for record in record_list if record.present)
+    missing = [record.tag for record in record_list if not record.present]
     payload = [
         {
             "tag": record.tag,
@@ -83,8 +86,17 @@ def records_to_json(records: Iterable[ImageSizeRecord]) -> str:
             "size_mb": record.size_mb,
             "created": record.created,
         }
-        for record in records
+        for record in record_list
     ]
+    summary = {
+        "requested": len(record_list),
+        "present": len(record_list) - len(missing),
+        "missing": len(missing),
+        "missing_tags": missing,
+        "total_size_bytes": total_bytes,
+        "total_size_mb": round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
+    }
+    payload.append({"summary": summary})
     return json.dumps(payload, indent=2, sort_keys=True)
 
 
@@ -111,6 +123,17 @@ def records_to_markdown(records: Sequence[ImageSizeRecord]) -> str:
                 created="",
             )
         )
+    missing = [record.tag for record in records if not record.present]
+    rows.append("")
+    rows.append(
+        "Summary: {present}/{requested} images present, {missing} missing.".format(
+            present=len(records) - len(missing),
+            requested=len(records),
+            missing=len(missing),
+        )
+    )
+    if missing:
+        rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
     return "\n".join(rows)
 
 
