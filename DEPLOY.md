@@ -75,7 +75,7 @@ curl -f http://127.0.0.1:8080/ready
 curl -f http://127.0.0.1:8080/api/models
 ```
 
-`docker compose up -d --build` without a service name also starts the browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr`. That demo is intended for local validation, not as a production frontend.
+`docker compose --profile demo up -d --build` also starts the browser Pipecat demo at `http://127.0.0.1:8090/rtc-asr`. The default Compose path keeps that demo off so ASR-only local runs do not build or start the extra WebRTC sidecar.
 
 ## Local Python
 

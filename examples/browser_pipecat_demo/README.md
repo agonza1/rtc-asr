@@ -76,7 +76,7 @@ Install the example's optional Pipecat WebRTC runtime:
 pip install -r examples/browser_pipecat_demo/requirements.txt
 ```
 
-That example requirements file includes `pipecat-ai[webrtc]`. The dependency is kept out of the root requirements so the core `rtc-asr` service can still install without aiortc/Pipecat WebRTC extras.
+That example requirements file includes only the lightweight FastAPI/WebSocket bridge dependencies plus `pipecat-ai[webrtc]`. It does not include the root ASR requirements, so installing or building the demo does not pull model runtimes such as Faster-Whisper, Qwen, Transformers, or PyTorch.
 
 ## Configuration
 
@@ -149,7 +149,7 @@ browser/client -> browser-pipecat-demo -> asr-service /v1/stt/stream
 Start both services from the repository root:
 
 ```bash
-PYTHON_BASE_IMAGE=python:3.11-slim docker compose up --build asr-service browser-pipecat-demo
+PYTHON_BASE_IMAGE=python:3.11-slim docker compose --profile demo up --build asr-service browser-pipecat-demo
 ```
 
 The compose file sets:

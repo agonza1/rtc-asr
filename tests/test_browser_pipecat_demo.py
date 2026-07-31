@@ -75,6 +75,15 @@ def test_pipecat_demo_requirements_match_worker_api_minimum() -> None:
         / "requirements.txt"
     ).read_text(encoding="utf-8")
 
+    assert "-r ../../requirements.txt" not in requirements
+    assert "faster-whisper" not in requirements
+    assert "qwen-asr" not in requirements
+    assert "transformers" not in requirements
+    assert "torch" not in requirements
+    assert "fastapi>=0.115.0" in requirements
+    assert "uvicorn[standard]>=0.30.0" in requirements
+    assert "pydantic>=2.8.0" in requirements
+    assert "websockets>=12.0" in requirements
     assert "pipecat-ai[webrtc]>=1.3.0" in requirements
     assert "pipecat-ai[webrtc]>=0.0.86" not in requirements
 
@@ -214,7 +223,7 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
 def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> None:
     readme = (Path("examples") / "browser_pipecat_demo" / "README.md").read_text(encoding="utf-8")
 
-    assert "PYTHON_BASE_IMAGE=python:3.11-slim docker compose up --build asr-service browser-pipecat-demo" in readme
+    assert "PYTHON_BASE_IMAGE=python:3.11-slim docker compose --profile demo up --build asr-service browser-pipecat-demo" in readme
     assert "RTC_ASR_WS_URL=ws://asr-service:8080/v1/stt/stream" in readme
     assert "sample_rate=16000" in readme
     assert "channels=1" in readme
@@ -224,6 +233,12 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "partial_window_seconds=1.0" in readme
     assert "Pipecat Whisper runs local/offline inside the Pipecat process" in readme
     assert "Local STT v1 can produce partial/final transcript events" in readme
+
+
+def test_compose_keeps_browser_demo_profile_opt_in() -> None:
+    compose = Path("docker-compose.yml").read_text(encoding="utf-8")
+
+    assert "browser-pipecat-demo:\n    profiles:\n      - demo" in compose
 
 
 def test_browser_pipecat_demo_is_linked_from_repo_docs() -> None:
