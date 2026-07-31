@@ -144,7 +144,7 @@ Backend-specific Qwen, Parakeet, NeMo, and Voxtral variables are documented in `
 
 ## Backend-specific Compose builds
 
-The default Dockerfile lane installs the shared service dependencies plus the `faster-whisper` CPU backend only. Optional dependency lanes are controlled by build arguments so the default image does not carry unused Qwen, Transformers Parakeet, or NeMo frameworks.
+The default Dockerfile lane installs `requirements/docker-common.txt` plus `requirements/docker-faster-whisper.txt` only. Optional dependency lanes use separate backend requirement files controlled by build arguments, so the default image does not carry unused Qwen, Transformers Parakeet, or NeMo frameworks.
 
 Keep `ASR_PRELOAD_MODEL=true` and `ASR_FAIL_FAST=true` in `.env` for these profiles.
 
