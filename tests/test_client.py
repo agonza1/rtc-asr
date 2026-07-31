@@ -575,6 +575,8 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
         ("unix socket", "uds_ws"),
         ("unix domain socket websocket", "uds_ws"),
         ("unix domain socket websocket transport", "uds_ws"),
+        ("unix domain socket web socket", "uds_ws"),
+        ("domain socket web socket transport", "uds_ws"),
         ("domain socket ws", "uds_ws"),
         ("raw-unix-socket", "raw_uds"),
         ("raw+uds", "raw_uds"),
