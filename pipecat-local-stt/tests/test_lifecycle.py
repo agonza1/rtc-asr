@@ -140,6 +140,12 @@ def test_rejects_non_16khz_mono_pcm16_audio_contract() -> None:
         ("uds raw socket transport", "raw_uds"),
         ("uds unix socket transport", "raw_uds"),
         ("unix raw", "raw_uds"),
+        ("unix raw socket", "raw_uds"),
+        ("unix raw domain socket", "raw_uds"),
+        ("unix domain raw socket", "raw_uds"),
+        ("unix domain socket raw", "raw_uds"),
+        ("domain raw socket", "raw_uds"),
+        ("domain socket raw", "raw_uds"),
         ("raw", "raw_uds"),
     ],
 )
