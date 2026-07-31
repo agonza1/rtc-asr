@@ -1481,6 +1481,18 @@ def test_docker_runtime_requirements_are_backend_specific() -> None:
     assert torch_cpu.strip() == "torch"
 
 
+def test_make_start_keeps_demo_profile_explicit() -> None:
+    makefile_text = Path("Makefile").read_text(encoding="utf-8")
+    readme_text = Path("README.md").read_text(encoding="utf-8")
+
+    assert "make start          - Start the ASR-only docker compose stack" in makefile_text
+    assert "make start-demo     - Start ASR plus the browser Pipecat demo profile" in makefile_text
+    assert "docker compose up -d --build asr-service" in makefile_text
+    assert "docker compose --profile demo up -d --build asr-service browser-pipecat-demo" in makefile_text
+    assert "make start` is the equivalent ASR-only shortcut" in readme_text
+    assert "Use `make start-demo`" in readme_text
+
+
 def test_render_sitemap_lists_home_manifest_and_detail_pages() -> None:
     manifest = {
         "generated_at": "2026-06-22T21:30:00Z",
