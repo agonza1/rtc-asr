@@ -388,6 +388,7 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         "unix raw": "raw_uds",
         "raw_unix_socket": "raw_uds",
         "raw unix socket": "raw_uds",
+        "raw unix socket transport": "raw_uds",
     }
     normalized = value.strip().lower()
     if has_direct_target_transport and normalized in {"tcp", "websocket", "ws"}:

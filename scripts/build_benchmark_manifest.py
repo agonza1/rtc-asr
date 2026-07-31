@@ -326,6 +326,7 @@ def normalized_contract_transport(value: Any) -> Any:
         "raw unix domain": "raw_uds",
         "raw unix domain transport": "raw_uds",
         "raw unix socket": "raw_uds",
+        "raw unix socket transport": "raw_uds",
         "raw unix domain socket": "raw_uds",
         "raw unix domain socket transport": "raw_uds",
         "raw domain socket": "raw_uds",
