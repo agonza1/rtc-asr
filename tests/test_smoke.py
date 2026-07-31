@@ -2887,6 +2887,12 @@ def test_local_stt_transport_env_accepts_uds_aliases(
         "uds raw socket",
         "uds unix socket transport",
         "unix raw",
+        "unix raw socket",
+        "unix raw domain socket",
+        "unix domain raw socket",
+        "unix domain socket raw",
+        "domain raw socket",
+        "domain socket raw",
     ],
 )
 def test_local_stt_transport_env_accepts_tcp_aliases(

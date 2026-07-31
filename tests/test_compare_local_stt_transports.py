@@ -44,6 +44,9 @@ def test_normalized_transport_accepts_readable_target_transport_aliases() -> Non
     assert compare_module.normalized_transport({"target": {"transport": "uds unix socket"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "raw unix socket"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "raw unix socket transport"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "unix raw socket"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "unix domain raw socket"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "domain socket raw"}}) == "raw_uds"
 
 
 def test_normalized_transport_accepts_punctuated_readable_aliases() -> None:
@@ -61,6 +64,7 @@ def test_normalized_transport_accepts_punctuated_readable_aliases() -> None:
     assert compare_module.normalized_transport({"target": {"transport": "domain.socket.ws"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "raw_uds/socket"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "raw+unix"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "unix+raw+socket"}}) == "raw_uds"
 
 
 def test_normalized_transport_infers_tcp_websocket_from_url_when_transport_missing() -> None:
