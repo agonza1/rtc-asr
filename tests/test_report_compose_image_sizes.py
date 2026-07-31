@@ -33,6 +33,7 @@ def test_records_to_markdown_reports_present_and_missing_images() -> None:
     assert "| realtime-asr:qwen-cpu | no |  |  |  |" in markdown
     assert "| Total present images |  | 1234.6 |  |  |" in markdown
     assert "Summary: 1/2 images present, 1 missing." in markdown
+    assert "Largest present image: realtime-asr:faster-whisper-cpu (1234.6 MB)" in markdown
     assert "Missing images: realtime-asr:qwen-cpu" in markdown
 
 
@@ -64,6 +65,9 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "requested": 1,
                 "total_size_bytes": 987_654_321,
                 "total_size_mb": 987.7,
+                "largest_present_tag": "realtime-asr:parakeet-nemo-cpu",
+                "largest_present_size_bytes": 987_654_321,
+                "largest_present_size_mb": 987.7,
             }
         },
     ]
@@ -94,6 +98,9 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "requested": 2,
         "total_size_bytes": 1_234_567_890,
         "total_size_mb": 1234.6,
+        "largest_present_tag": "realtime-asr:faster-whisper-cpu",
+        "largest_present_size_bytes": 1_234_567_890,
+        "largest_present_size_mb": 1234.6,
     }
 
 
@@ -172,4 +179,7 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "requested": 1,
         "total_size_bytes": 100_000_000,
         "total_size_mb": 100.0,
+        "largest_present_tag": "present:image",
+        "largest_present_size_bytes": 100_000_000,
+        "largest_present_size_mb": 100.0,
     }
