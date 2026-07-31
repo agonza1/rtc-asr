@@ -4885,6 +4885,12 @@ def test_parse_args_accepts_json_summary_share_flag() -> None:
     assert parse_args(["--json-summary", "--summary-share"]).summary_share is True
 
 
+def test_parse_args_accepts_reversed_summary_output_aliases() -> None:
+    assert parse_args(["--summary-json"]).json_summary is True
+    assert parse_args(["--csv-summary"]).summary_csv is True
+    assert parse_args(["--markdown-summary"]).summary_markdown is True
+
+
 def test_parse_args_accepts_summary_csv_output_flag() -> None:
     assert parse_args(["--summary-csv", "--summary-share"]).summary_csv is True
 
