@@ -20,6 +20,10 @@ QWEN_MPS_DTYPE ?= auto
 DEFAULT_PYTHON_BASE_IMAGE := python:3.11-slim
 PYTHON_BASE_IMAGE ?= $(DEFAULT_PYTHON_BASE_IMAGE)
 PYTHON_BASE_IMAGE_FALLBACK ?= mirror.gcr.io/library/python:3.11-slim
+FASTER_WHISPER_COMPOSE_IMAGE ?= realtime-asr:faster-whisper-cpu
+QWEN_COMPOSE_IMAGE ?= realtime-asr:qwen-cpu
+PARAKEET_COMPOSE_IMAGE ?= realtime-asr:parakeet-transformers-cpu
+PARAKEET_NEMO_COMPOSE_IMAGE ?= realtime-asr:parakeet-nemo-cpu
 PARAKEET_COMPOSE_MODEL ?= nvidia/parakeet-tdt-0.6b-v3
 PARAKEET_NEMO_COMPOSE_MODEL ?= nvidia/parakeet-tdt_ctc-110m
 PARAKEET_COMPOSE_DTYPE ?= float32
@@ -178,8 +182,8 @@ build:
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	docker build --build-arg PYTHON_BASE_IMAGE="$${base_image}" -t realtime-asr:latest .
-	@echo "  ✓ Image built: realtime-asr:latest"
+	docker build --build-arg PYTHON_BASE_IMAGE="$${base_image}" -t $(FASTER_WHISPER_COMPOSE_IMAGE) .
+	@echo "  ✓ Image built: $(FASTER_WHISPER_COMPOSE_IMAGE)"
 
 run: venv
 	@echo "Running service locally..."
@@ -192,7 +196,7 @@ dev: venv
 
 start:
 	@echo "Starting ASR-only docker compose stack..."
-	docker compose up -d --build asr-service
+	ASR_IMAGE=$(FASTER_WHISPER_COMPOSE_IMAGE) docker compose up -d --build asr-service
 	@echo "  ✓ ASR service started: http://127.0.0.1:8080"
 
 start-demo:
@@ -222,9 +226,9 @@ compose-config-check:
 	@echo "Validating docker compose configs..."
 	docker compose config >/dev/null
 	docker compose --profile demo config >/dev/null
-	ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr docker compose config >/dev/null
-	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet docker compose config >/dev/null
-	ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo docker compose config >/dev/null
+	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr docker compose config >/dev/null
+	ASR_IMAGE=$(PARAKEET_COMPOSE_IMAGE) ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet docker compose config >/dev/null
+	ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo docker compose config >/dev/null
 	@echo "  ✓ Compose configs validated"
 
 test: venv
@@ -295,7 +299,7 @@ benchmark-compose-qwen: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	PYTHONPATH=. $(PYTHON) tests/benchmark.py --mode v1-stt-stream --url $(COMPOSE_URL) --v1-ws-url $(COMPOSE_V1_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
 
@@ -323,7 +327,7 @@ benchmark-compose-qwen-legacy: venv
 			echo "Using cached default base image $${base_image}"; \
 		fi; \
 	fi; \
-	ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
 
@@ -345,7 +349,7 @@ benchmark-compose-qwen-low-latency-sweep: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	for chunk in $(LOW_LATENCY_SWEEP_CHUNK_MS); do \
 		for window in $(LOW_LATENCY_SWEEP_PARTIAL_WINDOWS); do \
@@ -377,7 +381,7 @@ benchmark-compose-parakeet: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(PARAKEET_COMPOSE_IMAGE) ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	PYTHONPATH=. $(PYTHON) tests/benchmark.py --mode v1-stt-stream --url $(COMPOSE_URL) --v1-ws-url $(COMPOSE_V1_WS_URL) --backend parakeet --model $(PARAKEET_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-compose-$(BENCHMARK_RESULT_DATE).json; }
 
@@ -399,7 +403,7 @@ benchmark-compose-parakeet-low-latency-sweep: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(PARAKEET_COMPOSE_IMAGE) ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_PARAKEET_MODEL=$(PARAKEET_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	for chunk in $(LOW_LATENCY_SWEEP_CHUNK_MS); do \
 		for window in $(LOW_LATENCY_SWEEP_PARTIAL_WINDOWS); do \
@@ -431,7 +435,7 @@ benchmark-compose-parakeet-nemo: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	PYTHONPATH=. $(PYTHON) tests/benchmark.py --mode v1-stt-stream --url $(COMPOSE_URL) --v1-ws-url $(COMPOSE_V1_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json; }
 
@@ -453,7 +457,7 @@ benchmark-compose-parakeet-nemo-legacy: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend parakeet-nemo --model $(PARAKEET_NEMO_COMPOSE_MODEL) --parakeet-dtype $(PARAKEET_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(PARAKEET_NEMO_BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/parakeet-nemo-110m-compose-$(BENCHMARK_RESULT_DATE).json; }
 
@@ -475,7 +479,7 @@ benchmark-compose-parakeet-nemo-low-latency-sweep: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_PARAKEET_MODEL=$(PARAKEET_NEMO_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_PARAKEET_DTYPE=$(PARAKEET_COMPOSE_DTYPE) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	for chunk in $(LOW_LATENCY_SWEEP_CHUNK_MS); do \
 		for window in $(LOW_LATENCY_SWEEP_PARTIAL_WINDOWS); do \

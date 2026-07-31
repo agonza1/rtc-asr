@@ -146,6 +146,8 @@ Backend-specific Qwen, Parakeet, NeMo, and Voxtral variables are documented in `
 
 The default Dockerfile lane installs `requirements/docker-common.txt` plus `requirements/docker-faster-whisper.txt` only. Optional dependency lanes use separate backend requirement files controlled by build arguments, so the default image does not carry unused Qwen, Transformers Parakeet, or NeMo frameworks.
 
+Compose tags backend builds with stable image names by default: `realtime-asr:faster-whisper-cpu`, `realtime-asr:qwen-cpu`, `realtime-asr:parakeet-transformers-cpu`, and `realtime-asr:parakeet-nemo-cpu`. Override `ASR_IMAGE` only when you intentionally want a custom local tag or registry target.
+
 Keep `ASR_PRELOAD_MODEL=true` and `ASR_FAIL_FAST=true` in `.env` for these profiles.
 
 Transformers Parakeet:

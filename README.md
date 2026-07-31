@@ -49,6 +49,8 @@ docker compose logs -f
 
 That Compose stack starts the main ASR service on `http://127.0.0.1:8080`; `make start` is the equivalent ASR-only shortcut. Use `make start-demo` or `docker compose --profile demo up -d --build` when you also want the browser Pipecat demo on `http://127.0.0.1:8090/rtc-asr`.
 
+Compose tags the default ASR image as `realtime-asr:faster-whisper-cpu`. The backend benchmark targets use separate tags such as `realtime-asr:qwen-cpu`, `realtime-asr:parakeet-transformers-cpu`, and `realtime-asr:parakeet-nemo-cpu` so repeated builds can be inspected and compared without overwriting the default image.
+
 Compose persists downloaded Hugging Face model files in the `rtc_asr_hf_cache` Docker named volume and points `HF_HOME` and `HUGGINGFACE_HUB_CACHE` at that mount. A named volume avoids the extra host-filesystem translation cost that Docker Desktop can add to a bind-mounted `./.cache/huggingface` directory while still surviving container recreation. Inspect it with `docker volume inspect rtc-asr_rtc_asr_hf_cache`; clear it with `docker compose down -v` when you intentionally want a cold-cache run.
 
 The Dockerfile uses a BuildKit pip cache mount, so repeated backend builds can reuse downloaded wheels without baking pip's cache into the runtime image. Docker Compose enables BuildKit by default on current Docker Desktop and Docker Engine releases; if a legacy shell disables it, run `DOCKER_BUILDKIT=1 docker compose build`.
