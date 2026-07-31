@@ -55,6 +55,7 @@ Thumbs.db
 .AppleDouble
 
 # Project files (exclude from build)
+active-worktrees/
 config/
 models/
 tests/
@@ -63,6 +64,10 @@ Makefile
 README.md
 .github/
 docker-compose.yml
+fixtures/
+memory/
+tmp/
+*.log
 
 # Cache
 .cache/
