@@ -2733,6 +2733,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Write the rendered stale artifact report to this file instead of stdout; use '-' for stdout",
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress rendered output while preserving the exit code, useful with --fail-on-stale in CI",
+    )
     return parser.parse_args(argv)
 
 
@@ -6248,6 +6253,8 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--existing-paths-only cannot be combined with --missing-paths-only")
     if args.detail_pages_only and args.include_detail_pages:
         raise ValueError("--detail-pages-only cannot be combined with --include-detail-pages")
+    if args.quiet and args.output:
+        raise ValueError("--quiet cannot be combined with --output")
 
     if args.manifest is None:
         manifest = build_manifest(args.results_dir, args.tracks)
@@ -6416,7 +6423,9 @@ def main(argv: list[str] | None = None) -> int:
             )
             + "\n"
         )
-    if args.output and str(args.output) != "-":
+    if args.quiet:
+        pass
+    elif args.output and str(args.output) != "-":
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered_output, encoding="utf-8")
     else:
