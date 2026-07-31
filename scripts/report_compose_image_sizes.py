@@ -94,6 +94,11 @@ def records_to_json(records: Iterable[ImageSizeRecord]) -> str:
 def records_summary(records: Sequence[ImageSizeRecord]) -> dict[str, Any]:
     total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     missing = [record.tag for record in records if not record.present]
+    largest = max(
+        (record for record in records if record.present and record.size_bytes is not None),
+        key=lambda record: record.size_bytes or 0,
+        default=None,
+    )
     summary = {
         "requested": len(records),
         "present": len(records) - len(missing),
@@ -101,6 +106,9 @@ def records_summary(records: Sequence[ImageSizeRecord]) -> dict[str, Any]:
         "missing_tags": missing,
         "total_size_bytes": total_bytes,
         "total_size_mb": round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
+        "largest_present_tag": largest.tag if largest else None,
+        "largest_present_size_bytes": largest.size_bytes if largest else None,
+        "largest_present_size_mb": largest.size_mb if largest else None,
     }
     return summary
 
@@ -141,6 +149,13 @@ def records_to_markdown(records: Sequence[ImageSizeRecord]) -> str:
             missing=len(missing),
         )
     )
+    largest = max(
+        (record for record in records if record.present and record.size_bytes is not None),
+        key=lambda record: record.size_bytes or 0,
+        default=None,
+    )
+    if largest and largest.size_mb is not None:
+        rows.append(f"Largest present image: {largest.tag} ({largest.size_mb:.1f} MB)")
     if missing:
         rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
     return "\n".join(rows)
