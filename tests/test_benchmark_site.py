@@ -26,6 +26,7 @@ load_catalog = manifest_module.load_catalog
 render_manifest = manifest_module.render_manifest
 parse_args = manifest_module.parse_args
 normalized_contract_transport = manifest_module.normalized_contract_transport
+target_transport = manifest_module.target_transport
 
 PRERENDER_MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "prerender_benchmark_homepage.py"
 PRERENDER_SPEC = importlib.util.spec_from_file_location("rtc_asr_prerender_benchmark_homepage", PRERENDER_MODULE_PATH)
@@ -99,6 +100,15 @@ def test_manifest_normalizes_common_transport_aliases() -> None:
     assert normalized_contract_transport("raw-domain-socket") == "raw_uds"
     assert normalized_contract_transport("/v1/stt/stream") == "v1-stt-stream"
     assert normalized_contract_transport("local-stt-v1-stream") == "v1-stt-stream"
+
+
+def test_manifest_infers_socket_transports_from_target_urls() -> None:
+    for url, expected_transport in [
+        ("tcp+wss://localhost/v1/stt/stream", "tcp_ws"),
+        ("unix+ws:///tmp/local-stt.sock", "uds_ws"),
+        ("raw+uds+socket:///tmp/local-stt.sock", "raw_uds"),
+    ]:
+        assert target_transport(url) == expected_transport
 
 
 def test_current_benchmark_notes_table_matches_manifest_entries() -> None:

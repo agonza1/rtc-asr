@@ -373,8 +373,40 @@ def target_transport(url: Any) -> str | None:
     if not isinstance(url, str) or not url:
         return None
     scheme = urlparse(url).scheme.lower()
-    if scheme in {"ws", "wss"}:
+    normalized_scheme = re.sub(r"[^a-z0-9]+", " ", scheme).strip()
+    if scheme in {"ws", "wss", "tcp+ws", "tcp+wss"} or normalized_scheme in {"tcp ws", "tcp wss"}:
         return "tcp_ws"
+    if scheme in {
+        "unix",
+        "unix+ws",
+        "ws+unix",
+        "uds",
+        "uds+ws",
+        "ws+uds",
+        "unix+websocket",
+        "websocket+unix",
+        "uds+websocket",
+        "websocket+uds",
+    } or normalized_scheme in {
+        "unix websocket",
+        "websocket unix",
+        "uds websocket",
+        "websocket uds",
+    }:
+        return "uds_ws"
+    if scheme in {
+        "raw+unix",
+        "raw+uds",
+        "raw-uds",
+        "raw+unix+socket",
+        "raw+uds+socket",
+    } or normalized_scheme in {
+        "raw unix",
+        "raw uds",
+        "raw unix socket",
+        "raw uds socket",
+    }:
+        return "raw_uds"
     return None
 
 
