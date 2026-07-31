@@ -42,11 +42,15 @@ def test_normalized_transport_accepts_readable_target_transport_aliases() -> Non
 def test_normalized_transport_accepts_punctuated_readable_aliases() -> None:
     assert compare_module.normalized_transport({"target": {"transport": "tcp/ws"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "tcp/wss"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "tcp+ws"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "websocket+tcp"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "WS.TCP"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "uds.ws"}}) == "uds_ws"
+    assert compare_module.normalized_transport({"target": {"transport": "uds+websocket"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "unix-domain/ws"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "domain.socket.ws"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"transport": "raw_uds/socket"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transport": "raw+unix"}}) == "raw_uds"
 
 
 def test_normalized_transport_infers_tcp_websocket_from_url_when_transport_missing() -> None:
@@ -57,8 +61,10 @@ def test_normalized_transport_infers_tcp_websocket_from_url_when_transport_missi
 def test_normalized_transport_infers_socket_transports_from_url_when_transport_missing() -> None:
     assert compare_module.normalized_transport({"target": {"url": "unix:///tmp/local-stt.sock"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"url": "unix+ws:///tmp/local-stt.sock"}}) == "uds_ws"
+    assert compare_module.normalized_transport({"target": {"url": "websocket+unix:///tmp/local-stt.sock"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"url": "uds+ws:///tmp/local-stt.sock"}}) == "uds_ws"
     assert compare_module.normalized_transport({"target": {"url": "raw+unix:///tmp/local-stt.sock"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"url": "raw+uds+socket:///tmp/local-stt.sock"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"url": "raw-uds:///tmp/local-stt.sock"}}) == "raw_uds"
 
 

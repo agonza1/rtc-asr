@@ -213,11 +213,42 @@ def transport_from_url(url: Any) -> str | None:
     if not isinstance(url, str) or not url:
         return None
     scheme = urlparse(url).scheme.lower()
-    if scheme in {"ws", "wss"}:
+    normalized_scheme = re.sub(r"[^a-z0-9]+", " ", scheme).strip()
+    if scheme in {"ws", "wss", "tcp+ws", "tcp+wss"} or normalized_scheme in {
+        "tcp ws",
+        "tcp wss",
+    }:
         return "tcp_ws"
-    if scheme in {"unix", "unix+ws", "ws+unix", "uds", "uds+ws", "ws+uds"}:
+    if scheme in {
+        "unix",
+        "unix+ws",
+        "ws+unix",
+        "uds",
+        "uds+ws",
+        "ws+uds",
+        "unix+websocket",
+        "websocket+unix",
+        "uds+websocket",
+        "websocket+uds",
+    } or normalized_scheme in {
+        "unix websocket",
+        "websocket unix",
+        "uds websocket",
+        "websocket uds",
+    }:
         return "uds_ws"
-    if scheme in {"raw+unix", "raw+uds", "raw-uds"}:
+    if scheme in {
+        "raw+unix",
+        "raw+uds",
+        "raw-uds",
+        "raw+unix+socket",
+        "raw+uds+socket",
+    } or normalized_scheme in {
+        "raw unix",
+        "raw uds",
+        "raw unix socket",
+        "raw uds socket",
+    }:
         return "raw_uds"
     return None
 
@@ -258,9 +289,13 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         "tcp-websocket": "tcp_ws",
         "tcp_websocket": "tcp_ws",
         "tcp websocket": "tcp_ws",
+        "tcp+websocket": "tcp_ws",
+        "tcp+ws": "tcp_ws",
+        "tcp+wss": "tcp_ws",
         "websocket-tcp": "tcp_ws",
         "websocket_tcp": "tcp_ws",
         "websocket tcp": "tcp_ws",
+        "websocket+tcp": "tcp_ws",
         "wss": "tcp_ws",
         "tcp-wss": "tcp_ws",
         "tcp_wss": "tcp_ws",
@@ -282,10 +317,14 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         "unix socket": "uds_ws",
         "unix_ws": "uds_ws",
         "unix ws": "uds_ws",
+        "unix+ws": "uds_ws",
+        "unix+websocket": "uds_ws",
         "uds ws": "uds_ws",
+        "uds+ws": "uds_ws",
         "uds-websocket": "uds_ws",
         "uds_websocket": "uds_ws",
         "uds websocket": "uds_ws",
+        "uds+websocket": "uds_ws",
         "unix domain ws": "uds_ws",
         "unix-domain-websocket": "uds_ws",
         "unix_domain_websocket": "uds_ws",
@@ -302,11 +341,13 @@ def normalized_transport(artifact: dict[str, Any]) -> str | None:
         "domain socket ws": "uds_ws",
         "raw-uds": "raw_uds",
         "raw uds": "raw_uds",
+        "raw+uds": "raw_uds",
         "raw uds socket": "raw_uds",
         "raw uds transport": "raw_uds",
         "raw-unix": "raw_uds",
         "raw_unix": "raw_uds",
         "raw unix": "raw_uds",
+        "raw+unix": "raw_uds",
         "raw unix domain": "raw_uds",
         "raw-unix-socket": "raw_uds",
         "raw-unix-domain-socket": "raw_uds",
