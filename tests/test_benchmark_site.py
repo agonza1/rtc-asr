@@ -1485,6 +1485,19 @@ def test_docker_runtime_requirements_are_backend_specific() -> None:
     assert torch_cpu.strip() == "torch"
 
 
+def test_dockerignore_keeps_local_runtime_artifacts_out_of_build_context() -> None:
+    dockerignore = Path(".dockerignore").read_text(encoding="utf-8")
+
+    assert "active-worktrees/" in dockerignore
+    assert "models/" in dockerignore
+    assert "fixtures/" in dockerignore
+    assert "memory/" in dockerignore
+    assert "tmp/" in dockerignore
+    assert "*.log" in dockerignore
+    assert "tests/" in dockerignore
+    assert "docs/" in dockerignore
+
+
 def test_make_start_keeps_demo_profile_explicit() -> None:
     makefile_text = Path("Makefile").read_text(encoding="utf-8")
     readme_text = Path("README.md").read_text(encoding="utf-8")
