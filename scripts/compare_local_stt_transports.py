@@ -769,12 +769,27 @@ def run_count_coverage(transports: dict[str, dict[str, Any]]) -> dict[str, Any]:
 
 
 def artifact_run_count(artifact: dict[str, Any]) -> int | None:
-    for key in ("runs", "run_count", "iteration_count", "sample_count"):
+    for key in (
+        "runs",
+        "run_count",
+        "run_counts",
+        "iteration_count",
+        "iterations",
+        "sample_count",
+        "samples_count",
+        "num_runs",
+        "n_runs",
+    ):
         value = artifact.get(key)
         if isinstance(value, bool):
             continue
         if isinstance(value, int):
             return value
+        if isinstance(value, str):
+            try:
+                return int(value.strip())
+            except ValueError:
+                continue
     samples = artifact.get("samples")
     if isinstance(samples, list):
         return len(samples)
