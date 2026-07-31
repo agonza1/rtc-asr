@@ -569,6 +569,7 @@ def test_local_stt_config_selects_websocket_and_raw_uds_clients() -> None:
         ("secure websocket transport", "tcp_ws"),
         ("websocket tcp", "tcp_ws"),
         ("websocket+tcp", "tcp_ws"),
+        ("ws tcp", "tcp_ws"),
         ("unix-domain-socket", "uds_ws"),
         ("unix domain socket transport", "uds_ws"),
         ("uds+websocket", "uds_ws"),

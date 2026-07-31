@@ -152,6 +152,7 @@ def _normalize_transport(value: Any) -> Any:
         "websocket_transport": "tcp_ws",
         "web_socket": "tcp_ws",
         "web_socket_transport": "tcp_ws",
+        "ws_tcp": "tcp_ws",
         "secure_websocket": "tcp_ws",
         "secure_websocket_transport": "tcp_ws",
         "secure_web_socket": "tcp_ws",
