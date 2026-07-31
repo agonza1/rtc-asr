@@ -53,6 +53,8 @@ Compose persists downloaded Hugging Face model files in the `rtc_asr_hf_cache` D
 
 The Dockerfile uses a BuildKit pip cache mount, so repeated backend builds can reuse downloaded wheels without baking pip's cache into the runtime image. Docker Compose enables BuildKit by default on current Docker Desktop and Docker Engine releases; if a legacy shell disables it, run `DOCKER_BUILDKIT=1 docker compose build`.
 
+Run `make compose-config-check` before heavier image builds when you only need a fast structural check of the default ASR-only config, the optional browser demo profile, and the Qwen, Transformers Parakeet, and NeMo Parakeet backend selections.
+
 ## Best Low-Power Quick Start
 
 For the most useful default CPU baseline, start with:

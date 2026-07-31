@@ -81,7 +81,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan benchmark-artifact-cleanup-check clean lint docs start start-demo stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare compose-config-check benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan benchmark-artifact-cleanup-check clean lint docs start start-demo stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -105,6 +105,7 @@ help:
 	@echo "  make benchmark-qwen-mps-low-latency-sweep - Run qwen-asr low-latency sweep on Apple Silicon MPS"
 	@echo "  make benchmark-pipecat-e2e - Run a Pipecat-style end-to-end streaming benchmark against a local backend"
 	@echo "  make benchmark-local-stt-transport-compare - Compare tcp_ws, uds_ws, and raw_uds Local STT artifacts and write the Raw UDS decision record"
+	@echo "  make compose-config-check - Validate default, demo, Qwen, Parakeet, and NeMo Compose configs"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr over /v1/stt/stream"
 	@echo "  make benchmark-compose-qwen-legacy - Start compose, wait for readiness, and benchmark qwen-asr over legacy /ws/stream"
@@ -216,6 +217,15 @@ status:
 	@echo ""
 	@echo "Pipecat demo:"
 	@curl -s -f http://localhost:8090/rtc-asr/config 2>/dev/null || echo "  ⚠ Pipecat demo is not reachable locally"
+
+compose-config-check:
+	@echo "Validating docker compose configs..."
+	docker compose config >/dev/null
+	docker compose --profile demo config >/dev/null
+	ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr docker compose config >/dev/null
+	ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet docker compose config >/dev/null
+	ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo docker compose config >/dev/null
+	@echo "  ✓ Compose configs validated"
 
 test: venv
 	@echo "Running test suite..."
