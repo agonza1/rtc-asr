@@ -144,6 +144,29 @@ class OverlapLocalSttClient(FakeLocalSttClient):
         await asyncio.sleep(0.01)
 
 
+class BarrierProbeLocalSttClient(FakeLocalSttClient):
+    instances_created = 0
+    ready_count = 0
+    ready_count_at_first_send: list[int] = []
+
+    def __init__(self, url: str) -> None:
+        super().__init__(url)
+        type(self).instances_created += 1
+        self.instance_index = type(self).instances_created
+
+    async def start(self, **kwargs):
+        if self.instance_index > 1:
+            await asyncio.sleep(0.01)
+        ready_event = await super().start(**kwargs)
+        type(self).ready_count += 1
+        return ready_event
+
+    async def send_audio(self, chunk: bytes) -> None:
+        if not self.sent:
+            type(self).ready_count_at_first_send.append(type(self).ready_count)
+        await super().send_audio(chunk)
+
+
 class BrokenSendLocalSttClient(FakeLocalSttClient):
     async def send_audio(self, chunk: bytes) -> None:
         if self.sent:
@@ -888,6 +911,32 @@ def test_run_benchmark_records_concurrent_streaming_sessions() -> None:
     assert [sample["index"] for sample in payload["samples"]] == [1, 2, 3, 4, 5, 6]
     assert {sample["concurrency"] for sample in payload["samples"]} == {3}
     assert payload["summary"]["successful_runs"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+
+
+def test_run_benchmark_releases_concurrent_sessions_after_all_clients_are_ready() -> None:
+    BarrierProbeLocalSttClient.instances_created = 0
+    BarrierProbeLocalSttClient.ready_count = 0
+    BarrierProbeLocalSttClient.ready_count_at_first_send = []
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            concurrency=3,
+            realtime_pace=False,
+            client_factory=BarrierProbeLocalSttClient,
+        )
+    )
+
+    assert BarrierProbeLocalSttClient.ready_count_at_first_send == [3, 3, 3]
 
 
 def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_error() -> None:

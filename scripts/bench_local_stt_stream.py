@@ -672,6 +672,7 @@ async def run_benchmark(
     samples = []
     try:
         for index in range(1, runs + 1):
+            send_start_barrier = asyncio.Barrier(concurrency) if concurrency > 1 else None
             batch = await asyncio.gather(
                 *(
                     _run_once(
@@ -687,6 +688,7 @@ async def run_benchmark(
                         realtime_pace=realtime_pace,
                         receive_timeout_seconds=receive_timeout_seconds,
                         client_factory=factory,
+                        send_start_barrier=send_start_barrier,
                     )
                     for session_index in range(1, concurrency + 1)
                 )
@@ -775,6 +777,7 @@ async def _run_once(
     realtime_pace: bool,
     receive_timeout_seconds: int,
     client_factory: ClientFactory,
+    send_start_barrier: asyncio.Barrier | None = None,
 ) -> dict[str, Any]:
     client = client_factory(url)
     first_audio_sent_at: float | None = None
@@ -827,6 +830,8 @@ async def _run_once(
             model = ready_metadata.get("model")
             if isinstance(model, str):
                 model_name = model
+    if send_start_barrier is not None:
+        await send_start_barrier.wait()
     receive_done = asyncio.Event()
 
     async def receive_loop() -> None:
