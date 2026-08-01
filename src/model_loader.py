@@ -45,6 +45,18 @@ class StreamingTranscriberSession(Protocol):
     def close(self) -> None: ...
 
 
+def _merge_vosk_completed_and_final_tail(completed_text: str, final_text: str) -> str:
+    completed = completed_text.strip()
+    final = final_text.strip()
+    if not completed:
+        return final
+    if not final:
+        return completed
+    if final == completed or final.startswith(f"{completed} "):
+        return final
+    return f"{completed} {final}".strip()
+
+
 @dataclass(slots=True)
 class FasterWhisperAdapter:
     """Lazy faster-whisper wrapper used by the transcription endpoints."""
@@ -669,7 +681,7 @@ class VoskStreamingSession:
         payload = _parse_vosk_payload(self.recognizer.FinalResult())
         final_text = str(payload.get("text") or "").strip()
         completed_text = " ".join(self._final_segments).strip()
-        text = " ".join(part for part in (completed_text, final_text) if part).strip()
+        text = _merge_vosk_completed_and_final_tail(completed_text, final_text)
         return self._result(text)
 
     def cancel(self) -> None:
