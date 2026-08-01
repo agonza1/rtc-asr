@@ -1447,11 +1447,18 @@ async def _close_streaming_decoder_async(runtime: StreamRuntime, *, cancel: bool
 
 async def _to_thread_until_complete(func: Callable[[], Any]) -> Any:
     worker_task = asyncio.create_task(asyncio.to_thread(func))
-    try:
-        return await asyncio.shield(worker_task)
-    except asyncio.CancelledError:
-        await asyncio.shield(worker_task)
-        raise
+    canceled = False
+    while True:
+        try:
+            result = await asyncio.shield(worker_task)
+        except asyncio.CancelledError:
+            canceled = True
+            if worker_task.done():
+                raise
+            continue
+        if canceled:
+            raise asyncio.CancelledError
+        return result
 
 
 def _create_stream_session(
