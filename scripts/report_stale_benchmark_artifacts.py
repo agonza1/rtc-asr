@@ -2358,6 +2358,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-name",
+        "--name",
+        "--basename",
+        "--filename",
+        "--file-name",
         "--artifact-basename",
         "--artifact-filename",
         "--artifact-file-name",
@@ -2371,6 +2375,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-name-contains",
+        "--name-contains",
+        "--basename-contains",
+        "--filename-contains",
+        "--file-name-contains",
         "--artifact-basename-contains",
         "--artifact-filename-contains",
         "--artifact-file-name-contains",
@@ -2384,6 +2392,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-stem",
+        "--stem",
+        "--file-stem",
         "--artifact-file-stem",
         "--path-stem",
         "--path-file-stem",
@@ -2393,6 +2403,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-stem-contains",
+        "--stem-contains",
+        "--file-stem-contains",
         "--artifact-file-stem-contains",
         "--path-stem-contains",
         "--path-file-stem-contains",
@@ -2402,6 +2414,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-extension",
+        "--extension",
+        "--ext",
+        "--file-ext",
+        "--file-extension",
         "--artifact-ext",
         "--artifact-file-ext",
         "--artifact-file-extension",
@@ -2415,6 +2431,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-extension-contains",
+        "--extension-contains",
+        "--ext-contains",
+        "--file-ext-contains",
+        "--file-extension-contains",
         "--artifact-ext-contains",
         "--artifact-file-ext-contains",
         "--artifact-file-extension-contains",
