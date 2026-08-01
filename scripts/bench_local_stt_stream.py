@@ -743,6 +743,9 @@ async def _run_once(
     warning_codes: list[str] = []
     reconnects = 0
     frames_dropped = 0
+    decoder_modes: list[str] = []
+    backend_name: str | None = None
+    model_name: str | None = None
     send_latencies: list[float] = []
     receive_latencies: list[float] = []
     audio_send_queue_depth_latencies: list[float] = []
@@ -759,7 +762,19 @@ async def _run_once(
         partial_interval_ms=partial_interval_ms,
     )
 
-    await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
+    ready_event = await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
+    if isinstance(ready_event, dict):
+        ready_metadata = ready_event.get("metadata")
+        if isinstance(ready_metadata, dict):
+            decoder_mode = ready_metadata.get("decoder_mode")
+            if isinstance(decoder_mode, str):
+                decoder_modes.append(decoder_mode)
+            backend = ready_metadata.get("backend")
+            if isinstance(backend, str):
+                backend_name = backend
+            model = ready_metadata.get("model")
+            if isinstance(model, str):
+                model_name = model
     receive_done = asyncio.Event()
 
     async def receive_loop() -> None:
@@ -797,6 +812,15 @@ async def _run_once(
             metadata_reconnects = _optional_int(metadata.get("reconnects")) or _optional_int(metadata.get("local_stt_reconnects_total"))
             if metadata_reconnects is not None:
                 reconnects = max(reconnects, metadata_reconnects)
+            decoder_mode = metadata.get("decoder_mode")
+            if isinstance(decoder_mode, str):
+                decoder_modes.append(decoder_mode)
+            backend = metadata.get("backend")
+            if isinstance(backend, str):
+                backend_name = backend
+            model = metadata.get("model")
+            if isinstance(model, str):
+                model_name = model
             _append_optional_ms(audio_send_queue_depth_latencies, metadata.get("audio_send_queue_depth_ms"))
             _append_optional_ms(asr_receive_loop_append_latencies, metadata.get("asr_receive_loop_append_ms"))
             _append_optional_ms(asr_queue_delay_latencies, metadata.get("asr_queue_delay_ms"))
@@ -920,6 +944,10 @@ async def _run_once(
         "final_events_received": final_events,
         "successful_runs": 1 if final_events > 0 and protocol_errors == 0 else 0,
         "final_transcript": final_transcript,
+        "decoder_modes": sorted(set(decoder_modes)),
+        "decoder_mode_counts": dict(sorted(Counter(decoder_modes).items())),
+        "backend": backend_name,
+        "model": model_name,
         "warnings_received": warnings_received,
         "warning_codes": warning_codes,
         "audio_payload_bytes_sent": audio_payload_bytes_sent,

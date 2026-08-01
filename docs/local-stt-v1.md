@@ -85,7 +85,7 @@ Local STT v1 keeps the same client message shapes for both decoder strategies:
 - `stateful`: the ASR backend provides a per-utterance `start_stream` session, so rtc-asr sends only newly received PCM chunks to retained backend state before each partial and calls `finalize` once at utterance end.
 - `rolling_window`: compatibility fallback for offline/file-style backends. rtc-asr keeps the buffered utterance audio and refreshes partials by calling the backend `transcribe` method on the full buffer or configured trailing partial window.
 
-Clients can inspect `/api/models` `local_stt_decoder` before connecting. Each `ready` and `transcript` event also repeats `metadata.decoder_mode` for the selected utterance. Backends that do not expose `start_stream` use `rolling_window`; backends that do expose it default new Local STT v1 sessions to `stateful` and keep `rolling_window` documented as the fallback mode.
+Clients can inspect `/api/models` `local_stt_decoder` before connecting. Each `ready` and `transcript` event also repeats `metadata.decoder_mode` for the selected utterance. Backends that do not expose `start_stream` use `rolling_window`; backends that do expose it default new Local STT v1 sessions to `stateful` and keep `rolling_window` documented as the fallback mode. `scripts/bench_local_stt_stream.py` records the observed `decoder_modes`, `decoder_mode_counts`, backend, model, and `decoder_compute_rtf` in each sample so before/after artifacts can prove which decoder path produced the measured compute cost.
 
 ## Realtime-Style Shim Mapping
 

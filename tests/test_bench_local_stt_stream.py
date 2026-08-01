@@ -29,7 +29,14 @@ class FakeLocalSttClient:
 
     async def start(self, **kwargs):
         self.started = kwargs
-        return {"type": "ready"}
+        return {
+            "type": "ready",
+            "metadata": {
+                "backend": "fake-asr",
+                "model": "tiny-fixture",
+                "decoder_mode": "stateful",
+            },
+        }
 
     async def send_audio(self, chunk: bytes) -> None:
         self.sent.append(chunk)
@@ -44,6 +51,9 @@ class FakeLocalSttClient:
                     buffered_bytes=len(chunk),
                     remaining_buffer_bytes=0,
                     metadata={
+                        "backend": "fake-asr",
+                        "model": "tiny-fixture",
+                        "decoder_mode": "stateful",
                         "audio_send_queue_depth_ms": 1.0,
                         "asr_receive_loop_append_ms": 2.0,
                         "asr_queue_delay_ms": 3.0,
@@ -64,6 +74,9 @@ class FakeLocalSttClient:
                     buffered_bytes=len(chunk),
                     remaining_buffer_bytes=0,
                     metadata={
+                        "backend": "fake-asr",
+                        "model": "tiny-fixture",
+                        "decoder_mode": "stateful",
                         "audio_send_queue_depth_ms": 1.5,
                         "asr_receive_loop_append_ms": 2.5,
                         "asr_queue_delay_ms": 3.5,
@@ -98,6 +111,9 @@ class FakeLocalSttClient:
                 buffered_bytes=sum(len(chunk) for chunk in self.sent),
                 remaining_buffer_bytes=0,
                 metadata={
+                    "backend": "fake-asr",
+                    "model": "tiny-fixture",
+                    "decoder_mode": "stateful",
                     "audio_send_queue_depth_ms": 2.0,
                     "asr_receive_loop_append_ms": 3.0,
                     "asr_queue_delay_ms": 4.0,
@@ -646,6 +662,10 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["final_events_received"] == 1
     assert sample["successful_runs"] == 1
     assert sample["final_transcript"] == "hello"
+    assert sample["decoder_modes"] == ["stateful"]
+    assert sample["decoder_mode_counts"] == {"stateful": 4}
+    assert sample["backend"] == "fake-asr"
+    assert sample["model"] == "tiny-fixture"
     assert sample["warnings_received"] == 1
     assert sample["warning_codes"] == ["partial_dropped"]
     assert sample["audio_payload_bytes_sent"] == 1280
