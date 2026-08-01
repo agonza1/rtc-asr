@@ -19,6 +19,7 @@ from src.main import (
     _close_streaming_decoder_async,
     _local_stt_asr_worker,
     _prepare_uds_socket,
+    _push_streaming_audio_async,
     _receive_raw_uds_event,
     _receive_stream_event,
     _start_streaming_decoder_async,
@@ -2652,6 +2653,65 @@ def test_stateful_stream_cancel_waits_for_in_flight_push_before_close() -> None:
         return decoder
 
     decoder = asyncio.run(run_cancel_flow())
+
+    assert decoder.closed_during_push is False
+    assert decoder.canceled_during_push is False
+    assert decoder.canceled is True
+    assert decoder.closed is True
+
+
+def test_stateful_stream_cleanup_serializes_concurrent_push_and_close() -> None:
+    class BlockingStreamingSession(FakeStreamingSession):
+        def __init__(self, transcriber: StreamingFakeTranscriber, config: dict[str, object]) -> None:
+            super().__init__(transcriber, config)
+            self.push_started = threading.Event()
+            self.release_push = threading.Event()
+            self.closed_during_push = False
+            self.canceled_during_push = False
+
+        def push_audio(self, audio_data: bytes) -> dict[str, object]:
+            self.push_started.set()
+            self.closed_during_push = self.closed
+            self.canceled_during_push = self.canceled
+            assert self.release_push.wait(timeout=2)
+            self.closed_during_push = self.closed_during_push or self.closed
+            self.canceled_during_push = self.canceled_during_push or self.canceled
+            return super().push_audio(audio_data)
+
+    async def run_concurrent_cleanup() -> BlockingStreamingSession:
+        transcriber = StreamingFakeTranscriber()
+        decoder = BlockingStreamingSession(
+            transcriber,
+            {"stream_id": 1, "client_stream_id": None, "language": "en"},
+        )
+        with TestClient(create_app(transcriber=transcriber)) as client:
+            runtime = StreamRuntime(
+                stream_id=1,
+                client_stream_id=None,
+                session=StreamSession(
+                    stream_id=1,
+                    language="en",
+                    sample_rate=HOT_PATH_SAMPLE_RATE,
+                    max_buffer_bytes=DEFAULT_MAX_BUFFER_BYTES,
+                ),
+                services=client.app.state.services,
+                streaming_decoder=decoder,
+            )
+            push_task = asyncio.create_task(_push_streaming_audio_async(runtime, b"a" * HOT_PATH_BYTES_PER_FRAME))
+            assert await asyncio.to_thread(decoder.push_started.wait, 2)
+
+            close_task = asyncio.create_task(_close_streaming_decoder_async(runtime, cancel=True))
+            await asyncio.sleep(0)
+
+            assert decoder.closed is False
+            assert decoder.canceled is False
+            decoder.release_push.set()
+            await push_task
+            await close_task
+
+        return decoder
+
+    decoder = asyncio.run(run_concurrent_cleanup())
 
     assert decoder.closed_during_push is False
     assert decoder.canceled_during_push is False

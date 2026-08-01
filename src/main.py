@@ -488,6 +488,7 @@ class StreamRuntime:
     send_queue_high_water: int = 0
     streaming_decoder: StreamingTranscriberSession | None = None
     streaming_decode_offset: int = 0
+    streaming_decoder_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     asr_decode_cumulative_ms: float = 0.0
 
     def note_audio(self) -> None:
@@ -1408,32 +1409,40 @@ async def _push_streaming_audio_async(
 ) -> dict[str, object] | None:
     if not audio_bytes:
         return None
-    assert runtime.streaming_decoder is not None
-    result = await asyncio.to_thread(runtime.streaming_decoder.push_audio, audio_bytes)
-    runtime.streaming_decode_offset += len(audio_bytes)
-    return result
+    async with runtime.streaming_decoder_lock:
+        decoder = runtime.streaming_decoder
+        if decoder is None:
+            return None
+        result = await asyncio.to_thread(decoder.push_audio, audio_bytes)
+        runtime.streaming_decode_offset += len(audio_bytes)
+        return result
 
 
 async def _finalize_streaming_decoder_async(runtime: StreamRuntime) -> dict[str, object]:
-    assert runtime.streaming_decoder is not None
-    remaining_audio = bytes(runtime.session.audio_buffer[runtime.streaming_decode_offset :])
-    if remaining_audio:
-        await _push_streaming_audio_async(runtime, remaining_audio)
-    result = await asyncio.to_thread(runtime.streaming_decoder.finalize)
-    await _close_streaming_decoder_async(runtime)
-    return result
+    async with runtime.streaming_decoder_lock:
+        decoder = runtime.streaming_decoder
+        assert decoder is not None
+        remaining_audio = bytes(runtime.session.audio_buffer[runtime.streaming_decode_offset :])
+        if remaining_audio:
+            await asyncio.to_thread(decoder.push_audio, remaining_audio)
+            runtime.streaming_decode_offset += len(remaining_audio)
+        result = await asyncio.to_thread(decoder.finalize)
+        runtime.streaming_decoder = None
+        await _to_thread_until_complete(decoder.close)
+        return result
 
 
 async def _close_streaming_decoder_async(runtime: StreamRuntime, *, cancel: bool = False) -> None:
-    decoder = runtime.streaming_decoder
-    if decoder is None:
-        return
-    runtime.streaming_decoder = None
-    try:
-        if cancel:
-            await _to_thread_until_complete(decoder.cancel)
-    finally:
-        await _to_thread_until_complete(decoder.close)
+    async with runtime.streaming_decoder_lock:
+        decoder = runtime.streaming_decoder
+        if decoder is None:
+            return
+        runtime.streaming_decoder = None
+        try:
+            if cancel:
+                await _to_thread_until_complete(decoder.cancel)
+        finally:
+            await _to_thread_until_complete(decoder.close)
 
 
 async def _to_thread_until_complete(func: Callable[[], Any]) -> Any:
