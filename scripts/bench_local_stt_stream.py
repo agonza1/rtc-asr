@@ -538,6 +538,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "asr_queue_delay_samples",
         "asr_decode_p95_ms",
         "asr_decode_samples",
+        "decoder_compute_rtf",
         "websocket_roundtrip_p95_ms",
         "websocket_roundtrip_samples",
         "warnings_received",
@@ -748,6 +749,7 @@ async def _run_once(
     asr_receive_loop_append_latencies: list[float] = []
     asr_queue_delay_latencies: list[float] = []
     asr_decode_latencies: list[float] = []
+    asr_decode_cumulative_ms_values: list[float] = []
     websocket_roundtrip_latencies: list[float] = []
     audio_send_started_at: float | None = None
     audio_send_completed_at: float | None = None
@@ -799,6 +801,7 @@ async def _run_once(
             _append_optional_ms(asr_receive_loop_append_latencies, metadata.get("asr_receive_loop_append_ms"))
             _append_optional_ms(asr_queue_delay_latencies, metadata.get("asr_queue_delay_ms"))
             _append_optional_ms(asr_decode_latencies, metadata.get("asr_decode_ms"))
+            _append_optional_ms(asr_decode_cumulative_ms_values, metadata.get("asr_decode_cumulative_ms"))
             _append_optional_ms(websocket_roundtrip_latencies, metadata.get("websocket_roundtrip_ms"))
             if event.type == "partial":
                 interim_received_at.append(time.perf_counter())
@@ -907,6 +910,7 @@ async def _run_once(
         "asr_queue_delay_samples": len(asr_queue_delay_latencies),
         "asr_decode_p95_ms": percentile(asr_decode_latencies, 0.95),
         "asr_decode_samples": len(asr_decode_latencies),
+        "decoder_compute_rtf": compute_decoder_compute_rtf(asr_decode_cumulative_ms_values, audio),
         "websocket_roundtrip_p95_ms": _coalesce_optional_ms(percentile(websocket_roundtrip_latencies, 0.95), receive_p95),
         "websocket_roundtrip_samples": len(websocket_roundtrip_latencies),
         "audio_frames_sent": frames_sent,
@@ -1001,6 +1005,15 @@ def compute_audio_end_finalization_rtf(final_after_finalize_ms: float | None, au
     if duration_ms <= 0:
         return None
     return round(final_after_finalize_ms / duration_ms, 3)
+
+
+def compute_decoder_compute_rtf(cumulative_decode_ms_values: list[float], audio: AudioInput) -> float | None:
+    if not cumulative_decode_ms_values:
+        return None
+    duration_ms = audio_duration_ms(audio)
+    if duration_ms <= 0:
+        return None
+    return round(max(cumulative_decode_ms_values) / duration_ms, 3)
 
 
 def compute_transport_audio_overhead_bytes(*, transport: str, frames_sent: int) -> int:
