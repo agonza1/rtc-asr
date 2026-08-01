@@ -87,9 +87,9 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
     raise ValueError(f"unknown sort mode: {sort_by}")
 
 
-def records_to_json(records: Iterable[ImageSizeRecord]) -> str:
+def records_to_json(records: Iterable[ImageSizeRecord], max_size_mb: float | None = None) -> str:
     record_list = list(records)
-    summary = records_summary(record_list)
+    summary = records_summary(record_list, max_size_mb=max_size_mb)
     payload = [
         {
             "tag": record.tag,
@@ -127,7 +127,7 @@ def records_to_csv(records: Iterable[ImageSizeRecord]) -> str:
     return output.getvalue().rstrip("\n")
 
 
-def records_summary(records: Sequence[ImageSizeRecord]) -> dict[str, Any]:
+def records_summary(records: Sequence[ImageSizeRecord], max_size_mb: float | None = None) -> dict[str, Any]:
     total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     missing = [record.tag for record in records if not record.present]
     largest = max(
@@ -146,11 +146,21 @@ def records_summary(records: Sequence[ImageSizeRecord]) -> dict[str, Any]:
         "largest_present_size_bytes": largest.size_bytes if largest else None,
         "largest_present_size_mb": largest.size_mb if largest else None,
     }
+    if max_size_mb is not None:
+        over_budget = records_over_size_budget(records, max_size_mb)
+        summary.update(
+            {
+                "image_size_budget_mb": max_size_mb,
+                "over_budget": bool(over_budget),
+                "over_budget_count": len(over_budget),
+                "over_budget_tags": [record.tag for record in over_budget],
+            }
+        )
     return summary
 
 
-def records_summary_to_json(records: Sequence[ImageSizeRecord]) -> str:
-    return json.dumps(records_summary(records), indent=2, sort_keys=True)
+def records_summary_to_json(records: Sequence[ImageSizeRecord], max_size_mb: float | None = None) -> str:
+    return json.dumps(records_summary(records, max_size_mb=max_size_mb), indent=2, sort_keys=True)
 
 
 def records_over_size_budget(records: Sequence[ImageSizeRecord], max_size_mb: float) -> list[ImageSizeRecord]:
@@ -168,7 +178,7 @@ def markdown_cell(value: str | None) -> str:
     return value.replace("\\", "\\\\").replace("|", "\\|")
 
 
-def records_to_markdown(records: Sequence[ImageSizeRecord]) -> str:
+def records_to_markdown(records: Sequence[ImageSizeRecord], max_size_mb: float | None = None) -> str:
     rows = ["| Image | Present | Size MB | Image ID | Created |", "| --- | --- | ---: | --- | --- |"]
     for record in records:
         rows.append(
@@ -207,6 +217,15 @@ def records_to_markdown(records: Sequence[ImageSizeRecord]) -> str:
     )
     if largest and largest.size_mb is not None:
         rows.append(f"Largest present image: {largest.tag} ({largest.size_mb:.1f} MB)")
+    if max_size_mb is not None:
+        over_budget = records_over_size_budget(records, max_size_mb)
+        rows.append(
+            "Image size budget: {budget:.1f} MB, {count} image{plural} over budget.".format(
+                budget=max_size_mb,
+                count=len(over_budget),
+                plural="" if len(over_budget) == 1 else "s",
+            )
+        )
     if missing:
         rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
     return "\n".join(rows)
@@ -246,11 +265,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     records = sort_records(inspect_images(args.images), args.sort_by)
     if args.summary_only:
-        output = records_summary_to_json(records)
+        output = records_summary_to_json(records, max_size_mb=args.max_size_mb)
     elif args.csv:
         output = records_to_csv(records)
     else:
-        output = records_to_json(records) if args.json else records_to_markdown(records)
+        output = (
+            records_to_json(records, max_size_mb=args.max_size_mb)
+            if args.json
+            else records_to_markdown(records, max_size_mb=args.max_size_mb)
+        )
     print(output)
     missing_records = [record for record in records if not record.present]
     oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
