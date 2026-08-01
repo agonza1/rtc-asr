@@ -212,7 +212,9 @@ def test_inspect_images_normalizes_docker_inspect_payload(monkeypatch: pytest.Mo
     ]
 
 
-def test_main_allows_missing_images_unless_required(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_allows_missing_images_unless_required(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setattr(
         reporter,
         "inspect_images",
@@ -225,6 +227,8 @@ def test_main_allows_missing_images_unless_required(monkeypatch: pytest.MonkeyPa
     assert "| missing:image | no |" in capsys.readouterr().out
 
     assert reporter.main(["--require-present", "missing:image"]) == 1
+    captured = capsys.readouterr()
+    assert "Missing required images: missing:image" in captured.err
 
 
 def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -298,7 +302,9 @@ def test_main_applies_sort_order_before_rendering(monkeypatch: pytest.MonkeyPatc
     assert lines[3].startswith("| small:image |")
 
 
-def test_main_fails_when_present_image_exceeds_size_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_fails_when_present_image_exceeds_size_budget(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setattr(
         reporter,
         "inspect_images",
@@ -308,4 +314,5 @@ def test_main_fails_when_present_image_exceeds_size_budget(monkeypatch: pytest.M
     )
 
     assert reporter.main(["--max-size-mb", "250", "large:image"]) == 1
+    assert "Images over 250.0 MB: large:image (250.0 MB)" in capsys.readouterr().err
     assert reporter.main(["--max-size-mb", "251", "large:image"]) == 0

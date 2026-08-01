@@ -246,9 +246,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         output = records_to_json(records) if args.json else records_to_markdown(records)
     print(output)
-    if args.require_present and any(not record.present for record in records):
-        return 1
-    if args.max_size_mb is not None and records_over_size_budget(records, args.max_size_mb):
+    missing_records = [record for record in records if not record.present]
+    oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
+    if args.require_present and missing_records:
+        print(
+            "Missing required images: {tags}".format(tags=", ".join(record.tag for record in missing_records)),
+            file=sys.stderr,
+        )
+    if args.max_size_mb is not None and oversized_records:
+        print(
+            "Images over {budget:.1f} MB: {tags}".format(
+                budget=args.max_size_mb,
+                tags=", ".join(
+                    f"{record.tag} ({record.size_mb:.1f} MB)"
+                    for record in oversized_records
+                    if record.size_mb is not None
+                ),
+            ),
+            file=sys.stderr,
+        )
+    if (args.require_present and missing_records) or oversized_records:
         return 1
     return 0
 
