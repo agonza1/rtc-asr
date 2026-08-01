@@ -104,6 +104,43 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
     }
 
 
+def test_sort_records_orders_by_tag_and_size_desc() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="realtime-asr:qwen-cpu",
+            image_id="qwen",
+            size_bytes=200,
+            created=None,
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="realtime-asr:faster-whisper-cpu",
+            image_id="faster",
+            size_bytes=100,
+            created=None,
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="realtime-asr:missing",
+            image_id=None,
+            size_bytes=None,
+            created=None,
+            present=False,
+        ),
+    ]
+
+    assert [record.tag for record in reporter.sort_records(records, "tag")] == [
+        "realtime-asr:faster-whisper-cpu",
+        "realtime-asr:missing",
+        "realtime-asr:qwen-cpu",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "size-desc")] == [
+        "realtime-asr:qwen-cpu",
+        "realtime-asr:faster-whisper-cpu",
+        "realtime-asr:missing",
+    ]
+
+
 def test_inspect_images_records_missing_images(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(args=args, returncode=1, stdout="", stderr="not found")
@@ -183,3 +220,20 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "largest_present_size_bytes": 100_000_000,
         "largest_present_size_mb": 100.0,
     }
+
+
+def test_main_applies_sort_order_before_rendering(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=10, created=None, present=True),
+            reporter.ImageSizeRecord(tag="large:image", image_id="large", size_bytes=20, created=None, present=True),
+        ],
+    )
+
+    assert reporter.main(["--sort-by", "size-desc", "small:image", "large:image"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[2].startswith("| large:image |")
+    assert lines[3].startswith("| small:image |")
