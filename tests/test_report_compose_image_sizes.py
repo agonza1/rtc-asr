@@ -73,6 +73,31 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
     ]
 
 
+def test_records_to_csv_emits_tabular_image_rows() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="realtime-asr:faster-whisper-cpu",
+            image_id="abcdef123456",
+            size_bytes=1_234_567_890,
+            created="2026-07-31T19:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="realtime-asr:qwen-cpu",
+            image_id=None,
+            size_bytes=None,
+            created=None,
+            present=False,
+        ),
+    ]
+
+    assert reporter.records_to_csv(records).splitlines() == [
+        "tag,present,image_id,size_bytes,size_mb,created",
+        "realtime-asr:faster-whisper-cpu,yes,abcdef123456,1234567890,1234.6,2026-07-31T19:00:00Z",
+        "realtime-asr:qwen-cpu,no,,,,",
+    ]
+
+
 def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
     records = [
         reporter.ImageSizeRecord(
@@ -231,6 +256,29 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "largest_present_size_bytes": 100_000_000,
         "largest_present_size_mb": 100.0,
     }
+
+
+def test_main_csv_flag_emits_csv(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(
+                tag=images[0],
+                image_id="abcdef123456",
+                size_bytes=100_000_000,
+                created=None,
+                present=True,
+            )
+        ],
+    )
+
+    assert reporter.main(["--csv", "present:image"]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        "tag,present,image_id,size_bytes,size_mb,created",
+        "present:image,yes,abcdef123456,100000000,100.0,",
+    ]
 
 
 def test_main_applies_sort_order_before_rendering(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
