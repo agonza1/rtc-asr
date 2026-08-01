@@ -249,6 +249,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-only",
+        "--json-summary",
+        "--summary-json",
+        dest="summary_only",
         action="store_true",
         help="Emit only the aggregate image count and size summary as JSON.",
     )
