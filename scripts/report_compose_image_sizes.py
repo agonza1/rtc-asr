@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import io
 import json
 import subprocess
 import sys
@@ -103,6 +105,28 @@ def records_to_json(records: Iterable[ImageSizeRecord]) -> str:
     return json.dumps(payload, indent=2, sort_keys=True)
 
 
+def records_to_csv(records: Iterable[ImageSizeRecord]) -> str:
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=("tag", "present", "image_id", "size_bytes", "size_mb", "created"),
+        lineterminator="\n",
+    )
+    writer.writeheader()
+    for record in records:
+        writer.writerow(
+            {
+                "tag": record.tag,
+                "present": "yes" if record.present else "no",
+                "image_id": record.image_id or "",
+                "size_bytes": record.size_bytes if record.size_bytes is not None else "",
+                "size_mb": f"{record.size_mb:.1f}" if record.size_mb is not None else "",
+                "created": record.created or "",
+            }
+        )
+    return output.getvalue().rstrip("\n")
+
+
 def records_summary(records: Sequence[ImageSizeRecord]) -> dict[str, Any]:
     total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     missing = [record.tag for record in records if not record.present]
@@ -191,6 +215,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Docker image tags to inspect. Defaults to the supported Compose backend tags.",
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of markdown.")
+    parser.add_argument("--csv", action="store_true", help="Emit CSV rows instead of markdown.")
     parser.add_argument(
         "--sort-by",
         choices=SORT_CHOICES,
@@ -216,6 +241,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     records = sort_records(inspect_images(args.images), args.sort_by)
     if args.summary_only:
         output = records_summary_to_json(records)
+    elif args.csv:
+        output = records_to_csv(records)
     else:
         output = records_to_json(records) if args.json else records_to_markdown(records)
     print(output)
