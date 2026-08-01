@@ -225,3 +225,71 @@ def test_compare_backends_keeps_candidate_experimental_for_empty_final_transcrip
     assert comparison["candidate_status"] == "experimental"
     assert "missing_final_transcript:vosk:stateful" in comparison["blocking_gaps"]
     assert "empty_final_transcript:vosk:stateful" in comparison["blocking_gaps"]
+
+
+def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+        final_after_finalize_p95=90.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        final_after_finalize_p95=85.0,
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    markdown = compare_module.format_markdown_report(comparison)
+
+    assert "# Local STT v1 Backend Comparison" in markdown
+    assert "Candidate status: supported" in markdown
+    assert "Recommendation: Keep vosk:stateful as a supported low-latency backend." in markdown
+    assert "| time_to_first_interim_ms | 80 ms |" in markdown
+    assert "| faster-whisper:rolling_window |" in markdown
+    assert "| vosk:stateful |" in markdown
+    assert "hello from the voice agent" in markdown
+    assert "- none" in markdown
+
+
+def test_main_writes_markdown_report(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+    )
+    report_path = tmp_path / "backend-comparison.md"
+
+    assert compare_module.main(
+        [
+            "--baseline",
+            "faster-whisper:rolling_window",
+            "--candidate",
+            "vosk:stateful",
+            "--markdown-output",
+            str(report_path),
+            str(baseline),
+            str(candidate),
+        ]
+    ) == 0
+
+    markdown = report_path.read_text(encoding="utf8")
+    assert "Baseline: faster-whisper:rolling_window" in markdown
+    assert "Candidate: vosk:stateful" in markdown
+    assert "Blocking gaps:" in markdown
