@@ -52,7 +52,7 @@ def _merge_vosk_completed_and_final_tail(completed_text: str, final_text: str) -
         return final
     if not final:
         return completed
-    if final == completed or final.startswith(f"{completed} "):
+    if final == completed:
         return final
     return f"{completed} {final}".strip()
 

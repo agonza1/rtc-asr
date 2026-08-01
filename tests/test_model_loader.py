@@ -417,7 +417,7 @@ def test_vosk_adapter_finalizes_with_completed_segments(monkeypatch: pytest.Monk
     assert final["text"] == "segment 1 segment 2 tail segment"
 
 
-def test_vosk_adapter_does_not_duplicate_final_result_completed_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_vosk_adapter_does_not_duplicate_exact_final_result(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeModel:
         def __init__(self, model_path: str) -> None:
             self.model_path = model_path
@@ -437,7 +437,7 @@ def test_vosk_adapter_does_not_duplicate_final_result_completed_prefix(monkeypat
             return '{"text": "hello world"}'
 
         def FinalResult(self) -> str:
-            return '{"text": "hello world again"}'
+            return '{"text": "hello world"}'
 
     fake_vosk = ModuleType("vosk")
     fake_vosk.Model = FakeModel
@@ -454,7 +454,47 @@ def test_vosk_adapter_does_not_duplicate_final_result_completed_prefix(monkeypat
 
     final = session.finalize()
 
-    assert final["text"] == "hello world again"
+    assert final["text"] == "hello world"
+
+
+def test_vosk_adapter_preserves_repeated_phrase_in_final_tail(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeModel:
+        def __init__(self, model_path: str) -> None:
+            self.model_path = model_path
+
+    class FakeRecognizer:
+        def __init__(self, model: FakeModel, sample_rate: int) -> None:
+            self.model = model
+            self.sample_rate = sample_rate
+
+        def AcceptWaveform(self, audio_data: bytes) -> bool:
+            return True
+
+        def PartialResult(self) -> str:
+            return '{"partial": ""}'
+
+        def Result(self) -> str:
+            return '{"text": "thank you"}'
+
+        def FinalResult(self) -> str:
+            return '{"text": "thank you very much"}'
+
+    fake_vosk = ModuleType("vosk")
+    fake_vosk.Model = FakeModel
+    fake_vosk.KaldiRecognizer = FakeRecognizer
+    monkeypatch.setitem(sys.modules, "vosk", fake_vosk)
+
+    adapter = VoskAdapter(
+        config=AppConfig(asr_backend="vosk", asr_vosk_model_path="/models/vosk-small"),
+        audio_processor=AudioProcessor(),
+    )
+
+    session = adapter.start_stream({"language": "en", "sample_rate": 16000})
+    assert session.push_audio(b"accepted")["text"] == "thank you"
+
+    final = session.finalize()
+
+    assert final["text"] == "thank you thank you very much"
 
 
 def test_vosk_adapter_preserves_tail_that_starts_with_completed_text(monkeypatch: pytest.MonkeyPatch) -> None:
