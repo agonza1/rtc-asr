@@ -377,6 +377,20 @@ class OptionalUnsupportedStreamingTranscriber(StreamingFakeTranscriber):
         return None
 
 
+class NativeStreamingMetadataTranscriber(StreamingFakeTranscriber):
+    backend_name = "native-streaming-fixture"
+    model_name = "stateful-fixture"
+
+    def describe(self) -> dict[str, object]:
+        description = super().describe()
+        description["native_streaming"] = {
+            "stateful": True,
+            "start_stream": True,
+            "audio_format": "pcm_s16le",
+        }
+        return description
+
+
 class StableTextTranscriber(FakeTranscriber):
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
         result = super().transcribe(audio_data, language=language, sample_rate=sample_rate)
@@ -549,10 +563,16 @@ def test_ready_and_model_capabilities_smoke() -> None:
         "protocols": DEFAULT_PROTOCOLS,
         "local_stt_decoder": {
             "protocol": PROTOCOL_VERSION,
+            "backend": "fake-whisper",
+            "model": "fixture-adapter",
             "default_mode": "rolling_window",
             "supported_modes": ["rolling_window"],
             "fallback_mode": "rolling_window",
             "stateful_supported": False,
+            "native_streaming": {
+                "stateful": False,
+                "start_stream": False,
+            },
         },
         "streaming": {
             "transport": "websocket",
@@ -576,10 +596,16 @@ def test_ready_and_model_capabilities_smoke() -> None:
                 "loaded": True,
                 "local_stt_decoder": {
                     "protocol": PROTOCOL_VERSION,
+                    "backend": "fake-whisper",
+                    "model": "fixture-adapter",
                     "default_mode": "rolling_window",
                     "supported_modes": ["rolling_window"],
                     "fallback_mode": "rolling_window",
                     "stateful_supported": False,
+                    "native_streaming": {
+                        "stateful": False,
+                        "start_stream": False,
+                    },
                 },
                 "streaming": {
                     "transport": "websocket",
@@ -644,10 +670,39 @@ def test_models_reports_stateful_local_stt_decoder_support() -> None:
 
     assert models["local_stt_decoder"] == {
         "protocol": PROTOCOL_VERSION,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
         "default_mode": "stateful",
         "supported_modes": ["stateful", "rolling_window"],
         "fallback_mode": "rolling_window",
         "stateful_supported": True,
+        "native_streaming": {
+            "stateful": True,
+            "start_stream": True,
+        },
+    }
+    assert models["models"][0]["local_stt_decoder"] == models["local_stt_decoder"]
+
+
+def test_models_preserves_backend_native_streaming_metadata() -> None:
+    transcriber = NativeStreamingMetadataTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        models = client.get("/api/models").json()
+
+    assert models["local_stt_decoder"] == {
+        "protocol": PROTOCOL_VERSION,
+        "backend": "native-streaming-fixture",
+        "model": "stateful-fixture",
+        "default_mode": "stateful",
+        "supported_modes": ["stateful", "rolling_window"],
+        "fallback_mode": "rolling_window",
+        "stateful_supported": True,
+        "native_streaming": {
+            "stateful": True,
+            "start_stream": True,
+            "audio_format": "pcm_s16le",
+        },
     }
     assert models["models"][0]["local_stt_decoder"] == models["local_stt_decoder"]
 
@@ -660,10 +715,16 @@ def test_models_respects_explicitly_unsupported_stateful_decoder() -> None:
 
     assert models["local_stt_decoder"] == {
         "protocol": PROTOCOL_VERSION,
+        "backend": "fake-whisper",
+        "model": "fixture-adapter",
         "default_mode": "rolling_window",
         "supported_modes": ["rolling_window"],
         "fallback_mode": "rolling_window",
         "stateful_supported": False,
+        "native_streaming": {
+            "stateful": False,
+            "start_stream": False,
+        },
     }
     assert models["models"][0]["local_stt_decoder"] == models["local_stt_decoder"]
 

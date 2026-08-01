@@ -133,10 +133,16 @@ Example response:
   },
   "local_stt_decoder": {
     "protocol": "local-stt.v1",
+    "backend": "faster-whisper",
+    "model": "small.en",
     "default_mode": "rolling_window",
     "supported_modes": ["rolling_window"],
     "fallback_mode": "rolling_window",
-    "stateful_supported": false
+    "stateful_supported": false,
+    "native_streaming": {
+      "stateful": false,
+      "start_stream": false
+    }
   },
   "streaming": {
     "transport": "websocket",
@@ -159,10 +165,16 @@ Example response:
       "loaded": true,
       "local_stt_decoder": {
         "protocol": "local-stt.v1",
+        "backend": "faster-whisper",
+        "model": "small.en",
         "default_mode": "rolling_window",
         "supported_modes": ["rolling_window"],
         "fallback_mode": "rolling_window",
-        "stateful_supported": false
+        "stateful_supported": false,
+        "native_streaming": {
+          "stateful": false,
+          "start_stream": false
+        }
       },
       "streaming": {
         "transport": "websocket",
@@ -218,7 +230,7 @@ Example response:
 }
 ```
 
-Capability metadata changes by backend. The top-level `default_protocol` and `default_transport` keys expose the recommended live STT route directly, while `protocols` carries the full catalog and `streaming` keeps the backend's legacy buffered websocket capability. `local_stt_decoder` tells clients whether new `/v1/stt/stream` sessions default to a native `stateful` decoder or the compatibility `rolling_window` path. Backend-specific details remain under `capabilities`. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields. Voxtral also exposes `model_card`, `runtime_aliases`, `attn_implementation`, `max_new_tokens`, and `realtime_profile` so clients can discover the Mini 4B realtime alias without hard-coding issue notes.
+Capability metadata changes by backend. The top-level `default_protocol` and `default_transport` keys expose the recommended live STT route directly, while `protocols` carries the full catalog and `streaming` keeps the backend's legacy buffered websocket capability. `local_stt_decoder` tells clients whether new `/v1/stt/stream` sessions default to a native `stateful` decoder or the compatibility `rolling_window` path, and includes the backend/model plus `native_streaming` evidence used for that decision. Backend-specific details remain under `capabilities`. For example, Qwen exposes `dtype`, `device_map`, and generation settings, while Parakeet variants expose implementation-specific runtime fields. Voxtral also exposes `model_card`, `runtime_aliases`, `attn_implementation`, `max_new_tokens`, and `realtime_profile` so clients can discover the Mini 4B realtime alias without hard-coding issue notes.
 
 ## List Protocols
 
