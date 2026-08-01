@@ -2224,6 +2224,7 @@ def test_local_stt_v1_stream_accepts_flat_start_binary_audio_and_finalize() -> N
             assert partial_message.audio_received_ms == round((len(chunk) / 2) * 1000 / HOT_PATH_SAMPLE_RATE)
             assert partial_message.audio_transcribed_ms == partial_message.audio_received_ms
             assert partial_message.metadata["stream_id"] == 1
+            assert partial_message.metadata["decoder_mode"] == "rolling_window"
             assert partial_message.metadata["client_stream_id"] == "turn-1"
             assert partial_message.metadata["client_metadata"] == {"turn_id": "turn-1", "tenant": "demo"}
 
@@ -2236,6 +2237,7 @@ def test_local_stt_v1_stream_accepts_flat_start_binary_audio_and_finalize() -> N
             assert final_message.revision == 2
             assert final_message.text == "fixture transcription 1"
             assert final_message.metadata["stream_id"] == 1
+            assert final_message.metadata["decoder_mode"] == "rolling_window"
             assert final_message.metadata["client_stream_id"] == "turn-1"
             assert final_message.metadata["client_metadata"] == {"turn_id": "turn-1", "tenant": "demo"}
 
@@ -2287,11 +2289,14 @@ def test_local_stt_v1_stream_uses_stateful_decoder_when_backend_supports_it() ->
             final = parse_server_message(websocket.receive_json())
 
     assert first_partial.text == "streaming partial 1"
+    assert first_partial.metadata["decoder_mode"] == "stateful"
     assert first_partial.audio_transcribed_ms == HOT_PATH_FRAME_MS
     assert second_partial.text == "streaming partial 2"
+    assert second_partial.metadata["decoder_mode"] == "stateful"
     assert second_partial.audio_received_ms == HOT_PATH_FRAME_MS * 2
     assert second_partial.audio_transcribed_ms == HOT_PATH_FRAME_MS
     assert final.text == "streaming final 1"
+    assert final.metadata["decoder_mode"] == "stateful"
     assert final.is_final is True
     assert transcriber.calls == []
     assert transcriber.stream_configs == [

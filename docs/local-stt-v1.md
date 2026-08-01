@@ -216,6 +216,8 @@ Required fields:
 - `audio_transcribed_ms`: duration covered by this transcript revision.
 - `metadata`: implementation-specific optional metadata object.
 
+`metadata.decoder_mode` mirrors the `ready` event for every transcript revision so clients and benchmarks can attribute partial and final behavior to either the `stateful` path or the `rolling_window` fallback without retaining connection-side state.
+
 Timing rules:
 
 - `audio_transcribed_ms` MUST be less than or equal to `audio_received_ms`.

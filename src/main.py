@@ -1600,6 +1600,7 @@ def _local_stt_transcript_event(
         "chunks_received": session.chunks_received,
         "buffered_bytes": len(session.audio_buffer),
         "remaining_buffer_bytes": session.max_buffer_bytes - len(session.audio_buffer),
+        "decoder_mode": session.decoder_mode,
     }
     backend = transcript.get("backend")
     if isinstance(backend, str):
