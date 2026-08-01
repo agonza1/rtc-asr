@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import argparse
 import importlib.util
 import json
 import sys
@@ -299,6 +300,41 @@ def test_parse_args_accepts_scenario_label(tmp_path) -> None:
     ])
 
     assert args.scenario == "warm-service-regression"
+
+
+def test_parse_args_accepts_voice_agent_send_aggregation(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    args = benchmark_module.parse_args([
+        "--input-raw-pcm",
+        str(pcm_path),
+        "--frame-ms",
+        "20",
+        "--send-aggregate-ms",
+        "80",
+    ])
+
+    assert args.send_aggregate_ms == 80
+
+
+def test_parse_args_rejects_non_multiple_send_aggregation(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    try:
+        benchmark_module.parse_args([
+            "--input-raw-pcm",
+            str(pcm_path),
+            "--frame-ms",
+            "20",
+            "--send-aggregate-ms",
+            "90",
+        ])
+    except argparse.ArgumentTypeError as exc:
+        assert "whole multiple" in str(exc)
+    else:
+        raise AssertionError("expected non-multiple send aggregation to fail")
 
 
 def test_parse_args_accepts_repeated_metadata_labels(tmp_path) -> None:
@@ -612,6 +648,16 @@ def test_measure_pcm16_normalization_uses_server_decode_buffers(monkeypatch) -> 
     assert normalized_lengths == [1280, 1920]
 
 
+def test_aggregate_audio_frames_groups_voice_agent_chunks() -> None:
+    frames = [bytes([index]) * 640 for index in range(5)]
+
+    chunks = benchmark_module.aggregate_audio_frames(frames, frame_ms=20, send_aggregate_ms=80)
+
+    assert [chunk.payload for chunk in chunks] == [b"".join(frames[:4]), frames[4]]
+    assert [chunk.source_frame_count for chunk in chunks] == [4, 1]
+    assert [chunk.duration_ms for chunk in chunks] == [80, 20]
+
+
 def test_run_benchmark_records_required_latency_metrics() -> None:
     audio = benchmark_module.AudioInput(
         source="fixture.raw",
@@ -647,15 +693,19 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["audio"]["channels"] == 1
     assert payload["audio"]["format"] == "pcm_s16le"
     assert payload["audio"]["bytes_per_frame"] == 640
+    assert payload["audio"]["send_aggregate_ms"] == 20
+    assert payload["audio"]["frames_per_send_chunk"] == 1
     assert payload["audio"]["duration_ms"] == 40
     assert payload["settings"] == {
         "partial_interval_ms": 100,
         "receive_timeout_seconds": 5,
         "realtime_pace": False,
+        "send_aggregate_ms": 20,
         "scenario": "warm-service-regression",
         "metadata": {"device": "test-host", "profile": "warm"},
     }
     assert sample["audio_frames_sent"] == 2
+    assert sample["audio_chunks_sent"] == 2
     assert sample["audio_frames_dropped"] == 0
     assert sample["interim_events_received"] == 2
     assert sample["interim_transcript_changes"] == 1
@@ -722,6 +772,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
         "protocol_error_total": 0,
     }
     assert payload["summary"]["audio_frames_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["summary"]["audio_chunks_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["audio_frames_dropped"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["interim_events_received"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["interim_transcript_changes"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
@@ -751,6 +802,39 @@ def test_run_benchmark_records_actual_tail_frame_audio_duration() -> None:
     )
 
     assert payload["audio"]["duration_ms"] == 30.0
+
+
+def test_run_benchmark_sends_aggregated_voice_agent_chunks() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 640, b"c" * 640, b"d" * 640, b"e" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            send_aggregate_ms=80,
+            client_factory=FakeLocalSttClient,
+            scenario="voice-agent-80ms-aggregation",
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert payload["audio"]["send_aggregate_ms"] == 80
+    assert payload["audio"]["frames_per_send_chunk"] == 4
+    assert payload["settings"]["send_aggregate_ms"] == 80
+    assert payload["settings"]["scenario"] == "voice-agent-80ms-aggregation"
+    assert sample["audio_frames_sent"] == 5
+    assert sample["audio_chunks_sent"] == 2
+    assert sample["audio_payload_bytes_sent"] == 3200
+    assert sample["audio_frames_dropped"] == 0
+    assert payload["summary"]["audio_chunks_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
 
 
 def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_error() -> None:
