@@ -1493,6 +1493,28 @@ def test_main_writes_json_artifact_with_raw_pcm(monkeypatch, tmp_path: Path) -> 
     written = json.loads(output_path.read_text(encoding="utf-8"))
     assert written["kind"] == "local-stt-v1-latency-benchmark"
     assert written["settings"]["receive_timeout_seconds"] == 7
+    assert written["benchmark"]["argv"] == [
+        sys.executable,
+        "scripts/bench_local_stt_stream.py",
+        "--input-raw-pcm",
+        str(raw_path),
+        "--runs",
+        "1",
+        "--output",
+        str(output_path),
+        "--receive-timeout-seconds",
+        "7",
+        "--metrics-pid",
+        "4321",
+        "--scenario",
+        "raw-pcm-smoke",
+        "--metadata",
+        "device=test-host",
+        "--no-realtime-pace",
+    ]
+    assert written["benchmark"]["command"].startswith(sys.executable)
+    assert written["benchmark"]["input_source"] == str(raw_path)
+    assert written["benchmark"]["output_path"] == str(output_path)
     assert audio_seen["audio"].frames == [b"a" * 640]
     assert audio_seen["metrics_pid"] == 4321
     assert audio_seen["scenario"] == "raw-pcm-smoke"

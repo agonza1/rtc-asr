@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import statistics
 import time
 import wave
@@ -1171,8 +1172,25 @@ def _format_ms(value: float | None) -> str:
     return "n/a" if value is None else f"{value}ms"
 
 
+def attach_cli_provenance(payload: dict[str, Any], *, args: argparse.Namespace, argv: list[str]) -> dict[str, Any]:
+    benchmark = dict(payload.get("benchmark") or {})
+    script_path = Path(__file__).relative_to(ROOT)
+    command = [sys.executable, str(script_path), *argv]
+    benchmark.update(
+        {
+            "command": shlex.join(command),
+            "argv": command,
+            "input_source": str(args.input_wav or args.input_raw_pcm),
+            "output_path": str(args.output) if args.output is not None else None,
+        }
+    )
+    payload["benchmark"] = benchmark
+    return payload
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+    resolved_argv = list(sys.argv[1:] if argv is None else argv)
+    args = parse_args(resolved_argv)
     audio = load_audio_input(input_wav=args.input_wav, input_raw_pcm=args.input_raw_pcm, sample_rate=args.sample_rate, frame_ms=args.frame_ms)
     payload = asyncio.run(
         run_benchmark(
@@ -1195,6 +1213,7 @@ def main(argv: list[str] | None = None) -> int:
             send_aggregate_ms=args.send_aggregate_ms,
         )
     )
+    attach_cli_provenance(payload, args=args, argv=resolved_argv)
     if args.output is not None:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
