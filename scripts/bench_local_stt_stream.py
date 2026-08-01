@@ -91,6 +91,13 @@ class AudioInput:
     frames: list[bytes]
 
 
+@dataclass(slots=True)
+class AudioSendChunk:
+    payload: bytes
+    source_frame_count: int
+    duration_ms: int
+
+
 class ProcessMetricsMonitor:
     def __init__(self, *, pid: int | None = None, interval_seconds: float = 0.1) -> None:
         self.interval_seconds = interval_seconds
@@ -208,6 +215,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     source.add_argument("--input-raw-pcm", type=Path)
     parser.add_argument("--sample-rate", type=positive_int, default=HOT_PATH_SAMPLE_RATE)
     parser.add_argument("--frame-ms", type=positive_int, default=HOT_PATH_FRAME_MS)
+    parser.add_argument(
+        "--send-aggregate-ms",
+        type=positive_int,
+        help="Aggregate input frames into this many milliseconds per send, e.g. 80 or 160 for voice-agent RTC pacing.",
+    )
     parser.add_argument("--partial-interval-ms", type=positive_int, default=100)
     parser.add_argument("--runs", type=positive_int, default=3)
     parser.add_argument(
@@ -263,8 +275,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--no-realtime-pace", action="store_true", help="Send frames without sleeping between frames")
     args = parser.parse_args(argv)
     validate_transport_args(args.transport, args.uds_path)
+    if args.send_aggregate_ms is not None:
+        validate_send_aggregate_ms(frame_ms=args.frame_ms, send_aggregate_ms=args.send_aggregate_ms)
     args.metadata = dict(args.metadata)
     return args
+
+
+def validate_send_aggregate_ms(*, frame_ms: int, send_aggregate_ms: int) -> None:
+    if send_aggregate_ms < frame_ms:
+        raise argparse.ArgumentTypeError("--send-aggregate-ms must be greater than or equal to --frame-ms")
+    if send_aggregate_ms % frame_ms != 0:
+        raise argparse.ArgumentTypeError("--send-aggregate-ms must be a whole multiple of --frame-ms")
 
 
 def validate_transport_args(transport: str, uds_path: Path | None) -> None:
@@ -546,6 +567,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "transport_audio_overhead_bytes",
         "transport_audio_bytes_sent",
         "audio_frames_sent",
+        "audio_chunks_sent",
         "audio_frames_dropped",
         "interim_events_received",
         "interim_transcript_changes",
@@ -629,8 +651,11 @@ async def run_benchmark(
     thermal_duration_minutes: float | None = None,
     scenario: str | None = None,
     metadata: dict[str, str] | None = None,
+    send_aggregate_ms: int | None = None,
 ) -> dict[str, Any]:
     validate_transport_args(transport, Path(uds_path) if uds_path is not None else None)
+    resolved_send_aggregate_ms = send_aggregate_ms or audio.frame_ms
+    validate_send_aggregate_ms(frame_ms=audio.frame_ms, send_aggregate_ms=resolved_send_aggregate_ms)
     factory = client_factory or make_client_factory(transport=transport, uds_path=uds_path)
     metrics_monitor = ProcessMetricsMonitor(pid=metrics_pid)
     metrics_monitor.start()
@@ -644,6 +669,7 @@ async def run_benchmark(
                     audio=audio,
                     transport=transport,
                     partial_interval_ms=partial_interval_ms,
+                    send_aggregate_ms=resolved_send_aggregate_ms,
                     realtime_pace=realtime_pace,
                     receive_timeout_seconds=receive_timeout_seconds,
                     client_factory=factory,
@@ -674,6 +700,8 @@ async def run_benchmark(
             "channels": LOCAL_STT_AUDIO_CHANNELS,
             "format": LOCAL_STT_AUDIO_FORMAT,
             "frame_ms": audio.frame_ms,
+            "send_aggregate_ms": resolved_send_aggregate_ms,
+            "frames_per_send_chunk": resolved_send_aggregate_ms // audio.frame_ms,
             "bytes_per_frame": HOT_PATH_BYTES_PER_FRAME if audio.sample_rate == HOT_PATH_SAMPLE_RATE and audio.frame_ms == HOT_PATH_FRAME_MS else len(audio.frames[0]) if audio.frames else 0,
             "frames": len(audio.frames),
             "duration_ms": audio_duration_ms(audio),
@@ -682,6 +710,7 @@ async def run_benchmark(
             "partial_interval_ms": partial_interval_ms,
             "receive_timeout_seconds": receive_timeout_seconds,
             "realtime_pace": realtime_pace,
+            "send_aggregate_ms": resolved_send_aggregate_ms,
             "scenario": scenario,
             "metadata": dict(sorted((metadata or {}).items())),
         },
@@ -720,6 +749,7 @@ async def _run_once(
     audio: AudioInput,
     transport: str,
     partial_interval_ms: int,
+    send_aggregate_ms: int,
     realtime_pace: bool,
     receive_timeout_seconds: int,
     client_factory: ClientFactory,
@@ -844,12 +874,14 @@ async def _run_once(
                 return
 
     receive_task = asyncio.create_task(receive_loop())
-    frames_sent = 0
+    send_chunks = aggregate_audio_frames(audio.frames, frame_ms=audio.frame_ms, send_aggregate_ms=send_aggregate_ms)
+    source_frames_sent = 0
+    chunks_sent = 0
     audio_payload_bytes_sent = 0
     try:
-        for frame_index, frame in enumerate(audio.frames):
+        for chunk_index, chunk in enumerate(send_chunks):
             if receive_done.is_set():
-                frames_dropped += len(audio.frames) - frame_index
+                frames_dropped += sum(remaining.source_frame_count for remaining in send_chunks[chunk_index:])
                 break
             if audio_send_started_at is None:
                 audio_send_started_at = time.perf_counter()
@@ -857,18 +889,19 @@ async def _run_once(
                 first_audio_sent_at = time.perf_counter()
             send_started = time.perf_counter()
             try:
-                await client.send_audio(frame)
+                await client.send_audio(chunk.payload)
             except Exception:
                 protocol_errors += 1
                 protocol_error_codes.append("send_exception")
-                frames_dropped += len(audio.frames) - frame_index
+                frames_dropped += sum(remaining.source_frame_count for remaining in send_chunks[chunk_index:])
                 receive_done.set()
                 break
             send_latencies.append((time.perf_counter() - send_started) * 1000)
-            frames_sent += 1
-            audio_payload_bytes_sent += len(frame)
+            chunks_sent += 1
+            source_frames_sent += chunk.source_frame_count
+            audio_payload_bytes_sent += len(chunk.payload)
             if realtime_pace:
-                await asyncio.sleep(audio.frame_ms / 1000)
+                await asyncio.sleep(chunk.duration_ms / 1000)
         if audio_send_started_at is not None:
             audio_send_completed_at = time.perf_counter()
 
@@ -899,7 +932,7 @@ async def _run_once(
     receive_p95 = percentile(receive_latencies, 0.95)
     transport_audio_overhead_bytes = compute_transport_audio_overhead_bytes(
         transport=transport,
-        frames_sent=frames_sent,
+        frames_sent=chunks_sent,
     )
     partial_cadences = [
         (received_at - previous_received_at) * 1000
@@ -937,8 +970,9 @@ async def _run_once(
         "decoder_compute_rtf": compute_decoder_compute_rtf(asr_decode_cumulative_ms_values, audio),
         "websocket_roundtrip_p95_ms": _coalesce_optional_ms(percentile(websocket_roundtrip_latencies, 0.95), receive_p95),
         "websocket_roundtrip_samples": len(websocket_roundtrip_latencies),
-        "audio_frames_sent": frames_sent,
-        "audio_frames_dropped": frames_dropped + max(0, len(audio.frames) - frames_sent - frames_dropped),
+        "audio_frames_sent": source_frames_sent,
+        "audio_chunks_sent": chunks_sent,
+        "audio_frames_dropped": frames_dropped + max(0, len(audio.frames) - source_frames_sent - frames_dropped),
         "interim_events_received": interim_events,
         "interim_transcript_changes": interim_transcript_changes,
         "final_events_received": final_events,
@@ -1007,6 +1041,24 @@ def measure_pcm16_normalization_latencies(frames: list[bytes], *, frame_ms: int,
         normalize_pcm16_buffer(audio_data)
         latencies.append((time.perf_counter() - started_at) * 1000)
     return latencies
+
+
+def aggregate_audio_frames(frames: list[bytes], *, frame_ms: int, send_aggregate_ms: int) -> list[AudioSendChunk]:
+    validate_send_aggregate_ms(frame_ms=frame_ms, send_aggregate_ms=send_aggregate_ms)
+    frames_per_chunk = send_aggregate_ms // frame_ms
+    chunks: list[AudioSendChunk] = []
+    for index in range(0, len(frames), frames_per_chunk):
+        group = frames[index : index + frames_per_chunk]
+        if not group:
+            continue
+        chunks.append(
+            AudioSendChunk(
+                payload=b"".join(group),
+                source_frame_count=len(group),
+                duration_ms=len(group) * frame_ms,
+            )
+        )
+    return chunks
 
 
 def compute_overlap_ms(
@@ -1140,6 +1192,7 @@ def main(argv: list[str] | None = None) -> int:
             thermal_duration_minutes=args.thermal_duration_minutes,
             scenario=args.scenario,
             metadata=args.metadata,
+            send_aggregate_ms=args.send_aggregate_ms,
         )
     )
     if args.output is not None:
