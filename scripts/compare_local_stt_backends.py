@@ -107,6 +107,28 @@ def protocol_error_free(artifact: dict[str, Any]) -> bool:
     return all(value in (None, 0.0) for value in errors.values())
 
 
+def transcript_sanity(artifact: dict[str, Any]) -> dict[str, Any]:
+    samples = artifact.get("samples")
+    normalized_transcripts: list[str] = []
+    if isinstance(samples, list):
+        for sample in samples:
+            if not isinstance(sample, dict):
+                continue
+            transcript = sample.get("final_transcript")
+            if isinstance(transcript, str):
+                normalized_transcripts.append(normalize_transcript(transcript))
+    nonempty_transcripts = [transcript for transcript in normalized_transcripts if transcript]
+    return {
+        "runs_with_final_transcript": len(nonempty_transcripts),
+        "empty_final_transcript_runs": len(normalized_transcripts) - len(nonempty_transcripts),
+        "unique_final_transcripts": sorted(set(nonempty_transcripts)),
+    }
+
+
+def normalize_transcript(value: str) -> str:
+    return " ".join(value.lower().split())
+
+
 def compare_artifacts(
     paths: list[Path],
     *,
@@ -136,6 +158,7 @@ def compare_artifacts(
             "runs": artifact.get("runs"),
             "protocol_error_free": protocol_error_free(artifact),
             "comparable_snapshot": comparable_snapshot(artifact),
+            "transcript_sanity": transcript_sanity(artifact),
         }
 
     missing = [key for key in (baseline_key, candidate_key) if key not in by_backend]
@@ -145,6 +168,7 @@ def compare_artifacts(
     final_delta = p95_deltas.get("time_to_final_after_finalize_ms")
     candidate_errors = None if missing else not by_backend[candidate_key]["protocol_error_free"]
     baseline_errors = None if missing else not by_backend[baseline_key]["protocol_error_free"]
+    transcript_gaps = transcript_sanity_gaps(by_backend, baseline_key, candidate_key) if not missing else []
 
     blockers = []
     blockers.extend(f"missing_backend:{key}" for key in missing)
@@ -153,6 +177,7 @@ def compare_artifacts(
         blockers.append(f"protocol_errors:{candidate_key}")
     if baseline_errors:
         blockers.append(f"protocol_errors:{baseline_key}")
+    blockers.extend(transcript_gaps)
     if first_partial_win is None:
         blockers.append("missing_time_to_first_interim_p95_delta")
     elif first_partial_win < min_first_partial_win_ms:
@@ -197,6 +222,21 @@ def p95_deltas_ms(by_backend: dict[str, dict[str, Any]], baseline_key: str, cand
     return deltas
 
 
+def transcript_sanity_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> list[str]:
+    baseline = by_backend[baseline_key]["transcript_sanity"]
+    candidate = by_backend[candidate_key]["transcript_sanity"]
+    baseline_transcripts = baseline["unique_final_transcripts"]
+    candidate_transcripts = candidate["unique_final_transcripts"]
+    gaps: list[str] = []
+    if candidate["runs_with_final_transcript"] == 0:
+        gaps.append(f"missing_final_transcript:{candidate_key}")
+    if candidate["empty_final_transcript_runs"]:
+        gaps.append(f"empty_final_transcript:{candidate_key}")
+    if baseline_transcripts and candidate_transcripts and baseline_transcripts != candidate_transcripts:
+        gaps.append(f"final_transcript_mismatch:{candidate_key}")
+    return gaps
+
+
 def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
     if not blockers:
         return f"Keep {candidate_key} as a supported low-latency backend."
@@ -206,6 +246,8 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
         return "Re-run backend benchmarks with matching audio, pacing, and scenario settings."
     if any(blocker.startswith("protocol_errors:") for blocker in blockers):
         return "Fix streaming protocol errors before comparing backend latency."
+    if any("final_transcript" in blocker for blocker in blockers):
+        return f"Keep {candidate_key} experimental until final transcripts match the baseline sanity check."
     if "finalization_regression" in blockers:
         return f"Keep {candidate_key} experimental until final transcript latency no longer regresses."
     return f"Keep {candidate_key} experimental while searching for a stronger stateful backend."
