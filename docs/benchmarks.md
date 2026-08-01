@@ -191,3 +191,16 @@ LOCAL_STT_TRANSPORT_ARTIFACTS="tcp-ws.json uds-ws.json raw-uds.json" make benchm
 ```
 
 That writes the full comparison JSON, the Markdown summary, and `docs/benchmark-results/local-stt-raw-uds-decision.json` for the compact recommendation gate record.
+
+Compare a stateful backend artifact, such as Vosk, against the current rolling-window/default Local STT path with:
+
+```bash
+python scripts/compare_streaming_backend_artifacts.py \
+  --baseline docs/benchmark-results/default-rolling-window.json \
+  --baseline-name "default rolling-window" \
+  --candidate docs/benchmark-results/vosk-stateful.json \
+  --candidate-name "Vosk stateful" \
+  --output docs/benchmark-results/vosk-stateful-streaming-comparison.json
+```
+
+Use artifacts produced by `scripts/bench_local_stt_stream.py` with the same audio source, sample rate, `20 ms` input frames, `80` to `160 ms` send aggregation, partial interval, hardware, and concurrency. The comparison gate treats batched transcription as optional context only; it recommends stateful support only when the candidate improves live first-partial and finalization p95 latency without transcript or protocol regressions.
