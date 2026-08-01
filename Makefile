@@ -42,6 +42,7 @@ BENCHMARK_RESULTS_DIR ?= docs/benchmark-results
 BENCHMARK_SITE_BASE_URL ?= https://benchmarks.webrtc.ventures/asr-latency/
 BENCHMARK_ARTIFACT_REPORT_FLAGS ?=
 BENCHMARK_ARTIFACT_CLEANUP_DAYS ?= 30
+COMPOSE_IMAGE_SIZE_REPORT_FLAGS ?=
 LOCAL_STT_TRANSPORT_ARTIFACTS ?=
 LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.json
 LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN ?= $(BENCHMARK_RESULTS_DIR)/local-stt-transport-comparison.md
@@ -521,7 +522,7 @@ benchmark-local-stt-transport-compare:
 	@echo "Wrote $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT), $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN), and $(LOCAL_STT_RAW_UDS_DECISION_OUTPUT)"
 
 compose-image-size-report:
-	@python3 scripts/report_compose_image_sizes.py $(FASTER_WHISPER_COMPOSE_IMAGE) $(QWEN_COMPOSE_IMAGE) $(PARAKEET_COMPOSE_IMAGE) $(PARAKEET_NEMO_COMPOSE_IMAGE)
+	@python3 scripts/report_compose_image_sizes.py $(COMPOSE_IMAGE_SIZE_REPORT_FLAGS) $(FASTER_WHISPER_COMPOSE_IMAGE) $(QWEN_COMPOSE_IMAGE) $(PARAKEET_COMPOSE_IMAGE) $(PARAKEET_NEMO_COMPOSE_IMAGE)
 
 benchmark-parakeet-mlx: mlx-venv
 	@echo "Benchmarking $(PARAKEET_MLX_MODEL) with parakeet-mlx on Apple Silicon..."

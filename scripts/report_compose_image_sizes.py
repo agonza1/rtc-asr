@@ -129,6 +129,15 @@ def records_summary_to_json(records: Sequence[ImageSizeRecord]) -> str:
     return json.dumps(records_summary(records), indent=2, sort_keys=True)
 
 
+def records_over_size_budget(records: Sequence[ImageSizeRecord], max_size_mb: float) -> list[ImageSizeRecord]:
+    max_size_bytes = max_size_mb * 1_000_000
+    return [
+        record
+        for record in records
+        if record.present and record.size_bytes is not None and record.size_bytes > max_size_bytes
+    ]
+
+
 def records_to_markdown(records: Sequence[ImageSizeRecord]) -> str:
     rows = ["| Image | Present | Size MB | Image ID | Created |", "| --- | --- | ---: | --- | --- |"]
     for record in records:
@@ -193,6 +202,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Emit only the aggregate image count and size summary as JSON.",
     )
+    parser.add_argument(
+        "--max-size-mb",
+        type=float,
+        help="Exit non-zero when any present image is larger than this decimal-megabyte budget.",
+    )
     parser.add_argument("--require-present", action="store_true", help="Exit non-zero when any requested image is absent.")
     return parser.parse_args(argv)
 
@@ -205,7 +219,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         output = records_to_json(records) if args.json else records_to_markdown(records)
     print(output)
-    return 1 if args.require_present and any(not record.present for record in records) else 0
+    if args.require_present and any(not record.present for record in records):
+        return 1
+    if args.max_size_mb is not None and records_over_size_budget(records, args.max_size_mb):
+        return 1
+    return 0
 
 
 if __name__ == "__main__":

@@ -642,6 +642,7 @@ def test_makefile_exposes_compose_image_size_report_target() -> None:
 
     block = makefile.split("compose-image-size-report:\n", 1)[1].split("\n\n", 1)[0]
     assert "python3 scripts/report_compose_image_sizes.py" in block
+    assert "$(COMPOSE_IMAGE_SIZE_REPORT_FLAGS)" in block
     assert "$(FASTER_WHISPER_COMPOSE_IMAGE)" in block
     assert "$(QWEN_COMPOSE_IMAGE)" in block
     assert "$(PARAKEET_COMPOSE_IMAGE)" in block

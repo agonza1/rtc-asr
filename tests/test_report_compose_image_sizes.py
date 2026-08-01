@@ -141,6 +141,17 @@ def test_sort_records_orders_by_tag_and_size_desc() -> None:
     ]
 
 
+def test_records_over_size_budget_ignores_missing_and_unknown_sizes() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=199_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="large:image", image_id="large", size_bytes=201_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="unknown:image", image_id="unknown", size_bytes=None, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    assert reporter.records_over_size_budget(records, 200.0) == [records[1]]
+
+
 def test_inspect_images_records_missing_images(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(args=args, returncode=1, stdout="", stderr="not found")
@@ -237,3 +248,16 @@ def test_main_applies_sort_order_before_rendering(monkeypatch: pytest.MonkeyPatc
     lines = capsys.readouterr().out.splitlines()
     assert lines[2].startswith("| large:image |")
     assert lines[3].startswith("| small:image |")
+
+
+def test_main_fails_when_present_image_exceeds_size_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag=images[0], image_id="large", size_bytes=250_000_001, created=None, present=True)
+        ],
+    )
+
+    assert reporter.main(["--max-size-mb", "250", "large:image"]) == 1
+    assert reporter.main(["--max-size-mb", "251", "large:image"]) == 0
