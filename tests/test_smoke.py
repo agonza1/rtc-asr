@@ -2346,13 +2346,18 @@ def test_local_stt_v1_stream_uses_stateful_decoder_when_backend_supports_it() ->
 
     assert first_partial.text == "streaming partial 1"
     assert first_partial.metadata["decoder_mode"] == "stateful"
+    assert first_partial.metadata["asr_decode_ms"] >= 0
+    assert first_partial.metadata["asr_decode_cumulative_ms"] >= first_partial.metadata["asr_decode_ms"]
+    assert first_partial.metadata["asr_decode_cumulative_rtf"] >= 0
     assert first_partial.audio_transcribed_ms == HOT_PATH_FRAME_MS
     assert second_partial.text == "streaming partial 2"
     assert second_partial.metadata["decoder_mode"] == "stateful"
+    assert second_partial.metadata["asr_decode_cumulative_ms"] >= first_partial.metadata["asr_decode_cumulative_ms"]
     assert second_partial.audio_received_ms == HOT_PATH_FRAME_MS * 2
     assert second_partial.audio_transcribed_ms == HOT_PATH_FRAME_MS
     assert final.text == "streaming final 1"
     assert final.metadata["decoder_mode"] == "stateful"
+    assert final.metadata["asr_decode_cumulative_ms"] >= second_partial.metadata["asr_decode_cumulative_ms"]
     assert final.is_final is True
     assert transcriber.calls == []
     assert transcriber.stream_configs == [

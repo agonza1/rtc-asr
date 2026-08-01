@@ -9,6 +9,7 @@ import json
 import logging
 import math
 import stat
+import time
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -475,6 +476,7 @@ class StreamRuntime:
     send_queue_high_water: int = 0
     streaming_decoder: StreamingTranscriberSession | None = None
     streaming_decode_offset: int = 0
+    asr_decode_cumulative_ms: float = 0.0
 
     def note_audio(self) -> None:
         self.dirty = True
@@ -1279,11 +1281,14 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
 
         if runtime.finalize_requested.is_set():
             final_audio = bytes(session.audio_buffer)
+            decode_started_at = time.perf_counter()
             final_result = (
                 await _finalize_streaming_decoder_async(runtime)
                 if runtime.streaming_decoder is not None
                 else await _resolve_final_result_async(session, runtime.services)
             )
+            decode_ms = (time.perf_counter() - decode_started_at) * 1000
+            runtime.asr_decode_cumulative_ms += decode_ms
             if runtime.cancel_requested.is_set() or runtime.closed:
                 return
             await runtime.enqueue_event(
@@ -1292,6 +1297,7 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
                     final_result,
                     is_final=True,
                     transcribed_audio_bytes=len(final_audio),
+                    metrics=_decode_metrics(runtime, decode_ms),
                 )
             )
             runtime.final_emitted = True
@@ -1307,6 +1313,7 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
         partial_chunks_received = session.chunks_received
         partial_audio_received_ms = session.audio_received_ms()
         runtime.decode_in_flight = True
+        decode_started_at = time.perf_counter()
         try:
             if runtime.streaming_decoder is not None:
                 partial_audio_bytes = bytes(session.audio_buffer[runtime.streaming_decode_offset :])
@@ -1319,6 +1326,8 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
                     language=session.language,
                     sample_rate=session.sample_rate,
                 )
+            decode_ms = (time.perf_counter() - decode_started_at) * 1000
+            runtime.asr_decode_cumulative_ms += decode_ms
         finally:
             runtime.decode_in_flight = False
             runtime.partial_decode_started = False
@@ -1353,6 +1362,7 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
                     partial,
                     is_final=False,
                     transcribed_audio_bytes=len(partial_audio_bytes),
+                    metrics=_decode_metrics(runtime, decode_ms),
                 )
             )
         if runtime.dirty:
@@ -1632,6 +1642,7 @@ def _local_stt_transcript_event(
     *,
     is_final: bool,
     transcribed_audio_bytes: int,
+    metrics: dict[str, object] | None = None,
 ) -> dict[str, object]:
     metadata: dict[str, object] = {
         "stream_id": session.stream_id,
@@ -1650,6 +1661,8 @@ def _local_stt_transcript_event(
         metadata["client_stream_id"] = session.client_stream_id
     if session.client_metadata:
         metadata["client_metadata"] = dict(session.client_metadata)
+    if metrics:
+        metadata.update(metrics)
 
     return TranscriptMessage(
         type="transcript",
@@ -1662,6 +1675,23 @@ def _local_stt_transcript_event(
         metadata=metadata,
         language=transcript.get("language") if isinstance(transcript.get("language"), str) else session.language,
     ).model_dump()
+
+
+def _decode_metrics(runtime: StreamRuntime, decode_ms: float) -> dict[str, object]:
+    return {
+        "asr_decode_ms": round(decode_ms, 1),
+        "asr_decode_cumulative_ms": round(runtime.asr_decode_cumulative_ms, 1),
+        "asr_decode_cumulative_rtf": _duration_ms_ratio(
+            runtime.asr_decode_cumulative_ms,
+            runtime.session.audio_received_ms(),
+        ),
+    }
+
+
+def _duration_ms_ratio(numerator_ms: float, denominator_ms: int) -> float | None:
+    if denominator_ms <= 0:
+        return None
+    return round(numerator_ms / denominator_ms, 3)
 
 
 def _local_stt_cancel_warning_event(session: StreamSession) -> dict[str, object]:

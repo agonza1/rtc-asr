@@ -48,6 +48,7 @@ class FakeLocalSttClient:
                         "asr_receive_loop_append_ms": 2.0,
                         "asr_queue_delay_ms": 3.0,
                         "asr_decode_ms": 4.0,
+                        "asr_decode_cumulative_ms": 4.0,
                         "websocket_roundtrip_ms": 5.0,
                     },
                 )
@@ -67,6 +68,7 @@ class FakeLocalSttClient:
                         "asr_receive_loop_append_ms": 2.5,
                         "asr_queue_delay_ms": 3.5,
                         "asr_decode_ms": 4.5,
+                        "asr_decode_cumulative_ms": 8.5,
                         "websocket_roundtrip_ms": 5.5,
                     },
                 )
@@ -100,6 +102,7 @@ class FakeLocalSttClient:
                     "asr_receive_loop_append_ms": 3.0,
                     "asr_queue_delay_ms": 4.0,
                     "asr_decode_ms": 5.0,
+                    "asr_decode_cumulative_ms": 13.5,
                     "websocket_roundtrip_ms": 6.0,
                 },
             )
@@ -667,6 +670,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["asr_queue_delay_samples"] == 3
     assert sample["asr_decode_p95_ms"] == 5.0
     assert sample["asr_decode_samples"] == 3
+    assert sample["decoder_compute_rtf"] == 0.338
     assert sample["websocket_roundtrip_p95_ms"] == 6.0
     assert sample["websocket_roundtrip_samples"] == 3
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
@@ -681,6 +685,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["asr_queue_delay_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["asr_decode_p95_ms"] == {"p50": 5.0, "p95": 5.0, "p99": 5.0}
     assert payload["summary"]["asr_decode_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
+    assert payload["summary"]["decoder_compute_rtf"] == {"p50": 0.338, "p95": 0.338, "p99": 0.338}
     assert payload["summary"]["websocket_roundtrip_p95_ms"] == {"p50": 6.0, "p95": 6.0, "p99": 6.0}
     assert payload["summary"]["websocket_roundtrip_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
@@ -898,6 +903,18 @@ def test_compute_audio_end_finalization_rtf_normalizes_by_audio_duration() -> No
     )
 
     assert benchmark_module.compute_audio_end_finalization_rtf(150.0, audio) == 1.5
+
+
+def test_compute_decoder_compute_rtf_uses_highest_cumulative_decode_time() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 640, b"c" * 640, b"d" * 640, b"e" * 640],
+    )
+
+    assert benchmark_module.compute_decoder_compute_rtf([5.0, 20.0, 12.0], audio) == 0.2
+    assert benchmark_module.compute_decoder_compute_rtf([], audio) is None
     assert benchmark_module.compute_audio_end_finalization_rtf(None, audio) is None
 
 
