@@ -143,6 +143,32 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
     }
 
 
+def test_records_summary_reports_size_budget_status() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=199_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="large:image", image_id="large", size_bytes=201_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    summary = reporter.records_summary(records, max_size_mb=200.0)
+
+    assert summary["image_size_budget_mb"] == 200.0
+    assert summary["over_budget"] is True
+    assert summary["over_budget_count"] == 1
+    assert summary["over_budget_tags"] == ["large:image"]
+
+
+def test_records_to_markdown_reports_size_budget_status() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=199_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="large:image", image_id="large", size_bytes=201_000_000, created=None, present=True),
+    ]
+
+    markdown = reporter.records_to_markdown(records, max_size_mb=200.0)
+
+    assert "Image size budget: 200.0 MB, 1 image over budget." in markdown
+
+
 def test_sort_records_orders_by_tag_and_size_desc() -> None:
     records = [
         reporter.ImageSizeRecord(
@@ -330,3 +356,23 @@ def test_main_fails_when_present_image_exceeds_size_budget(
     assert reporter.main(["--max-size-mb", "250", "large:image"]) == 1
     assert "Images over 250.0 MB: large:image (250.0 MB)" in capsys.readouterr().err
     assert reporter.main(["--max-size-mb", "251", "large:image"]) == 0
+
+
+def test_main_summary_only_includes_size_budget_status(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag=images[0], image_id="large", size_bytes=250_000_001, created=None, present=True)
+        ],
+    )
+
+    assert reporter.main(["--summary-only", "--max-size-mb", "250", "large:image"]) == 1
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["image_size_budget_mb"] == 250.0
+    assert payload["over_budget"] is True
+    assert payload["over_budget_count"] == 1
+    assert payload["over_budget_tags"] == ["large:image"]
