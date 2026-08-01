@@ -376,6 +376,39 @@ def test_vosk_adapter_start_stream_uses_stateful_recognizer(monkeypatch: pytest.
     assert session.recognizer.chunks == [b"new-audio-1", b"new-audio-2"]
 
 
+def test_vosk_adapter_describe_exposes_stateful_decoder_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeModel:
+        def __init__(self, model_path: str) -> None:
+            self.model_path = model_path
+
+    class FakeRecognizer:
+        pass
+
+    fake_vosk = ModuleType("vosk")
+    fake_vosk.Model = FakeModel
+    fake_vosk.KaldiRecognizer = FakeRecognizer
+    monkeypatch.setitem(sys.modules, "vosk", fake_vosk)
+
+    adapter = VoskAdapter(
+        config=AppConfig(asr_backend="vosk", asr_vosk_model_path="/models/vosk-small"),
+        audio_processor=AudioProcessor(),
+    )
+
+    description = adapter.describe()
+
+    assert description["native_streaming"] == {
+        "stateful": True,
+        "start_stream": True,
+        "audio_format": "pcm_s16le",
+        "state_scope": "per_utterance",
+        "incremental_input": "new_pcm16_bytes_only",
+        "recognizer": "vosk.KaldiRecognizer",
+        "partial_result_method": "PartialResult",
+        "final_result_method": "FinalResult",
+        "cleanup": ["finalize", "cancel", "close", "disconnect", "timeout", "error"],
+    }
+
+
 def test_parakeet_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
