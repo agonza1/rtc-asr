@@ -647,6 +647,7 @@ class VoskStreamingSession:
     backend_name: str
     model_name: str
     language: str | None
+    _final_segments: list[str] = field(default_factory=list, repr=False)
     closed: bool = False
     canceled: bool = False
 
@@ -658,13 +659,21 @@ class VoskStreamingSession:
         text = payload.get("text") or payload.get("partial") or ""
         if not str(text).strip():
             return None
+        if accepted:
+            self._final_segments.append(str(text).strip())
         return self._result(str(text), is_final=accepted)
 
     def finalize(self) -> dict[str, Any]:
         if self.closed or self.canceled:
             return self._result("")
         payload = _parse_vosk_payload(self.recognizer.FinalResult())
-        return self._result(str(payload.get("text") or ""))
+        final_text = str(payload.get("text") or "").strip()
+        completed_text = " ".join(self._final_segments).strip()
+        if completed_text and final_text:
+            text = final_text if final_text.startswith(completed_text) else f"{completed_text} {final_text}"
+        else:
+            text = final_text or completed_text
+        return self._result(text)
 
     def cancel(self) -> None:
         self.canceled = True
