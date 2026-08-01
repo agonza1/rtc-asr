@@ -29,6 +29,12 @@ def write_artifact(
         json.dumps(
             {
                 "kind": "local-stt-v1-latency-benchmark",
+                "benchmark": {
+                    "command": (
+                        "python scripts/bench_local_stt_stream.py --scenario voice-agent-80ms-aggregation "
+                        "--send-aggregate-ms 80"
+                    ),
+                },
                 "target": {"transport": "tcp_ws", "url": "ws://localhost/v1/stt/stream"},
                 "audio": {
                     "source": "fixtures/voice-agent.wav",
@@ -45,6 +51,13 @@ def write_artifact(
                     "realtime_pace": True,
                     "send_aggregate_ms": send_aggregate_ms,
                     "scenario": "voice-agent-80ms-aggregation",
+                },
+                "environment": {
+                    "platform": "TestOS",
+                    "machine": "arm64",
+                    "processor": "TestCPU",
+                    "cpu_logical_cores": 8,
+                    "memory_total_mb": 32768.0,
                 },
                 "runs": 5,
                 "samples": [
@@ -259,6 +272,10 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "| vosk:stateful |" in markdown
     assert "hello from the voice agent" in markdown
     assert "- none" in markdown
+    assert "Run context:" in markdown
+    assert "Command: python scripts/bench_local_stt_stream.py" in markdown
+    assert "Hardware: cpu_logical_cores=8, machine=arm64, memory_total_mb=32768.0" in markdown
+    assert "Settings: partial_interval_ms=100" in markdown
 
 
 def test_main_writes_markdown_report(tmp_path: Path) -> None:

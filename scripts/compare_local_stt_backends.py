@@ -126,6 +126,14 @@ def transcript_sanity(artifact: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def benchmark_command(artifact: dict[str, Any]) -> str | None:
+    benchmark = artifact.get("benchmark")
+    if isinstance(benchmark, dict) and isinstance(benchmark.get("command"), str):
+        return benchmark["command"]
+    command = artifact.get("benchmark_command")
+    return command if isinstance(command, str) else None
+
+
 def normalize_transcript(value: str) -> str:
     return " ".join(value.lower().split())
 
@@ -156,6 +164,7 @@ def compare_artifacts(
             "audio": artifact.get("audio") or {},
             "settings": artifact.get("settings") or {},
             "environment": artifact.get("environment") or {},
+            "benchmark_command": benchmark_command(artifact),
             "runs": artifact.get("runs"),
             "protocol_error_free": protocol_error_free(artifact),
             "comparable_snapshot": comparable_snapshot(artifact),
@@ -307,6 +316,22 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
         lines.extend(f"- {blocker}" for blocker in blockers)
     else:
         lines.append("- none")
+    lines.extend(["", "Run context:", ""])
+    for backend, evidence in sorted(comparison["backends"].items()):
+        environment = evidence.get("environment") if isinstance(evidence.get("environment"), dict) else {}
+        lines.extend(
+            [
+                f"## {backend}",
+                "",
+                f"- Artifact: {_format_optional_value(evidence.get('path'))}",
+                f"- Command: {_format_optional_value(evidence.get('benchmark_command'))}",
+                f"- Target: {_format_mapping(evidence.get('target'))}",
+                f"- Audio: {_format_mapping(evidence.get('audio'))}",
+                f"- Settings: {_format_mapping(evidence.get('settings'))}",
+                f"- Hardware: {_format_hardware(environment)}",
+                "",
+            ]
+        )
     lines.append("")
     return "\n".join(lines)
 
@@ -331,6 +356,26 @@ def _format_transcripts(values: object) -> str:
     if not isinstance(values, list) or not values:
         return "missing"
     return " / ".join(str(value) for value in values)
+
+
+def _format_mapping(value: object) -> str:
+    if not isinstance(value, dict) or not value:
+        return "missing"
+    return ", ".join(f"{key}={value[key]}" for key in sorted(value))
+
+
+def _format_hardware(environment: dict[str, Any]) -> str:
+    hardware_keys = (
+        "platform",
+        "machine",
+        "processor",
+        "cpu_logical_cores",
+        "memory_total_mb",
+        "peak_rss_mb",
+        "cpu_utilization_percent",
+    )
+    hardware = {key: environment.get(key) for key in hardware_keys if environment.get(key) is not None}
+    return _format_mapping(hardware)
 
 
 def main(argv: list[str] | None = None) -> int:
