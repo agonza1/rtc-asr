@@ -17,6 +17,7 @@ from src.main import (
     StreamRuntime,
     StreamSession,
     _close_streaming_decoder_async,
+    _finalize_streaming_decoder_async,
     _local_stt_asr_worker,
     _prepare_uds_socket,
     _push_streaming_audio_async,
@@ -2715,6 +2716,128 @@ def test_stateful_stream_cleanup_serializes_concurrent_push_and_close() -> None:
 
     assert decoder.closed_during_push is False
     assert decoder.canceled_during_push is False
+    assert decoder.canceled is True
+    assert decoder.closed is True
+
+
+def test_stateful_stream_cleanup_waits_for_canceled_push_worker_before_close() -> None:
+    class BlockingStreamingSession(FakeStreamingSession):
+        def __init__(self, transcriber: StreamingFakeTranscriber, config: dict[str, object]) -> None:
+            super().__init__(transcriber, config)
+            self.push_started = threading.Event()
+            self.release_push = threading.Event()
+            self.close_started = threading.Event()
+            self.closed_during_push = False
+
+        def push_audio(self, audio_data: bytes) -> dict[str, object]:
+            self.push_started.set()
+            assert self.release_push.wait(timeout=2)
+            self.closed_during_push = self.closed
+            return super().push_audio(audio_data)
+
+        def close(self) -> None:
+            self.close_started.set()
+            super().close()
+
+    async def run_canceled_push_cleanup() -> BlockingStreamingSession:
+        transcriber = StreamingFakeTranscriber()
+        decoder = BlockingStreamingSession(
+            transcriber,
+            {"stream_id": 1, "client_stream_id": None, "language": "en"},
+        )
+        with TestClient(create_app(transcriber=transcriber)) as client:
+            runtime = StreamRuntime(
+                stream_id=1,
+                client_stream_id=None,
+                session=StreamSession(
+                    stream_id=1,
+                    language="en",
+                    sample_rate=HOT_PATH_SAMPLE_RATE,
+                    max_buffer_bytes=DEFAULT_MAX_BUFFER_BYTES,
+                ),
+                services=client.app.state.services,
+                streaming_decoder=decoder,
+            )
+            push_task = asyncio.create_task(_push_streaming_audio_async(runtime, b"a" * HOT_PATH_BYTES_PER_FRAME))
+            assert await asyncio.to_thread(decoder.push_started.wait, 2)
+
+            push_task.cancel()
+            await asyncio.sleep(0)
+            close_task = asyncio.create_task(_close_streaming_decoder_async(runtime, cancel=True))
+            await asyncio.sleep(0)
+
+            assert decoder.close_started.is_set() is False
+            decoder.release_push.set()
+            with pytest.raises(asyncio.CancelledError):
+                await push_task
+            await close_task
+
+        return decoder
+
+    decoder = asyncio.run(run_canceled_push_cleanup())
+
+    assert decoder.closed_during_push is False
+    assert decoder.canceled is True
+    assert decoder.closed is True
+
+
+def test_stateful_stream_finalize_waits_for_canceled_worker_before_close() -> None:
+    class BlockingFinalizeStreamingSession(FakeStreamingSession):
+        def __init__(self, transcriber: StreamingFakeTranscriber, config: dict[str, object]) -> None:
+            super().__init__(transcriber, config)
+            self.finalize_started = threading.Event()
+            self.release_finalize = threading.Event()
+            self.close_started = threading.Event()
+            self.closed_during_finalize = False
+
+        def finalize(self) -> dict[str, object]:
+            self.finalize_started.set()
+            assert self.release_finalize.wait(timeout=2)
+            self.closed_during_finalize = self.closed
+            return super().finalize()
+
+        def close(self) -> None:
+            self.close_started.set()
+            super().close()
+
+    async def run_canceled_finalize_cleanup() -> BlockingFinalizeStreamingSession:
+        transcriber = StreamingFakeTranscriber()
+        decoder = BlockingFinalizeStreamingSession(
+            transcriber,
+            {"stream_id": 1, "client_stream_id": None, "language": "en"},
+        )
+        with TestClient(create_app(transcriber=transcriber)) as client:
+            runtime = StreamRuntime(
+                stream_id=1,
+                client_stream_id=None,
+                session=StreamSession(
+                    stream_id=1,
+                    language="en",
+                    sample_rate=HOT_PATH_SAMPLE_RATE,
+                    max_buffer_bytes=DEFAULT_MAX_BUFFER_BYTES,
+                ),
+                services=client.app.state.services,
+                streaming_decoder=decoder,
+            )
+            finalize_task = asyncio.create_task(_finalize_streaming_decoder_async(runtime))
+            assert await asyncio.to_thread(decoder.finalize_started.wait, 2)
+
+            finalize_task.cancel()
+            await asyncio.sleep(0)
+            close_task = asyncio.create_task(_close_streaming_decoder_async(runtime, cancel=True))
+            await asyncio.sleep(0)
+
+            assert decoder.close_started.is_set() is False
+            decoder.release_finalize.set()
+            with pytest.raises(asyncio.CancelledError):
+                await finalize_task
+            await close_task
+
+        return decoder
+
+    decoder = asyncio.run(run_canceled_finalize_cleanup())
+
+    assert decoder.closed_during_finalize is False
     assert decoder.canceled is True
     assert decoder.closed is True
 

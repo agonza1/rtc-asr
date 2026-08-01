@@ -1413,7 +1413,7 @@ async def _push_streaming_audio_async(
         decoder = runtime.streaming_decoder
         if decoder is None:
             return None
-        result = await asyncio.to_thread(decoder.push_audio, audio_bytes)
+        result = await _to_thread_until_complete(lambda: decoder.push_audio(audio_bytes))
         runtime.streaming_decode_offset += len(audio_bytes)
         return result
 
@@ -1424,9 +1424,9 @@ async def _finalize_streaming_decoder_async(runtime: StreamRuntime) -> dict[str,
         assert decoder is not None
         remaining_audio = bytes(runtime.session.audio_buffer[runtime.streaming_decode_offset :])
         if remaining_audio:
-            await asyncio.to_thread(decoder.push_audio, remaining_audio)
+            await _to_thread_until_complete(lambda: decoder.push_audio(remaining_audio))
             runtime.streaming_decode_offset += len(remaining_audio)
-        result = await asyncio.to_thread(decoder.finalize)
+        result = await _to_thread_until_complete(decoder.finalize)
         runtime.streaming_decoder = None
         await _to_thread_until_complete(decoder.close)
         return result
