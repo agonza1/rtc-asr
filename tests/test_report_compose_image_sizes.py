@@ -302,6 +302,11 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
     }
 
 
+def test_parse_args_accepts_json_summary_aliases() -> None:
+    assert reporter.parse_args(["--json-summary"]).summary_only is True
+    assert reporter.parse_args(["--summary-json"]).summary_only is True
+
+
 def test_main_csv_flag_emits_csv(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setattr(
         reporter,
