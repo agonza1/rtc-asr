@@ -376,6 +376,47 @@ def test_vosk_adapter_start_stream_uses_stateful_recognizer(monkeypatch: pytest.
     assert session.recognizer.chunks == [b"new-audio-1", b"new-audio-2"]
 
 
+def test_vosk_adapter_finalizes_with_completed_segments(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeModel:
+        def __init__(self, model_path: str) -> None:
+            self.model_path = model_path
+
+    class FakeRecognizer:
+        def __init__(self, model: FakeModel, sample_rate: int) -> None:
+            self.chunks: list[bytes] = []
+
+        def AcceptWaveform(self, audio_data: bytes) -> bool:
+            self.chunks.append(audio_data)
+            return len(self.chunks) <= 2
+
+        def PartialResult(self) -> str:
+            return '{"partial": "ignored partial"}'
+
+        def Result(self) -> str:
+            return f'{{"text": "segment {len(self.chunks)}"}}'
+
+        def FinalResult(self) -> str:
+            return '{"text": "tail segment"}'
+
+    fake_vosk = ModuleType("vosk")
+    fake_vosk.Model = FakeModel
+    fake_vosk.KaldiRecognizer = FakeRecognizer
+    monkeypatch.setitem(sys.modules, "vosk", fake_vosk)
+
+    adapter = VoskAdapter(
+        config=AppConfig(asr_backend="vosk", asr_vosk_model_path="/models/vosk-small"),
+        audio_processor=AudioProcessor(),
+    )
+
+    session = adapter.start_stream({"language": "en", "sample_rate": 16000})
+    assert session.push_audio(b"first accepted")["text"] == "segment 1"
+    assert session.push_audio(b"second accepted")["text"] == "segment 2"
+
+    final = session.finalize()
+
+    assert final["text"] == "segment 1 segment 2 tail segment"
+
+
 def test_vosk_adapter_describe_exposes_stateful_decoder_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeModel:
         def __init__(self, model_path: str) -> None:
