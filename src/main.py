@@ -361,7 +361,7 @@ def _protocol_discovery_payload(services: AppServices) -> dict[str, object]:
 
 
 def _local_stt_decoder_capabilities(transcriber: Transcriber) -> dict[str, object]:
-    supports_stateful = callable(getattr(transcriber, "start_stream", None))
+    supports_stateful = _supports_stateful_streaming(transcriber)
     return {
         "protocol": PROTOCOL_VERSION,
         "default_mode": "stateful" if supports_stateful else "rolling_window",
@@ -369,6 +369,13 @@ def _local_stt_decoder_capabilities(transcriber: Transcriber) -> dict[str, objec
         "fallback_mode": "rolling_window",
         "stateful_supported": supports_stateful,
     }
+
+
+def _supports_stateful_streaming(transcriber: Transcriber) -> bool:
+    explicit_support = getattr(transcriber, "supports_stateful_streaming", None)
+    if explicit_support is not None:
+        return bool(explicit_support)
+    return callable(getattr(transcriber, "start_stream", None))
 
 
 def _record_lazy_load_failure(services: AppServices, exc: Exception) -> None:
@@ -479,16 +486,12 @@ class StreamRuntime:
 
     def request_cancel(self) -> None:
         self.cancel_requested.set()
-        if self.streaming_decoder is not None:
-            self.streaming_decoder.cancel()
         self.session.audio_buffer.clear()
         self.session.last_partial_result = None
         self.audio_updated.set()
 
     def close(self) -> None:
         self.closed = True
-        if self.streaming_decoder is not None:
-            self.streaming_decoder.close()
         self.audio_updated.set()
 
     async def enqueue_event(self, event: dict[str, Any]) -> None:
@@ -818,6 +821,11 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     pass
                 except Exception:
                     pass
+            if runtime is not None:
+                await _close_streaming_decoder_async(
+                    runtime,
+                    cancel=runtime.cancel_requested.is_set(),
+                )
             if send_task is not None and not send_task.done():
                 send_task.cancel()
             if send_task is not None:
@@ -868,7 +876,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         session=session,
                         services=services,
                     )
-                    runtime.streaming_decoder = _start_streaming_decoder(services.transcriber, session)
+                    runtime.streaming_decoder = await _start_streaming_decoder_async(services.transcriber, session)
                     if runtime.streaming_decoder is not None:
                         session.decoder_mode = "stateful"
                     worker_task = asyncio.create_task(_local_stt_asr_worker(runtime))
@@ -1022,6 +1030,11 @@ async def _raw_uds_stream_client(
         if worker_task is not None:
             with suppress(asyncio.CancelledError, Exception):
                 await worker_task
+        if runtime is not None:
+            await _close_streaming_decoder_async(
+                runtime,
+                cancel=runtime.cancel_requested.is_set(),
+            )
         if send_task is not None and not send_task.done():
             send_task.cancel()
         if send_task is not None:
@@ -1066,7 +1079,7 @@ async def _raw_uds_stream_client(
                     session=session,
                     services=services,
                 )
-                runtime.streaming_decoder = _start_streaming_decoder(services.transcriber, session)
+                runtime.streaming_decoder = await _start_streaming_decoder_async(services.transcriber, session)
                 if runtime.streaming_decoder is not None:
                     session.decoder_mode = "stateful"
                 worker_task = asyncio.create_task(_local_stt_asr_worker(runtime))
@@ -1346,23 +1359,24 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
             runtime.audio_updated.set()
 
 
-def _start_streaming_decoder(
+async def _start_streaming_decoder_async(
     transcriber: Transcriber,
     session: StreamSession,
 ) -> StreamingTranscriberSession | None:
+    if not _supports_stateful_streaming(transcriber):
+        return None
     start_stream = getattr(transcriber, "start_stream", None)
     if not callable(start_stream):
         return None
 
-    decoder = start_stream(
-        {
-            "language": session.language,
-            "sample_rate": session.sample_rate,
-            "stream_id": session.stream_id,
-            "client_stream_id": session.client_stream_id,
-            "metadata": dict(session.client_metadata),
-        }
-    )
+    config = {
+        "language": session.language,
+        "sample_rate": session.sample_rate,
+        "stream_id": session.stream_id,
+        "client_stream_id": session.client_stream_id,
+        "metadata": dict(session.client_metadata),
+    }
+    decoder = await asyncio.to_thread(start_stream, config)
     return decoder if decoder is not None else None
 
 
@@ -1384,8 +1398,18 @@ async def _finalize_streaming_decoder_async(runtime: StreamRuntime) -> dict[str,
     if remaining_audio:
         await _push_streaming_audio_async(runtime, remaining_audio)
     result = await asyncio.to_thread(runtime.streaming_decoder.finalize)
-    runtime.streaming_decoder.close()
+    await _close_streaming_decoder_async(runtime)
     return result
+
+
+async def _close_streaming_decoder_async(runtime: StreamRuntime, *, cancel: bool = False) -> None:
+    decoder = runtime.streaming_decoder
+    if decoder is None:
+        return
+    runtime.streaming_decoder = None
+    if cancel:
+        await asyncio.to_thread(decoder.cancel)
+    await asyncio.to_thread(decoder.close)
 
 
 def _create_stream_session(

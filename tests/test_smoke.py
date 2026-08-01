@@ -16,9 +16,11 @@ from src.config import AppConfig
 from src.main import (
     StreamRuntime,
     StreamSession,
+    _close_streaming_decoder_async,
     _prepare_uds_socket,
     _receive_raw_uds_event,
     _receive_stream_event,
+    _start_streaming_decoder_async,
     _seconds_to_buffer_bytes,
     create_app,
     main,
@@ -366,6 +368,14 @@ class StreamingFakeTranscriber(FakeTranscriber):
         return session
 
 
+class OptionalUnsupportedStreamingTranscriber(StreamingFakeTranscriber):
+    supports_stateful_streaming = False
+
+    def start_stream(self, config: dict[str, object]) -> None:
+        self.stream_configs.append(config)
+        return None
+
+
 class StableTextTranscriber(FakeTranscriber):
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
         result = super().transcribe(audio_data, language=language, sample_rate=sample_rate)
@@ -637,6 +647,22 @@ def test_models_reports_stateful_local_stt_decoder_support() -> None:
         "supported_modes": ["stateful", "rolling_window"],
         "fallback_mode": "rolling_window",
         "stateful_supported": True,
+    }
+    assert models["models"][0]["local_stt_decoder"] == models["local_stt_decoder"]
+
+
+def test_models_respects_explicitly_unsupported_stateful_decoder() -> None:
+    transcriber = OptionalUnsupportedStreamingTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        models = client.get("/api/models").json()
+
+    assert models["local_stt_decoder"] == {
+        "protocol": PROTOCOL_VERSION,
+        "default_mode": "rolling_window",
+        "supported_modes": ["rolling_window"],
+        "fallback_mode": "rolling_window",
+        "stateful_supported": False,
     }
     assert models["models"][0]["local_stt_decoder"] == models["local_stt_decoder"]
 
@@ -2354,6 +2380,63 @@ def test_local_stt_v1_stream_uses_stateful_decoder_when_backend_supports_it() ->
     ]
     assert transcriber.stream_sessions[0].closed is True
     assert transcriber.stream_sessions[0].canceled is False
+
+
+def test_stateful_stream_creation_runs_off_event_loop() -> None:
+    transcriber = StreamingFakeTranscriber()
+    session = StreamSession(
+        stream_id=1,
+        language="en",
+        sample_rate=HOT_PATH_SAMPLE_RATE,
+        max_buffer_bytes=DEFAULT_MAX_BUFFER_BYTES,
+    )
+    calling_thread = threading.current_thread().name
+    start_thread = ""
+
+    def record_start_thread(config: dict[str, object]) -> FakeStreamingSession:
+        nonlocal start_thread
+        start_thread = threading.current_thread().name
+        return FakeStreamingSession(transcriber, config)
+
+    transcriber.start_stream = record_start_thread  # type: ignore[method-assign]
+
+    decoder = asyncio.run(_start_streaming_decoder_async(transcriber, session))
+
+    assert decoder is not None
+    assert start_thread
+    assert start_thread != calling_thread
+
+
+def test_streaming_decoder_cancel_and_close_are_deferred_until_cleanup() -> None:
+    transcriber = StreamingFakeTranscriber()
+    decoder = FakeStreamingSession(
+        transcriber,
+        {"stream_id": 1, "client_stream_id": None, "language": "en"},
+    )
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        runtime = StreamRuntime(
+            stream_id=1,
+            client_stream_id=None,
+            session=StreamSession(
+                stream_id=1,
+                language="en",
+                sample_rate=HOT_PATH_SAMPLE_RATE,
+                max_buffer_bytes=DEFAULT_MAX_BUFFER_BYTES,
+            ),
+            services=client.app.state.services,
+            streaming_decoder=decoder,
+        )
+
+        runtime.request_cancel()
+
+        assert decoder.canceled is False
+        assert decoder.closed is False
+
+        asyncio.run(_close_streaming_decoder_async(runtime, cancel=True))
+
+        assert decoder.canceled is True
+        assert decoder.closed is True
+        assert runtime.streaming_decoder is None
 
 
 def test_local_stt_v1_stream_ignores_extra_top_level_fields_on_nested_start() -> None:

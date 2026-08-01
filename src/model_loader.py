@@ -19,6 +19,7 @@ class ASRUnavailableError(RuntimeError):
 class Transcriber(Protocol):
     backend_name: str
     model_name: str
+    supports_stateful_streaming: bool
 
     def is_loaded(self) -> bool: ...
 
