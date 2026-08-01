@@ -321,6 +321,13 @@ def test_parse_args_accepts_plural_measured_period_filter_aliases() -> None:
     assert args.measured_day == ["2026-08-01"]
 
 
+def test_parse_args_preserves_abbreviated_measured_period_filter_aliases() -> None:
+    args = parse_args(["--measured-mont", "2026-08", "--dat", "2026-08-01"])
+
+    assert args.measured_month == ["2026-08"]
+    assert args.measured_day == ["2026-08-01"]
+
+
 def test_parse_args_accepts_short_artifact_file_filter_aliases() -> None:
     args = parse_args(
         [

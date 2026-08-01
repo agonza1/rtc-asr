@@ -2113,6 +2113,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--measured-month",
+        "--measured-mont",
         "--measured-months",
         "--month",
         "--months",
@@ -2145,8 +2146,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--measured-day",
+        "--measured-da",
         "--measured-days",
         "--day",
+        "--dat",
         "--days",
         "--date",
         "--dates",
