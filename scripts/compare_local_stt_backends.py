@@ -19,7 +19,14 @@ from compare_local_stt_transports import (
 
 DEFAULT_MIN_FIRST_PARTIAL_WIN_MS = 50.0
 COMPARABLE_AUDIO_KEYS = ("source", "sample_rate", "channels", "format", "frame_ms", "duration_ms", "send_aggregate_ms")
-COMPARABLE_SETTING_KEYS = ("partial_interval_ms", "receive_timeout_seconds", "realtime_pace", "send_aggregate_ms", "scenario")
+COMPARABLE_SETTING_KEYS = (
+    "partial_interval_ms",
+    "receive_timeout_seconds",
+    "realtime_pace",
+    "send_aggregate_ms",
+    "concurrency",
+    "scenario",
+)
 BACKEND_KEY_METRICS = (
     *TRANSPORT_KEY_METRICS,
     "partial_cadence_p95_ms",

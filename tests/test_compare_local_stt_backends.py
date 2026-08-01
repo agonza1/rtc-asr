@@ -22,6 +22,7 @@ def write_artifact(
     first_interim_p95: float,
     final_after_finalize_p95: float = 80.0,
     send_aggregate_ms: int = 80,
+    concurrency: int = 1,
     protocol_errors_p95: float = 0.0,
     partial_cadence_p95: float | None = 100.0,
     decoder_compute_rtf_p95: float | None = 0.35,
@@ -64,6 +65,7 @@ def write_artifact(
                     "receive_timeout_seconds": 5,
                     "realtime_pace": True,
                     "send_aggregate_ms": send_aggregate_ms,
+                    "concurrency": concurrency,
                     "scenario": "voice-agent-80ms-aggregation",
                 },
                 "environment": {
@@ -175,6 +177,33 @@ def test_compare_backends_keeps_candidate_experimental_for_input_mismatch(tmp_pa
     assert comparison["candidate_status"] == "experimental"
     assert "benchmark_input:audio.send_aggregate_ms: baseline=80 candidate=160" in comparison["blocking_gaps"]
     assert "benchmark_input:settings.send_aggregate_ms: baseline=80 candidate=160" in comparison["blocking_gaps"]
+    assert comparison["recommendation"] == "Re-run backend benchmarks with matching audio, pacing, and scenario settings."
+
+
+def test_compare_backends_keeps_candidate_experimental_for_concurrency_mismatch(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=220.0,
+        concurrency=1,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=140.0,
+        concurrency=3,
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert "benchmark_input:settings.concurrency: baseline=1 candidate=3" in comparison["blocking_gaps"]
     assert comparison["recommendation"] == "Re-run backend benchmarks with matching audio, pacing, and scenario settings."
 
 
@@ -298,7 +327,8 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "Command: python scripts/bench_local_stt_stream.py" in markdown
     assert "Hardware: cpu_logical_cores=8, machine=arm64, memory_total_mb=32768.0" in markdown
     assert "Resource metrics: cpu_utilization_percent=42.0, peak_rss_mb=512.5" in markdown
-    assert "Settings: partial_interval_ms=100" in markdown
+    assert "Settings: concurrency=1" in markdown
+    assert "partial_interval_ms=100" in markdown
     assert "| partial_cadence_p95_ms | 0 ms |" in markdown
     assert "| decoder_compute_rtf | 0 |" in markdown
 

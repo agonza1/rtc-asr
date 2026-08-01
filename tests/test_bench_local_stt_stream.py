@@ -318,6 +318,20 @@ def test_parse_args_accepts_voice_agent_send_aggregation(tmp_path) -> None:
     assert args.send_aggregate_ms == 80
 
 
+def test_parse_args_accepts_concurrent_streaming_sessions(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    args = benchmark_module.parse_args([
+        "--input-raw-pcm",
+        str(pcm_path),
+        "--concurrency",
+        "3",
+    ])
+
+    assert args.concurrency == 3
+
+
 def test_parse_args_rejects_non_multiple_send_aggregation(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
@@ -701,6 +715,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
         "receive_timeout_seconds": 5,
         "realtime_pace": False,
         "send_aggregate_ms": 20,
+        "concurrency": 1,
         "scenario": "warm-service-regression",
         "metadata": {"device": "test-host", "profile": "warm"},
     }
@@ -835,6 +850,44 @@ def test_run_benchmark_sends_aggregated_voice_agent_chunks() -> None:
     assert sample["audio_payload_bytes_sent"] == 3200
     assert sample["audio_frames_dropped"] == 0
     assert payload["summary"]["audio_chunks_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+
+
+def test_run_benchmark_records_concurrent_streaming_sessions() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640, b"b" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=2,
+            concurrency=3,
+            realtime_pace=False,
+            client_factory=FakeLocalSttClient,
+            scenario="voice-agent-80ms-aggregation-load",
+        )
+    )
+
+    assert payload["runs"] == 2
+    assert payload["concurrency"] == 3
+    assert payload["settings"]["concurrency"] == 3
+    assert len(payload["samples"]) == 6
+    assert [(sample["run_index"], sample["session_index"]) for sample in payload["samples"]] == [
+        (1, 1),
+        (1, 2),
+        (1, 3),
+        (2, 1),
+        (2, 2),
+        (2, 3),
+    ]
+    assert [sample["index"] for sample in payload["samples"]] == [1, 2, 3, 4, 5, 6]
+    assert {sample["concurrency"] for sample in payload["samples"]} == {3}
+    assert payload["summary"]["successful_runs"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
 
 
 def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_error() -> None:
