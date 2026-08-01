@@ -342,7 +342,7 @@ def test_vosk_adapter_start_stream_uses_stateful_recognizer(monkeypatch: pytest.
             return '{"text": "hello"}'
 
         def FinalResult(self) -> str:
-            return '{"text": "hello world"}'
+            return '{"text": "world"}'
 
     fake_vosk = ModuleType("vosk")
     fake_vosk.Model = FakeModel
@@ -417,6 +417,46 @@ def test_vosk_adapter_finalizes_with_completed_segments(monkeypatch: pytest.Monk
     assert final["text"] == "segment 1 segment 2 tail segment"
 
 
+def test_vosk_adapter_preserves_tail_that_starts_with_completed_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeModel:
+        def __init__(self, model_path: str) -> None:
+            self.model_path = model_path
+
+    class FakeRecognizer:
+        def __init__(self, model: FakeModel, sample_rate: int) -> None:
+            self.model = model
+            self.sample_rate = sample_rate
+
+        def AcceptWaveform(self, audio_data: bytes) -> bool:
+            return True
+
+        def PartialResult(self) -> str:
+            return '{"partial": ""}'
+
+        def Result(self) -> str:
+            return '{"text": "go"}'
+
+        def FinalResult(self) -> str:
+            return '{"text": "good morning"}'
+
+    fake_vosk = ModuleType("vosk")
+    fake_vosk.Model = FakeModel
+    fake_vosk.KaldiRecognizer = FakeRecognizer
+    monkeypatch.setitem(sys.modules, "vosk", fake_vosk)
+
+    adapter = VoskAdapter(
+        config=AppConfig(asr_backend="vosk", asr_vosk_model_path="/models/vosk-small"),
+        audio_processor=AudioProcessor(),
+    )
+
+    session = adapter.start_stream({"language": "en", "sample_rate": 16000})
+    assert session.push_audio(b"accepted")["text"] == "go"
+
+    final = session.finalize()
+
+    assert final["text"] == "go good morning"
+
+
 def test_vosk_adapter_describe_exposes_stateful_decoder_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeModel:
         def __init__(self, model_path: str) -> None:
@@ -446,7 +486,7 @@ def test_vosk_adapter_describe_exposes_stateful_decoder_evidence(monkeypatch: py
         "recognizer": "vosk.KaldiRecognizer",
         "partial_result_method": "PartialResult",
         "final_result_method": "FinalResult",
-        "cleanup": ["finalize", "cancel", "close", "disconnect", "timeout", "error"],
+        "cleanup": ["finalize", "cancel", "close", "disconnect", "error"],
     }
 
 
