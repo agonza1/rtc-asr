@@ -2584,6 +2584,8 @@ def test_streaming_decoder_cleanup_waits_for_canceled_cancel_worker_before_close
 
             cleanup_task.cancel()
             await asyncio.sleep(0)
+            cleanup_task.cancel()
+            await asyncio.sleep(0)
 
             assert decoder.close_started.is_set() is False
             decoder.release_cancel.set()
