@@ -268,6 +268,7 @@ class AppConfig:
     asr_qwen_max_inference_batch_size: int = 1
     asr_parakeet_model: str = "nvidia/parakeet-tdt-0.6b-v3"
     asr_parakeet_dtype: str = "auto"
+    asr_vosk_model_path: str = "model"
     asr_voxtral_model: str = "mistralai/Voxtral-Mini-4B-Realtime-2602"
     asr_voxtral_mlx_model: str = "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
     asr_voxtral_dtype: str = "auto"
@@ -348,6 +349,8 @@ class AppConfig:
             or defaults.asr_parakeet_model,
             asr_parakeet_dtype=_env_text("ASR_PARAKEET_DTYPE", defaults.asr_parakeet_dtype)
             or defaults.asr_parakeet_dtype,
+            asr_vosk_model_path=_env_text("ASR_VOSK_MODEL_PATH", defaults.asr_vosk_model_path)
+            or defaults.asr_vosk_model_path,
             asr_voxtral_model=_env_text("ASR_VOXTRAL_MODEL", defaults.asr_voxtral_model)
             or defaults.asr_voxtral_model,
             asr_voxtral_mlx_model=_env_text("ASR_VOXTRAL_MLX_MODEL", defaults.asr_voxtral_mlx_model)
