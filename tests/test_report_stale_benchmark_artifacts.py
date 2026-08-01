@@ -275,6 +275,29 @@ def test_parse_args_accepts_age_range_filter_aliases() -> None:
     assert readable_args.newer_than_days == 90
 
 
+def test_parse_args_accepts_calendar_measured_period_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--calendar-year",
+            "2026",
+            "--measured-at-quarter",
+            "2026-Q3",
+            "--calendar-month",
+            "2026-08",
+            "--measured-at-week",
+            "2026-W31",
+            "--calendar-date",
+            "2026-08-01",
+        ]
+    )
+
+    assert args.measured_year == ["2026"]
+    assert args.measured_quarter == ["2026-Q3"]
+    assert args.measured_month == ["2026-08"]
+    assert args.measured_week == ["2026-W31"]
+    assert args.measured_day == ["2026-08-01"]
+
+
 def test_parse_args_accepts_short_artifact_file_filter_aliases() -> None:
     args = parse_args(
         [
