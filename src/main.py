@@ -360,6 +360,17 @@ def _protocol_discovery_payload(services: AppServices) -> dict[str, object]:
     }
 
 
+def _local_stt_decoder_capabilities(transcriber: Transcriber) -> dict[str, object]:
+    supports_stateful = callable(getattr(transcriber, "start_stream", None))
+    return {
+        "protocol": PROTOCOL_VERSION,
+        "default_mode": "stateful" if supports_stateful else "rolling_window",
+        "supported_modes": ["stateful", "rolling_window"] if supports_stateful else ["rolling_window"],
+        "fallback_mode": "rolling_window",
+        "stateful_supported": supports_stateful,
+    }
+
+
 def _record_lazy_load_failure(services: AppServices, exc: Exception) -> None:
     # Only promote the service to degraded when the backend failed before it ever loaded.
     if not services.transcriber.is_loaded():
@@ -592,6 +603,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         streaming = description.get("streaming")
         audio = description.get("audio")
         backend_aliases = backend_aliases_for(current.transcriber.backend_name)
+        local_stt_decoder = _local_stt_decoder_capabilities(current.transcriber)
         return {
             "backend": current.transcriber.backend_name,
             "model": current.transcriber.model_name,
@@ -604,6 +616,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
             "default_protocol": PROTOCOL_VERSION,
             "default_transport": _default_transport_payload(current.config),
             "protocols": _protocol_catalog(current.config),
+            "local_stt_decoder": local_stt_decoder,
             "streaming": streaming,
             "audio": audio,
             "models": [
@@ -613,6 +626,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     "model": current.transcriber.model_name,
                     "runtime_aliases": backend_aliases,
                     "loaded": current.transcriber.is_loaded(),
+                    "local_stt_decoder": local_stt_decoder,
                     "streaming": streaming,
                     "audio": audio,
                     "capabilities": description,

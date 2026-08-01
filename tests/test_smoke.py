@@ -536,6 +536,13 @@ def test_ready_and_model_capabilities_smoke() -> None:
             "path": "/v1/stt/stream",
         },
         "protocols": DEFAULT_PROTOCOLS,
+        "local_stt_decoder": {
+            "protocol": PROTOCOL_VERSION,
+            "default_mode": "rolling_window",
+            "supported_modes": ["rolling_window"],
+            "fallback_mode": "rolling_window",
+            "stateful_supported": False,
+        },
         "streaming": {
             "transport": "websocket",
             "path": "/ws/stream",
@@ -556,6 +563,13 @@ def test_ready_and_model_capabilities_smoke() -> None:
                 "model": "fixture-adapter",
                 "runtime_aliases": [],
                 "loaded": True,
+                "local_stt_decoder": {
+                    "protocol": PROTOCOL_VERSION,
+                    "default_mode": "rolling_window",
+                    "supported_modes": ["rolling_window"],
+                    "fallback_mode": "rolling_window",
+                    "stateful_supported": False,
+                },
                 "streaming": {
                     "transport": "websocket",
                     "path": "/ws/stream",
@@ -609,6 +623,22 @@ def test_ready_and_model_capabilities_smoke() -> None:
         },
     }
     assert transcriber.preload_calls == 1
+
+
+def test_models_reports_stateful_local_stt_decoder_support() -> None:
+    transcriber = StreamingFakeTranscriber()
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        models = client.get("/api/models").json()
+
+    assert models["local_stt_decoder"] == {
+        "protocol": PROTOCOL_VERSION,
+        "default_mode": "stateful",
+        "supported_modes": ["stateful", "rolling_window"],
+        "fallback_mode": "rolling_window",
+        "stateful_supported": True,
+    }
+    assert models["models"][0]["local_stt_decoder"] == models["local_stt_decoder"]
 
 
 def test_health_reports_active_uds_local_stt_transport(tmp_path: Path) -> None:
