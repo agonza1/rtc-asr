@@ -40,6 +40,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_MIN_FIRST_PARTIAL_WIN_MS,
         help="Minimum candidate P95 first-partial win required for a supported-backend recommendation",
     )
+    parser.add_argument(
+        "--require-resource-metrics",
+        action="store_true",
+        help="Require each backend artifact to include peak RSS and CPU utilization evidence",
+    )
     return parser.parse_args(argv)
 
 
@@ -131,6 +136,22 @@ def transcript_sanity(artifact: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def resource_metrics(artifact: dict[str, Any]) -> dict[str, float | None]:
+    environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
+    return {
+        "peak_rss_mb": float_or_none(environment.get("peak_rss_mb")),
+        "cpu_utilization_percent": float_or_none(environment.get("cpu_utilization_percent")),
+    }
+
+
+def float_or_none(value: object) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    return None
+
+
 def benchmark_command(artifact: dict[str, Any]) -> str | None:
     benchmark = artifact.get("benchmark")
     if isinstance(benchmark, dict) and isinstance(benchmark.get("command"), str):
@@ -149,6 +170,7 @@ def compare_artifacts(
     baseline_key: str,
     candidate_key: str,
     min_first_partial_win_ms: float = DEFAULT_MIN_FIRST_PARTIAL_WIN_MS,
+    require_resource_metrics: bool = False,
 ) -> dict[str, Any]:
     if min_first_partial_win_ms <= 0:
         raise ValueError("min_first_partial_win_ms must be positive")
@@ -174,6 +196,7 @@ def compare_artifacts(
             "protocol_error_free": protocol_error_free(artifact),
             "comparable_snapshot": comparable_snapshot(artifact),
             "transcript_sanity": transcript_sanity(artifact),
+            "resource_metrics": resource_metrics(artifact),
         }
 
     missing = [key for key in (baseline_key, candidate_key) if key not in by_backend]
@@ -194,6 +217,8 @@ def compare_artifacts(
         blockers.append(f"protocol_errors:{baseline_key}")
     blockers.extend(transcript_gaps)
     blockers.extend(missing_evidence_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
+    if require_resource_metrics and not missing:
+        blockers.extend(resource_metric_gaps(by_backend, baseline_key, candidate_key))
     if first_partial_win is None:
         blockers.append("missing_time_to_first_interim_p95_delta")
     elif first_partial_win < min_first_partial_win_ms:
@@ -209,6 +234,7 @@ def compare_artifacts(
         "candidate_status": "supported" if not blockers else "experimental",
         "recommendation": recommendation,
         "min_first_partial_win_ms": min_first_partial_win_ms,
+        "resource_metrics_required": require_resource_metrics,
         "p95_deltas_ms": p95_deltas,
         "blocking_gaps": blockers,
         "backends": by_backend,
@@ -248,6 +274,16 @@ def missing_evidence_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: s
     return gaps
 
 
+def resource_metric_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> list[str]:
+    gaps: list[str] = []
+    for backend_key in (baseline_key, candidate_key):
+        metrics = by_backend[backend_key]["resource_metrics"]
+        for metric in ("peak_rss_mb", "cpu_utilization_percent"):
+            if metrics[metric] is None:
+                gaps.append(f"missing_resource_metric:{backend_key}:{metric}")
+    return gaps
+
+
 def transcript_sanity_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> list[str]:
     baseline = by_backend[baseline_key]["transcript_sanity"]
     candidate = by_backend[candidate_key]["transcript_sanity"]
@@ -276,6 +312,8 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
         return f"Keep {candidate_key} experimental until final transcripts match the baseline sanity check."
     if any(blocker.startswith("missing_metric:") for blocker in blockers):
         return "Run backend benchmarks with complete streaming latency, cadence, and decoder compute metrics."
+    if any(blocker.startswith("missing_resource_metric:") for blocker in blockers):
+        return "Re-run backend benchmarks with service resource monitoring enabled."
     if "finalization_regression" in blockers:
         return f"Keep {candidate_key} experimental until final transcript latency no longer regresses."
     return f"Keep {candidate_key} experimental while searching for a stronger stateful backend."
@@ -290,6 +328,7 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
         f"Candidate status: {comparison['candidate_status']}",
         f"Recommendation: {comparison['recommendation']}",
         f"Minimum first-partial P95 win: {_format_ms(comparison['min_first_partial_win_ms'])}",
+        f"Resource metrics required: {comparison['resource_metrics_required']}",
         "",
         "P95 metric deltas (baseline minus candidate):",
         "",
@@ -347,6 +386,7 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
                 f"- Audio: {_format_mapping(evidence.get('audio'))}",
                 f"- Settings: {_format_mapping(evidence.get('settings'))}",
                 f"- Hardware: {_format_hardware(environment)}",
+                f"- Resource metrics: {_format_mapping(evidence.get('resource_metrics'))}",
                 "",
             ]
         )
@@ -399,8 +439,6 @@ def _format_hardware(environment: dict[str, Any]) -> str:
         "processor",
         "cpu_logical_cores",
         "memory_total_mb",
-        "peak_rss_mb",
-        "cpu_utilization_percent",
     )
     hardware = {key: environment.get(key) for key in hardware_keys if environment.get(key) is not None}
     return _format_mapping(hardware)
@@ -413,6 +451,7 @@ def main(argv: list[str] | None = None) -> int:
         baseline_key=args.baseline,
         candidate_key=args.candidate,
         min_first_partial_win_ms=args.min_first_partial_win_ms,
+        require_resource_metrics=args.require_resource_metrics,
     )
     encoded = json.dumps(comparison, indent=2, sort_keys=True) + "\n"
     if args.output is not None:
