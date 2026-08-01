@@ -11,7 +11,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from compare_local_stt_transports import (
-    KEY_METRICS,
+    KEY_METRICS as TRANSPORT_KEY_METRICS,
     load_artifact,
     metric_percentiles,
 )
@@ -20,6 +20,11 @@ from compare_local_stt_transports import (
 DEFAULT_MIN_FIRST_PARTIAL_WIN_MS = 50.0
 COMPARABLE_AUDIO_KEYS = ("source", "sample_rate", "channels", "format", "frame_ms", "duration_ms", "send_aggregate_ms")
 COMPARABLE_SETTING_KEYS = ("partial_interval_ms", "receive_timeout_seconds", "realtime_pace", "send_aggregate_ms", "scenario")
+BACKEND_KEY_METRICS = (
+    *TRANSPORT_KEY_METRICS,
+    "partial_cadence_p95_ms",
+    "decoder_compute_rtf",
+)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -159,7 +164,7 @@ def compare_artifacts(
             raise ValueError(f"{path} is missing summary")
         by_backend[key] = {
             "path": str(path),
-            "metrics": {metric: metric_percentiles(summary, metric) for metric in KEY_METRICS},
+            "metrics": {metric: metric_percentiles(summary, metric) for metric in BACKEND_KEY_METRICS},
             "target": artifact.get("target") or {},
             "audio": artifact.get("audio") or {},
             "settings": artifact.get("settings") or {},
@@ -188,6 +193,7 @@ def compare_artifacts(
     if baseline_errors:
         blockers.append(f"protocol_errors:{baseline_key}")
     blockers.extend(transcript_gaps)
+    blockers.extend(missing_evidence_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
     if first_partial_win is None:
         blockers.append("missing_time_to_first_interim_p95_delta")
     elif first_partial_win < min_first_partial_win_ms:
@@ -225,11 +231,21 @@ def comparable_input_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: s
 
 def p95_deltas_ms(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> dict[str, float | None]:
     deltas: dict[str, float | None] = {}
-    for metric in KEY_METRICS:
+    for metric in BACKEND_KEY_METRICS:
         baseline = by_backend[baseline_key]["metrics"][metric]["p95"]
         candidate = by_backend[candidate_key]["metrics"][metric]["p95"]
         deltas[metric] = None if baseline is None or candidate is None else round(baseline - candidate, 1)
     return deltas
+
+
+def missing_evidence_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> list[str]:
+    gaps: list[str] = []
+    for backend_key in (baseline_key, candidate_key):
+        metrics = by_backend[backend_key]["metrics"]
+        for metric in BACKEND_KEY_METRICS:
+            if all(metrics[metric][percentile] is None for percentile in ("p50", "p95", "p99")):
+                gaps.append(f"missing_metric:{backend_key}:{metric}")
+    return gaps
 
 
 def transcript_sanity_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> list[str]:
@@ -258,6 +274,8 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
         return "Fix streaming protocol errors before comparing backend latency."
     if any("final_transcript" in blocker for blocker in blockers):
         return f"Keep {candidate_key} experimental until final transcripts match the baseline sanity check."
+    if any(blocker.startswith("missing_metric:") for blocker in blockers):
+        return "Run backend benchmarks with complete streaming latency, cadence, and decoder compute metrics."
     if "finalization_regression" in blockers:
         return f"Keep {candidate_key} experimental until final transcript latency no longer regresses."
     return f"Keep {candidate_key} experimental while searching for a stronger stateful backend."
@@ -279,7 +297,7 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
         "| --- | ---: |",
     ]
     for metric, value in comparison["p95_deltas_ms"].items():
-        lines.append(f"| {metric} | {_format_ms(value)} |")
+        lines.append(f"| {metric} | {_format_metric_delta(metric, value)} |")
 
     lines.extend(
         [
@@ -342,6 +360,16 @@ def _format_ms(value: object) -> str:
     if isinstance(value, int | float):
         return f"{value:g} ms"
     return str(value)
+
+
+def _format_metric_delta(metric: str, value: object) -> str:
+    if metric.endswith("_rtf"):
+        if value is None:
+            return "missing"
+        if isinstance(value, int | float):
+            return f"{value:g}"
+        return str(value)
+    return _format_ms(value)
 
 
 def _format_optional_value(value: object) -> str:
