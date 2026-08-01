@@ -2444,6 +2444,39 @@ def test_streaming_decoder_cancel_and_close_are_deferred_until_cleanup() -> None
         assert runtime.streaming_decoder is None
 
 
+def test_streaming_decoder_cleanup_closes_after_cancel_failure() -> None:
+    class CancelFailingStreamingSession(FakeStreamingSession):
+        def cancel(self) -> None:
+            self.canceled = True
+            raise RuntimeError("cancel failed")
+
+    transcriber = StreamingFakeTranscriber()
+    decoder = CancelFailingStreamingSession(
+        transcriber,
+        {"stream_id": 1, "client_stream_id": None, "language": "en"},
+    )
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        runtime = StreamRuntime(
+            stream_id=1,
+            client_stream_id=None,
+            session=StreamSession(
+                stream_id=1,
+                language="en",
+                sample_rate=HOT_PATH_SAMPLE_RATE,
+                max_buffer_bytes=DEFAULT_MAX_BUFFER_BYTES,
+            ),
+            services=client.app.state.services,
+            streaming_decoder=decoder,
+        )
+
+        with pytest.raises(RuntimeError, match="cancel failed"):
+            asyncio.run(_close_streaming_decoder_async(runtime, cancel=True))
+
+        assert decoder.canceled is True
+        assert decoder.closed is True
+        assert runtime.streaming_decoder is None
+
+
 def test_local_stt_v1_stream_ignores_extra_top_level_fields_on_nested_start() -> None:
     transcriber = FakeTranscriber()
 
