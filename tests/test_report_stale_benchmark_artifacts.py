@@ -275,6 +275,32 @@ def test_parse_args_accepts_age_range_filter_aliases() -> None:
     assert readable_args.newer_than_days == 90
 
 
+def test_parse_args_accepts_short_artifact_file_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--name",
+            "base.json",
+            "--filename-contains",
+            "base",
+            "--stem",
+            "qwen-mps",
+            "--file-stem-contains",
+            "qwen",
+            "--ext",
+            ".json",
+            "--file-extension-contains",
+            "json",
+        ]
+    )
+
+    assert args.artifact_name == ["base.json"]
+    assert args.artifact_name_contains == ["base"]
+    assert args.artifact_stem == ["qwen-mps"]
+    assert args.artifact_stem_contains == ["qwen"]
+    assert args.artifact_extension == [".json"]
+    assert args.artifact_extension_contains == ["json"]
+
+
 def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
     for alias in [
         "average-size",
