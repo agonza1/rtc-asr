@@ -37,6 +37,20 @@ def test_records_to_markdown_reports_present_and_missing_images() -> None:
     assert "Missing images: realtime-asr:qwen-cpu" in markdown
 
 
+def test_records_to_markdown_escapes_pipe_cells() -> None:
+    record = reporter.ImageSizeRecord(
+        tag="registry.local/realtime-asr:branch|preview",
+        image_id="sha|preview",
+        size_bytes=100_000_000,
+        created="2026-07-31T19:00:00Z|main",
+        present=True,
+    )
+
+    markdown = reporter.records_to_markdown([record])
+
+    assert "| registry.local/realtime-asr:branch\\|preview | yes | 100.0 | sha\\|preview | 2026-07-31T19:00:00Z\\|main |" in markdown
+
+
 def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
     record = reporter.ImageSizeRecord(
         tag="realtime-asr:parakeet-nemo-cpu",

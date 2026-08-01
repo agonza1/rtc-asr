@@ -162,16 +162,22 @@ def records_over_size_budget(records: Sequence[ImageSizeRecord], max_size_mb: fl
     ]
 
 
+def markdown_cell(value: str | None) -> str:
+    if not value:
+        return ""
+    return value.replace("\\", "\\\\").replace("|", "\\|")
+
+
 def records_to_markdown(records: Sequence[ImageSizeRecord]) -> str:
     rows = ["| Image | Present | Size MB | Image ID | Created |", "| --- | --- | ---: | --- | --- |"]
     for record in records:
         rows.append(
             "| {tag} | {present} | {size} | {image_id} | {created} |".format(
-                tag=record.tag,
+                tag=markdown_cell(record.tag),
                 present="yes" if record.present else "no",
                 size=f"{record.size_mb:.1f}" if record.size_mb is not None else "",
-                image_id=record.image_id or "",
-                created=record.created or "",
+                image_id=markdown_cell(record.image_id),
+                created=markdown_cell(record.created),
             )
         )
     total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
