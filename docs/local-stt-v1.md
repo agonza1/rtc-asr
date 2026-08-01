@@ -183,9 +183,13 @@ Required behavior:
     "bytes_per_frame": 640
   },
   "interim_results": true,
-  "metadata": {}
+  "metadata": {
+    "decoder_mode": "rolling_window"
+  }
 }
 ```
+
+`metadata.decoder_mode` identifies the server-side decoder selected for the utterance. `rolling_window` means the backend uses the compatibility fallback and refreshes partials by decoding the current buffered or trailing audio window. `stateful` means the backend supplied a per-utterance streaming decoder, so the service pushes only newly received PCM into retained decoder state before each partial and finalizes that state at the end of the utterance. Clients should keep treating transcript message shapes the same in both modes.
 
 ### `transcript`
 

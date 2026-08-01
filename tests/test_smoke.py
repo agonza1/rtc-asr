@@ -309,6 +309,63 @@ class FakeTranscriber:
         }
 
 
+class FakeStreamingSession:
+    def __init__(self, transcriber: "StreamingFakeTranscriber", config: dict[str, object]) -> None:
+        self.transcriber = transcriber
+        self.config = config
+        self.closed = False
+        self.canceled = False
+
+    def push_audio(self, audio_data: bytes) -> dict[str, object]:
+        self.transcriber.stream_pushes.append(
+            {
+                "audio_size": len(audio_data),
+                "prefix": audio_data[:4],
+                "stream_id": self.config["stream_id"],
+                "client_stream_id": self.config["client_stream_id"],
+            }
+        )
+        return {
+            "text": f"streaming partial {len(self.transcriber.stream_pushes)}",
+            "language": self.config["language"],
+            "duration_ms": 125,
+            "backend": self.transcriber.backend_name,
+            "model": self.transcriber.model_name,
+        }
+
+    def finalize(self) -> dict[str, object]:
+        self.transcriber.stream_finals += 1
+        return {
+            "text": f"streaming final {self.transcriber.stream_finals}",
+            "language": self.config["language"],
+            "duration_ms": 125,
+            "backend": self.transcriber.backend_name,
+            "model": self.transcriber.model_name,
+        }
+
+    def cancel(self) -> None:
+        self.canceled = True
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class StreamingFakeTranscriber(FakeTranscriber):
+    def __init__(self) -> None:
+        super().__init__()
+        self.stream_configs: list[dict[str, object]] = []
+        self.stream_pushes: list[dict[str, object]] = []
+        self.stream_finals = 0
+        self.stream_sessions: list[FakeStreamingSession] = []
+
+    def start_stream(self, config: dict[str, object]) -> FakeStreamingSession:
+        self.loaded = True
+        self.stream_configs.append(config)
+        session = FakeStreamingSession(self, config)
+        self.stream_sessions.append(session)
+        return session
+
+
 class StableTextTranscriber(FakeTranscriber):
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, object]:
         result = super().transcribe(audio_data, language=language, sample_rate=sample_rate)
@@ -2152,6 +2209,7 @@ def test_local_stt_v1_stream_accepts_flat_start_binary_audio_and_finalize() -> N
                 "max_buffer_bytes": DEFAULT_MAX_BUFFER_BYTES,
                 "partial_interval_chunks": 1,
                 "partial_interval_ms": HOT_PATH_FRAME_MS,
+                "decoder_mode": "rolling_window",
                 "client_stream_id": "turn-1",
                 "client_metadata": {"turn_id": "turn-1", "tenant": "demo"},
             }
@@ -2197,6 +2255,70 @@ def test_local_stt_v1_stream_accepts_flat_start_binary_audio_and_finalize() -> N
             second_ready = websocket.receive_json()
             assert second_ready["type"] == "ready"
             assert second_ready["metadata"]["stream_id"] == 2
+
+
+def test_local_stt_v1_stream_uses_stateful_decoder_when_backend_supports_it() -> None:
+    transcriber = StreamingFakeTranscriber()
+    first_chunk = b"a" * HOT_PATH_BYTES_PER_FRAME
+    second_chunk = b"b" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "partial_interval_ms": HOT_PATH_FRAME_MS,
+                    "client_stream_id": "streaming-turn",
+                }
+            )
+            ready = parse_server_message(websocket.receive_json())
+            assert ready.type == "ready"
+            assert ready.metadata["decoder_mode"] == "stateful"
+
+            websocket.send_bytes(first_chunk)
+            first_partial = parse_server_message(websocket.receive_json())
+            websocket.send_bytes(second_chunk)
+            second_partial = parse_server_message(websocket.receive_json())
+            websocket.send_json({"type": "finalize"})
+            final = parse_server_message(websocket.receive_json())
+
+    assert first_partial.text == "streaming partial 1"
+    assert first_partial.audio_transcribed_ms == HOT_PATH_FRAME_MS
+    assert second_partial.text == "streaming partial 2"
+    assert second_partial.audio_received_ms == HOT_PATH_FRAME_MS * 2
+    assert second_partial.audio_transcribed_ms == HOT_PATH_FRAME_MS
+    assert final.text == "streaming final 1"
+    assert final.is_final is True
+    assert transcriber.calls == []
+    assert transcriber.stream_configs == [
+        {
+            "language": None,
+            "sample_rate": HOT_PATH_SAMPLE_RATE,
+            "stream_id": 1,
+            "client_stream_id": "streaming-turn",
+            "metadata": {},
+        }
+    ]
+    assert transcriber.stream_pushes == [
+        {
+            "audio_size": len(first_chunk),
+            "prefix": first_chunk[:4],
+            "stream_id": 1,
+            "client_stream_id": "streaming-turn",
+        },
+        {
+            "audio_size": len(second_chunk),
+            "prefix": second_chunk[:4],
+            "stream_id": 1,
+            "client_stream_id": "streaming-turn",
+        },
+    ]
+    assert transcriber.stream_sessions[0].closed is True
+    assert transcriber.stream_sessions[0].canceled is False
 
 
 def test_local_stt_v1_stream_ignores_extra_top_level_fields_on_nested_start() -> None:
