@@ -5,8 +5,11 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from importlib import metadata
+import json
 import tempfile
 from typing import Any, Protocol
+
+import numpy as np
 
 from .audio_processor import AudioProcessor
 from .config import AppConfig
@@ -636,6 +639,125 @@ class VoxtralMLXAdapter:
         return self._model
 
 
+@dataclass(slots=True)
+class VoskStreamingSession:
+    """Native Vosk recognizer session that keeps decoder state per utterance."""
+
+    recognizer: Any
+    backend_name: str
+    model_name: str
+    language: str | None
+    closed: bool = False
+    canceled: bool = False
+
+    def push_audio(self, audio_data: bytes) -> dict[str, Any] | None:
+        if self.closed or self.canceled:
+            return None
+        accepted = bool(self.recognizer.AcceptWaveform(audio_data))
+        payload = _parse_vosk_payload(self.recognizer.Result() if accepted else self.recognizer.PartialResult())
+        text = payload.get("text") or payload.get("partial") or ""
+        if not str(text).strip():
+            return None
+        return self._result(str(text), is_final=accepted)
+
+    def finalize(self) -> dict[str, Any]:
+        if self.closed or self.canceled:
+            return self._result("")
+        payload = _parse_vosk_payload(self.recognizer.FinalResult())
+        return self._result(str(payload.get("text") or ""))
+
+    def cancel(self) -> None:
+        self.canceled = True
+
+    def close(self) -> None:
+        self.closed = True
+
+    def _result(self, text: str, *, is_final: bool = True) -> dict[str, Any]:
+        return {
+            "text": text.strip(),
+            "language": self.language,
+            "duration_ms": None,
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "vosk_result_type": "result" if is_final else "partial",
+        }
+
+
+@dataclass(slots=True)
+class VoskAdapter:
+    """Optional Vosk backend with native stateful streaming recognizers."""
+
+    config: AppConfig
+    audio_processor: AudioProcessor
+    backend_name: str = field(init=False, default="vosk")
+    model_name: str = field(init=False)
+    supports_stateful_streaming: bool = field(init=False, default=True)
+    _model: Any | None = field(init=False, default=None, repr=False)
+    _recognizer_cls: Any | None = field(init=False, default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        self.model_name = self.config.asr_vosk_model_path
+
+    def is_loaded(self) -> bool:
+        return self._model is not None
+
+    def preload(self) -> None:
+        self._load_model()
+
+    def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
+        decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
+        session = self.start_stream({"language": language, "sample_rate": decoded_audio.sample_rate})
+        try:
+            session.push_audio(_decoded_audio_to_pcm16(decoded_audio.samples))
+            result = session.finalize()
+        finally:
+            session.close()
+        result["duration_ms"] = decoded_audio.duration_ms
+        return result
+
+    def start_stream(self, config: dict[str, object]) -> VoskStreamingSession:
+        model, recognizer_cls = self._load_model()
+        sample_rate = int(config.get("sample_rate") or self.audio_processor.config.sample_rate)
+        recognizer = recognizer_cls(model, sample_rate)
+        language = config.get("language")
+        return VoskStreamingSession(
+            recognizer=recognizer,
+            backend_name=self.backend_name,
+            model_name=self.model_name,
+            language=str(language) if language is not None else None,
+        )
+
+    def describe(self) -> dict[str, Any]:
+        return {
+            "backend": self.backend_name,
+            "model": self.model_name,
+            "implementation": "vosk.KaldiRecognizer",
+            "loaded": self.is_loaded(),
+            "native_streaming": {
+                "stateful": True,
+                "start_stream": True,
+                "audio_format": "pcm_s16le",
+            },
+            **_shared_capabilities(self.audio_processor),
+        }
+
+    def _load_model(self) -> tuple[Any, Any]:
+        if self._model is not None and self._recognizer_cls is not None:
+            return self._model, self._recognizer_cls
+
+        try:
+            from vosk import KaldiRecognizer, Model
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The vosk backend requires the optional vosk package and a local model directory. "
+                "Install vosk and set ASR_VOSK_MODEL_PATH to enable ASR_BACKEND=vosk."
+            ) from exc
+
+        self._model = Model(self.model_name)
+        self._recognizer_cls = KaldiRecognizer
+        return self._model, self._recognizer_cls
+
+
 BACKEND_ALIASES = {
     "faster-whisper": "faster-whisper",
     "whisper": "faster-whisper",
@@ -655,6 +777,9 @@ BACKEND_ALIASES = {
     "mlx-parakeet": "parakeet-mlx",
     "mlx-parakeet-ctc": "parakeet-mlx",
     "mlx-parakeet-tdt": "parakeet-mlx",
+    "vosk": "vosk",
+    "kaldi": "vosk",
+    "vosk-kaldi": "vosk",
     "voxtral": "voxtral",
     "voxtral-mini": "voxtral",
     "voxtral-mini-4b": "voxtral",
@@ -789,6 +914,20 @@ def _extract_pipeline_text(result: Any) -> str:
     return str(result).strip()
 
 
+def _parse_vosk_payload(raw_payload: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(raw_payload)
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _decoded_audio_to_pcm16(samples: Any) -> bytes:
+    pcm = np.asarray(samples, dtype=np.float32)
+    clipped = np.clip(pcm, -1.0, 1.0)
+    return (clipped * 32767.0).astype("<i2").tobytes()
+
+
 def _shared_capabilities(audio_processor: AudioProcessor) -> dict[str, Any]:
     return {
         "streaming": {
@@ -820,6 +959,8 @@ def build_transcriber(config: AppConfig, audio_processor: AudioProcessor) -> Tra
         return ParakeetNemoAdapter(config=config, audio_processor=audio_processor)
     if backend == "parakeet-mlx":
         return ParakeetMLXAdapter(config=config, audio_processor=audio_processor)
+    if backend == "vosk":
+        return VoskAdapter(config=config, audio_processor=audio_processor)
     if backend == "voxtral":
         return VoxtralAdapter(config=config, audio_processor=audio_processor)
     if backend == "voxtral-mlx":

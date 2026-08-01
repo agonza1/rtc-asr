@@ -17,6 +17,7 @@ from src.model_loader import (
     ParakeetMLXAdapter,
     ParakeetNemoAdapter,
     QwenASRAdapter,
+    VoskAdapter,
     VoxtralAdapter,
     VoxtralMLXAdapter,
     backend_aliases_for,
@@ -28,6 +29,7 @@ FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
 
 def test_backend_aliases_for_reports_runtime_env_values() -> None:
     assert backend_aliases_for("faster-whisper") == ["faster-whisper", "whisper"]
+    assert backend_aliases_for("vosk") == ["vosk", "kaldi", "vosk-kaldi"]
     assert backend_aliases_for("voxtral-mlx") == [
         "voxtral-mlx",
         "voxtral-mini-mlx",
@@ -62,11 +64,13 @@ def test_build_transcriber_accepts_qwen_aliases(backend: str) -> None:
         ("mlx parakeet ctc", ParakeetMLXAdapter),
         ("mlx/parakeet/tdt", ParakeetMLXAdapter),
         ("faster_whisper", FasterWhisperAdapter),
+        ("VOSK Kaldi", VoskAdapter),
     ],
 )
 def test_build_transcriber_normalizes_backend_alias_case(
     backend: str,
     expected_type: type[QwenASRAdapter]
+    | type[VoskAdapter]
     | type[VoxtralAdapter]
     | type[VoxtralMLXAdapter]
     | type[ParakeetNemoAdapter]
@@ -312,6 +316,64 @@ def test_qwen_adapter_transcribe_uses_qwen_package(monkeypatch: pytest.MonkeyPat
     assert audio_sample_rate == 16000
     assert getattr(audio_samples, "shape", (0,))[0] > 0
     assert calls["language"] == "English"
+
+
+def test_vosk_adapter_start_stream_uses_stateful_recognizer(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    class FakeModel:
+        def __init__(self, model_path: str) -> None:
+            calls["model_path"] = model_path
+
+    class FakeRecognizer:
+        def __init__(self, model: FakeModel, sample_rate: int) -> None:
+            calls["recognizer_model"] = model
+            calls["sample_rate"] = sample_rate
+            self.chunks: list[bytes] = []
+
+        def AcceptWaveform(self, audio_data: bytes) -> bool:
+            self.chunks.append(audio_data)
+            return len(self.chunks) > 1
+
+        def PartialResult(self) -> str:
+            return '{"partial": "hel"}'
+
+        def Result(self) -> str:
+            return '{"text": "hello"}'
+
+        def FinalResult(self) -> str:
+            return '{"text": "hello world"}'
+
+    fake_vosk = ModuleType("vosk")
+    fake_vosk.Model = FakeModel
+    fake_vosk.KaldiRecognizer = FakeRecognizer
+    monkeypatch.setitem(sys.modules, "vosk", fake_vosk)
+
+    adapter = VoskAdapter(
+        config=AppConfig(asr_backend="vosk", asr_vosk_model_path="/models/vosk-small"),
+        audio_processor=AudioProcessor(),
+    )
+
+    session = adapter.start_stream({"language": "en", "sample_rate": 16000})
+    first = session.push_audio(b"new-audio-1")
+    second = session.push_audio(b"new-audio-2")
+    final = session.finalize()
+    session.close()
+
+    assert adapter.supports_stateful_streaming is True
+    assert calls["model_path"] == "/models/vosk-small"
+    assert calls["sample_rate"] == 16000
+    assert first == {
+        "text": "hel",
+        "language": "en",
+        "duration_ms": None,
+        "backend": "vosk",
+        "model": "/models/vosk-small",
+        "vosk_result_type": "partial",
+    }
+    assert second["text"] == "hello"
+    assert final["text"] == "hello world"
+    assert session.recognizer.chunks == [b"new-audio-1", b"new-audio-2"]
 
 
 def test_parakeet_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -836,6 +898,16 @@ def test_app_config_reads_parakeet_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.asr_backend == "parakeet"
     assert config.asr_parakeet_model == "nvidia/parakeet-tdt-0.6b-v3"
     assert config.asr_parakeet_dtype == "float32"
+
+
+def test_app_config_reads_vosk_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASR_BACKEND", "vosk")
+    monkeypatch.setenv("ASR_VOSK_MODEL_PATH", " /models/vosk-en-us ")
+
+    config = AppConfig.from_env()
+
+    assert config.asr_backend == "vosk"
+    assert config.asr_vosk_model_path == "/models/vosk-en-us"
 
 
 @pytest.mark.parametrize("env_name", ["ASR_QWEN_MAX_NEW_TOKENS", "ASR_QWEN_MAX_INFERENCE_BATCH_SIZE"])
