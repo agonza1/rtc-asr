@@ -28,6 +28,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--baseline", required=True, help="Baseline backend key, for example faster-whisper:rolling_window")
     parser.add_argument("--candidate", required=True, help="Candidate backend key, for example vosk:stateful")
     parser.add_argument("--output", type=Path, help="Optional JSON comparison output path")
+    parser.add_argument("--markdown-output", type=Path, help="Optional Markdown decision report output path")
     parser.add_argument(
         "--min-first-partial-win-ms",
         type=float,
@@ -253,6 +254,85 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
     return f"Keep {candidate_key} experimental while searching for a stronger stateful backend."
 
 
+def format_markdown_report(comparison: dict[str, Any]) -> str:
+    lines = [
+        "# Local STT v1 Backend Comparison",
+        "",
+        f"Baseline: {comparison['baseline']}",
+        f"Candidate: {comparison['candidate']}",
+        f"Candidate status: {comparison['candidate_status']}",
+        f"Recommendation: {comparison['recommendation']}",
+        f"Minimum first-partial P95 win: {_format_ms(comparison['min_first_partial_win_ms'])}",
+        "",
+        "P95 metric deltas (baseline minus candidate):",
+        "",
+        "| Metric | Delta |",
+        "| --- | ---: |",
+    ]
+    for metric, value in comparison["p95_deltas_ms"].items():
+        lines.append(f"| {metric} | {_format_ms(value)} |")
+
+    lines.extend(
+        [
+            "",
+            "Backend evidence:",
+            "",
+            "| Backend | Artifact | Runs | First partial p95 | Final after finalize p95 | Protocol clean | Final transcript runs | Unique final transcripts |",
+            "| --- | --- | ---: | ---: | ---: | --- | ---: | --- |",
+        ]
+    )
+    for backend, evidence in sorted(comparison["backends"].items()):
+        metrics = evidence["metrics"]
+        sanity = evidence["transcript_sanity"]
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    backend,
+                    _format_optional_value(evidence.get("path")),
+                    _format_optional_value(evidence.get("runs")),
+                    _format_ms(metrics["time_to_first_interim_ms"]["p95"]),
+                    _format_ms(metrics["time_to_final_after_finalize_ms"]["p95"]),
+                    str(evidence["protocol_error_free"]),
+                    str(sanity["runs_with_final_transcript"]),
+                    _format_transcripts(sanity["unique_final_transcripts"]),
+                ]
+            )
+            + " |"
+        )
+
+    lines.extend(["", "Blocking gaps:"])
+    blockers = comparison["blocking_gaps"]
+    if blockers:
+        lines.extend(f"- {blocker}" for blocker in blockers)
+    else:
+        lines.append("- none")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _format_ms(value: object) -> str:
+    if value is None:
+        return "missing"
+    if isinstance(value, int | float):
+        return f"{value:g} ms"
+    return str(value)
+
+
+def _format_optional_value(value: object) -> str:
+    if value in (None, ""):
+        return "missing"
+    if isinstance(value, list):
+        return ",".join(str(item) for item in value) if value else "none"
+    return str(value)
+
+
+def _format_transcripts(values: object) -> str:
+    if not isinstance(values, list) or not values:
+        return "missing"
+    return " / ".join(str(value) for value in values)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     comparison = compare_artifacts(
@@ -266,6 +346,8 @@ def main(argv: list[str] | None = None) -> int:
         args.output.write_text(encoded, encoding="utf8")
     else:
         print(encoded, end="")
+    if args.markdown_output is not None:
+        args.markdown_output.write_text(format_markdown_report(comparison), encoding="utf8")
     return 1 if comparison["blocking_gaps"] else 0
 
 
