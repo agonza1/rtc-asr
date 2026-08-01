@@ -669,10 +669,7 @@ class VoskStreamingSession:
         payload = _parse_vosk_payload(self.recognizer.FinalResult())
         final_text = str(payload.get("text") or "").strip()
         completed_text = " ".join(self._final_segments).strip()
-        if completed_text and final_text:
-            text = final_text if final_text.startswith(completed_text) else f"{completed_text} {final_text}"
-        else:
-            text = final_text or completed_text
+        text = " ".join(part for part in (completed_text, final_text) if part).strip()
         return self._result(text)
 
     def cancel(self) -> None:
@@ -751,7 +748,7 @@ class VoskAdapter:
                 "recognizer": "vosk.KaldiRecognizer",
                 "partial_result_method": "PartialResult",
                 "final_result_method": "FinalResult",
-                "cleanup": ["finalize", "cancel", "close", "disconnect", "timeout", "error"],
+                "cleanup": ["finalize", "cancel", "close", "disconnect", "error"],
             },
             **_shared_capabilities(self.audio_processor),
         }
