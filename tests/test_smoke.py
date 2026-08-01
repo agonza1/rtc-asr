@@ -17,6 +17,7 @@ from src.main import (
     StreamRuntime,
     StreamSession,
     _close_streaming_decoder_async,
+    _local_stt_asr_worker,
     _prepare_uds_socket,
     _receive_raw_uds_event,
     _receive_stream_event,
@@ -2475,6 +2476,68 @@ def test_streaming_decoder_cleanup_closes_after_cancel_failure() -> None:
         assert decoder.canceled is True
         assert decoder.closed is True
         assert runtime.streaming_decoder is None
+
+
+def test_stateful_stream_cancel_waits_for_in_flight_push_before_close() -> None:
+    class BlockingStreamingSession(FakeStreamingSession):
+        def __init__(self, transcriber: StreamingFakeTranscriber, config: dict[str, object]) -> None:
+            super().__init__(transcriber, config)
+            self.push_started = threading.Event()
+            self.release_push = threading.Event()
+            self.closed_during_push = False
+            self.canceled_during_push = False
+
+        def push_audio(self, audio_data: bytes) -> dict[str, object]:
+            self.push_started.set()
+            self.closed_during_push = self.closed
+            self.canceled_during_push = self.canceled
+            assert self.release_push.wait(timeout=2)
+            self.closed_during_push = self.closed_during_push or self.closed
+            self.canceled_during_push = self.canceled_during_push or self.canceled
+            return super().push_audio(audio_data)
+
+    async def run_cancel_flow() -> BlockingStreamingSession:
+        transcriber = StreamingFakeTranscriber()
+        decoder = BlockingStreamingSession(
+            transcriber,
+            {"stream_id": 1, "client_stream_id": None, "language": "en"},
+        )
+        with TestClient(create_app(transcriber=transcriber)) as client:
+            session = StreamSession(
+                stream_id=1,
+                language="en",
+                sample_rate=HOT_PATH_SAMPLE_RATE,
+                max_buffer_bytes=DEFAULT_MAX_BUFFER_BYTES,
+            )
+            session.append_audio(b"a" * HOT_PATH_BYTES_PER_FRAME)
+            runtime = StreamRuntime(
+                stream_id=1,
+                client_stream_id=None,
+                session=session,
+                services=client.app.state.services,
+                streaming_decoder=decoder,
+            )
+            worker_task = asyncio.create_task(_local_stt_asr_worker(runtime))
+            runtime.note_audio()
+            assert await asyncio.to_thread(decoder.push_started.wait, 2)
+
+            runtime.request_cancel()
+            runtime.close()
+            assert decoder.closed is False
+            assert decoder.canceled is False
+
+            decoder.release_push.set()
+            await worker_task
+            await _close_streaming_decoder_async(runtime, cancel=True)
+
+        return decoder
+
+    decoder = asyncio.run(run_cancel_flow())
+
+    assert decoder.closed_during_push is False
+    assert decoder.canceled_during_push is False
+    assert decoder.canceled is True
+    assert decoder.closed is True
 
 
 def test_local_stt_v1_stream_ignores_extra_top_level_fields_on_nested_start() -> None:
