@@ -23,8 +23,20 @@ def write_artifact(
     final_after_finalize_p95: float = 80.0,
     send_aggregate_ms: int = 80,
     protocol_errors_p95: float = 0.0,
+    partial_cadence_p95: float | None = 100.0,
+    decoder_compute_rtf_p95: float | None = 0.35,
     final_transcript: str = "hello from the voice agent",
 ) -> Path:
+    partial_cadence_summary = (
+        {"p50": partial_cadence_p95 - 10.0, "p95": partial_cadence_p95, "p99": partial_cadence_p95 + 10.0}
+        if partial_cadence_p95 is not None
+        else {"p50": None, "p95": None, "p99": None}
+    )
+    decoder_compute_summary = (
+        {"p50": max(0.0, decoder_compute_rtf_p95 - 0.05), "p95": decoder_compute_rtf_p95, "p99": decoder_compute_rtf_p95 + 0.05}
+        if decoder_compute_rtf_p95 is not None
+        else {"p50": None, "p95": None, "p99": None}
+    )
     path.write_text(
         json.dumps(
             {
@@ -81,6 +93,8 @@ def write_artifact(
                     },
                     "audio_send_queue_depth_p95_ms": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
                     "asr_queue_delay_p95_ms": {"p50": 3.0, "p95": 4.0, "p99": 5.0},
+                    "partial_cadence_p95_ms": partial_cadence_summary,
+                    "decoder_compute_rtf": decoder_compute_summary,
                     "protocol_errors": {
                         "p50": 0.0,
                         "p95": protocol_errors_p95,
@@ -276,6 +290,38 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "Command: python scripts/bench_local_stt_stream.py" in markdown
     assert "Hardware: cpu_logical_cores=8, machine=arm64, memory_total_mb=32768.0" in markdown
     assert "Settings: partial_interval_ms=100" in markdown
+    assert "| partial_cadence_p95_ms | 0 ms |" in markdown
+    assert "| decoder_compute_rtf | 0 |" in markdown
+
+
+def test_compare_backends_keeps_candidate_experimental_for_missing_cadence_or_decoder_compute(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        partial_cadence_p95=None,
+        decoder_compute_rtf_p95=None,
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert "missing_metric:vosk:stateful:partial_cadence_p95_ms" in comparison["blocking_gaps"]
+    assert "missing_metric:vosk:stateful:decoder_compute_rtf" in comparison["blocking_gaps"]
+    assert comparison["recommendation"] == (
+        "Run backend benchmarks with complete streaming latency, cadence, and decoder compute metrics."
+    )
 
 
 def test_main_writes_markdown_report(tmp_path: Path) -> None:
