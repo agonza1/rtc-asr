@@ -29,6 +29,18 @@ class Transcriber(Protocol):
     def describe(self) -> dict[str, Any]: ...
 
 
+class StreamingTranscriberSession(Protocol):
+    """Optional per-utterance decoder state for native streaming backends."""
+
+    def push_audio(self, audio_data: bytes) -> dict[str, Any] | None: ...
+
+    def finalize(self) -> dict[str, Any]: ...
+
+    def cancel(self) -> None: ...
+
+    def close(self) -> None: ...
+
+
 @dataclass(slots=True)
 class FasterWhisperAdapter:
     """Lazy faster-whisper wrapper used by the transcription endpoints."""

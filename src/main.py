@@ -24,6 +24,7 @@ from .audio_processor import AudioConfig, AudioProcessor
 from .config import AppConfig
 from .model_loader import (
     ASRUnavailableError,
+    StreamingTranscriberSession,
     Transcriber,
     backend_aliases_for,
     build_transcriber,
@@ -385,6 +386,7 @@ class StreamSession:
     interim_results: bool = True
     client_stream_id: str | None = None
     client_metadata: dict[str, Any] = field(default_factory=dict)
+    decoder_mode: str = "rolling_window"
     audio_buffer: bytearray = field(default_factory=bytearray, repr=False)
     chunks_received: int = 0
     last_partial_chunks_received: int = 0
@@ -453,6 +455,8 @@ class StreamRuntime:
     closed: bool = False
     final_emitted: bool = False
     send_queue_high_water: int = 0
+    streaming_decoder: StreamingTranscriberSession | None = None
+    streaming_decode_offset: int = 0
 
     def note_audio(self) -> None:
         self.dirty = True
@@ -464,12 +468,16 @@ class StreamRuntime:
 
     def request_cancel(self) -> None:
         self.cancel_requested.set()
+        if self.streaming_decoder is not None:
+            self.streaming_decoder.cancel()
         self.session.audio_buffer.clear()
         self.session.last_partial_result = None
         self.audio_updated.set()
 
     def close(self) -> None:
         self.closed = True
+        if self.streaming_decoder is not None:
+            self.streaming_decoder.close()
         self.audio_updated.set()
 
     async def enqueue_event(self, event: dict[str, Any]) -> None:
@@ -846,6 +854,9 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                         session=session,
                         services=services,
                     )
+                    runtime.streaming_decoder = _start_streaming_decoder(services.transcriber, session)
+                    if runtime.streaming_decoder is not None:
+                        session.decoder_mode = "stateful"
                     worker_task = asyncio.create_task(_local_stt_asr_worker(runtime))
                     send_task = asyncio.create_task(_send_queued_events(websocket, runtime))
                     await websocket.send_json(
@@ -1041,6 +1052,9 @@ async def _raw_uds_stream_client(
                     session=session,
                     services=services,
                 )
+                runtime.streaming_decoder = _start_streaming_decoder(services.transcriber, session)
+                if runtime.streaming_decoder is not None:
+                    session.decoder_mode = "stateful"
                 worker_task = asyncio.create_task(_local_stt_asr_worker(runtime))
                 send_task = asyncio.create_task(_send_queued_raw_uds_events(writer, runtime))
                 await _write_raw_uds_event(
@@ -1238,7 +1252,11 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
 
         if runtime.finalize_requested.is_set():
             final_audio = bytes(session.audio_buffer)
-            final_result = await _resolve_final_result_async(session, runtime.services)
+            final_result = (
+                await _finalize_streaming_decoder_async(runtime)
+                if runtime.streaming_decoder is not None
+                else await _resolve_final_result_async(session, runtime.services)
+            )
             if runtime.cancel_requested.is_set() or runtime.closed:
                 return
             await runtime.enqueue_event(
@@ -1259,23 +1277,33 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
 
         runtime.dirty = False
         runtime.partial_decode_started = True
-        partial_audio_bytes = session.partial_audio_bytes()
         partial_chunks_received = session.chunks_received
         partial_audio_received_ms = session.audio_received_ms()
         runtime.decode_in_flight = True
         try:
-            partial = await _run_transcription_async(
-                runtime.services,
-                audio_bytes=partial_audio_bytes,
-                language=session.language,
-                sample_rate=session.sample_rate,
-            )
+            if runtime.streaming_decoder is not None:
+                partial_audio_bytes = bytes(session.audio_buffer[runtime.streaming_decode_offset :])
+                partial = await _push_streaming_audio_async(runtime, partial_audio_bytes)
+            else:
+                partial_audio_bytes = session.partial_audio_bytes()
+                partial = await _run_transcription_async(
+                    runtime.services,
+                    audio_bytes=partial_audio_bytes,
+                    language=session.language,
+                    sample_rate=session.sample_rate,
+                )
         finally:
             runtime.decode_in_flight = False
             runtime.partial_decode_started = False
 
         if runtime.cancel_requested.is_set() or runtime.final_emitted or runtime.closed:
             return
+        if partial is None:
+            session.last_partial_chunks_received = partial_chunks_received
+            session.last_partial_audio_received_ms = partial_audio_received_ms
+            if runtime.dirty:
+                runtime.audio_updated.set()
+            continue
         if runtime.finalize_requested.is_set():
             if partial_chunks_received == session.chunks_received and _partial_covers_full_buffer(session):
                 session.record_partial(
@@ -1302,6 +1330,48 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
             )
         if runtime.dirty:
             runtime.audio_updated.set()
+
+
+def _start_streaming_decoder(
+    transcriber: Transcriber,
+    session: StreamSession,
+) -> StreamingTranscriberSession | None:
+    start_stream = getattr(transcriber, "start_stream", None)
+    if not callable(start_stream):
+        return None
+
+    decoder = start_stream(
+        {
+            "language": session.language,
+            "sample_rate": session.sample_rate,
+            "stream_id": session.stream_id,
+            "client_stream_id": session.client_stream_id,
+            "metadata": dict(session.client_metadata),
+        }
+    )
+    return decoder if decoder is not None else None
+
+
+async def _push_streaming_audio_async(
+    runtime: StreamRuntime,
+    audio_bytes: bytes,
+) -> dict[str, object] | None:
+    if not audio_bytes:
+        return None
+    assert runtime.streaming_decoder is not None
+    result = await asyncio.to_thread(runtime.streaming_decoder.push_audio, audio_bytes)
+    runtime.streaming_decode_offset += len(audio_bytes)
+    return result
+
+
+async def _finalize_streaming_decoder_async(runtime: StreamRuntime) -> dict[str, object]:
+    assert runtime.streaming_decoder is not None
+    remaining_audio = bytes(runtime.session.audio_buffer[runtime.streaming_decode_offset :])
+    if remaining_audio:
+        await _push_streaming_audio_async(runtime, remaining_audio)
+    result = await asyncio.to_thread(runtime.streaming_decoder.finalize)
+    runtime.streaming_decoder.close()
+    return result
 
 
 def _create_stream_session(
@@ -1492,6 +1562,7 @@ def _local_stt_ready_event(session: StreamSession, *, backend: str, model: str) 
         "partial_interval_ms": session.partial_interval_audio_ms
         if session.partial_interval_audio_ms is not None
         else session.partial_interval_chunks * HOT_PATH_FRAME_MS,
+        "decoder_mode": session.decoder_mode,
     }
     if session.client_stream_id is not None:
         metadata["client_stream_id"] = session.client_stream_id
