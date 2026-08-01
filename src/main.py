@@ -361,14 +361,26 @@ def _protocol_discovery_payload(services: AppServices) -> dict[str, object]:
     }
 
 
-def _local_stt_decoder_capabilities(transcriber: Transcriber) -> dict[str, object]:
+def _local_stt_decoder_capabilities(
+    transcriber: Transcriber,
+    description: dict[str, Any] | None = None,
+) -> dict[str, object]:
     supports_stateful = _supports_stateful_streaming(transcriber)
+    native_streaming = None if description is None else description.get("native_streaming")
+    if not isinstance(native_streaming, dict):
+        native_streaming = {
+            "stateful": supports_stateful,
+            "start_stream": supports_stateful,
+        }
     return {
         "protocol": PROTOCOL_VERSION,
+        "backend": transcriber.backend_name,
+        "model": transcriber.model_name,
         "default_mode": "stateful" if supports_stateful else "rolling_window",
         "supported_modes": ["stateful", "rolling_window"] if supports_stateful else ["rolling_window"],
         "fallback_mode": "rolling_window",
         "stateful_supported": supports_stateful,
+        "native_streaming": native_streaming,
     }
 
 
@@ -608,7 +620,7 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
         streaming = description.get("streaming")
         audio = description.get("audio")
         backend_aliases = backend_aliases_for(current.transcriber.backend_name)
-        local_stt_decoder = _local_stt_decoder_capabilities(current.transcriber)
+        local_stt_decoder = _local_stt_decoder_capabilities(current.transcriber, description)
         return {
             "backend": current.transcriber.backend_name,
             "model": current.transcriber.model_name,
