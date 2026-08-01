@@ -1417,9 +1417,11 @@ async def _close_streaming_decoder_async(runtime: StreamRuntime, *, cancel: bool
     if decoder is None:
         return
     runtime.streaming_decoder = None
-    if cancel:
-        await asyncio.to_thread(decoder.cancel)
-    await asyncio.to_thread(decoder.close)
+    try:
+        if cancel:
+            await asyncio.to_thread(decoder.cancel)
+    finally:
+        await asyncio.to_thread(decoder.close)
 
 
 def _create_stream_session(
