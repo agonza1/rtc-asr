@@ -66,6 +66,26 @@ logger = logging.getLogger(__name__)
 RAW_UDS_FRAME_TYPE_VALUES = {int(frame_type) for frame_type in RawUdsFrameType}
 RAW_UDS_FRAME_TYPE_CODES = {frame_type.name: int(frame_type) for frame_type in RawUdsFrameType}
 RAW_UDS_FRAME_TYPES = {name.lower(): value for name, value in RAW_UDS_FRAME_TYPE_CODES.items()}
+BENCHMARK_ENVIRONMENT_FIELDS = [
+    "device",
+    "processor",
+    "memory_total_mb",
+    "accelerator",
+    "peak_rss_mb",
+    "cpu_utilization_percent",
+    "package_power_watts",
+    "thermal_peak_celsius",
+    "thermal_observation",
+    "thermal_duration_minutes",
+    "dropped_or_late_frames",
+    "partial_transcript_churn",
+]
+OPTIONAL_EXTERNAL_BENCHMARK_FIELDS = [
+    "package_power_watts",
+    "thermal_peak_celsius",
+    "thermal_observation",
+    "thermal_duration_minutes",
+]
 
 
 class TranscribeRequest(BaseModel):
@@ -312,6 +332,8 @@ def _protocol_catalog(config: AppConfig | None = None) -> list[dict[str, object]
                         "protocol_errors",
                         "cpu_utilization",
                     ],
+                    "benchmark_environment_fields": BENCHMARK_ENVIRONMENT_FIELDS,
+                    "optional_external_benchmark_fields": OPTIONAL_EXTERNAL_BENCHMARK_FIELDS,
                     "benchmark_metric_requirements": {
                         "time_to_first_interim_ms": ["p50", "p95", "p99"],
                         "time_to_final_after_finalize_ms": ["p50", "p95", "p99"],
