@@ -737,6 +737,12 @@ class VoskAdapter:
                 "stateful": True,
                 "start_stream": True,
                 "audio_format": "pcm_s16le",
+                "state_scope": "per_utterance",
+                "incremental_input": "new_pcm16_bytes_only",
+                "recognizer": "vosk.KaldiRecognizer",
+                "partial_result_method": "PartialResult",
+                "final_result_method": "FinalResult",
+                "cleanup": ["finalize", "cancel", "close", "disconnect", "timeout", "error"],
             },
             **_shared_capabilities(self.audio_processor),
         }
