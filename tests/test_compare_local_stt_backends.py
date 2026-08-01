@@ -26,6 +26,8 @@ def write_artifact(
     partial_cadence_p95: float | None = 100.0,
     decoder_compute_rtf_p95: float | None = 0.35,
     final_transcript: str = "hello from the voice agent",
+    peak_rss_mb: float | None = 512.5,
+    cpu_utilization_percent: float | None = 42.0,
 ) -> Path:
     partial_cadence_summary = (
         {"p50": partial_cadence_p95 - 10.0, "p95": partial_cadence_p95, "p99": partial_cadence_p95 + 10.0}
@@ -70,6 +72,8 @@ def write_artifact(
                     "processor": "TestCPU",
                     "cpu_logical_cores": 8,
                     "memory_total_mb": 32768.0,
+                    "peak_rss_mb": peak_rss_mb,
+                    "cpu_utilization_percent": cpu_utilization_percent,
                 },
                 "runs": 5,
                 "samples": [
@@ -138,6 +142,10 @@ def test_compare_backends_recommends_supported_when_candidate_clears_latency_gat
         "runs_with_final_transcript": 1,
         "empty_final_transcript_runs": 0,
         "unique_final_transcripts": ["hello from the voice agent"],
+    }
+    assert comparison["backends"]["vosk:stateful"]["resource_metrics"] == {
+        "peak_rss_mb": 512.5,
+        "cpu_utilization_percent": 42.0,
     }
     assert comparison["recommendation"] == "Keep vosk:stateful as a supported low-latency backend."
 
@@ -289,6 +297,7 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "Run context:" in markdown
     assert "Command: python scripts/bench_local_stt_stream.py" in markdown
     assert "Hardware: cpu_logical_cores=8, machine=arm64, memory_total_mb=32768.0" in markdown
+    assert "Resource metrics: cpu_utilization_percent=42.0, peak_rss_mb=512.5" in markdown
     assert "Settings: partial_interval_ms=100" in markdown
     assert "| partial_cadence_p95_ms | 0 ms |" in markdown
     assert "| decoder_compute_rtf | 0 |" in markdown
@@ -324,6 +333,36 @@ def test_compare_backends_keeps_candidate_experimental_for_missing_cadence_or_de
     )
 
 
+def test_compare_backends_can_require_resource_metrics(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+        require_resource_metrics=True,
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert comparison["resource_metrics_required"] is True
+    assert "missing_resource_metric:vosk:stateful:peak_rss_mb" in comparison["blocking_gaps"]
+    assert "missing_resource_metric:vosk:stateful:cpu_utilization_percent" in comparison["blocking_gaps"]
+    assert comparison["recommendation"] == "Re-run backend benchmarks with service resource monitoring enabled."
+
+
 def test_main_writes_markdown_report(tmp_path: Path) -> None:
     baseline = write_artifact(
         tmp_path / "rolling.json",
@@ -347,6 +386,7 @@ def test_main_writes_markdown_report(tmp_path: Path) -> None:
             "vosk:stateful",
             "--markdown-output",
             str(report_path),
+            "--require-resource-metrics",
             str(baseline),
             str(candidate),
         ]
@@ -355,4 +395,5 @@ def test_main_writes_markdown_report(tmp_path: Path) -> None:
     markdown = report_path.read_text(encoding="utf8")
     assert "Baseline: faster-whisper:rolling_window" in markdown
     assert "Candidate: vosk:stateful" in markdown
+    assert "Resource metrics required: True" in markdown
     assert "Blocking gaps:" in markdown
