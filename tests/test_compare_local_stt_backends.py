@@ -23,6 +23,7 @@ def write_artifact(
     final_after_finalize_p95: float = 80.0,
     send_aggregate_ms: int = 80,
     protocol_errors_p95: float = 0.0,
+    final_transcript: str = "hello from the voice agent",
 ) -> Path:
     path.write_text(
         json.dumps(
@@ -51,6 +52,7 @@ def write_artifact(
                         "backend": backend,
                         "decoder_modes": [decoder_mode],
                         "decoder_mode_counts": {decoder_mode: 3},
+                        "final_transcript": final_transcript,
                     }
                 ],
                 "summary": {
@@ -105,6 +107,11 @@ def test_compare_backends_recommends_supported_when_candidate_clears_latency_gat
     assert comparison["candidate_status"] == "supported"
     assert comparison["blocking_gaps"] == []
     assert comparison["p95_deltas_ms"]["time_to_first_interim_ms"] == 70.0
+    assert comparison["backends"]["vosk:stateful"]["transcript_sanity"] == {
+        "runs_with_final_transcript": 1,
+        "empty_final_transcript_runs": 0,
+        "unique_final_transcripts": ["hello from the voice agent"],
+    }
     assert comparison["recommendation"] == "Keep vosk:stateful as a supported low-latency backend."
 
 
@@ -163,3 +170,58 @@ def test_compare_backends_keeps_candidate_experimental_for_finalization_regressi
     assert comparison["recommendation"] == (
         "Keep vosk:stateful experimental until final transcript latency no longer regresses."
     )
+
+
+def test_compare_backends_keeps_candidate_experimental_for_final_transcript_mismatch(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=220.0,
+        final_transcript="hello hello final tail",
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=140.0,
+        final_transcript="hello final tail",
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert "final_transcript_mismatch:vosk:stateful" in comparison["blocking_gaps"]
+    assert comparison["recommendation"] == (
+        "Keep vosk:stateful experimental until final transcripts match the baseline sanity check."
+    )
+
+
+def test_compare_backends_keeps_candidate_experimental_for_empty_final_transcript(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=220.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=140.0,
+        final_transcript=" ",
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert "missing_final_transcript:vosk:stateful" in comparison["blocking_gaps"]
+    assert "empty_final_transcript:vosk:stateful" in comparison["blocking_gaps"]
