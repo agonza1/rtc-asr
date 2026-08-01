@@ -260,7 +260,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=float,
         help="Exit non-zero when any present image is larger than this decimal-megabyte budget.",
     )
-    parser.add_argument("--require-present", action="store_true", help="Exit non-zero when any requested image is absent.")
+    parser.add_argument(
+        "--require-present",
+        "--fail-on-missing",
+        dest="require_present",
+        action="store_true",
+        help="Exit non-zero when any requested image is absent.",
+    )
     return parser.parse_args(argv)
 
 
