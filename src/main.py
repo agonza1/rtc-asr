@@ -13,7 +13,7 @@ import time
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -1419,9 +1419,18 @@ async def _close_streaming_decoder_async(runtime: StreamRuntime, *, cancel: bool
     runtime.streaming_decoder = None
     try:
         if cancel:
-            await asyncio.to_thread(decoder.cancel)
+            await _to_thread_until_complete(decoder.cancel)
     finally:
-        await asyncio.to_thread(decoder.close)
+        await _to_thread_until_complete(decoder.close)
+
+
+async def _to_thread_until_complete(func: Callable[[], Any]) -> Any:
+    worker_task = asyncio.create_task(asyncio.to_thread(func))
+    try:
+        return await asyncio.shield(worker_task)
+    except asyncio.CancelledError:
+        await asyncio.shield(worker_task)
+        raise
 
 
 def _create_stream_session(
