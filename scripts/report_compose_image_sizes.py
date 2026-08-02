@@ -145,6 +145,7 @@ def records_summary(
     present_sizes = [record.size_bytes for record in records if record.present and record.size_bytes is not None]
     total_bytes = sum(present_sizes)
     missing = [record.tag for record in records if not record.present]
+    unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
     largest = max(
         (record for record in records if record.present and record.size_bytes is not None),
         key=lambda record: record.size_bytes or 0,
@@ -155,6 +156,8 @@ def records_summary(
         "present": len(records) - len(missing),
         "missing": len(missing),
         "missing_tags": missing,
+        "unknown_size": len(unknown_size),
+        "unknown_size_tags": unknown_size,
         "total_size_bytes": total_bytes,
         "total_size_mb": round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
         "average_present_size_bytes": round(total_bytes / len(present_sizes)) if present_sizes else None,
@@ -275,6 +278,9 @@ def records_to_markdown(
         )
     if missing:
         rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
+    unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
+    if unknown_size:
+        rows.append("Images with unknown size: {tags}".format(tags=", ".join(unknown_size)))
     return "\n".join(rows)
 
 
@@ -319,6 +325,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero when any requested image is absent.",
     )
+    parser.add_argument(
+        "--require-size",
+        "--fail-on-unknown-size",
+        dest="require_size",
+        action="store_true",
+        help="Exit non-zero when a present image does not report a Docker image size.",
+    )
     return parser.parse_args(argv)
 
 
@@ -341,6 +354,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     print(output)
     missing_records = [record for record in records if not record.present]
+    unknown_size_records = [record for record in records if record.present and record.size_bytes is None]
     oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
     total_size_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     total_over_budget = (
@@ -349,6 +363,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.require_present and missing_records:
         print(
             "Missing required images: {tags}".format(tags=", ".join(record.tag for record in missing_records)),
+            file=sys.stderr,
+        )
+    if args.require_size and unknown_size_records:
+        print(
+            "Images with unknown size: {tags}".format(tags=", ".join(record.tag for record in unknown_size_records)),
             file=sys.stderr,
         )
     if args.max_size_mb is not None and oversized_records:
@@ -371,7 +390,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             file=sys.stderr,
         )
-    if (args.require_present and missing_records) or oversized_records or total_over_budget:
+    if (
+        (args.require_present and missing_records)
+        or (args.require_size and unknown_size_records)
+        or oversized_records
+        or total_over_budget
+    ):
         return 1
     return 0
 
