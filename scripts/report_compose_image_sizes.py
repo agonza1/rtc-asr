@@ -176,19 +176,29 @@ def records_summary(
     }
     if max_size_mb is not None:
         over_budget = records_over_size_budget(records, max_size_mb)
+        over_budget_excess_bytes = sum(
+            max(0, int(record.size_bytes - max_size_mb * 1_000_000))
+            for record in over_budget
+            if record.size_bytes is not None
+        )
         summary.update(
             {
                 "image_size_budget_mb": max_size_mb,
                 "over_budget": bool(over_budget),
                 "over_budget_count": len(over_budget),
                 "over_budget_tags": [record.tag for record in over_budget],
+                "over_budget_excess_bytes": over_budget_excess_bytes,
+                "over_budget_excess_mb": round(over_budget_excess_bytes / 1_000_000, 1),
             }
         )
     if max_total_size_mb is not None:
+        total_budget_excess_bytes = max(0, int(total_bytes - max_total_size_mb * 1_000_000))
         summary.update(
             {
                 "total_image_size_budget_mb": max_total_size_mb,
                 "total_over_budget": total_bytes > max_total_size_mb * 1_000_000,
+                "total_budget_excess_bytes": total_budget_excess_bytes,
+                "total_budget_excess_mb": round(total_budget_excess_bytes / 1_000_000, 1),
             }
         )
     return summary
@@ -277,18 +287,25 @@ def records_to_markdown(
         rows.append(f"Average present image size: {average_size_mb:.1f} MB")
     if max_size_mb is not None:
         over_budget = records_over_size_budget(records, max_size_mb)
+        over_budget_excess_mb = sum(
+            max(0.0, (record.size_bytes or 0) / 1_000_000 - max_size_mb)
+            for record in over_budget
+        )
         rows.append(
-            "Image size budget: {budget:.1f} MB, {count} image{plural} over budget.".format(
+            "Image size budget: {budget:.1f} MB, {count} image{plural} over budget, {excess:.1f} MB total excess.".format(
                 budget=max_size_mb,
                 count=len(over_budget),
                 plural="" if len(over_budget) == 1 else "s",
+                excess=over_budget_excess_mb,
             )
         )
     if max_total_size_mb is not None:
+        total_budget_excess_mb = max(0.0, total_bytes / 1_000_000 - max_total_size_mb)
         rows.append(
-            "Total image size budget: {budget:.1f} MB, current total {total:.1f} MB.".format(
+            "Total image size budget: {budget:.1f} MB, current total {total:.1f} MB, {excess:.1f} MB over.".format(
                 budget=max_total_size_mb,
                 total=round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
+                excess=total_budget_excess_mb,
             )
         )
     if missing:
