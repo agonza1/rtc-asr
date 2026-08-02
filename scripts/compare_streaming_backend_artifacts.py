@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -190,16 +191,29 @@ def compare_success(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict
 def compare_transcripts(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
     baseline_texts = final_transcripts(baseline)
     candidate_texts = final_transcripts(candidate)
-    baseline_words = token_set(" ".join(baseline_texts))
-    candidate_words = token_set(" ".join(candidate_texts))
+    baseline_tokens = token_list(" ".join(baseline_texts))
+    candidate_tokens = token_list(" ".join(candidate_texts))
+    baseline_words = set(baseline_tokens)
+    candidate_words = set(candidate_tokens)
     shared_words = baseline_words & candidate_words
     union_words = baseline_words | candidate_words
+    baseline_counts = Counter(baseline_tokens)
+    candidate_counts = Counter(candidate_tokens)
+    missing_counts = baseline_counts - candidate_counts
+    extra_counts = candidate_counts - baseline_counts
     overlap = round(len(shared_words) / len(union_words), 3) if union_words else None
+    candidate_word_count = len(candidate_tokens)
+    baseline_word_count = len(baseline_tokens)
     return {
         "baseline_final_transcripts": baseline_texts,
         "candidate_final_transcripts": candidate_texts,
         "exact_match": bool(baseline_texts and baseline_texts == candidate_texts),
         "word_overlap_ratio": overlap,
+        "baseline_word_count": baseline_word_count,
+        "candidate_word_count": candidate_word_count,
+        "word_count_delta": candidate_word_count - baseline_word_count,
+        "candidate_missing_token_counts": dict(sorted(missing_counts.items())),
+        "candidate_extra_token_counts": dict(sorted(extra_counts.items())),
         "candidate_has_final_transcript": bool(candidate_texts and all(text.strip() for text in candidate_texts)),
     }
 
@@ -216,7 +230,15 @@ def final_transcripts(artifact: dict[str, Any]) -> list[str]:
 
 
 def token_set(text: str) -> set[str]:
-    return {token.strip(".,!?;:\"'()[]{}").lower() for token in text.split() if token.strip(".,!?;:\"'()[]{}")}
+    return set(token_list(text))
+
+
+def token_list(text: str) -> list[str]:
+    return [
+        token.strip(".,!?;:\"'()[]{}").lower()
+        for token in text.split()
+        if token.strip(".,!?;:\"'()[]{}")
+    ]
 
 
 def recommend(

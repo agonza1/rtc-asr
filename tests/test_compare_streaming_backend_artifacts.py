@@ -143,6 +143,37 @@ def test_compare_artifacts_keeps_candidate_experimental_on_transcript_regression
     assert report["recommendation"]["decision"] == "keep_experimental"
 
 
+def test_compare_artifacts_reports_missing_tail_and_repeated_token_drift() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="rolling_window",
+            first_partial=500.0,
+            final=300.0,
+            transcript="transfer transfer me to billing now",
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="stateful",
+            first_partial=200.0,
+            final=100.0,
+            transcript="transfer me to billing billing",
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    sanity = report["transcript_sanity"]
+    assert sanity["word_overlap_ratio"] == 0.8
+    assert sanity["baseline_word_count"] == 6
+    assert sanity["candidate_word_count"] == 5
+    assert sanity["word_count_delta"] == -1
+    assert sanity["candidate_missing_token_counts"] == {"now": 1, "transfer": 1}
+    assert sanity["candidate_extra_token_counts"] == {"billing": 1}
+
+
 def test_compare_artifacts_blocks_concurrency_mismatch() -> None:
     report = compare_module.compare_artifacts(
         baseline=artifact(
