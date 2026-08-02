@@ -79,15 +79,34 @@ def compare_artifacts(
 
 
 def compare_benchmark_inputs(baseline: dict[str, Any], candidate: dict[str, Any]) -> list[str]:
+    baseline_audio = normalized_audio(baseline)
+    candidate_audio = normalized_audio(candidate)
     baseline_settings = normalized_settings(baseline)
     candidate_settings = normalized_settings(candidate)
     gaps = []
-    for key in ("concurrency",):
+    for key in ("source", "sample_rate", "channels", "format", "frame_ms", "send_aggregate_ms"):
+        baseline_value = baseline_audio.get(key)
+        candidate_value = candidate_audio.get(key)
+        if baseline_value != candidate_value:
+            gaps.append(f"benchmark_input:audio.{key}: baseline={baseline_value!r} candidate={candidate_value!r}")
+    for key in ("partial_interval_ms", "realtime_pace", "send_aggregate_ms", "concurrency", "scenario"):
         baseline_value = baseline_settings.get(key)
         candidate_value = candidate_settings.get(key)
         if baseline_value != candidate_value:
             gaps.append(f"benchmark_input:settings.{key}: baseline={baseline_value!r} candidate={candidate_value!r}")
     return gaps
+
+
+def normalized_audio(artifact: dict[str, Any]) -> dict[str, Any]:
+    audio = artifact.get("audio", {}) if isinstance(artifact.get("audio"), dict) else {}
+    return {
+        "source": audio.get("source"),
+        "sample_rate": audio.get("sample_rate"),
+        "channels": audio.get("channels"),
+        "format": audio.get("format"),
+        "frame_ms": audio.get("frame_ms"),
+        "send_aggregate_ms": audio.get("send_aggregate_ms"),
+    }
 
 
 def normalized_settings(artifact: dict[str, Any]) -> dict[str, Any]:
@@ -97,7 +116,13 @@ def normalized_settings(artifact: dict[str, Any]) -> dict[str, Any]:
         concurrency = artifact.get("concurrency")
     if concurrency is None:
         concurrency = 1
-    return {"concurrency": concurrency}
+    return {
+        "partial_interval_ms": settings.get("partial_interval_ms"),
+        "realtime_pace": settings.get("realtime_pace"),
+        "send_aggregate_ms": settings.get("send_aggregate_ms"),
+        "concurrency": concurrency,
+        "scenario": settings.get("scenario"),
+    }
 
 
 def compare_metric(baseline: dict[str, Any], candidate: dict[str, Any], metric: str) -> dict[str, float | None]:

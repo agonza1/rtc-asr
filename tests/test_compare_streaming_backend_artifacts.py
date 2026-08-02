@@ -22,21 +22,34 @@ def artifact(
     final: float,
     transcript: str,
     errors: int = 0,
+    source: str = "fixtures/smoke.wav",
+    sample_rate: int = 16000,
+    channels: int = 1,
+    audio_format: str = "pcm_s16le",
+    frame_ms: int = 20,
+    send_aggregate_ms: int = 80,
+    partial_interval_ms: int = 100,
+    realtime_pace: bool = True,
+    scenario: str = "voice-agent-20ms-80ms",
     concurrency: int | None = 1,
 ):
     settings = {
-        "partial_interval_ms": 100,
-        "realtime_pace": True,
-        "scenario": "voice-agent-20ms-80ms",
-        "metadata": {"fixture": "smoke.wav"},
+        "partial_interval_ms": partial_interval_ms,
+        "realtime_pace": realtime_pace,
+        "send_aggregate_ms": send_aggregate_ms,
+        "scenario": scenario,
+        "metadata": {"fixture": source},
     }
     if concurrency is not None:
         settings["concurrency"] = concurrency
     return {
         "audio": {
-            "sample_rate": 16000,
-            "frame_ms": 20,
-            "send_aggregate_ms": 80,
+            "source": source,
+            "sample_rate": sample_rate,
+            "channels": channels,
+            "format": audio_format,
+            "frame_ms": frame_ms,
+            "send_aggregate_ms": send_aggregate_ms,
         },
         "settings": settings,
         "samples": [
@@ -149,6 +162,42 @@ def test_compare_artifacts_blocks_concurrency_mismatch() -> None:
     ]
     assert report["recommendation"]["decision"] == "keep_experimental"
     assert report["recommendation"]["blocking_gaps"] == report["benchmark_input_gaps"]
+
+
+def test_compare_artifacts_blocks_audio_and_pacing_mismatch() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="rolling_window",
+            first_partial=500.0,
+            final=300.0,
+            transcript="hello world",
+            send_aggregate_ms=80,
+            scenario="voice-agent-20ms-80ms",
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="stateful",
+            first_partial=300.0,
+            final=200.0,
+            transcript="hello world",
+            source="fixtures/different.wav",
+            send_aggregate_ms=160,
+            scenario="voice-agent-20ms-160ms",
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["benchmark_input_gaps"] == [
+        "benchmark_input:audio.source: baseline='fixtures/smoke.wav' candidate='fixtures/different.wav'",
+        "benchmark_input:audio.send_aggregate_ms: baseline=80 candidate=160",
+        "benchmark_input:settings.send_aggregate_ms: baseline=80 candidate=160",
+        "benchmark_input:settings.scenario: baseline='voice-agent-20ms-80ms' candidate='voice-agent-20ms-160ms'",
+    ]
+    assert report["recommendation"]["decision"] == "keep_experimental"
 
 
 def test_main_writes_comparison_report(tmp_path) -> None:
