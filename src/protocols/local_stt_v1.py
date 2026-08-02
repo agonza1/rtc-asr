@@ -97,6 +97,28 @@ def _require_finite_numeric_field(value: Any) -> Any:
     return value
 
 
+def _require_positive_integer_field(value: Any) -> Any:
+    if value is None:
+        return value
+    if value < 1:
+        raise PydanticCustomError(
+            "invalid_integer_field",
+            "must be a positive integer",
+        )
+    return value
+
+
+def _require_positive_numeric_field(value: Any) -> Any:
+    if value is None:
+        return value
+    if value <= 0:
+        raise PydanticCustomError(
+            "invalid_numeric_field",
+            "must be greater than 0",
+        )
+    return value
+
+
 def _require_boolean_field(value: Any) -> Any:
     if not isinstance(value, bool):
         raise PydanticCustomError(
@@ -252,9 +274,9 @@ class StartMessage(LocalSttModel):
     audio: AudioFormat
     language: str | None = None
     interim_results: bool = True
-    partial_interval_ms: int | None = Field(default=None, ge=1)
-    partial_window_seconds: float | None = Field(default=None, gt=0)
-    max_buffer_seconds: float | None = Field(default=None, gt=0)
+    partial_interval_ms: int | None = None
+    partial_window_seconds: float | None = None
+    max_buffer_seconds: float | None = None
     client_stream_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
@@ -272,6 +294,16 @@ class StartMessage(LocalSttModel):
     @classmethod
     def require_finite_numeric_fields(cls, value: Any) -> Any:
         return _require_finite_numeric_field(value)
+
+    @field_validator("partial_interval_ms")
+    @classmethod
+    def require_positive_interval_ms(cls, value: Any) -> Any:
+        return _require_positive_integer_field(value)
+
+    @field_validator("partial_window_seconds", "max_buffer_seconds")
+    @classmethod
+    def require_positive_numeric_fields(cls, value: Any) -> Any:
+        return _require_positive_numeric_field(value)
 
     @field_validator("interim_results", mode="before")
     @classmethod
