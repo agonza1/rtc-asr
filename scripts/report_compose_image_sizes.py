@@ -171,6 +171,16 @@ def records_summary(
         "average_present_size_mb": round(total_bytes / len(present_sizes) / 1_000_000, 1) if present_sizes else None,
         "median_present_size_bytes": median_size_bytes,
         "median_present_size_mb": round(median_size_bytes / 1_000_000, 1) if median_size_bytes is not None else None,
+        "range_present_size_bytes": (
+            largest.size_bytes - smallest.size_bytes
+            if largest and largest.size_bytes is not None and smallest and smallest.size_bytes is not None
+            else None
+        ),
+        "range_present_size_mb": (
+            round((largest.size_bytes - smallest.size_bytes) / 1_000_000, 1)
+            if largest and largest.size_bytes is not None and smallest and smallest.size_bytes is not None
+            else None
+        ),
         "largest_present_tag": largest.tag if largest else None,
         "largest_present_size_bytes": largest.size_bytes if largest else None,
         "largest_present_size_mb": largest.size_mb if largest else None,
@@ -291,6 +301,7 @@ def records_to_markdown(
         rows.append(f"Average present image size: {average_size_mb:.1f} MB")
         median_size_mb = median(present_sizes) / 1_000_000
         rows.append(f"Median present image size: {median_size_mb:.1f} MB")
+        rows.append(f"Present image size range: {(max(present_sizes) - min(present_sizes)) / 1_000_000:.1f} MB")
     if max_size_mb is not None:
         over_budget = records_over_size_budget(records, max_size_mb)
         over_budget_excess_mb = sum(
