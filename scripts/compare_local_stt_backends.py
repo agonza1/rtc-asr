@@ -381,11 +381,13 @@ def voice_agent_scenario_gaps(by_backend: dict[str, dict[str, Any]], baseline_ke
         scenario = settings.get("scenario")
         frame_ms = audio.get("frame_ms")
         send_aggregate_ms = settings.get("send_aggregate_ms", audio.get("send_aggregate_ms"))
+        realtime_pace = settings.get("realtime_pace")
         if not (
             isinstance(scenario, str)
             and "voice-agent" in scenario.lower()
             and frame_ms == VOICE_AGENT_FRAME_MS
             and send_aggregate_ms in VOICE_AGENT_SEND_AGGREGATE_MS
+            and realtime_pace is True
         ):
             gaps.append(f"missing_voice_agent_streaming_scenario:{backend_key}")
     return gaps

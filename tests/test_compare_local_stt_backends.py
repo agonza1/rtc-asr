@@ -34,6 +34,7 @@ def write_artifact(
     expected_final_transcript: str | None = None,
     scenario: str | None = "voice-agent-80ms-aggregation",
     frame_ms: int = 20,
+    realtime_pace: bool = True,
 ) -> Path:
     partial_cadence_summary = (
         {"p50": partial_cadence_p95 - 10.0, "p95": partial_cadence_p95, "p99": partial_cadence_p95 + 10.0}
@@ -68,7 +69,7 @@ def write_artifact(
                 "settings": {
                     "partial_interval_ms": 100,
                     "receive_timeout_seconds": 5,
-                    "realtime_pace": True,
+                    "realtime_pace": realtime_pace,
                     "send_aggregate_ms": send_aggregate_ms,
                     "concurrency": concurrency,
                     "scenario": scenario,
@@ -390,6 +391,34 @@ def test_compare_backends_requires_voice_agent_streaming_scenario(tmp_path: Path
         scenario="batch-context",
         frame_ms=40,
         send_aggregate_ms=200,
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert "missing_voice_agent_streaming_scenario:vosk:stateful" in comparison["blocking_gaps"]
+    assert comparison["recommendation"] == (
+        "Run both backends through a voice-agent streaming scenario with 20 ms frames and 80-160 ms aggregation."
+    )
+
+
+def test_compare_backends_requires_realtime_paced_voice_agent_stream(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        realtime_pace=False,
     )
 
     comparison = compare_module.compare_artifacts(
