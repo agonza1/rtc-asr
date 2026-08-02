@@ -18,6 +18,7 @@ from compare_local_stt_transports import (
 
 
 DEFAULT_MIN_FIRST_PARTIAL_WIN_MS = 50.0
+BATCHED_TRANSCRIPTION_ROLE = "nice_to_have_context_only"
 COMPARABLE_AUDIO_KEYS = ("source", "sample_rate", "channels", "format", "frame_ms", "duration_ms", "send_aggregate_ms")
 COMPARABLE_SETTING_KEYS = (
     "partial_interval_ms",
@@ -304,6 +305,7 @@ def compare_artifacts(
         "candidate": candidate_key,
         "candidate_status": "supported" if not blockers else "experimental",
         "recommendation": recommendation,
+        "batched_transcription_role": BATCHED_TRANSCRIPTION_ROLE,
         "min_first_partial_win_ms": min_first_partial_win_ms,
         "resource_metrics_required": require_resource_metrics,
         "p95_deltas_ms": p95_deltas,
@@ -426,6 +428,7 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
         f"Candidate: {comparison['candidate']}",
         f"Candidate status: {comparison['candidate_status']}",
         f"Recommendation: {comparison['recommendation']}",
+        f"Batched transcription role: {comparison['batched_transcription_role']}",
         f"Minimum first-partial P95 win: {_format_ms(comparison['min_first_partial_win_ms'])}",
         f"Resource metrics required: {comparison['resource_metrics_required']}",
         "",
