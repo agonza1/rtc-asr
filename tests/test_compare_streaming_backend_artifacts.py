@@ -70,6 +70,15 @@ def artifact(
             "package_power_watts": package_power_watts,
         },
         "settings": settings,
+        "workload": {
+            "kind": "local-stt-v1-streaming",
+            "live_voice_agent_profile": (
+                realtime_pace
+                and sample_rate == 16000
+                and frame_ms == 20
+                and send_aggregate_ms in {80, 100, 120, 140, 160}
+            ),
+        },
         "samples": [
             {
                 "backend": backend,
@@ -324,6 +333,41 @@ def test_compare_artifacts_blocks_duration_timeout_and_hardware_mismatch() -> No
         "benchmark_input:audio.duration_ms: baseline=1000 candidate=2200",
         "benchmark_input:settings.receive_timeout_seconds: baseline=5 candidate=10",
         "benchmark_input:environment.machine: baseline='arm64' candidate='x86_64'",
+    ]
+    assert report["recommendation"]["decision"] == "keep_experimental"
+
+
+def test_compare_artifacts_blocks_non_live_voice_agent_workloads() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="rolling_window",
+            first_partial=500.0,
+            final=300.0,
+            transcript="hello world",
+            frame_ms=40,
+            send_aggregate_ms=200,
+            scenario="offline-ish-streaming",
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="stateful",
+            first_partial=300.0,
+            final=200.0,
+            transcript="hello world",
+            frame_ms=40,
+            send_aggregate_ms=200,
+            scenario="offline-ish-streaming",
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["benchmark_input_gaps"] == [
+        "benchmark_input:baseline.workload.live_voice_agent_profile: required=True actual=False",
+        "benchmark_input:candidate.workload.live_voice_agent_profile: required=True actual=False",
     ]
     assert report["recommendation"]["decision"] == "keep_experimental"
 

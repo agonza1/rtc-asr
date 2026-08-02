@@ -117,6 +117,10 @@ def compare_benchmark_inputs(baseline: dict[str, Any], candidate: dict[str, Any]
         candidate_value = candidate_environment.get(key)
         if baseline_value != candidate_value:
             gaps.append(f"benchmark_input:environment.{key}: baseline={baseline_value!r} candidate={candidate_value!r}")
+    if not is_live_voice_agent_artifact(baseline):
+        gaps.append("benchmark_input:baseline.workload.live_voice_agent_profile: required=True actual=False")
+    if not is_live_voice_agent_artifact(candidate):
+        gaps.append("benchmark_input:candidate.workload.live_voice_agent_profile: required=True actual=False")
     return gaps
 
 
@@ -159,6 +163,20 @@ def normalized_environment(artifact: dict[str, Any]) -> dict[str, Any]:
         "cpu_logical_cores": environment.get("cpu_logical_cores"),
         "memory_total_mb": environment.get("memory_total_mb"),
     }
+
+
+def is_live_voice_agent_artifact(artifact: dict[str, Any]) -> bool:
+    workload = artifact.get("workload", {}) if isinstance(artifact.get("workload"), dict) else {}
+    if workload.get("live_voice_agent_profile") is True:
+        return True
+    audio = normalized_audio(artifact)
+    settings = normalized_settings(artifact)
+    return (
+        settings.get("realtime_pace") is True
+        and audio.get("sample_rate") == 16000
+        and audio.get("frame_ms") == 20
+        and settings.get("send_aggregate_ms") in {80, 100, 120, 140, 160}
+    )
 
 
 def compare_resource_metrics(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
