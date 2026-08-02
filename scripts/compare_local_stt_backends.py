@@ -34,6 +34,8 @@ COMPARABLE_ENVIRONMENT_KEYS = (
     "cpu_logical_cores",
     "memory_total_mb",
 )
+VOICE_AGENT_FRAME_MS = 20
+VOICE_AGENT_SEND_AGGREGATE_MS = {80, 160}
 BACKEND_KEY_METRICS = (
     *TRANSPORT_KEY_METRICS,
     "partial_cadence_p95_ms",
@@ -284,6 +286,7 @@ def compare_artifacts(
     if baseline_errors:
         blockers.append(f"protocol_errors:{baseline_key}")
     blockers.extend(transcript_gaps)
+    blockers.extend(voice_agent_scenario_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
     blockers.extend(missing_evidence_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
     if require_resource_metrics and not missing:
         blockers.extend(resource_metric_gaps(by_backend, baseline_key, candidate_key))
@@ -369,11 +372,32 @@ def transcript_sanity_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: 
     return gaps
 
 
+def voice_agent_scenario_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> list[str]:
+    gaps: list[str] = []
+    for backend_key in (baseline_key, candidate_key):
+        evidence = by_backend[backend_key]
+        audio = evidence["audio"] if isinstance(evidence.get("audio"), dict) else {}
+        settings = evidence["settings"] if isinstance(evidence.get("settings"), dict) else {}
+        scenario = settings.get("scenario")
+        frame_ms = audio.get("frame_ms")
+        send_aggregate_ms = settings.get("send_aggregate_ms", audio.get("send_aggregate_ms"))
+        if not (
+            isinstance(scenario, str)
+            and "voice-agent" in scenario.lower()
+            and frame_ms == VOICE_AGENT_FRAME_MS
+            and send_aggregate_ms in VOICE_AGENT_SEND_AGGREGATE_MS
+        ):
+            gaps.append(f"missing_voice_agent_streaming_scenario:{backend_key}")
+    return gaps
+
+
 def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
     if not blockers:
         return f"Keep {candidate_key} as a supported low-latency backend."
     if any(blocker.startswith("missing_backend:") for blocker in blockers):
         return "Run the missing backend benchmark before deciding on Vosk stateful streaming."
+    if any(blocker.startswith("missing_voice_agent_streaming_scenario:") for blocker in blockers):
+        return "Run both backends through a voice-agent streaming scenario with 20 ms frames and 80-160 ms aggregation."
     if any(blocker.startswith("benchmark_input:") for blocker in blockers):
         return "Re-run backend benchmarks with matching audio, pacing, scenario settings, and hardware."
     if any(blocker.startswith("protocol_errors:") for blocker in blockers):
