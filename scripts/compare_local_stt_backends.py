@@ -287,6 +287,7 @@ def compare_artifacts(
             "model": model_name(artifact),
             "target": artifact.get("target") or {},
             "audio": artifact.get("audio") or {},
+            "workload": artifact.get("workload") or {},
             "settings": artifact.get("settings") or {},
             "environment": artifact.get("environment") or {},
             "benchmark_command": benchmark_command(artifact),
@@ -314,6 +315,7 @@ def compare_artifacts(
     if baseline_errors:
         blockers.append(f"protocol_errors:{baseline_key}")
     blockers.extend(transcript_gaps)
+    blockers.extend(streaming_evidence_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
     blockers.extend(voice_agent_scenario_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
     blockers.extend(missing_evidence_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
     blockers.extend(concurrency_load_gaps(by_backend, baseline_key, candidate_key, min_concurrency) if not missing else [])
@@ -400,6 +402,23 @@ def concurrency_load_gaps(
     return gaps
 
 
+def streaming_evidence_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> list[str]:
+    gaps: list[str] = []
+    for backend_key in (baseline_key, candidate_key):
+        evidence = by_backend[backend_key]
+        target = evidence["target"] if isinstance(evidence.get("target"), dict) else {}
+        workload = evidence["workload"] if isinstance(evidence.get("workload"), dict) else {}
+        transport = target.get("transport")
+        target_url = target.get("url")
+        if workload.get("kind") != "local-stt-v1-streaming":
+            gaps.append(f"missing_local_stt_v1_streaming_workload:{backend_key}")
+        if transport not in {"tcp_ws", "uds_ws", "raw_uds"}:
+            gaps.append(f"missing_local_stt_v1_streaming_target:{backend_key}")
+        elif transport != "raw_uds" and (not isinstance(target_url, str) or "/v1/stt/stream" not in target_url):
+            gaps.append(f"missing_local_stt_v1_streaming_target:{backend_key}")
+    return gaps
+
+
 def transcript_sanity_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: str, candidate_key: str) -> list[str]:
     baseline = by_backend[baseline_key]["transcript_sanity"]
     candidate = by_backend[candidate_key]["transcript_sanity"]
@@ -449,6 +468,8 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
         return "Re-run backend benchmarks with matching audio, pacing, scenario settings, and hardware."
     if any(blocker.startswith("protocol_errors:") for blocker in blockers):
         return "Fix streaming protocol errors before comparing backend latency."
+    if any(blocker.startswith("missing_local_stt_v1_streaming_") for blocker in blockers):
+        return "Run both backends through the Local STT v1 streaming benchmark instead of batch or legacy transport artifacts."
     if any("final_transcript" in blocker for blocker in blockers):
         return (
             f"Keep {candidate_key} experimental until final transcripts match the baseline "
