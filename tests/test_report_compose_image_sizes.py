@@ -269,6 +269,7 @@ def test_records_summary_reports_size_budget_status() -> None:
     summary = reporter.records_summary(records, max_size_mb=200.0)
 
     assert summary["image_size_budget_mb"] == 200.0
+    assert summary["largest_image_budget_utilization_percent"] == 100.5
     assert summary["over_budget"] is True
     assert summary["over_budget_count"] == 1
     assert summary["over_budget_tags"] == ["large:image"]
@@ -286,6 +287,7 @@ def test_records_summary_reports_total_size_budget_status() -> None:
     summary = reporter.records_summary(records, max_total_size_mb=399.0)
 
     assert summary["total_image_size_budget_mb"] == 399.0
+    assert summary["total_budget_utilization_percent"] == 100.3
     assert summary["total_over_budget"] is True
     assert summary["total_budget_excess_bytes"] == 1_000_000
     assert summary["total_budget_excess_mb"] == 1.0
@@ -300,6 +302,7 @@ def test_records_to_markdown_reports_size_budget_status() -> None:
     markdown = reporter.records_to_markdown(records, max_size_mb=200.0)
 
     assert "Image size budget: 200.0 MB, 1 image over budget, 1.0 MB total excess." in markdown
+    assert "Largest image budget utilization: 100.5%" in markdown
 
 
 def test_records_to_markdown_reports_total_size_budget_status() -> None:
@@ -311,6 +314,7 @@ def test_records_to_markdown_reports_total_size_budget_status() -> None:
     markdown = reporter.records_to_markdown(records, max_total_size_mb=400.0)
 
     assert "Total image size budget: 400.0 MB, current total 400.0 MB, 0.0 MB over." in markdown
+    assert "Total image size budget utilization: 100.0%" in markdown
 
 
 def test_sort_records_orders_by_tag_size_and_created() -> None:
@@ -595,6 +599,7 @@ def test_main_summary_only_includes_size_budget_status(
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["image_size_budget_mb"] == 250.0
+    assert payload["largest_image_budget_utilization_percent"] == 100.0
     assert payload["over_budget"] is True
     assert payload["over_budget_count"] == 1
     assert payload["over_budget_tags"] == ["large:image"]
@@ -617,6 +622,7 @@ def test_main_summary_only_includes_total_size_budget_status(
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["total_image_size_budget_mb"] == 250.0
+    assert payload["total_budget_utilization_percent"] == 100.0
     assert payload["total_over_budget"] is True
     assert payload["total_budget_excess_bytes"] == 1
     assert payload["total_budget_excess_mb"] == 0.0
