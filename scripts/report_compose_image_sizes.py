@@ -10,6 +10,7 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass
+from statistics import median
 from typing import Any, Iterable, Sequence
 
 DEFAULT_IMAGES = (
@@ -144,6 +145,7 @@ def records_summary(
 ) -> dict[str, Any]:
     present_sizes = [record.size_bytes for record in records if record.present and record.size_bytes is not None]
     total_bytes = sum(present_sizes)
+    median_size_bytes = round(median(present_sizes)) if present_sizes else None
     missing = [record.tag for record in records if not record.present]
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
     largest = max(
@@ -167,6 +169,8 @@ def records_summary(
         "total_size_mb": round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
         "average_present_size_bytes": round(total_bytes / len(present_sizes)) if present_sizes else None,
         "average_present_size_mb": round(total_bytes / len(present_sizes) / 1_000_000, 1) if present_sizes else None,
+        "median_present_size_bytes": median_size_bytes,
+        "median_present_size_mb": round(median_size_bytes / 1_000_000, 1) if median_size_bytes is not None else None,
         "largest_present_tag": largest.tag if largest else None,
         "largest_present_size_bytes": largest.size_bytes if largest else None,
         "largest_present_size_mb": largest.size_mb if largest else None,
@@ -285,6 +289,8 @@ def records_to_markdown(
     if present_sizes:
         average_size_mb = sum(present_sizes) / len(present_sizes) / 1_000_000
         rows.append(f"Average present image size: {average_size_mb:.1f} MB")
+        median_size_mb = median(present_sizes) / 1_000_000
+        rows.append(f"Median present image size: {median_size_mb:.1f} MB")
     if max_size_mb is not None:
         over_budget = records_over_size_budget(records, max_size_mb)
         over_budget_excess_mb = sum(
