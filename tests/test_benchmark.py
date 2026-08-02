@@ -537,6 +537,31 @@ def test_makefile_exposes_local_stt_transport_compare_target() -> None:
     ) in block
 
 
+def test_makefile_exposes_local_stt_backend_compare_target() -> None:
+    makefile = Path("Makefile").read_text(encoding="utf-8")
+
+    assert "LOCAL_STT_BACKEND_ARTIFACTS ?=" in makefile
+    assert "LOCAL_STT_BACKEND_BASELINE ?= faster-whisper:rolling_window" in makefile
+    assert "LOCAL_STT_BACKEND_CANDIDATE ?= vosk:stateful" in makefile
+    assert "LOCAL_STT_BACKEND_COMPARISON_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-backend-comparison.json" in makefile
+    assert "LOCAL_STT_BACKEND_COMPARISON_MARKDOWN ?= $(BENCHMARK_RESULTS_DIR)/local-stt-backend-comparison.md" in makefile
+    assert "LOCAL_STT_BACKEND_MIN_FIRST_PARTIAL_WIN_MS ?= 50.0" in makefile
+    assert "LOCAL_STT_BACKEND_MIN_CONCURRENCY ?= 2" in makefile
+    assert "LOCAL_STT_BACKEND_COMPARE_FLAGS ?= --require-resource-metrics" in makefile
+    assert "benchmark-local-stt-backend-compare:" in makefile
+    phony_line = next(line for line in makefile.splitlines() if line.startswith(".PHONY:"))
+    phony_targets = set(phony_line.removeprefix(".PHONY:").split())
+    assert "benchmark-local-stt-backend-compare" in phony_targets
+    assert "make benchmark-local-stt-backend-compare - Compare default rolling-window and Vosk stateful Local STT artifacts" in makefile
+    block = makefile.split("benchmark-local-stt-backend-compare:\n", 1)[1].split("\n\n", 1)[0]
+    assert "Set LOCAL_STT_BACKEND_ARTIFACTS to matching rolling-window and Vosk stateful benchmark JSON artifacts." in block
+    assert "--baseline $(LOCAL_STT_BACKEND_BASELINE)" in block
+    assert "--candidate $(LOCAL_STT_BACKEND_CANDIDATE)" in block
+    assert "--min-first-partial-win-ms $(LOCAL_STT_BACKEND_MIN_FIRST_PARTIAL_WIN_MS)" in block
+    assert "--min-concurrency $(LOCAL_STT_BACKEND_MIN_CONCURRENCY)" in block
+    assert "$(LOCAL_STT_BACKEND_COMPARE_FLAGS) $(LOCAL_STT_BACKEND_ARTIFACTS)" in block
+
+
 def test_makefile_qwen_mps_target_forces_runtime_env() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
