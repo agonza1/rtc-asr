@@ -175,7 +175,6 @@ def test_compare_artifacts_blocks_concurrency_mismatch() -> None:
     assert report["recommendation"]["decision"] == "keep_experimental"
     assert report["recommendation"]["blocking_gaps"] == report["benchmark_input_gaps"]
 
-
 def test_compare_artifacts_blocks_audio_and_pacing_mismatch() -> None:
     report = compare_module.compare_artifacts(
         baseline=artifact(
