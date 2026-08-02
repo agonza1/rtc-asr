@@ -21,6 +21,10 @@ RESOURCE_METRICS = [
     "cpu_utilization_percent",
     "package_power_watts",
 ]
+EXPECTED_TRANSCRIPT_KEYS = [
+    "expected_final_transcript",
+    "expected_transcript",
+]
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -283,6 +287,13 @@ def compare_transcripts(baseline: dict[str, Any], candidate: dict[str, Any]) -> 
     candidate_texts = final_transcripts(candidate)
     baseline_tokens = token_list(" ".join(baseline_texts))
     candidate_tokens = token_list(" ".join(candidate_texts))
+    expected = expected_final_transcript(candidate) or expected_final_transcript(baseline)
+    candidate_expected_matches = [
+        text
+        for text in candidate_texts
+        if expected is not None and normalize_transcript(text) == expected
+    ]
+    candidate_nonempty_texts = [text for text in candidate_texts if normalize_transcript(text)]
     baseline_words = set(baseline_tokens)
     candidate_words = set(candidate_tokens)
     shared_words = baseline_words & candidate_words
@@ -305,6 +316,13 @@ def compare_transcripts(baseline: dict[str, Any], candidate: dict[str, Any]) -> 
         "candidate_missing_token_counts": dict(sorted(missing_counts.items())),
         "candidate_extra_token_counts": dict(sorted(extra_counts.items())),
         "candidate_has_final_transcript": bool(candidate_texts and all(text.strip() for text in candidate_texts)),
+        "expected_final_transcript": expected,
+        "candidate_expected_match_runs": len(candidate_expected_matches) if expected is not None else None,
+        "candidate_expected_mismatch_runs": (
+            len(candidate_nonempty_texts) - len(candidate_expected_matches)
+            if expected is not None
+            else None
+        ),
     }
 
 
@@ -331,6 +349,23 @@ def token_list(text: str) -> list[str]:
     ]
 
 
+def expected_final_transcript(artifact: dict[str, Any]) -> str | None:
+    settings = artifact.get("settings", {}) if isinstance(artifact.get("settings"), dict) else {}
+    metadata = settings.get("metadata", {}) if isinstance(settings.get("metadata"), dict) else {}
+    candidates = [artifact.get(key) for key in EXPECTED_TRANSCRIPT_KEYS]
+    candidates.extend(metadata.get(key) for key in EXPECTED_TRANSCRIPT_KEYS)
+    for candidate in candidates:
+        if isinstance(candidate, str):
+            normalized = normalize_transcript(candidate)
+            if normalized:
+                return normalized
+    return None
+
+
+def normalize_transcript(text: str) -> str:
+    return " ".join(token_list(text))
+
+
 def recommend(
     *,
     metric_comparison: dict[str, dict[str, float | None]],
@@ -353,14 +388,18 @@ def recommend(
         if (metric_comparison[metric]["candidate_improvement_percent"] or 0.0) >= latency_win_percent
     ]
     protocol_errors = success["candidate_protocol_errors_p95"] or 0.0
+    expected_mismatches = transcript["candidate_expected_mismatch_runs"] or 0
     transcript_ok = bool(transcript["candidate_has_final_transcript"]) and (
         transcript["exact_match"] or (transcript["word_overlap_ratio"] is not None and transcript["word_overlap_ratio"] >= 0.8)
-    )
+    ) and expected_mismatches == 0
     resource_regressions = [
         metric
         for metric, values in resource_comparison.items()
         if (values["candidate_increase_percent"] or 0.0) > 25.0
     ]
+    transcript_blocking_gaps = []
+    if expected_mismatches:
+        transcript_blocking_gaps.append("transcript_sanity:candidate.expected_final_transcript_mismatch")
 
     if benchmark_input_gaps:
         decision = "keep_experimental"
@@ -387,6 +426,7 @@ def recommend(
         "resource_regressions": resource_regressions,
         "batched_transcription_role": "nice_to_have_context_only",
         "blocking_gaps": benchmark_input_gaps,
+        "transcript_blocking_gaps": transcript_blocking_gaps,
     }
 
 

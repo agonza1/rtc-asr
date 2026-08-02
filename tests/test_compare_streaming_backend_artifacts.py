@@ -38,6 +38,7 @@ def artifact(
     peak_rss_mb: float | None = None,
     cpu_utilization_percent: float | None = None,
     package_power_watts: float | None = None,
+    expected_final_transcript: str | None = None,
 ):
     settings = {
         "partial_interval_ms": partial_interval_ms,
@@ -49,7 +50,7 @@ def artifact(
     }
     if concurrency is not None:
         settings["concurrency"] = concurrency
-    return {
+    payload = {
         "audio": {
             "source": source,
             "sample_rate": sample_rate,
@@ -99,6 +100,9 @@ def artifact(
             "protocol_errors": {"p95": errors},
         },
     }
+    if expected_final_transcript is not None:
+        payload["expected_final_transcript"] = expected_final_transcript
+    return payload
 
 
 def test_compare_artifacts_recommends_support_when_candidate_wins_live_metrics() -> None:
@@ -193,6 +197,40 @@ def test_compare_artifacts_reports_missing_tail_and_repeated_token_drift() -> No
     assert sanity["word_count_delta"] == -1
     assert sanity["candidate_missing_token_counts"] == {"now": 1, "transfer": 1}
     assert sanity["candidate_extra_token_counts"] == {"billing": 1}
+
+
+def test_compare_artifacts_blocks_expected_final_transcript_mismatch() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="rolling_window",
+            first_partial=500.0,
+            final=300.0,
+            transcript="hello hello final tail",
+            expected_final_transcript="hello hello final tail",
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="stateful",
+            first_partial=200.0,
+            final=100.0,
+            transcript="hello final tail",
+            expected_final_transcript="hello hello final tail",
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    sanity = report["transcript_sanity"]
+    assert sanity["expected_final_transcript"] == "hello hello final tail"
+    assert sanity["candidate_expected_match_runs"] == 0
+    assert sanity["candidate_expected_mismatch_runs"] == 1
+    assert report["recommendation"]["decision"] == "keep_experimental"
+    assert report["recommendation"]["transcript_blocking_gaps"] == [
+        "transcript_sanity:candidate.expected_final_transcript_mismatch"
+    ]
 
 
 def test_compare_artifacts_weighs_latency_win_against_resource_regression() -> None:
