@@ -167,6 +167,23 @@ class BarrierProbeLocalSttClient(FakeLocalSttClient):
         await super().send_audio(chunk)
 
 
+class FailingConcurrentStartLocalSttClient(FakeLocalSttClient):
+    instances: list["FailingConcurrentStartLocalSttClient"] = []
+    instances_created = 0
+
+    def __init__(self, url: str) -> None:
+        super().__init__(url)
+        type(self).instances_created += 1
+        self.instance_index = type(self).instances_created
+        type(self).instances.append(self)
+
+    async def start(self, **kwargs):
+        if self.instance_index == 2:
+            await asyncio.sleep(0.01)
+            raise ConnectionError("forced startup failure")
+        return await super().start(**kwargs)
+
+
 class BrokenSendLocalSttClient(FakeLocalSttClient):
     async def send_audio(self, chunk: bytes) -> None:
         if self.sent:
@@ -937,6 +954,38 @@ def test_run_benchmark_releases_concurrent_sessions_after_all_clients_are_ready(
     )
 
     assert BarrierProbeLocalSttClient.ready_count_at_first_send == [3, 3, 3]
+
+
+def test_run_benchmark_cleans_up_concurrent_sessions_when_startup_fails() -> None:
+    FailingConcurrentStartLocalSttClient.instances = []
+    FailingConcurrentStartLocalSttClient.instances_created = 0
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    try:
+        asyncio.run(
+            benchmark_module.run_benchmark(
+                url="ws://example.test/v1/stt/stream",
+                audio=audio,
+                partial_interval_ms=100,
+                runs=1,
+                concurrency=3,
+                realtime_pace=False,
+                client_factory=FailingConcurrentStartLocalSttClient,
+            )
+        )
+    except ConnectionError as exc:
+        assert "forced startup failure" in str(exc)
+    else:
+        raise AssertionError("expected concurrent startup failure to propagate")
+
+    assert len(FailingConcurrentStartLocalSttClient.instances) == 3
+    assert all(client.closed for client in FailingConcurrentStartLocalSttClient.instances)
+    assert all(not client.sent for client in FailingConcurrentStartLocalSttClient.instances)
 
 
 def test_run_benchmark_records_send_disconnect_as_dropped_frames_and_protocol_error() -> None:

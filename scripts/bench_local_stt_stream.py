@@ -673,8 +673,8 @@ async def run_benchmark(
     try:
         for index in range(1, runs + 1):
             send_start_barrier = asyncio.Barrier(concurrency) if concurrency > 1 else None
-            batch = await asyncio.gather(
-                *(
+            tasks = [
+                asyncio.create_task(
                     _run_once(
                         index=((index - 1) * concurrency) + session_index,
                         run_index=index,
@@ -690,9 +690,19 @@ async def run_benchmark(
                         client_factory=factory,
                         send_start_barrier=send_start_barrier,
                     )
-                    for session_index in range(1, concurrency + 1)
                 )
-            )
+                for session_index in range(1, concurrency + 1)
+            ]
+            try:
+                batch = await asyncio.gather(*tasks)
+            except Exception:
+                if send_start_barrier is not None and not send_start_barrier.broken:
+                    await send_start_barrier.abort()
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                raise
             samples.extend(batch)
     finally:
         metrics_monitor.stop()
@@ -817,21 +827,27 @@ async def _run_once(
         partial_interval_ms=partial_interval_ms,
     )
 
-    ready_event = await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
-    if isinstance(ready_event, dict):
-        ready_metadata = ready_event.get("metadata")
-        if isinstance(ready_metadata, dict):
-            decoder_mode = ready_metadata.get("decoder_mode")
-            if isinstance(decoder_mode, str):
-                decoder_modes.append(decoder_mode)
-            backend = ready_metadata.get("backend")
-            if isinstance(backend, str):
-                backend_name = backend
-            model = ready_metadata.get("model")
-            if isinstance(model, str):
-                model_name = model
-    if send_start_barrier is not None:
-        await send_start_barrier.wait()
+    try:
+        ready_event = await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
+        if isinstance(ready_event, dict):
+            ready_metadata = ready_event.get("metadata")
+            if isinstance(ready_metadata, dict):
+                decoder_mode = ready_metadata.get("decoder_mode")
+                if isinstance(decoder_mode, str):
+                    decoder_modes.append(decoder_mode)
+                backend = ready_metadata.get("backend")
+                if isinstance(backend, str):
+                    backend_name = backend
+                model = ready_metadata.get("model")
+                if isinstance(model, str):
+                    model_name = model
+        if send_start_barrier is not None:
+            await send_start_barrier.wait()
+    except BaseException:
+        try:
+            await client.close(graceful=False)
+        finally:
+            raise
     receive_done = asyncio.Event()
 
     async def receive_loop() -> None:
