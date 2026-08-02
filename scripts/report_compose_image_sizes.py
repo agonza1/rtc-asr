@@ -195,9 +195,15 @@ def records_summary(
             for record in over_budget
             if record.size_bytes is not None
         )
+        largest_budget_utilization_percent = (
+            round((largest.size_bytes or 0) / (max_size_mb * 1_000_000) * 100, 1)
+            if largest and largest.size_bytes is not None and max_size_mb > 0
+            else None
+        )
         summary.update(
             {
                 "image_size_budget_mb": max_size_mb,
+                "largest_image_budget_utilization_percent": largest_budget_utilization_percent,
                 "over_budget": bool(over_budget),
                 "over_budget_count": len(over_budget),
                 "over_budget_tags": [record.tag for record in over_budget],
@@ -210,6 +216,11 @@ def records_summary(
         summary.update(
             {
                 "total_image_size_budget_mb": max_total_size_mb,
+                "total_budget_utilization_percent": (
+                    round(total_bytes / (max_total_size_mb * 1_000_000) * 100, 1)
+                    if max_total_size_mb > 0
+                    else None
+                ),
                 "total_over_budget": total_bytes > max_total_size_mb * 1_000_000,
                 "total_budget_excess_bytes": total_budget_excess_bytes,
                 "total_budget_excess_mb": round(total_budget_excess_bytes / 1_000_000, 1),
@@ -308,6 +319,11 @@ def records_to_markdown(
             max(0.0, (record.size_bytes or 0) / 1_000_000 - max_size_mb)
             for record in over_budget
         )
+        largest_budget_utilization_percent = (
+            max(present_sizes) / (max_size_mb * 1_000_000) * 100
+            if present_sizes and max_size_mb > 0
+            else None
+        )
         rows.append(
             "Image size budget: {budget:.1f} MB, {count} image{plural} over budget, {excess:.1f} MB total excess.".format(
                 budget=max_size_mb,
@@ -316,6 +332,8 @@ def records_to_markdown(
                 excess=over_budget_excess_mb,
             )
         )
+        if largest_budget_utilization_percent is not None:
+            rows.append(f"Largest image budget utilization: {largest_budget_utilization_percent:.1f}%")
     if max_total_size_mb is not None:
         total_budget_excess_mb = max(0.0, total_bytes / 1_000_000 - max_total_size_mb)
         rows.append(
@@ -325,6 +343,8 @@ def records_to_markdown(
                 excess=total_budget_excess_mb,
             )
         )
+        if max_total_size_mb > 0:
+            rows.append(f"Total image size budget utilization: {total_bytes / (max_total_size_mb * 1_000_000) * 100:.1f}%")
     if missing:
         rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
