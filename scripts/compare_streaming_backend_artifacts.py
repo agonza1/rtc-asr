@@ -15,6 +15,11 @@ LATENCY_METRICS = [
     "decoder_compute_rtf",
     "asr_decode_p95_ms",
 ]
+RESOURCE_METRICS = [
+    "peak_rss_mb",
+    "cpu_utilization_percent",
+    "package_power_watts",
+]
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -57,10 +62,12 @@ def compare_artifacts(
         metric: compare_metric(baseline, candidate, metric)
         for metric in LATENCY_METRICS
     }
+    resource_comparison = compare_resource_metrics(baseline, candidate)
     transcript = compare_transcripts(baseline, candidate)
     success = compare_success(baseline, candidate)
     recommendation = recommend(
         metric_comparison=metric_comparison,
+        resource_comparison=resource_comparison,
         transcript=transcript,
         success=success,
         benchmark_input_gaps=benchmark_input_gaps,
@@ -72,6 +79,7 @@ def compare_artifacts(
         "baseline": describe_artifact(baseline, baseline_path, baseline_name),
         "candidate": describe_artifact(candidate, candidate_path, candidate_name),
         "comparison": metric_comparison,
+        "resource_comparison": resource_comparison,
         "success": success,
         "transcript_sanity": transcript,
         "benchmark_input_gaps": benchmark_input_gaps,
@@ -151,6 +159,40 @@ def normalized_environment(artifact: dict[str, Any]) -> dict[str, Any]:
         "cpu_logical_cores": environment.get("cpu_logical_cores"),
         "memory_total_mb": environment.get("memory_total_mb"),
     }
+
+
+def compare_resource_metrics(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        metric: compare_resource_metric(baseline, candidate, metric)
+        for metric in RESOURCE_METRICS
+    }
+
+
+def compare_resource_metric(baseline: dict[str, Any], candidate: dict[str, Any], metric: str) -> dict[str, float | None]:
+    baseline_value = resource_value(baseline, metric)
+    candidate_value = resource_value(candidate, metric)
+    delta = None
+    candidate_increase_percent = None
+    if baseline_value is not None and candidate_value is not None:
+        delta = round(candidate_value - baseline_value, 3)
+        if baseline_value > 0:
+            candidate_increase_percent = round(((candidate_value - baseline_value) / baseline_value) * 100, 2)
+    return {
+        "baseline": baseline_value,
+        "candidate": candidate_value,
+        "delta": delta,
+        "candidate_increase_percent": candidate_increase_percent,
+    }
+
+
+def resource_value(artifact: dict[str, Any], metric: str) -> float | None:
+    environment = artifact.get("environment", {}) if isinstance(artifact.get("environment"), dict) else {}
+    value = environment.get(metric)
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
 
 
 def compare_metric(baseline: dict[str, Any], candidate: dict[str, Any], metric: str) -> dict[str, float | None]:
@@ -244,6 +286,7 @@ def token_list(text: str) -> list[str]:
 def recommend(
     *,
     metric_comparison: dict[str, dict[str, float | None]],
+    resource_comparison: dict[str, dict[str, float | None]],
     transcript: dict[str, Any],
     success: dict[str, float | None],
     benchmark_input_gaps: list[str],
@@ -265,6 +308,11 @@ def recommend(
     transcript_ok = bool(transcript["candidate_has_final_transcript"]) and (
         transcript["exact_match"] or (transcript["word_overlap_ratio"] is not None and transcript["word_overlap_ratio"] >= 0.8)
     )
+    resource_regressions = [
+        metric
+        for metric, values in resource_comparison.items()
+        if (values["candidate_increase_percent"] or 0.0) > 25.0
+    ]
 
     if benchmark_input_gaps:
         decision = "keep_experimental"
@@ -272,6 +320,9 @@ def recommend(
     elif missing:
         decision = "keep_experimental"
         rationale = f"Missing comparable live p95 metrics for {', '.join(missing)}."
+    elif resource_regressions:
+        decision = "keep_experimental"
+        rationale = f"{candidate_name} improves latency but raises resource use on {', '.join(resource_regressions)}; keep it experimental until the operational tradeoff is acceptable."
     elif len(wins) == len(key_metrics) and transcript_ok and protocol_errors == 0:
         decision = "support_low_latency_backend"
         rationale = f"{candidate_name} clears the live latency gate without transcript or protocol regressions."
@@ -284,6 +335,8 @@ def recommend(
         "rationale": rationale,
         "latency_win_percent_gate": latency_win_percent,
         "required_live_metrics": key_metrics,
+        "resource_regression_percent_gate": 25.0,
+        "resource_regressions": resource_regressions,
         "batched_transcription_role": "nice_to_have_context_only",
         "blocking_gaps": benchmark_input_gaps,
     }
@@ -307,6 +360,10 @@ def describe_artifact(artifact: dict[str, Any], path: Path, name: str) -> dict[s
         "realtime_pace": settings.get("realtime_pace"),
         "concurrency": normalized_settings(artifact)["concurrency"],
         "scenario": settings.get("scenario"),
+        "resource_metrics": {
+            metric: resource_value(artifact, metric)
+            for metric in RESOURCE_METRICS
+        },
         "metadata": settings.get("metadata", {}),
     }
 
