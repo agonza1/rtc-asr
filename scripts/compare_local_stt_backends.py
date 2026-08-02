@@ -84,6 +84,22 @@ def backend_key(artifact: dict[str, Any]) -> str:
     return f"{backend}:{decoder_mode}"
 
 
+def model_name(artifact: dict[str, Any]) -> str | None:
+    samples = artifact.get("samples")
+    if isinstance(samples, list):
+        for sample in samples:
+            if not isinstance(sample, dict):
+                continue
+            model = sample.get("model")
+            if isinstance(model, str) and model:
+                return model
+    return first_optional_string(
+        artifact.get("model"),
+        nested_value(artifact, "target", "model"),
+        nested_value(artifact, "settings", "model"),
+    )
+
+
 def first_decoder_mode(sample: dict[str, Any]) -> str | None:
     modes = sample.get("decoder_modes")
     if isinstance(modes, list):
@@ -103,6 +119,13 @@ def first_string(*values: object) -> str:
         if isinstance(value, str) and value:
             return value
     return "unknown"
+
+
+def first_optional_string(*values: object) -> str | None:
+    for value in values:
+        if isinstance(value, str) and value:
+            return value
+    return None
 
 
 def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
@@ -210,6 +233,7 @@ def compare_artifacts(
         by_backend[key] = {
             "path": str(path),
             "metrics": {metric: metric_percentiles(summary, metric) for metric in BACKEND_KEY_METRICS},
+            "model": model_name(artifact),
             "target": artifact.get("target") or {},
             "audio": artifact.get("audio") or {},
             "settings": artifact.get("settings") or {},
@@ -366,8 +390,8 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
             "",
             "Backend evidence:",
             "",
-            "| Backend | Artifact | Runs | First partial p95 | Final after finalize p95 | Protocol clean | Final transcript runs | Unique final transcripts |",
-            "| --- | --- | ---: | ---: | ---: | --- | ---: | --- |",
+            "| Backend | Model | Artifact | Runs | First partial p95 | Final after finalize p95 | Protocol clean | Final transcript runs | Unique final transcripts |",
+            "| --- | --- | --- | ---: | ---: | ---: | --- | ---: | --- |",
         ]
     )
     for backend, evidence in sorted(comparison["backends"].items()):
@@ -378,6 +402,7 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
             + " | ".join(
                 [
                     backend,
+                    _format_optional_value(evidence.get("model")),
                     _format_optional_value(evidence.get("path")),
                     _format_optional_value(evidence.get("runs")),
                     _format_ms(metrics["time_to_first_interim_ms"]["p95"]),
@@ -404,6 +429,7 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
                 f"## {backend}",
                 "",
                 f"- Artifact: {_format_optional_value(evidence.get('path'))}",
+                f"- Model: {_format_optional_value(evidence.get('model'))}",
                 f"- Command: {_format_optional_value(evidence.get('benchmark_command'))}",
                 f"- Target: {_format_mapping(evidence.get('target'))}",
                 f"- Audio: {_format_mapping(evidence.get('audio'))}",

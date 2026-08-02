@@ -30,6 +30,7 @@ def write_artifact(
     peak_rss_mb: float | None = 512.5,
     cpu_utilization_percent: float | None = 42.0,
     machine: str = "arm64",
+    model: str = "tiny-fixture",
 ) -> Path:
     partial_cadence_summary = (
         {"p50": partial_cadence_p95 - 10.0, "p95": partial_cadence_p95, "p99": partial_cadence_p95 + 10.0}
@@ -82,6 +83,7 @@ def write_artifact(
                 "samples": [
                     {
                         "backend": backend,
+                        "model": model,
                         "decoder_modes": [decoder_mode],
                         "decoder_mode_counts": {decoder_mode: 3},
                         "final_transcript": final_transcript,
@@ -150,6 +152,7 @@ def test_compare_backends_recommends_supported_when_candidate_clears_latency_gat
         "peak_rss_mb": 512.5,
         "cpu_utilization_percent": 42.0,
     }
+    assert comparison["backends"]["vosk:stateful"]["model"] == "tiny-fixture"
     assert comparison["recommendation"] == "Keep vosk:stateful as a supported low-latency backend."
 
 
@@ -382,12 +385,13 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "Candidate status: supported" in markdown
     assert "Recommendation: Keep vosk:stateful as a supported low-latency backend." in markdown
     assert "| time_to_first_interim_ms | 80 ms |" in markdown
-    assert "| faster-whisper:rolling_window |" in markdown
-    assert "| vosk:stateful |" in markdown
+    assert "| faster-whisper:rolling_window | tiny-fixture |" in markdown
+    assert "| vosk:stateful | tiny-fixture |" in markdown
     assert "hello from the voice agent" in markdown
     assert "- none" in markdown
     assert "Run context:" in markdown
     assert "Command: python scripts/bench_local_stt_stream.py" in markdown
+    assert "Model: tiny-fixture" in markdown
     assert "Hardware: cpu_logical_cores=8, machine=arm64, memory_total_mb=32768.0" in markdown
     assert "Resource metrics: cpu_utilization_percent=42.0, peak_rss_mb=512.5" in markdown
     assert "Settings: concurrency=1" in markdown
