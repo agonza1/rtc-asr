@@ -40,6 +40,7 @@ VOICE_AGENT_SEND_AGGREGATE_MS = {80, 160}
 BACKEND_KEY_METRICS = (
     *TRANSPORT_KEY_METRICS,
     "partial_cadence_p95_ms",
+    "partial_cadence_jitter_ms",
     "decoder_compute_rtf",
 )
 EXPECTED_TRANSCRIPT_KEYS = (

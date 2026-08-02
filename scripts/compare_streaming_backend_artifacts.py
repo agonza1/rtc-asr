@@ -10,6 +10,7 @@ from typing import Any
 LATENCY_METRICS = [
     "time_to_first_interim_ms",
     "partial_cadence_p95_ms",
+    "partial_cadence_jitter_ms",
     "time_to_final_after_finalize_ms",
     "audio_end_finalization_rtf",
     "decoder_compute_rtf",

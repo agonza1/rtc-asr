@@ -563,6 +563,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "audio_send_queue_depth_samples",
         "audio_send_latency_p95_ms",
         "partial_cadence_p95_ms",
+        "partial_cadence_jitter_ms",
         "pcm16_normalization_p95_ms",
         "asr_receive_loop_append_p95_ms",
         "asr_receive_loop_append_samples",
@@ -1053,6 +1054,7 @@ async def _run_once(
         "audio_send_queue_depth_samples": len(audio_send_queue_depth_latencies),
         "audio_send_latency_p95_ms": send_p95,
         "partial_cadence_p95_ms": percentile(partial_cadences, 0.95),
+        "partial_cadence_jitter_ms": compute_partial_cadence_jitter_ms(partial_cadences),
         "pcm16_normalization_p95_ms": percentile(pcm16_normalization_latencies, 0.95),
         "asr_receive_loop_append_p95_ms": _coalesce_optional_ms(percentile(asr_receive_loop_append_latencies, 0.95), receive_p95),
         "asr_receive_loop_append_samples": len(asr_receive_loop_append_latencies),
@@ -1187,6 +1189,14 @@ def compute_decoder_compute_rtf(cumulative_decode_ms_values: list[float], audio:
     if duration_ms <= 0:
         return None
     return round(max(cumulative_decode_ms_values) / duration_ms, 3)
+
+
+def compute_partial_cadence_jitter_ms(cadences_ms: list[float]) -> float | None:
+    if not cadences_ms:
+        return None
+    if len(cadences_ms) == 1:
+        return 0.0
+    return round(statistics.pstdev(cadences_ms), 1)
 
 
 def compute_transport_audio_overhead_bytes(*, transport: str, frames_sent: int) -> int:
