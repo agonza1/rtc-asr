@@ -929,7 +929,6 @@ def test_run_benchmark_records_concurrent_streaming_sessions() -> None:
     assert {sample["concurrency"] for sample in payload["samples"]} == {3}
     assert payload["summary"]["successful_runs"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
 
-
 def test_run_benchmark_releases_concurrent_sessions_after_all_clients_are_ready() -> None:
     BarrierProbeLocalSttClient.instances_created = 0
     BarrierProbeLocalSttClient.ready_count = 0

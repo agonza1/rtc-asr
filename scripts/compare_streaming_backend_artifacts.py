@@ -246,7 +246,7 @@ def recommend(
 
     if benchmark_input_gaps:
         decision = "keep_experimental"
-        rationale = "Re-run backend benchmarks with matching concurrency before comparing live latency."
+        rationale = "Re-run backend benchmarks with matching audio, pacing, concurrency, scenario, and hardware before comparing live latency."
     elif missing:
         decision = "keep_experimental"
         rationale = f"Missing comparable live p95 metrics for {', '.join(missing)}."
