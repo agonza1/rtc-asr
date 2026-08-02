@@ -39,6 +39,11 @@ BACKEND_KEY_METRICS = (
     "partial_cadence_p95_ms",
     "decoder_compute_rtf",
 )
+EXPECTED_TRANSCRIPT_KEYS = (
+    "expected_final_transcript",
+    "expected_transcript",
+    "reference_transcript",
+)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -175,10 +180,15 @@ def transcript_sanity(artifact: dict[str, Any]) -> dict[str, Any]:
             if isinstance(transcript, str):
                 normalized_transcripts.append(normalize_transcript(transcript))
     nonempty_transcripts = [transcript for transcript in normalized_transcripts if transcript]
+    expected = expected_final_transcript(artifact)
+    expected_matches = [transcript for transcript in nonempty_transcripts if expected is not None and transcript == expected]
     return {
         "runs_with_final_transcript": len(nonempty_transcripts),
         "empty_final_transcript_runs": len(normalized_transcripts) - len(nonempty_transcripts),
         "unique_final_transcripts": sorted(set(nonempty_transcripts)),
+        "expected_final_transcript": expected,
+        "expected_match_runs": len(expected_matches) if expected is not None else None,
+        "expected_mismatch_runs": len(nonempty_transcripts) - len(expected_matches) if expected is not None else None,
     }
 
 
@@ -204,6 +214,17 @@ def benchmark_command(artifact: dict[str, Any]) -> str | None:
         return benchmark["command"]
     command = artifact.get("benchmark_command")
     return command if isinstance(command, str) else None
+
+
+def expected_final_transcript(artifact: dict[str, Any]) -> str | None:
+    candidates = [artifact.get(key) for key in EXPECTED_TRANSCRIPT_KEYS]
+    settings = artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {}
+    metadata = settings.get("metadata") if isinstance(settings.get("metadata"), dict) else {}
+    candidates.extend(metadata.get(key) for key in EXPECTED_TRANSCRIPT_KEYS)
+    for candidate in candidates:
+        if isinstance(candidate, str) and normalize_transcript(candidate):
+            return normalize_transcript(candidate)
+    return None
 
 
 def normalize_transcript(value: str) -> str:
@@ -343,6 +364,8 @@ def transcript_sanity_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: 
         gaps.append(f"empty_final_transcript:{candidate_key}")
     if baseline_transcripts and candidate_transcripts and baseline_transcripts != candidate_transcripts:
         gaps.append(f"final_transcript_mismatch:{candidate_key}")
+    if candidate["expected_mismatch_runs"]:
+        gaps.append(f"expected_final_transcript_mismatch:{candidate_key}")
     return gaps
 
 
@@ -356,7 +379,10 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
     if any(blocker.startswith("protocol_errors:") for blocker in blockers):
         return "Fix streaming protocol errors before comparing backend latency."
     if any("final_transcript" in blocker for blocker in blockers):
-        return f"Keep {candidate_key} experimental until final transcripts match the baseline sanity check."
+        return (
+            f"Keep {candidate_key} experimental until final transcripts match the baseline "
+            "and expected voice-agent phrase sanity checks."
+        )
     if any(blocker.startswith("missing_metric:") for blocker in blockers):
         return "Run backend benchmarks with complete streaming latency, cadence, and decoder compute metrics."
     if any(blocker.startswith("missing_resource_metric:") for blocker in blockers):
@@ -390,8 +416,8 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
             "",
             "Backend evidence:",
             "",
-            "| Backend | Model | Artifact | Runs | First partial p95 | Final after finalize p95 | Protocol clean | Final transcript runs | Unique final transcripts |",
-            "| --- | --- | --- | ---: | ---: | ---: | --- | ---: | --- |",
+            "| Backend | Model | Artifact | Runs | First partial p95 | Final after finalize p95 | Protocol clean | Final transcript runs | Expected transcript matches | Unique final transcripts |",
+            "| --- | --- | --- | ---: | ---: | ---: | --- | ---: | ---: | --- |",
         ]
     )
     for backend, evidence in sorted(comparison["backends"].items()):
@@ -409,6 +435,7 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
                     _format_ms(metrics["time_to_final_after_finalize_ms"]["p95"]),
                     str(evidence["protocol_error_free"]),
                     str(sanity["runs_with_final_transcript"]),
+                    _format_expected_matches(sanity),
                     _format_transcripts(sanity["unique_final_transcripts"]),
                 ]
             )
@@ -473,6 +500,12 @@ def _format_transcripts(values: object) -> str:
     if not isinstance(values, list) or not values:
         return "missing"
     return " / ".join(str(value) for value in values)
+
+
+def _format_expected_matches(sanity: dict[str, Any]) -> str:
+    if sanity.get("expected_final_transcript") is None:
+        return "not provided"
+    return f"{sanity['expected_match_runs']}/{sanity['runs_with_final_transcript']}"
 
 
 def _format_mapping(value: object) -> str:

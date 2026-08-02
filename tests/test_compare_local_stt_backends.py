@@ -31,6 +31,7 @@ def write_artifact(
     cpu_utilization_percent: float | None = 42.0,
     machine: str = "arm64",
     model: str = "tiny-fixture",
+    expected_final_transcript: str | None = None,
 ) -> Path:
     partial_cadence_summary = (
         {"p50": partial_cadence_p95 - 10.0, "p95": partial_cadence_p95, "p99": partial_cadence_p95 + 10.0}
@@ -69,6 +70,11 @@ def write_artifact(
                     "send_aggregate_ms": send_aggregate_ms,
                     "concurrency": concurrency,
                     "scenario": "voice-agent-80ms-aggregation",
+                    "metadata": (
+                        {"expected_final_transcript": expected_final_transcript}
+                        if expected_final_transcript is not None
+                        else {}
+                    ),
                 },
                 "environment": {
                     "platform": "TestOS",
@@ -147,6 +153,9 @@ def test_compare_backends_recommends_supported_when_candidate_clears_latency_gat
         "runs_with_final_transcript": 1,
         "empty_final_transcript_runs": 0,
         "unique_final_transcripts": ["hello from the voice agent"],
+        "expected_final_transcript": None,
+        "expected_match_runs": None,
+        "expected_mismatch_runs": None,
     }
     assert comparison["backends"]["vosk:stateful"]["resource_metrics"] == {
         "peak_rss_mb": 512.5,
@@ -327,8 +336,41 @@ def test_compare_backends_keeps_candidate_experimental_for_final_transcript_mism
     assert comparison["candidate_status"] == "experimental"
     assert "final_transcript_mismatch:vosk:stateful" in comparison["blocking_gaps"]
     assert comparison["recommendation"] == (
-        "Keep vosk:stateful experimental until final transcripts match the baseline sanity check."
+        "Keep vosk:stateful experimental until final transcripts match the baseline "
+        "and expected voice-agent phrase sanity checks."
     )
+
+
+def test_compare_backends_blocks_candidate_when_expected_repeated_phrase_is_missing(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=220.0,
+        final_transcript="hello hello final tail",
+        expected_final_transcript="hello hello final tail",
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=140.0,
+        final_transcript="hello final tail",
+        expected_final_transcript="hello hello final tail",
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    candidate_sanity = comparison["backends"]["vosk:stateful"]["transcript_sanity"]
+    assert comparison["candidate_status"] == "experimental"
+    assert candidate_sanity["expected_final_transcript"] == "hello hello final tail"
+    assert candidate_sanity["expected_match_runs"] == 0
+    assert candidate_sanity["expected_mismatch_runs"] == 1
+    assert "expected_final_transcript_mismatch:vosk:stateful" in comparison["blocking_gaps"]
 
 
 def test_compare_backends_keeps_candidate_experimental_for_empty_final_transcript(tmp_path: Path) -> None:
@@ -387,6 +429,7 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "| time_to_first_interim_ms | 80 ms |" in markdown
     assert "| faster-whisper:rolling_window | tiny-fixture |" in markdown
     assert "| vosk:stateful | tiny-fixture |" in markdown
+    assert "not provided" in markdown
     assert "hello from the voice agent" in markdown
     assert "- none" in markdown
     assert "Run context:" in markdown
