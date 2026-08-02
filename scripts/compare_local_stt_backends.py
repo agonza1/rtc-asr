@@ -72,7 +72,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Require each backend artifact to include peak RSS and CPU utilization evidence",
     )
+    parser.add_argument(
+        "--min-concurrency",
+        type=positive_int,
+        default=1,
+        help="Minimum concurrent stream count required in each backend artifact",
+    )
     return parser.parse_args(argv)
+
+
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("value must be greater than 0")
+    return parsed
 
 
 def backend_key(artifact: dict[str, Any]) -> str:
@@ -168,6 +181,12 @@ def comparable_setting_value(settings: dict[str, Any], key: str) -> Any:
     return value
 
 
+def effective_concurrency(evidence: dict[str, Any]) -> int:
+    settings = evidence.get("settings") if isinstance(evidence.get("settings"), dict) else {}
+    value = settings.get("concurrency")
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 1
+
+
 def protocol_error_free(artifact: dict[str, Any]) -> bool:
     diagnostics = artifact.get("diagnostics") if isinstance(artifact.get("diagnostics"), dict) else {}
     if diagnostics.get("protocol_error_total") not in (None, 0, 0.0):
@@ -246,9 +265,12 @@ def compare_artifacts(
     candidate_key: str,
     min_first_partial_win_ms: float = DEFAULT_MIN_FIRST_PARTIAL_WIN_MS,
     require_resource_metrics: bool = False,
+    min_concurrency: int = 1,
 ) -> dict[str, Any]:
     if min_first_partial_win_ms <= 0:
         raise ValueError("min_first_partial_win_ms must be positive")
+    if min_concurrency <= 0:
+        raise ValueError("min_concurrency must be positive")
 
     artifacts = [load_artifact(path) for path in paths]
     by_backend: dict[str, dict[str, Any]] = {}
@@ -294,6 +316,7 @@ def compare_artifacts(
     blockers.extend(transcript_gaps)
     blockers.extend(voice_agent_scenario_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
     blockers.extend(missing_evidence_gaps(by_backend, baseline_key, candidate_key) if not missing else [])
+    blockers.extend(concurrency_load_gaps(by_backend, baseline_key, candidate_key, min_concurrency) if not missing else [])
     if require_resource_metrics and not missing:
         blockers.extend(resource_metric_gaps(by_backend, baseline_key, candidate_key))
     if first_partial_win is None:
@@ -312,6 +335,7 @@ def compare_artifacts(
         "recommendation": recommendation,
         "batched_transcription_role": BATCHED_TRANSCRIPTION_ROLE,
         "min_first_partial_win_ms": min_first_partial_win_ms,
+        "min_concurrency": min_concurrency,
         "resource_metrics_required": require_resource_metrics,
         "p95_deltas_ms": p95_deltas,
         "blocking_gaps": blockers,
@@ -359,6 +383,20 @@ def resource_metric_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: st
         for metric in ("peak_rss_mb", "cpu_utilization_percent"):
             if metrics[metric] is None:
                 gaps.append(f"missing_resource_metric:{backend_key}:{metric}")
+    return gaps
+
+
+def concurrency_load_gaps(
+    by_backend: dict[str, dict[str, Any]],
+    baseline_key: str,
+    candidate_key: str,
+    min_concurrency: int,
+) -> list[str]:
+    gaps: list[str] = []
+    for backend_key in (baseline_key, candidate_key):
+        actual = effective_concurrency(by_backend[backend_key])
+        if actual < min_concurrency:
+            gaps.append(f"insufficient_concurrency:{backend_key}: required>={min_concurrency} actual={actual}")
     return gaps
 
 
@@ -418,6 +456,8 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
         )
     if any(blocker.startswith("missing_metric:") for blocker in blockers):
         return "Run backend benchmarks with complete streaming latency, cadence, and decoder compute metrics."
+    if any(blocker.startswith("insufficient_concurrency:") for blocker in blockers):
+        return "Run backend benchmarks at the required concurrent-session load."
     if any(blocker.startswith("missing_resource_metric:") for blocker in blockers):
         return "Re-run backend benchmarks with service resource monitoring enabled."
     if "finalization_regression" in blockers:
@@ -435,6 +475,7 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
         f"Recommendation: {comparison['recommendation']}",
         f"Batched transcription role: {comparison['batched_transcription_role']}",
         f"Minimum first-partial P95 win: {_format_ms(comparison['min_first_partial_win_ms'])}",
+        f"Minimum concurrency: {comparison['min_concurrency']}",
         f"Resource metrics required: {comparison['resource_metrics_required']}",
         "",
         "P95 metric deltas (baseline minus candidate):",
@@ -568,6 +609,7 @@ def main(argv: list[str] | None = None) -> int:
         candidate_key=args.candidate,
         min_first_partial_win_ms=args.min_first_partial_win_ms,
         require_resource_metrics=args.require_resource_metrics,
+        min_concurrency=args.min_concurrency,
     )
     encoded = json.dumps(comparison, indent=2, sort_keys=True) + "\n"
     if args.output is not None:
