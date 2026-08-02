@@ -161,6 +161,30 @@ def test_service_accepts_matching_ready_generation() -> None:
     assert service.metrics.local_stt_stale_ready_events_total == 0
 
 
+def test_service_accepts_string_generation_metadata() -> None:
+    service = LocalStreamingSTTService()
+    service._generation = 2
+    service._ready_event = asyncio.Event()
+
+    asyncio.run(service._handle_server_payload({"type": "ready", "metadata": {"local_stt_generation": "2"}}))
+
+    assert service._ready_event.is_set() is True
+    assert service.metrics.local_stt_ready_events_total == 1
+    assert service.metrics.local_stt_stale_ready_events_total == 0
+
+
+def test_service_rejects_boolean_generation_metadata() -> None:
+    service = LocalStreamingSTTService()
+    service._generation = 2
+    service._ready_event = asyncio.Event()
+
+    asyncio.run(service._handle_server_payload({"type": "ready", "metadata": {"local_stt_generation": True}}))
+
+    assert service._ready_event.is_set() is True
+    assert service.metrics.local_stt_ready_events_total == 1
+    assert service.metrics.local_stt_stale_ready_events_total == 0
+
+
 def test_service_counts_closed_acknowledgements() -> None:
     service = LocalStreamingSTTService()
 
