@@ -107,6 +107,14 @@ def write_artifact(
                     ),
                 },
                 "target": {"transport": "tcp_ws", "url": "ws://localhost/v1/stt/stream"},
+                "workload": {
+                    "kind": "local-stt-v1-streaming",
+                    "live_voice_agent_profile": (
+                        realtime_pace
+                        and frame_ms == 20
+                        and send_aggregate_ms in {80, 100, 120, 140, 160}
+                    ),
+                },
                 "audio": {
                     "source": "fixtures/voice-agent.wav",
                     "sample_rate": 16000,
@@ -515,6 +523,38 @@ def test_compare_backends_requires_realtime_paced_voice_agent_stream(tmp_path: P
     assert "missing_voice_agent_streaming_scenario:vosk:stateful" in comparison["blocking_gaps"]
     assert comparison["recommendation"] == (
         "Run both backends through a voice-agent streaming scenario with 20 ms frames and 80-160 ms aggregation."
+    )
+
+
+def test_compare_backends_rejects_legacy_streaming_target(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+    )
+    candidate_payload = json.loads(candidate.read_text(encoding="utf8"))
+    candidate_payload["target"] = {"transport": "tcp_ws", "url": "ws://localhost/ws/stream"}
+    candidate_payload["workload"] = {"kind": "legacy-buffered-streaming"}
+    candidate.write_text(json.dumps(candidate_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert "missing_local_stt_v1_streaming_workload:vosk:stateful" in comparison["blocking_gaps"]
+    assert "missing_local_stt_v1_streaming_target:vosk:stateful" in comparison["blocking_gaps"]
+    assert comparison["recommendation"] == (
+        "Run both backends through the Local STT v1 streaming benchmark instead of batch or legacy transport artifacts."
     )
 
 
