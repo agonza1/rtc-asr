@@ -39,8 +39,12 @@ VOICE_AGENT_FRAME_MS = 20
 VOICE_AGENT_SEND_AGGREGATE_MS = {80, 160}
 BACKEND_KEY_METRICS = (
     *TRANSPORT_KEY_METRICS,
+    "audio_end_finalization_rtf",
+    "audio_send_duration_ms",
+    "send_receive_overlap_ms",
     "partial_cadence_p95_ms",
     "partial_cadence_jitter_ms",
+    "pcm16_normalization_p95_ms",
     "decoder_compute_rtf",
 )
 EXPECTED_TRANSCRIPT_KEYS = (
