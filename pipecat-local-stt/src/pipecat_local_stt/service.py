@@ -411,12 +411,12 @@ class LocalStreamingSTTService(STTService):
         return self._metadata_generation(metadata)
 
     def _metadata_generation(self, metadata: dict[str, Any]) -> int | None:
-        generation = metadata.get("local_stt_generation")
-        if not isinstance(generation, int):
+        generation = _coerce_generation(metadata.get("local_stt_generation"))
+        if generation is None:
             client_metadata = metadata.get("client_metadata")
             if isinstance(client_metadata, dict):
-                generation = client_metadata.get("local_stt_generation")
-        return generation if isinstance(generation, int) else None
+                generation = _coerce_generation(client_metadata.get("local_stt_generation"))
+        return generation
 
     def _is_stale_transcript(self, event: LocalSTTTranscriptEvent) -> bool:
         generation = self._event_generation(event)
@@ -670,6 +670,18 @@ def _pong_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if payload.get("timestamp_ms") is not None:
         response["timestamp_ms"] = payload["timestamp_ms"]
     return response
+
+
+def _coerce_generation(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip()
+        if normalized.isdecimal():
+            return int(normalized)
+    return None
 
 
 async def _default_connect(config: LocalSTTConfig) -> WebSocketConnection:
