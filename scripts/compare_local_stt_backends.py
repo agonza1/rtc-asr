@@ -34,6 +34,7 @@ COMPARABLE_ENVIRONMENT_KEYS = (
     "processor",
     "cpu_logical_cores",
     "memory_total_mb",
+    "accelerator",
 )
 VOICE_AGENT_FRAME_MS = 20
 VOICE_AGENT_SEND_AGGREGATE_MS = {80, 100, 120, 140, 160}
@@ -662,6 +663,7 @@ def _format_hardware(environment: dict[str, Any]) -> str:
         "processor",
         "cpu_logical_cores",
         "memory_total_mb",
+        "accelerator",
     )
     hardware = {key: environment.get(key) for key in hardware_keys if environment.get(key) is not None}
     return _format_mapping(hardware)
