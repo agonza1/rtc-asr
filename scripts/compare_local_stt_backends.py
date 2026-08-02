@@ -329,12 +329,14 @@ def compare_artifacts(
         blockers.append("finalization_regression")
 
     recommendation = recommendation_text(blockers, candidate_key=candidate_key)
+    follow_up_issues = follow_up_issue_candidates(blockers, by_backend, candidate_key) if not missing else []
     return {
         "kind": "local-stt-v1-backend-latency-comparison",
         "baseline": baseline_key,
         "candidate": candidate_key,
         "candidate_status": "supported" if not blockers else "experimental",
         "recommendation": recommendation,
+        "follow_up_issue_candidates": follow_up_issues,
         "batched_transcription_role": BATCHED_TRANSCRIPTION_ROLE,
         "min_first_partial_win_ms": min_first_partial_win_ms,
         "min_concurrency": min_concurrency,
@@ -486,6 +488,42 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
     return f"Keep {candidate_key} experimental while searching for a stronger stateful backend."
 
 
+def follow_up_issue_candidates(
+    blockers: list[str], by_backend: dict[str, dict[str, Any]], candidate_key: str
+) -> list[dict[str, str]]:
+    transcript_blockers = [
+        blocker
+        for blocker in blockers
+        if blocker.startswith(
+            (
+                "final_transcript_mismatch:",
+                "expected_final_transcript_mismatch:",
+                "missing_final_transcript:",
+                "empty_final_transcript:",
+            )
+        )
+    ]
+    if not transcript_blockers:
+        return []
+
+    sanity = by_backend[candidate_key]["transcript_sanity"]
+    unique = _format_transcripts(sanity["unique_final_transcripts"])
+    expected = _format_optional_value(sanity["expected_final_transcript"])
+    return [
+        {
+            "title": f"Fix {candidate_key} Local STT final transcript sanity gaps",
+            "body": (
+                "The Vosk backend comparison found transcript correctness blockers that should be tracked "
+                "separately from the latency decision.\n\n"
+                f"Blocking gaps: {', '.join(transcript_blockers)}\n"
+                f"Expected final transcript: {expected}\n"
+                f"Observed final transcripts: {unique}\n"
+                f"Empty final transcript runs: {sanity['empty_final_transcript_runs']}"
+            ),
+        }
+    ]
+
+
 def format_markdown_report(comparison: dict[str, Any]) -> str:
     lines = [
         "# Local STT v1 Backend Comparison",
@@ -542,6 +580,13 @@ def format_markdown_report(comparison: dict[str, Any]) -> str:
     blockers = comparison["blocking_gaps"]
     if blockers:
         lines.extend(f"- {blocker}" for blocker in blockers)
+    else:
+        lines.append("- none")
+    lines.extend(["", "Follow-up issue candidates:"])
+    follow_ups = comparison.get("follow_up_issue_candidates")
+    if follow_ups:
+        for follow_up in follow_ups:
+            lines.append(f"- {follow_up['title']}: {follow_up['body'].splitlines()[2]}")
     else:
         lines.append("- none")
     lines.extend(["", "Run context:", ""])
@@ -622,6 +667,11 @@ def _format_hardware(environment: dict[str, Any]) -> str:
     return _format_mapping(hardware)
 
 
+def write_report(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf8")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     comparison = compare_artifacts(
@@ -634,11 +684,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     encoded = json.dumps(comparison, indent=2, sort_keys=True) + "\n"
     if args.output is not None:
-        args.output.write_text(encoded, encoding="utf8")
+        write_report(args.output, encoded)
     else:
         print(encoded, end="")
     if args.markdown_output is not None:
-        args.markdown_output.write_text(format_markdown_report(comparison), encoding="utf8")
+        write_report(args.markdown_output, format_markdown_report(comparison))
     return 1 if comparison["blocking_gaps"] else 0
 
 

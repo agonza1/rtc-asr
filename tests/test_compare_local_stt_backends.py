@@ -402,6 +402,19 @@ def test_compare_backends_keeps_candidate_experimental_for_final_transcript_mism
 
     assert comparison["candidate_status"] == "experimental"
     assert "final_transcript_mismatch:vosk:stateful" in comparison["blocking_gaps"]
+    assert comparison["follow_up_issue_candidates"] == [
+        {
+            "title": "Fix vosk:stateful Local STT final transcript sanity gaps",
+            "body": (
+                "The Vosk backend comparison found transcript correctness blockers that should be tracked "
+                "separately from the latency decision.\n\n"
+                "Blocking gaps: final_transcript_mismatch:vosk:stateful\n"
+                "Expected final transcript: missing\n"
+                "Observed final transcripts: hello final tail\n"
+                "Empty final transcript runs: 0"
+            ),
+        }
+    ]
     assert comparison["recommendation"] == (
         "Keep vosk:stateful experimental until final transcripts match the baseline "
         "and expected voice-agent phrase sanity checks."
@@ -438,6 +451,10 @@ def test_compare_backends_blocks_candidate_when_expected_repeated_phrase_is_miss
     assert candidate_sanity["expected_match_runs"] == 0
     assert candidate_sanity["expected_mismatch_runs"] == 1
     assert "expected_final_transcript_mismatch:vosk:stateful" in comparison["blocking_gaps"]
+    assert comparison["follow_up_issue_candidates"][0]["title"] == (
+        "Fix vosk:stateful Local STT final transcript sanity gaps"
+    )
+    assert "Expected final transcript: hello hello final tail" in comparison["follow_up_issue_candidates"][0]["body"]
 
 
 def test_compare_backends_requires_voice_agent_streaming_scenario(tmp_path: Path) -> None:
@@ -618,6 +635,46 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "not provided" in markdown
     assert "hello from the voice agent" in markdown
     assert "- none" in markdown
+    assert "Follow-up issue candidates:" in markdown
+
+
+def test_cli_creates_report_parent_directories(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+        final_after_finalize_p95=90.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        final_after_finalize_p95=85.0,
+    )
+    output = tmp_path / "reports" / "nested" / "comparison.json"
+    markdown_output = tmp_path / "reports" / "nested" / "comparison.md"
+
+    status = compare_module.main(
+        [
+            "--baseline",
+            "faster-whisper:rolling_window",
+            "--candidate",
+            "vosk:stateful",
+            "--output",
+            str(output),
+            "--markdown-output",
+            str(markdown_output),
+            str(baseline),
+            str(candidate),
+        ]
+    )
+
+    assert status == 0
+    assert json.loads(output.read_text(encoding="utf8"))["candidate_status"] == "supported"
+    markdown = markdown_output.read_text(encoding="utf8")
+    assert "Candidate status: supported" in markdown
     assert "Run context:" in markdown
     assert "Command: python scripts/bench_local_stt_stream.py" in markdown
     assert "Model: tiny-fixture" in markdown
@@ -766,3 +823,4 @@ def test_main_writes_markdown_report(tmp_path: Path) -> None:
     assert "Minimum concurrency: 1" in markdown
     assert "Resource metrics required: True" in markdown
     assert "Blocking gaps:" in markdown
+    assert "Follow-up issue candidates:" in markdown

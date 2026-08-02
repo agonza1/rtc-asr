@@ -50,6 +50,14 @@ LOCAL_STT_RAW_UDS_DECISION_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-raw-uds-
 LOCAL_STT_TRANSPORT_COMPARE_FLAGS ?=
 LOCAL_STT_TRANSPORT_MIN_RUNS ?=
 LOCAL_STT_RAW_UDS_MIN_WIN_MS ?= 5.0
+LOCAL_STT_BACKEND_ARTIFACTS ?=
+LOCAL_STT_BACKEND_BASELINE ?= faster-whisper:rolling_window
+LOCAL_STT_BACKEND_CANDIDATE ?= vosk:stateful
+LOCAL_STT_BACKEND_COMPARISON_OUTPUT ?= $(BENCHMARK_RESULTS_DIR)/local-stt-backend-comparison.json
+LOCAL_STT_BACKEND_COMPARISON_MARKDOWN ?= $(BENCHMARK_RESULTS_DIR)/local-stt-backend-comparison.md
+LOCAL_STT_BACKEND_MIN_FIRST_PARTIAL_WIN_MS ?= 50.0
+LOCAL_STT_BACKEND_MIN_CONCURRENCY ?= 2
+LOCAL_STT_BACKEND_COMPARE_FLAGS ?= --require-resource-metrics
 BENCHMARK_RESULT_DATE ?= $(shell date -u +%Y-%m-%d)
 BENCHMARK_SAMPLE_COUNT ?= 10
 BENCHMARK_REST_RUNS ?= 5
@@ -90,7 +98,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare compose-image-size-report compose-config-check benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan benchmark-artifact-cleanup-check clean lint docs start start-demo stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-local-stt-backend-compare compose-image-size-report compose-config-check benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan benchmark-artifact-cleanup-check clean lint docs start start-demo stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -114,6 +122,7 @@ help:
 	@echo "  make benchmark-qwen-mps-low-latency-sweep - Run qwen-asr low-latency sweep on Apple Silicon MPS"
 	@echo "  make benchmark-pipecat-e2e - Run a Pipecat-style end-to-end streaming benchmark against a local backend"
 	@echo "  make benchmark-local-stt-transport-compare - Compare tcp_ws, uds_ws, and raw_uds Local STT artifacts and write the Raw UDS decision record"
+	@echo "  make benchmark-local-stt-backend-compare - Compare default rolling-window and Vosk stateful Local STT artifacts"
 	@echo "  make compose-image-size-report - Report installed Compose backend image sizes"
 	@echo "  make compose-config-check - Validate default, demo, Qwen, Parakeet, and NeMo Compose configs"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
@@ -232,9 +241,9 @@ compose-config-check:
 	@echo "Validating docker compose configs..."
 	docker compose config >/dev/null
 	docker compose --profile demo config >/dev/null
-	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) ASR_BACKEND=qwen-asr docker compose config >/dev/null
-	ASR_IMAGE=$(PARAKEET_COMPOSE_IMAGE) ASR_BUILD_TARGET=$(PARAKEET_COMPOSE_TARGET) ASR_BACKEND=parakeet docker compose config >/dev/null
-	ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ASR_BUILD_TARGET=$(PARAKEET_NEMO_COMPOSE_TARGET) ASR_BACKEND=parakeet-nemo docker compose config >/dev/null
+	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) docker compose config >/dev/null
+	ASR_IMAGE=$(PARAKEET_COMPOSE_IMAGE) ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet ASR_BUILD_TARGET=$(PARAKEET_COMPOSE_TARGET) docker compose config >/dev/null
+	ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo ASR_BUILD_TARGET=$(PARAKEET_NEMO_COMPOSE_TARGET) docker compose config >/dev/null
 	@echo "  ✓ Compose configs validated"
 
 test: venv
@@ -305,7 +314,7 @@ benchmark-compose-qwen: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	PYTHONPATH=. $(PYTHON) tests/benchmark.py --mode v1-stt-stream --url $(COMPOSE_URL) --v1-ws-url $(COMPOSE_V1_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --v1-source-frame-ms $(BENCHMARK_V1_SOURCE_FRAME_MS) --v1-aggregation-ms $(BENCHMARK_V1_AGGREGATION_MS) --v1-partial-interval-ms $(BENCHMARK_V1_PARTIAL_INTERVAL_MS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) $(BENCHMARK_V1_REALTIME_FLAG) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
 
@@ -333,7 +342,7 @@ benchmark-compose-qwen-legacy: venv
 			echo "Using cached default base image $${base_image}"; \
 		fi; \
 	fi; \
-	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	PYTHONPATH=. $(PYTHON) tests/benchmark.py --url $(COMPOSE_URL) --ws-url $(COMPOSE_WS_URL) --backend qwen-asr --model $(QWEN_COMPOSE_MODEL) --qwen-dtype $(QWEN_COMPOSE_DTYPE) --sample-count $(BENCHMARK_SAMPLE_COUNT) --rest-runs $(BENCHMARK_REST_RUNS) --chunk-ms $(BENCHMARK_CHUNK_MS) --partial-interval-chunks $(BENCHMARK_PARTIAL_INTERVAL_CHUNKS) --partial-window $(BENCHMARK_PARTIAL_WINDOW) --request-retries $(BENCHMARK_REQUEST_RETRIES) --request-retry-delay $(BENCHMARK_REQUEST_RETRY_DELAY) --output $(BENCHMARK_RESULTS_DIR)/qwen-compose-$(BENCHMARK_RESULT_DATE).json; }
 
@@ -355,7 +364,7 @@ benchmark-compose-qwen-low-latency-sweep: venv
 	else \
 		echo "Using configured base image override $${base_image} without registry preflight"; \
 	fi; \
-	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) ASR_BACKEND=qwen-asr ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
+	ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) ASR_QWEN_MODEL=$(QWEN_COMPOSE_MODEL) ASR_DEVICE=cpu ASR_QWEN_DTYPE=$(QWEN_COMPOSE_DTYPE) ASR_QWEN_MAX_NEW_TOKENS=$(QWEN_COMPOSE_MAX_NEW_TOKENS) ASR_PRELOAD_MODEL=true PYTHON_BASE_IMAGE="$${base_image}" docker compose up -d --build; \
 	attempt=0; until curl -fsS $(COMPOSE_URL)/ready >/dev/null 2>&1; do attempt=$$((attempt + 1)); if [ $$attempt -ge 180 ]; then echo "Timed out waiting for readiness: $(COMPOSE_URL)/ready" >&2; exit 1; fi; sleep 5; done; echo "Compose stack ready: $(COMPOSE_URL)/ready"; \
 	for chunk in $(LOW_LATENCY_SWEEP_CHUNK_MS); do \
 		for window in $(LOW_LATENCY_SWEEP_PARTIAL_WINDOWS); do \
@@ -520,6 +529,11 @@ benchmark-local-stt-transport-compare:
 	@test -n "$(LOCAL_STT_TRANSPORT_ARTIFACTS)" || (echo "Set LOCAL_STT_TRANSPORT_ARTIFACTS to tcp_ws, uds_ws, and raw_uds benchmark JSON artifacts." >&2; exit 2)
 	@python3 scripts/compare_local_stt_transports.py --output $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT) --markdown-output $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN) --decision-output $(LOCAL_STT_RAW_UDS_DECISION_OUTPUT) --raw-uds-min-win-ms $(LOCAL_STT_RAW_UDS_MIN_WIN_MS) $(if $(LOCAL_STT_TRANSPORT_MIN_RUNS),--min-runs $(LOCAL_STT_TRANSPORT_MIN_RUNS),) $(LOCAL_STT_TRANSPORT_COMPARE_FLAGS) $(LOCAL_STT_TRANSPORT_ARTIFACTS)
 	@echo "Wrote $(LOCAL_STT_TRANSPORT_COMPARISON_OUTPUT), $(LOCAL_STT_TRANSPORT_COMPARISON_MARKDOWN), and $(LOCAL_STT_RAW_UDS_DECISION_OUTPUT)"
+
+benchmark-local-stt-backend-compare:
+	@test -n "$(LOCAL_STT_BACKEND_ARTIFACTS)" || (echo "Set LOCAL_STT_BACKEND_ARTIFACTS to matching rolling-window and Vosk stateful benchmark JSON artifacts." >&2; exit 2)
+	@python3 scripts/compare_local_stt_backends.py --baseline $(LOCAL_STT_BACKEND_BASELINE) --candidate $(LOCAL_STT_BACKEND_CANDIDATE) --output $(LOCAL_STT_BACKEND_COMPARISON_OUTPUT) --markdown-output $(LOCAL_STT_BACKEND_COMPARISON_MARKDOWN) --min-first-partial-win-ms $(LOCAL_STT_BACKEND_MIN_FIRST_PARTIAL_WIN_MS) --min-concurrency $(LOCAL_STT_BACKEND_MIN_CONCURRENCY) $(LOCAL_STT_BACKEND_COMPARE_FLAGS) $(LOCAL_STT_BACKEND_ARTIFACTS)
+	@echo "Wrote $(LOCAL_STT_BACKEND_COMPARISON_OUTPUT) and $(LOCAL_STT_BACKEND_COMPARISON_MARKDOWN)"
 
 compose-image-size-report:
 	@python3 scripts/report_compose_image_sizes.py $(COMPOSE_IMAGE_SIZE_REPORT_FLAGS) $(FASTER_WHISPER_COMPOSE_IMAGE) $(QWEN_COMPOSE_IMAGE) $(PARAKEET_COMPOSE_IMAGE) $(PARAKEET_NEMO_COMPOSE_IMAGE)
