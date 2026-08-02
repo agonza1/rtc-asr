@@ -26,6 +26,10 @@ def write_artifact(
     protocol_errors_p95: float = 0.0,
     partial_cadence_p95: float | None = 100.0,
     partial_cadence_jitter_p95: float | None = 8.0,
+    audio_end_finalization_rtf_p95: float | None = 0.08,
+    audio_send_duration_p95: float | None = 1000.0,
+    send_receive_overlap_p95: float | None = 800.0,
+    pcm16_normalization_p95: float | None = 1.0,
     decoder_compute_rtf_p95: float | None = 0.35,
     final_transcript: str = "hello from the voice agent",
     peak_rss_mb: float | None = 512.5,
@@ -54,6 +58,42 @@ def write_artifact(
     decoder_compute_summary = (
         {"p50": max(0.0, decoder_compute_rtf_p95 - 0.05), "p95": decoder_compute_rtf_p95, "p99": decoder_compute_rtf_p95 + 0.05}
         if decoder_compute_rtf_p95 is not None
+        else {"p50": None, "p95": None, "p99": None}
+    )
+    audio_end_finalization_rtf_summary = (
+        {
+            "p50": max(0.0, audio_end_finalization_rtf_p95 - 0.01),
+            "p95": audio_end_finalization_rtf_p95,
+            "p99": audio_end_finalization_rtf_p95 + 0.01,
+        }
+        if audio_end_finalization_rtf_p95 is not None
+        else {"p50": None, "p95": None, "p99": None}
+    )
+    audio_send_duration_summary = (
+        {
+            "p50": max(0.0, audio_send_duration_p95 - 10.0),
+            "p95": audio_send_duration_p95,
+            "p99": audio_send_duration_p95 + 10.0,
+        }
+        if audio_send_duration_p95 is not None
+        else {"p50": None, "p95": None, "p99": None}
+    )
+    send_receive_overlap_summary = (
+        {
+            "p50": max(0.0, send_receive_overlap_p95 - 10.0),
+            "p95": send_receive_overlap_p95,
+            "p99": send_receive_overlap_p95 + 10.0,
+        }
+        if send_receive_overlap_p95 is not None
+        else {"p50": None, "p95": None, "p99": None}
+    )
+    pcm16_normalization_summary = (
+        {
+            "p50": max(0.0, pcm16_normalization_p95 - 0.2),
+            "p95": pcm16_normalization_p95,
+            "p99": pcm16_normalization_p95 + 0.2,
+        }
+        if pcm16_normalization_p95 is not None
         else {"p50": None, "p95": None, "p99": None}
     )
     path.write_text(
@@ -121,8 +161,12 @@ def write_artifact(
                     },
                     "audio_send_queue_depth_p95_ms": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
                     "asr_queue_delay_p95_ms": {"p50": 3.0, "p95": 4.0, "p99": 5.0},
+                    "audio_end_finalization_rtf": audio_end_finalization_rtf_summary,
+                    "audio_send_duration_ms": audio_send_duration_summary,
+                    "send_receive_overlap_ms": send_receive_overlap_summary,
                     "partial_cadence_p95_ms": partial_cadence_summary,
                     "partial_cadence_jitter_ms": partial_cadence_jitter_summary,
+                    "pcm16_normalization_p95_ms": pcm16_normalization_summary,
                     "decoder_compute_rtf": decoder_compute_summary,
                     "protocol_errors": {
                         "p50": 0.0,
@@ -514,10 +558,14 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "Settings: concurrency=1" in markdown
     assert "partial_interval_ms=100" in markdown
     assert "| partial_cadence_p95_ms | 0 ms |" in markdown
+    assert "| audio_end_finalization_rtf | 0 |" in markdown
+    assert "| audio_send_duration_ms | 0 ms |" in markdown
+    assert "| send_receive_overlap_ms | 0 ms |" in markdown
+    assert "| pcm16_normalization_p95_ms | 0 ms |" in markdown
     assert "| decoder_compute_rtf | 0 |" in markdown
 
 
-def test_compare_backends_keeps_candidate_experimental_for_missing_cadence_or_decoder_compute(tmp_path: Path) -> None:
+def test_compare_backends_keeps_candidate_experimental_for_missing_live_duration_or_compute_metrics(tmp_path: Path) -> None:
     baseline = write_artifact(
         tmp_path / "rolling.json",
         backend="faster-whisper",
@@ -529,7 +577,11 @@ def test_compare_backends_keeps_candidate_experimental_for_missing_cadence_or_de
         backend="vosk",
         decoder_mode="stateful",
         first_interim_p95=150.0,
+        audio_end_finalization_rtf_p95=None,
+        audio_send_duration_p95=None,
+        send_receive_overlap_p95=None,
         partial_cadence_p95=None,
+        pcm16_normalization_p95=None,
         decoder_compute_rtf_p95=None,
     )
 
@@ -540,7 +592,11 @@ def test_compare_backends_keeps_candidate_experimental_for_missing_cadence_or_de
     )
 
     assert comparison["candidate_status"] == "experimental"
+    assert "missing_metric:vosk:stateful:audio_end_finalization_rtf" in comparison["blocking_gaps"]
+    assert "missing_metric:vosk:stateful:audio_send_duration_ms" in comparison["blocking_gaps"]
+    assert "missing_metric:vosk:stateful:send_receive_overlap_ms" in comparison["blocking_gaps"]
     assert "missing_metric:vosk:stateful:partial_cadence_p95_ms" in comparison["blocking_gaps"]
+    assert "missing_metric:vosk:stateful:pcm16_normalization_p95_ms" in comparison["blocking_gaps"]
     assert "missing_metric:vosk:stateful:decoder_compute_rtf" in comparison["blocking_gaps"]
     assert comparison["recommendation"] == (
         "Run backend benchmarks with complete streaming latency, cadence, and decoder compute metrics."
