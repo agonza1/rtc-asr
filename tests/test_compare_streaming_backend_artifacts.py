@@ -502,6 +502,8 @@ def test_decoder_mode_gate_reads_mode_counts_when_modes_are_missing() -> None:
     )
 
     assert report["benchmark_input_gaps"] == []
+    assert report["baseline"]["decoder_modes"] == ["rolling_window"]
+    assert report["candidate"]["decoder_modes"] == ["stateful"]
     assert report["recommendation"]["decision"] == "support_low_latency_backend"
 
 

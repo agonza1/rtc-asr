@@ -436,12 +436,15 @@ def describe_artifact(artifact: dict[str, Any], path: Path, name: str) -> dict[s
     first_sample = samples[0] if isinstance(samples, list) and samples and isinstance(samples[0], dict) else {}
     settings = artifact.get("settings", {}) if isinstance(artifact.get("settings"), dict) else {}
     audio = artifact.get("audio", {}) if isinstance(artifact.get("audio"), dict) else {}
+    artifact_decoder_modes = first_sample.get("decoder_modes", [])
+    if not artifact_decoder_modes:
+        artifact_decoder_modes = sorted(decoder_modes(artifact))
     return {
         "name": name,
         "artifact_path": str(path),
         "backend": first_sample.get("backend"),
         "model": first_sample.get("model"),
-        "decoder_modes": first_sample.get("decoder_modes", []),
+        "decoder_modes": artifact_decoder_modes,
         "sample_rate": audio.get("sample_rate"),
         "frame_ms": audio.get("frame_ms"),
         "send_aggregate_ms": audio.get("send_aggregate_ms") or settings.get("send_aggregate_ms"),
