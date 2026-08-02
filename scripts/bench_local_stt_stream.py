@@ -242,6 +242,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Optional artifact metadata to record under settings.metadata; repeat for multiple values.",
     )
     parser.add_argument(
+        "--expected-final-transcript",
+        help="Expected normalized final transcript for sanity checks, for example repeated phrase/final-tail fixtures.",
+    )
+    parser.add_argument(
         "--receive-timeout-seconds",
         type=positive_int,
         default=5,
@@ -659,6 +663,7 @@ async def run_benchmark(
     thermal_duration_minutes: float | None = None,
     scenario: str | None = None,
     metadata: dict[str, str] | None = None,
+    expected_final_transcript: str | None = None,
     send_aggregate_ms: int | None = None,
 ) -> dict[str, Any]:
     if concurrency <= 0:
@@ -744,6 +749,7 @@ async def run_benchmark(
             "scenario": scenario,
             "metadata": dict(sorted((metadata or {}).items())),
         },
+        "expected_final_transcript": expected_final_transcript,
         "runs": runs,
         "concurrency": concurrency,
         "samples": samples,
@@ -1256,6 +1262,7 @@ def main(argv: list[str] | None = None) -> int:
             thermal_duration_minutes=args.thermal_duration_minutes,
             scenario=args.scenario,
             metadata=args.metadata,
+            expected_final_transcript=args.expected_final_transcript,
             send_aggregate_ms=args.send_aggregate_ms,
         )
     )
