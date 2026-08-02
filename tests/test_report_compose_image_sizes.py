@@ -211,20 +211,20 @@ def test_records_to_markdown_reports_total_size_budget_status() -> None:
     assert "Total image size budget: 400.0 MB, current total 400.0 MB." in markdown
 
 
-def test_sort_records_orders_by_tag_and_size_desc() -> None:
+def test_sort_records_orders_by_tag_size_and_created() -> None:
     records = [
         reporter.ImageSizeRecord(
             tag="realtime-asr:qwen-cpu",
             image_id="qwen",
             size_bytes=200,
-            created=None,
+            created="2026-07-31T19:00:00Z",
             present=True,
         ),
         reporter.ImageSizeRecord(
             tag="realtime-asr:faster-whisper-cpu",
             image_id="faster",
             size_bytes=100,
-            created=None,
+            created="2026-07-30T19:00:00Z",
             present=True,
         ),
         reporter.ImageSizeRecord(
@@ -249,6 +249,16 @@ def test_sort_records_orders_by_tag_and_size_desc() -> None:
     assert [record.tag for record in reporter.sort_records(records, "size-asc")] == [
         "realtime-asr:faster-whisper-cpu",
         "realtime-asr:qwen-cpu",
+        "realtime-asr:missing",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "created-asc")] == [
+        "realtime-asr:faster-whisper-cpu",
+        "realtime-asr:qwen-cpu",
+        "realtime-asr:missing",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "created-desc")] == [
+        "realtime-asr:qwen-cpu",
+        "realtime-asr:faster-whisper-cpu",
         "realtime-asr:missing",
     ]
 
