@@ -34,6 +34,7 @@ def test_records_to_markdown_reports_present_and_missing_images() -> None:
     assert "| Total present images |  | 1234.6 |  |  |" in markdown
     assert "Summary: 1/2 images present, 1 missing." in markdown
     assert "Largest present image: realtime-asr:faster-whisper-cpu (1234.6 MB)" in markdown
+    assert "Smallest present image: realtime-asr:faster-whisper-cpu (1234.6 MB)" in markdown
     assert "Average present image size: 1234.6 MB" in markdown
     assert "Missing images: realtime-asr:qwen-cpu" in markdown
 
@@ -87,6 +88,9 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "largest_present_tag": "realtime-asr:parakeet-nemo-cpu",
                 "largest_present_size_bytes": 987_654_321,
                 "largest_present_size_mb": 987.7,
+                "smallest_present_tag": "realtime-asr:parakeet-nemo-cpu",
+                "smallest_present_size_bytes": 987_654_321,
+                "smallest_present_size_mb": 987.7,
             }
         },
     ]
@@ -149,6 +153,9 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "largest_present_tag": "realtime-asr:faster-whisper-cpu",
         "largest_present_size_bytes": 1_234_567_890,
         "largest_present_size_mb": 1234.6,
+        "smallest_present_tag": "realtime-asr:faster-whisper-cpu",
+        "smallest_present_size_bytes": 1_234_567_890,
+        "smallest_present_size_mb": 1234.6,
     }
 
 
@@ -163,6 +170,22 @@ def test_records_summary_reports_average_present_image_size() -> None:
 
     assert summary["average_present_size_bytes"] == 200_000_000
     assert summary["average_present_size_mb"] == 200.0
+
+
+def test_records_summary_reports_smallest_present_image_size() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=100_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="large:image", image_id="large", size_bytes=300_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    summary = reporter.records_summary(records)
+    markdown = reporter.records_to_markdown(records)
+
+    assert summary["smallest_present_tag"] == "small:image"
+    assert summary["smallest_present_size_bytes"] == 100_000_000
+    assert summary["smallest_present_size_mb"] == 100.0
+    assert "Smallest present image: small:image (100.0 MB)" in markdown
 
 
 def test_records_summary_reports_present_images_with_unknown_size() -> None:
@@ -379,6 +402,9 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "largest_present_tag": "present:image",
         "largest_present_size_bytes": 100_000_000,
         "largest_present_size_mb": 100.0,
+        "smallest_present_tag": "present:image",
+        "smallest_present_size_bytes": 100_000_000,
+        "smallest_present_size_mb": 100.0,
     }
 
 
