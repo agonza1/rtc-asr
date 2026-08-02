@@ -80,6 +80,8 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "missing_tags": [],
                 "present": 1,
                 "requested": 1,
+                "unknown_size": 0,
+                "unknown_size_tags": [],
                 "total_size_bytes": 987_654_321,
                 "total_size_mb": 987.7,
                 "largest_present_tag": "realtime-asr:parakeet-nemo-cpu",
@@ -140,6 +142,8 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "missing_tags": ["realtime-asr:qwen-cpu"],
         "present": 1,
         "requested": 2,
+        "unknown_size": 0,
+        "unknown_size_tags": [],
         "total_size_bytes": 1_234_567_890,
         "total_size_mb": 1234.6,
         "largest_present_tag": "realtime-asr:faster-whisper-cpu",
@@ -159,6 +163,21 @@ def test_records_summary_reports_average_present_image_size() -> None:
 
     assert summary["average_present_size_bytes"] == 200_000_000
     assert summary["average_present_size_mb"] == 200.0
+
+
+def test_records_summary_reports_present_images_with_unknown_size() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="known:image", image_id="known", size_bytes=100_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="unknown:image", image_id="unknown", size_bytes=None, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    summary = reporter.records_summary(records)
+    markdown = reporter.records_to_markdown(records)
+
+    assert summary["unknown_size"] == 1
+    assert summary["unknown_size_tags"] == ["unknown:image"]
+    assert "Images with unknown size: unknown:image" in markdown
 
 
 def test_records_summary_reports_size_budget_status() -> None:
@@ -353,6 +372,8 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "missing_tags": [],
         "present": 1,
         "requested": 1,
+        "unknown_size": 0,
+        "unknown_size_tags": [],
         "total_size_bytes": 100_000_000,
         "total_size_mb": 100.0,
         "largest_present_tag": "present:image",
@@ -368,6 +389,10 @@ def test_parse_args_accepts_json_summary_aliases() -> None:
 
 def test_parse_args_accepts_fail_on_missing_alias() -> None:
     assert reporter.parse_args(["--fail-on-missing"]).require_present is True
+
+
+def test_parse_args_accepts_fail_on_unknown_size_alias() -> None:
+    assert reporter.parse_args(["--fail-on-unknown-size"]).require_size is True
 
 
 def test_main_csv_flag_emits_csv(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -447,6 +472,22 @@ def test_main_fails_when_present_images_exceed_total_size_budget(
     assert reporter.main(["--max-total-size-mb", "400", "small:image", "large:image"]) == 1
     assert "Total image size over 400.0 MB: 400.0 MB" in capsys.readouterr().err
     assert reporter.main(["--max-total-size-mb", "401", "small:image", "large:image"]) == 0
+
+
+def test_main_fails_when_present_image_size_is_required_but_unknown(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag=images[0], image_id="unknown", size_bytes=None, created=None, present=True)
+        ],
+    )
+
+    assert reporter.main(["--require-size", "unknown:image"]) == 1
+    assert "Images with unknown size: unknown:image" in capsys.readouterr().err
+    assert reporter.main(["unknown:image"]) == 0
 
 
 def test_main_summary_only_includes_size_budget_status(
