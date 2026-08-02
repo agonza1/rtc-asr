@@ -51,6 +51,7 @@ def compare_artifacts(
     candidate_name: str,
     latency_win_percent: float = 10.0,
 ) -> dict[str, Any]:
+    benchmark_input_gaps = compare_benchmark_inputs(baseline, candidate)
     metric_comparison = {
         metric: compare_metric(baseline, candidate, metric)
         for metric in LATENCY_METRICS
@@ -61,6 +62,7 @@ def compare_artifacts(
         metric_comparison=metric_comparison,
         transcript=transcript,
         success=success,
+        benchmark_input_gaps=benchmark_input_gaps,
         candidate_name=candidate_name,
         latency_win_percent=latency_win_percent,
     )
@@ -71,8 +73,31 @@ def compare_artifacts(
         "comparison": metric_comparison,
         "success": success,
         "transcript_sanity": transcript,
+        "benchmark_input_gaps": benchmark_input_gaps,
         "recommendation": recommendation,
     }
+
+
+def compare_benchmark_inputs(baseline: dict[str, Any], candidate: dict[str, Any]) -> list[str]:
+    baseline_settings = normalized_settings(baseline)
+    candidate_settings = normalized_settings(candidate)
+    gaps = []
+    for key in ("concurrency",):
+        baseline_value = baseline_settings.get(key)
+        candidate_value = candidate_settings.get(key)
+        if baseline_value != candidate_value:
+            gaps.append(f"benchmark_input:settings.{key}: baseline={baseline_value!r} candidate={candidate_value!r}")
+    return gaps
+
+
+def normalized_settings(artifact: dict[str, Any]) -> dict[str, Any]:
+    settings = artifact.get("settings", {}) if isinstance(artifact.get("settings"), dict) else {}
+    concurrency = settings.get("concurrency")
+    if concurrency is None:
+        concurrency = artifact.get("concurrency")
+    if concurrency is None:
+        concurrency = 1
+    return {"concurrency": concurrency}
 
 
 def compare_metric(baseline: dict[str, Any], candidate: dict[str, Any], metric: str) -> dict[str, float | None]:
@@ -147,6 +172,7 @@ def recommend(
     metric_comparison: dict[str, dict[str, float | None]],
     transcript: dict[str, Any],
     success: dict[str, float | None],
+    benchmark_input_gaps: list[str],
     candidate_name: str,
     latency_win_percent: float,
 ) -> dict[str, Any]:
@@ -166,7 +192,10 @@ def recommend(
         transcript["exact_match"] or (transcript["word_overlap_ratio"] is not None and transcript["word_overlap_ratio"] >= 0.8)
     )
 
-    if missing:
+    if benchmark_input_gaps:
+        decision = "keep_experimental"
+        rationale = "Re-run backend benchmarks with matching concurrency before comparing live latency."
+    elif missing:
         decision = "keep_experimental"
         rationale = f"Missing comparable live p95 metrics for {', '.join(missing)}."
     elif len(wins) == len(key_metrics) and transcript_ok and protocol_errors == 0:
@@ -182,6 +211,7 @@ def recommend(
         "latency_win_percent_gate": latency_win_percent,
         "required_live_metrics": key_metrics,
         "batched_transcription_role": "nice_to_have_context_only",
+        "blocking_gaps": benchmark_input_gaps,
     }
 
 
@@ -201,6 +231,7 @@ def describe_artifact(artifact: dict[str, Any], path: Path, name: str) -> dict[s
         "send_aggregate_ms": audio.get("send_aggregate_ms") or settings.get("send_aggregate_ms"),
         "partial_interval_ms": settings.get("partial_interval_ms"),
         "realtime_pace": settings.get("realtime_pace"),
+        "concurrency": normalized_settings(artifact)["concurrency"],
         "scenario": settings.get("scenario"),
         "metadata": settings.get("metadata", {}),
     }

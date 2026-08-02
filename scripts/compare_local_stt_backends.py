@@ -19,7 +19,14 @@ from compare_local_stt_transports import (
 
 DEFAULT_MIN_FIRST_PARTIAL_WIN_MS = 50.0
 COMPARABLE_AUDIO_KEYS = ("source", "sample_rate", "channels", "format", "frame_ms", "duration_ms", "send_aggregate_ms")
-COMPARABLE_SETTING_KEYS = ("partial_interval_ms", "receive_timeout_seconds", "realtime_pace", "send_aggregate_ms", "scenario")
+COMPARABLE_SETTING_KEYS = (
+    "partial_interval_ms",
+    "receive_timeout_seconds",
+    "realtime_pace",
+    "send_aggregate_ms",
+    "concurrency",
+    "scenario",
+)
 BACKEND_KEY_METRICS = (
     *TRANSPORT_KEY_METRICS,
     "partial_cadence_p95_ms",
@@ -105,8 +112,15 @@ def comparable_snapshot(artifact: dict[str, Any]) -> dict[str, Any]:
     settings = artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {}
     return {
         "audio": {key: audio.get(key) for key in COMPARABLE_AUDIO_KEYS},
-        "settings": {key: settings.get(key) for key in COMPARABLE_SETTING_KEYS},
+        "settings": {key: comparable_setting_value(settings, key) for key in COMPARABLE_SETTING_KEYS},
     }
+
+
+def comparable_setting_value(settings: dict[str, Any], key: str) -> Any:
+    value = settings.get(key)
+    if key == "concurrency" and value is None:
+        return 1
+    return value
 
 
 def protocol_error_free(artifact: dict[str, Any]) -> bool:

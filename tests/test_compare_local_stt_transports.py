@@ -2230,6 +2230,7 @@ def test_compare_artifacts_accepts_benchmark_input_aliases_from_stream_artifacts
         "partial_interval_ms": 100,
         "realtime_pace": True,
         "receive_timeout_seconds": 5,
+        "concurrency": 1,
     }
 
 
@@ -2349,6 +2350,7 @@ def test_compare_artifacts_accepts_stream_artifact_benchmark_sections(tmp_path: 
         "partial_interval_ms": 100,
         "realtime_pace": True,
         "receive_timeout_seconds": 5,
+        "concurrency": 1,
     }
 
 
@@ -2399,6 +2401,26 @@ def test_compare_artifacts_requires_matching_receive_timeout(tmp_path: Path) -> 
     assert comparison["blocking_gaps"] == comparison["benchmark_input_gaps"]
     assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
         "benchmark_input:benchmark input mismatch for settings.receive_timeout_seconds: raw_uds=2, tcp_ws=5, uds_ws=5"
+    ]
+
+
+def test_compare_artifacts_requires_matching_concurrency(tmp_path: Path) -> None:
+    tcp = write_artifact(tmp_path / "tcp.json", "tcp_ws", 18.0)
+    uds = write_artifact(tmp_path / "uds.json", "uds_ws", 18.0)
+    raw = write_artifact(tmp_path / "raw.json", "raw_uds", 13.0)
+
+    raw_payload = json.loads(raw.read_text(encoding="utf8"))
+    raw_payload["settings"]["concurrency"] = 3
+    raw.write_text(json.dumps(raw_payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts([tcp, uds, raw])
+
+    assert comparison["benchmark_input_gaps"] == [
+        "benchmark input mismatch for settings.concurrency: raw_uds=3, tcp_ws=1, uds_ws=1"
+    ]
+    assert comparison["blocking_gaps"] == comparison["benchmark_input_gaps"]
+    assert comparison["raw_uds_recommendation_gate"]["blockers"] == [
+        "benchmark_input:benchmark input mismatch for settings.concurrency: raw_uds=3, tcp_ws=1, uds_ws=1"
     ]
 
 
@@ -2909,6 +2931,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "runs": 3,
                 "service": {"backend": None, "model": None},
                 "settings": {
+                    "concurrency": 1,
                     "partial_interval_ms": 100,
                     "realtime_pace": True,
                     "receive_timeout_seconds": 5,
@@ -2926,6 +2949,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "runs": 3,
                 "service": {"backend": None, "model": None},
                 "settings": {
+                    "concurrency": 1,
                     "partial_interval_ms": 100,
                     "realtime_pace": True,
                     "receive_timeout_seconds": 5,
@@ -2943,6 +2967,7 @@ def test_main_writes_compact_raw_uds_decision_output(tmp_path: Path) -> None:
                 "runs": 3,
                 "service": {"backend": None, "model": None},
                 "settings": {
+                    "concurrency": 1,
                     "partial_interval_ms": 100,
                     "realtime_pace": True,
                     "receive_timeout_seconds": 5,

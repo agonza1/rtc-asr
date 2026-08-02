@@ -1158,6 +1158,15 @@ def normalized_benchmark_settings(artifact: dict[str, Any]) -> dict[str, Any]:
     benchmark = artifact.get("benchmark") if isinstance(artifact.get("benchmark"), dict) else {}
     integration = artifact.get("integration") if isinstance(artifact.get("integration"), dict) else {}
     streaming = artifact.get("streaming") if isinstance(artifact.get("streaming"), dict) else {}
+    concurrency = first_defined(
+        settings.get("concurrency"),
+        benchmark.get("concurrency"),
+        integration.get("concurrency"),
+        streaming.get("concurrency"),
+        artifact.get("concurrency"),
+    )
+    if concurrency is None:
+        concurrency = 1
     return {
         "partial_interval_ms": first_defined(
             settings.get("partial_interval_ms"),
@@ -1186,6 +1195,7 @@ def normalized_benchmark_settings(artifact: dict[str, Any]) -> dict[str, Any]:
             streaming.get("receive_timeout_seconds"),
             streaming.get("receive_timeout_s"),
         ),
+        "concurrency": concurrency,
     }
 
 
@@ -1222,6 +1232,7 @@ def benchmark_input_gaps(transports: dict[str, dict[str, Any]]) -> list[str]:
         ("settings", "partial_interval_ms"),
         ("settings", "realtime_pace"),
         ("settings", "receive_timeout_seconds"),
+        ("settings", "concurrency"),
     )
     values_by_field: dict[str, dict[str, Any]] = {}
     for section, field in comparable_fields:

@@ -224,6 +224,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--partial-interval-ms", type=positive_int, default=100)
     parser.add_argument("--runs", type=positive_int, default=3)
     parser.add_argument(
+        "--concurrency",
+        type=positive_int,
+        default=1,
+        help="Concurrent Local STT sessions per run. Use 1 for baseline and a small value such as 3 for voice-agent load.",
+    )
+    parser.add_argument(
         "--scenario",
         help="Optional short label to record in the artifact settings, for example warmup or regression-check",
     )
@@ -641,6 +647,7 @@ async def run_benchmark(
     uds_path: str | None = None,
     partial_interval_ms: int,
     runs: int,
+    concurrency: int = 1,
     realtime_pace: bool = True,
     receive_timeout_seconds: int = 5,
     client_factory: ClientFactory | None = None,
@@ -654,6 +661,8 @@ async def run_benchmark(
     metadata: dict[str, str] | None = None,
     send_aggregate_ms: int | None = None,
 ) -> dict[str, Any]:
+    if concurrency <= 0:
+        raise ValueError("concurrency must be greater than 0")
     validate_transport_args(transport, Path(uds_path) if uds_path is not None else None)
     resolved_send_aggregate_ms = send_aggregate_ms or audio.frame_ms
     validate_send_aggregate_ms(frame_ms=audio.frame_ms, send_aggregate_ms=resolved_send_aggregate_ms)
@@ -663,19 +672,38 @@ async def run_benchmark(
     samples = []
     try:
         for index in range(1, runs + 1):
-            samples.append(
-                await _run_once(
-                    index=index,
-                    url=url,
-                    audio=audio,
-                    transport=transport,
-                    partial_interval_ms=partial_interval_ms,
-                    send_aggregate_ms=resolved_send_aggregate_ms,
-                    realtime_pace=realtime_pace,
-                    receive_timeout_seconds=receive_timeout_seconds,
-                    client_factory=factory,
+            send_start_barrier = asyncio.Barrier(concurrency) if concurrency > 1 else None
+            tasks = [
+                asyncio.create_task(
+                    _run_once(
+                        index=((index - 1) * concurrency) + session_index,
+                        run_index=index,
+                        session_index=session_index,
+                        concurrency=concurrency,
+                        url=url,
+                        audio=audio,
+                        transport=transport,
+                        partial_interval_ms=partial_interval_ms,
+                        send_aggregate_ms=resolved_send_aggregate_ms,
+                        realtime_pace=realtime_pace,
+                        receive_timeout_seconds=receive_timeout_seconds,
+                        client_factory=factory,
+                        send_start_barrier=send_start_barrier,
+                    )
                 )
-            )
+                for session_index in range(1, concurrency + 1)
+            ]
+            try:
+                batch = await asyncio.gather(*tasks)
+            except Exception:
+                if send_start_barrier is not None and not send_start_barrier.broken:
+                    await send_start_barrier.abort()
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                raise
+            samples.extend(batch)
     finally:
         metrics_monitor.stop()
 
@@ -712,10 +740,12 @@ async def run_benchmark(
             "receive_timeout_seconds": receive_timeout_seconds,
             "realtime_pace": realtime_pace,
             "send_aggregate_ms": resolved_send_aggregate_ms,
+            "concurrency": concurrency,
             "scenario": scenario,
             "metadata": dict(sorted((metadata or {}).items())),
         },
         "runs": runs,
+        "concurrency": concurrency,
         "samples": samples,
         "diagnostics": summarize_diagnostics(samples),
         "summary": summarize_samples(samples),
@@ -746,6 +776,9 @@ def _count_codes(samples: list[dict[str, Any]], key: str) -> dict[str, int]:
 async def _run_once(
     *,
     index: int,
+    run_index: int = 1,
+    session_index: int = 1,
+    concurrency: int = 1,
     url: str,
     audio: AudioInput,
     transport: str,
@@ -754,6 +787,7 @@ async def _run_once(
     realtime_pace: bool,
     receive_timeout_seconds: int,
     client_factory: ClientFactory,
+    send_start_barrier: asyncio.Barrier | None = None,
 ) -> dict[str, Any]:
     client = client_factory(url)
     first_audio_sent_at: float | None = None
@@ -793,19 +827,27 @@ async def _run_once(
         partial_interval_ms=partial_interval_ms,
     )
 
-    ready_event = await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
-    if isinstance(ready_event, dict):
-        ready_metadata = ready_event.get("metadata")
-        if isinstance(ready_metadata, dict):
-            decoder_mode = ready_metadata.get("decoder_mode")
-            if isinstance(decoder_mode, str):
-                decoder_modes.append(decoder_mode)
-            backend = ready_metadata.get("backend")
-            if isinstance(backend, str):
-                backend_name = backend
-            model = ready_metadata.get("model")
-            if isinstance(model, str):
-                model_name = model
+    try:
+        ready_event = await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
+        if isinstance(ready_event, dict):
+            ready_metadata = ready_event.get("metadata")
+            if isinstance(ready_metadata, dict):
+                decoder_mode = ready_metadata.get("decoder_mode")
+                if isinstance(decoder_mode, str):
+                    decoder_modes.append(decoder_mode)
+                backend = ready_metadata.get("backend")
+                if isinstance(backend, str):
+                    backend_name = backend
+                model = ready_metadata.get("model")
+                if isinstance(model, str):
+                    model_name = model
+        if send_start_barrier is not None:
+            await send_start_barrier.wait()
+    except BaseException:
+        try:
+            await client.close(graceful=False)
+        finally:
+            raise
     receive_done = asyncio.Event()
 
     async def receive_loop() -> None:
@@ -941,6 +983,9 @@ async def _run_once(
     ]
     return {
         "index": index,
+        "run_index": run_index,
+        "session_index": session_index,
+        "concurrency": concurrency,
         "time_to_first_interim_ms": _rounded_or_none(first_interim_ms),
         "time_to_final_after_finalize_ms": _rounded_or_none(final_after_finalize_ms),
         "audio_end_finalization_rtf": compute_audio_end_finalization_rtf(final_after_finalize_ms, audio),
@@ -1200,6 +1245,7 @@ def main(argv: list[str] | None = None) -> int:
             audio=audio,
             partial_interval_ms=args.partial_interval_ms,
             runs=args.runs,
+            concurrency=args.concurrency,
             receive_timeout_seconds=args.receive_timeout_seconds,
             realtime_pace=not args.no_realtime_pace,
             metrics_pid=args.metrics_pid,
