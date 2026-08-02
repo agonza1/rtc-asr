@@ -246,6 +246,11 @@ def test_sort_records_orders_by_tag_and_size_desc() -> None:
         "realtime-asr:faster-whisper-cpu",
         "realtime-asr:missing",
     ]
+    assert [record.tag for record in reporter.sort_records(records, "size-asc")] == [
+        "realtime-asr:faster-whisper-cpu",
+        "realtime-asr:qwen-cpu",
+        "realtime-asr:missing",
+    ]
 
 
 def test_records_over_size_budget_ignores_missing_and_unknown_sizes() -> None:
@@ -393,6 +398,12 @@ def test_main_applies_sort_order_before_rendering(monkeypatch: pytest.MonkeyPatc
     lines = capsys.readouterr().out.splitlines()
     assert lines[2].startswith("| large:image |")
     assert lines[3].startswith("| small:image |")
+
+    assert reporter.main(["--sort-by", "size-asc", "small:image", "large:image"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[2].startswith("| small:image |")
+    assert lines[3].startswith("| large:image |")
 
 
 def test_main_fails_when_present_image_exceeds_size_budget(
