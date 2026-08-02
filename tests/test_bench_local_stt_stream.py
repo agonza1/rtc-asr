@@ -407,6 +407,20 @@ def test_parse_args_accepts_repeated_metadata_labels(tmp_path) -> None:
     assert args.metadata == {"device": "mac-mini-m2", "profile": "warm-service"}
 
 
+def test_parse_args_accepts_expected_final_transcript(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    args = benchmark_module.parse_args([
+        "--input-raw-pcm",
+        str(pcm_path),
+        "--expected-final-transcript",
+        "hello hello final tail",
+    ])
+
+    assert args.expected_final_transcript == "hello hello final tail"
+
+
 def test_parse_args_rejects_malformed_metadata(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
@@ -730,6 +744,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
             client_factory=FakeLocalSttClient,
             scenario="warm-service-regression",
             metadata={"profile": "warm", "device": "test-host"},
+            expected_final_transcript="hello",
         )
     )
 
@@ -759,6 +774,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
         "scenario": "warm-service-regression",
         "metadata": {"device": "test-host", "profile": "warm"},
     }
+    assert payload["expected_final_transcript"] == "hello"
     assert sample["audio_frames_sent"] == 2
     assert sample["audio_chunks_sent"] == 2
     assert sample["audio_frames_dropped"] == 0
