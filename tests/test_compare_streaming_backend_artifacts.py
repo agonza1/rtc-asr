@@ -27,14 +27,18 @@ def artifact(
     channels: int = 1,
     audio_format: str = "pcm_s16le",
     frame_ms: int = 20,
+    duration_ms: int = 1000,
     send_aggregate_ms: int = 80,
     partial_interval_ms: int = 100,
+    receive_timeout_seconds: int = 5,
     realtime_pace: bool = True,
     scenario: str = "voice-agent-20ms-80ms",
     concurrency: int | None = 1,
+    machine: str = "arm64",
 ):
     settings = {
         "partial_interval_ms": partial_interval_ms,
+        "receive_timeout_seconds": receive_timeout_seconds,
         "realtime_pace": realtime_pace,
         "send_aggregate_ms": send_aggregate_ms,
         "scenario": scenario,
@@ -49,7 +53,15 @@ def artifact(
             "channels": channels,
             "format": audio_format,
             "frame_ms": frame_ms,
+            "duration_ms": duration_ms,
             "send_aggregate_ms": send_aggregate_ms,
+        },
+        "environment": {
+            "platform": "TestOS",
+            "machine": machine,
+            "processor": "TestCPU",
+            "cpu_logical_cores": 8,
+            "memory_total_mb": 32768.0,
         },
         "settings": settings,
         "samples": [
@@ -196,6 +208,42 @@ def test_compare_artifacts_blocks_audio_and_pacing_mismatch() -> None:
         "benchmark_input:audio.send_aggregate_ms: baseline=80 candidate=160",
         "benchmark_input:settings.send_aggregate_ms: baseline=80 candidate=160",
         "benchmark_input:settings.scenario: baseline='voice-agent-20ms-80ms' candidate='voice-agent-20ms-160ms'",
+    ]
+    assert report["recommendation"]["decision"] == "keep_experimental"
+
+
+def test_compare_artifacts_blocks_duration_timeout_and_hardware_mismatch() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="rolling_window",
+            first_partial=500.0,
+            final=300.0,
+            transcript="hello world",
+            duration_ms=1000,
+            receive_timeout_seconds=5,
+            machine="arm64",
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="stateful",
+            first_partial=300.0,
+            final=200.0,
+            transcript="hello world",
+            duration_ms=2200,
+            receive_timeout_seconds=10,
+            machine="x86_64",
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["benchmark_input_gaps"] == [
+        "benchmark_input:audio.duration_ms: baseline=1000 candidate=2200",
+        "benchmark_input:settings.receive_timeout_seconds: baseline=5 candidate=10",
+        "benchmark_input:environment.machine: baseline='arm64' candidate='x86_64'",
     ]
     assert report["recommendation"]["decision"] == "keep_experimental"
 

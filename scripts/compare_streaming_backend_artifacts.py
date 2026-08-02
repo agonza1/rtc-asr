@@ -83,17 +83,31 @@ def compare_benchmark_inputs(baseline: dict[str, Any], candidate: dict[str, Any]
     candidate_audio = normalized_audio(candidate)
     baseline_settings = normalized_settings(baseline)
     candidate_settings = normalized_settings(candidate)
+    baseline_environment = normalized_environment(baseline)
+    candidate_environment = normalized_environment(candidate)
     gaps = []
-    for key in ("source", "sample_rate", "channels", "format", "frame_ms", "send_aggregate_ms"):
+    for key in ("source", "sample_rate", "channels", "format", "frame_ms", "duration_ms", "send_aggregate_ms"):
         baseline_value = baseline_audio.get(key)
         candidate_value = candidate_audio.get(key)
         if baseline_value != candidate_value:
             gaps.append(f"benchmark_input:audio.{key}: baseline={baseline_value!r} candidate={candidate_value!r}")
-    for key in ("partial_interval_ms", "realtime_pace", "send_aggregate_ms", "concurrency", "scenario"):
+    for key in (
+        "partial_interval_ms",
+        "receive_timeout_seconds",
+        "realtime_pace",
+        "send_aggregate_ms",
+        "concurrency",
+        "scenario",
+    ):
         baseline_value = baseline_settings.get(key)
         candidate_value = candidate_settings.get(key)
         if baseline_value != candidate_value:
             gaps.append(f"benchmark_input:settings.{key}: baseline={baseline_value!r} candidate={candidate_value!r}")
+    for key in ("platform", "machine", "processor", "cpu_logical_cores", "memory_total_mb"):
+        baseline_value = baseline_environment.get(key)
+        candidate_value = candidate_environment.get(key)
+        if baseline_value != candidate_value:
+            gaps.append(f"benchmark_input:environment.{key}: baseline={baseline_value!r} candidate={candidate_value!r}")
     return gaps
 
 
@@ -105,6 +119,7 @@ def normalized_audio(artifact: dict[str, Any]) -> dict[str, Any]:
         "channels": audio.get("channels"),
         "format": audio.get("format"),
         "frame_ms": audio.get("frame_ms"),
+        "duration_ms": audio.get("duration_ms"),
         "send_aggregate_ms": audio.get("send_aggregate_ms"),
     }
 
@@ -118,10 +133,22 @@ def normalized_settings(artifact: dict[str, Any]) -> dict[str, Any]:
         concurrency = 1
     return {
         "partial_interval_ms": settings.get("partial_interval_ms"),
+        "receive_timeout_seconds": settings.get("receive_timeout_seconds"),
         "realtime_pace": settings.get("realtime_pace"),
         "send_aggregate_ms": settings.get("send_aggregate_ms"),
         "concurrency": concurrency,
         "scenario": settings.get("scenario"),
+    }
+
+
+def normalized_environment(artifact: dict[str, Any]) -> dict[str, Any]:
+    environment = artifact.get("environment", {}) if isinstance(artifact.get("environment"), dict) else {}
+    return {
+        "platform": environment.get("platform"),
+        "machine": environment.get("machine"),
+        "processor": environment.get("processor"),
+        "cpu_logical_cores": environment.get("cpu_logical_cores"),
+        "memory_total_mb": environment.get("memory_total_mb"),
     }
 
 
