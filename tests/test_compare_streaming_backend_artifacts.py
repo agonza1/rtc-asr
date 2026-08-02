@@ -35,6 +35,9 @@ def artifact(
     scenario: str = "voice-agent-20ms-80ms",
     concurrency: int | None = 1,
     machine: str = "arm64",
+    peak_rss_mb: float | None = None,
+    cpu_utilization_percent: float | None = None,
+    package_power_watts: float | None = None,
 ):
     settings = {
         "partial_interval_ms": partial_interval_ms,
@@ -62,6 +65,9 @@ def artifact(
             "processor": "TestCPU",
             "cpu_logical_cores": 8,
             "memory_total_mb": 32768.0,
+            "peak_rss_mb": peak_rss_mb,
+            "cpu_utilization_percent": cpu_utilization_percent,
+            "package_power_watts": package_power_watts,
         },
         "settings": settings,
         "samples": [
@@ -110,6 +116,11 @@ def test_compare_artifacts_recommends_support_when_candidate_wins_live_metrics()
     assert report["candidate"]["backend"] == "vosk"
     assert report["candidate"]["decoder_modes"] == ["stateful"]
     assert report["candidate"]["concurrency"] == 1
+    assert report["candidate"]["resource_metrics"] == {
+        "peak_rss_mb": None,
+        "cpu_utilization_percent": None,
+        "package_power_watts": None,
+    }
     assert report["comparison"]["time_to_first_interim_ms"]["candidate_improvement_percent"] == 40.0
     assert report["transcript_sanity"]["exact_match"] is True
     assert report["benchmark_input_gaps"] == []
@@ -172,6 +183,45 @@ def test_compare_artifacts_reports_missing_tail_and_repeated_token_drift() -> No
     assert sanity["word_count_delta"] == -1
     assert sanity["candidate_missing_token_counts"] == {"now": 1, "transfer": 1}
     assert sanity["candidate_extra_token_counts"] == {"billing": 1}
+
+
+def test_compare_artifacts_weighs_latency_win_against_resource_regression() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="rolling_window",
+            first_partial=500.0,
+            final=300.0,
+            transcript="hello world",
+            peak_rss_mb=800.0,
+            cpu_utilization_percent=100.0,
+            package_power_watts=5.0,
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="stateful",
+            first_partial=300.0,
+            final=200.0,
+            transcript="hello world",
+            peak_rss_mb=900.0,
+            cpu_utilization_percent=140.0,
+            package_power_watts=5.5,
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["resource_comparison"]["peak_rss_mb"] == {
+        "baseline": 800.0,
+        "candidate": 900.0,
+        "delta": 100.0,
+        "candidate_increase_percent": 12.5,
+    }
+    assert report["resource_comparison"]["cpu_utilization_percent"]["candidate_increase_percent"] == 40.0
+    assert report["recommendation"]["decision"] == "keep_experimental"
+    assert report["recommendation"]["resource_regressions"] == ["cpu_utilization_percent"]
 
 
 def test_compare_artifacts_blocks_concurrency_mismatch() -> None:
