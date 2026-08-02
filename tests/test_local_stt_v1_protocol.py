@@ -506,6 +506,26 @@ def test_start_message_rejects_text_partial_interval_ms() -> None:
     assert excinfo.value.as_event().message == "partial_interval_ms: must be an integer"
 
 
+def test_start_message_rejects_nonpositive_partial_interval_ms() -> None:
+    with pytest.raises(LocalSttProtocolError) as excinfo:
+        parse_client_message(
+            {
+                "type": "start",
+                "version": PROTOCOL_VERSION,
+                "audio": {
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "frame_ms": HOT_PATH_FRAME_MS,
+                },
+                "partial_interval_ms": 0,
+            }
+        )
+
+    assert excinfo.value.as_event().code == "invalid_integer_field"
+    assert excinfo.value.as_event().message == "partial_interval_ms: must be a positive integer"
+
+
 @pytest.mark.parametrize("field", ["partial_window_seconds", "max_buffer_seconds"])
 def test_start_message_rejects_boolean_float_tuning_fields(field: str) -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:
@@ -709,8 +729,8 @@ def test_status_messages_reject_bytes_string_fields(payload: dict[str, object], 
     assert excinfo.value.as_event().message == f"{field}: must be a string"
 
 
-
-def test_start_message_rejects_nonpositive_partial_window_seconds() -> None:
+@pytest.mark.parametrize("field", ["partial_window_seconds", "max_buffer_seconds"])
+def test_start_message_rejects_nonpositive_float_tuning_fields(field: str) -> None:
     with pytest.raises(LocalSttProtocolError) as excinfo:
         parse_client_message(
             {
@@ -722,13 +742,12 @@ def test_start_message_rejects_nonpositive_partial_window_seconds() -> None:
                     "format": HOT_PATH_PCM_FORMAT,
                     "frame_ms": HOT_PATH_FRAME_MS,
                 },
-                "partial_window_seconds": 0,
+                field: 0,
             }
         )
 
-    assert excinfo.value.as_event().code == "invalid_message"
-    assert "partial_window_seconds" in excinfo.value.message
-
+    assert excinfo.value.as_event().code == "invalid_numeric_field"
+    assert excinfo.value.as_event().message == f"{field}: must be greater than 0"
 
 
 def test_unknown_message_type_maps_to_protocol_error() -> None:
