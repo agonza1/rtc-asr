@@ -661,6 +661,36 @@ def test_compare_backends_can_require_resource_metrics(tmp_path: Path) -> None:
     assert comparison["recommendation"] == "Re-run backend benchmarks with service resource monitoring enabled."
 
 
+def test_compare_backends_can_require_concurrent_session_load(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+        concurrency=1,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        concurrency=1,
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+        min_concurrency=2,
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert comparison["min_concurrency"] == 2
+    assert "insufficient_concurrency:faster-whisper:rolling_window: required>=2 actual=1" in comparison["blocking_gaps"]
+    assert "insufficient_concurrency:vosk:stateful: required>=2 actual=1" in comparison["blocking_gaps"]
+    assert comparison["recommendation"] == "Run backend benchmarks at the required concurrent-session load."
+
+
 def test_main_writes_markdown_report(tmp_path: Path) -> None:
     baseline = write_artifact(
         tmp_path / "rolling.json",
@@ -693,5 +723,6 @@ def test_main_writes_markdown_report(tmp_path: Path) -> None:
     markdown = report_path.read_text(encoding="utf8")
     assert "Baseline: faster-whisper:rolling_window" in markdown
     assert "Candidate: vosk:stateful" in markdown
+    assert "Minimum concurrency: 1" in markdown
     assert "Resource metrics required: True" in markdown
     assert "Blocking gaps:" in markdown
