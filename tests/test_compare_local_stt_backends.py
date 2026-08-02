@@ -25,6 +25,7 @@ def write_artifact(
     concurrency: int = 1,
     protocol_errors_p95: float = 0.0,
     partial_cadence_p95: float | None = 100.0,
+    partial_cadence_jitter_p95: float | None = 8.0,
     decoder_compute_rtf_p95: float | None = 0.35,
     final_transcript: str = "hello from the voice agent",
     peak_rss_mb: float | None = 512.5,
@@ -39,6 +40,15 @@ def write_artifact(
     partial_cadence_summary = (
         {"p50": partial_cadence_p95 - 10.0, "p95": partial_cadence_p95, "p99": partial_cadence_p95 + 10.0}
         if partial_cadence_p95 is not None
+        else {"p50": None, "p95": None, "p99": None}
+    )
+    partial_cadence_jitter_summary = (
+        {
+            "p50": max(0.0, partial_cadence_jitter_p95 - 2.0),
+            "p95": partial_cadence_jitter_p95,
+            "p99": partial_cadence_jitter_p95 + 2.0,
+        }
+        if partial_cadence_jitter_p95 is not None
         else {"p50": None, "p95": None, "p99": None}
     )
     decoder_compute_summary = (
@@ -112,6 +122,7 @@ def write_artifact(
                     "audio_send_queue_depth_p95_ms": {"p50": 1.0, "p95": 2.0, "p99": 3.0},
                     "asr_queue_delay_p95_ms": {"p50": 3.0, "p95": 4.0, "p99": 5.0},
                     "partial_cadence_p95_ms": partial_cadence_summary,
+                    "partial_cadence_jitter_ms": partial_cadence_jitter_summary,
                     "decoder_compute_rtf": decoder_compute_summary,
                     "protocol_errors": {
                         "p50": 0.0,

@@ -817,6 +817,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["audio_send_queue_depth_samples"] == 3
     assert sample["audio_send_latency_p95_ms"] is not None
     assert sample["partial_cadence_p95_ms"] is not None
+    assert sample["partial_cadence_jitter_ms"] == 0.0
     assert sample["pcm16_normalization_p95_ms"] is not None
     assert sample["asr_receive_loop_append_p95_ms"] == 3.0
     assert sample["asr_receive_loop_append_samples"] == 3
@@ -844,6 +845,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["websocket_roundtrip_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
+    assert payload["summary"]["partial_cadence_jitter_ms"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
     assert payload["summary"]["warnings_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["summary"]["audio_payload_bytes_sent"] == {"p50": 1280.0, "p95": 1280.0, "p99": 1280.0}
@@ -1220,6 +1222,7 @@ def test_compute_audio_end_finalization_rtf_normalizes_by_audio_duration() -> No
     )
 
     assert benchmark_module.compute_audio_end_finalization_rtf(150.0, audio) == 1.5
+    assert benchmark_module.compute_audio_end_finalization_rtf(None, audio) is None
 
 
 def test_compute_decoder_compute_rtf_uses_highest_cumulative_decode_time() -> None:
@@ -1232,7 +1235,12 @@ def test_compute_decoder_compute_rtf_uses_highest_cumulative_decode_time() -> No
 
     assert benchmark_module.compute_decoder_compute_rtf([5.0, 20.0, 12.0], audio) == 0.2
     assert benchmark_module.compute_decoder_compute_rtf([], audio) is None
-    assert benchmark_module.compute_audio_end_finalization_rtf(None, audio) is None
+
+
+def test_compute_partial_cadence_jitter_ms_uses_population_stdev() -> None:
+    assert benchmark_module.compute_partial_cadence_jitter_ms([]) is None
+    assert benchmark_module.compute_partial_cadence_jitter_ms([100.0]) == 0.0
+    assert benchmark_module.compute_partial_cadence_jitter_ms([80.0, 100.0, 120.0]) == 16.3
 
 
 def test_compute_transport_audio_overhead_counts_raw_uds_frame_headers_only() -> None:

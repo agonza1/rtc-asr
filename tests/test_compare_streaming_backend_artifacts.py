@@ -90,6 +90,7 @@ def artifact(
         "summary": {
             "time_to_first_interim_ms": {"p95": first_partial},
             "partial_cadence_p95_ms": {"p95": 100.0},
+            "partial_cadence_jitter_ms": {"p95": 8.0},
             "time_to_final_after_finalize_ms": {"p95": final},
             "audio_end_finalization_rtf": {"p95": 0.2},
             "decoder_compute_rtf": {"p95": 0.1},
