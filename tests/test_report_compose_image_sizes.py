@@ -32,7 +32,7 @@ def test_records_to_markdown_reports_present_and_missing_images() -> None:
     assert "| realtime-asr:faster-whisper-cpu | yes | 1234.6 | abcdef123456 | 2026-07-31T19:00:00Z |" in markdown
     assert "| realtime-asr:qwen-cpu | no |  |  |  |" in markdown
     assert "| Total present images |  | 1234.6 |  |  |" in markdown
-    assert "Summary: 1/2 images present, 1 missing." in markdown
+    assert "Summary: 1/2 images present (50.0%), 1 missing." in markdown
     assert "Largest present image: realtime-asr:faster-whisper-cpu (1234.6 MB)" in markdown
     assert "Smallest present image: realtime-asr:faster-whisper-cpu (1234.6 MB)" in markdown
     assert "Average present image size: 1234.6 MB" in markdown
@@ -84,8 +84,10 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "range_present_size_bytes": 0,
                 "range_present_size_mb": 0.0,
                 "missing": 0,
+                "missing_percent": 0.0,
                 "missing_tags": [],
                 "present": 1,
+                "present_percent": 100.0,
                 "requested": 1,
                 "unknown_size": 0,
                 "unknown_size_tags": [],
@@ -153,8 +155,10 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "range_present_size_bytes": 0,
         "range_present_size_mb": 0.0,
         "missing": 1,
+        "missing_percent": 50.0,
         "missing_tags": ["realtime-asr:qwen-cpu"],
         "present": 1,
+        "present_percent": 50.0,
         "requested": 2,
         "unknown_size": 0,
         "unknown_size_tags": [],
@@ -460,8 +464,10 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "range_present_size_bytes": 0,
         "range_present_size_mb": 0.0,
         "missing": 0,
+        "missing_percent": 0.0,
         "missing_tags": [],
         "present": 1,
+        "present_percent": 100.0,
         "requested": 1,
         "unknown_size": 0,
         "unknown_size_tags": [],

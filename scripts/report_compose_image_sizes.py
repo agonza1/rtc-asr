@@ -161,7 +161,9 @@ def records_summary(
     summary = {
         "requested": len(records),
         "present": len(records) - len(missing),
+        "present_percent": round((len(records) - len(missing)) / len(records) * 100, 1) if records else 0.0,
         "missing": len(missing),
+        "missing_percent": round(len(missing) / len(records) * 100, 1) if records else 0.0,
         "missing_tags": missing,
         "unknown_size": len(unknown_size),
         "unknown_size_tags": unknown_size,
@@ -286,9 +288,10 @@ def records_to_markdown(
     missing = [record.tag for record in records if not record.present]
     rows.append("")
     rows.append(
-        "Summary: {present}/{requested} images present, {missing} missing.".format(
+        "Summary: {present}/{requested} images present ({present_percent:.1f}%), {missing} missing.".format(
             present=len(records) - len(missing),
             requested=len(records),
+            present_percent=(len(records) - len(missing)) / len(records) * 100 if records else 0.0,
             missing=len(missing),
         )
     )
