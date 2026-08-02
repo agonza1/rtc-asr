@@ -3923,6 +3923,24 @@ def test_render_summary_csv_emits_selected_groups_with_shares() -> None:
     ]
 
 
+def test_render_summary_csv_reports_omitted_limited_buckets() -> None:
+    rendered = render_summary_csv(
+        [
+            {"artifact_path": "benchmark-results/base-large.json", "slug": "base", "artifact_size_bytes": 90},
+            {"artifact_path": "benchmark-results/qwen.json", "slug": "qwen", "artifact_size_bytes": 10},
+            {"artifact_path": "benchmark-results/tiny.json", "slug": "tiny", "artifact_size_bytes": 1},
+        ],
+        groups=["slug"],
+        summary_limit=1,
+    )
+
+    assert rendered.splitlines() == [
+        "group,bucket,count,total_size_bytes,total_size,count_share_percent,size_share_percent",
+        "slug,base,1,90,90 B,,",
+        "slug,__omitted_buckets__,2,11,11 B,,",
+    ]
+
+
 def test_render_json_summary_can_filter_group_rows_by_min_count() -> None:
     rendered = render_json_summary(
         [
@@ -5029,6 +5047,27 @@ def test_render_summary_markdown_includes_average_size_for_average_sorts() -> No
         "| Group | Bucket | Count | Total size | Average size | Count share | Size share |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
         "| slug | base | 2 | 120 B | 60 B | unknown | unknown |",
+    ]
+
+
+def test_render_summary_markdown_reports_omitted_limited_buckets() -> None:
+    rendered = render_summary_markdown(
+        [
+            {"artifact_path": "benchmark-results/base-large.json", "slug": "base", "artifact_size_bytes": 90},
+            {"artifact_path": "benchmark-results/qwen.json", "slug": "qwen", "artifact_size_bytes": 10},
+            {"artifact_path": "benchmark-results/tiny.json", "slug": "tiny", "artifact_size_bytes": 1},
+        ],
+        groups=["slug"],
+        summary_limit=1,
+    )
+
+    assert rendered.splitlines() == [
+        "Found 3 stale benchmark artifacts (101 B, 101 bytes).",
+        "",
+        "| Group | Bucket | Count | Total size | Count share | Size share |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
+        "| slug | base | 1 | 90 B | unknown | unknown |",
+        "| slug | __omitted_buckets__ | 2 | 11 B | unknown | unknown |",
     ]
 
 
