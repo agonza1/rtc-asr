@@ -203,4 +203,4 @@ python scripts/compare_streaming_backend_artifacts.py \
   --output docs/benchmark-results/vosk-stateful-streaming-comparison.json
 ```
 
-Use artifacts produced by `scripts/bench_local_stt_stream.py` with the same audio source, sample rate, `20 ms` input frames, `80` to `160 ms` send aggregation, partial interval, hardware, and concurrency. The comparison gate treats batched transcription as optional context only; it recommends stateful support only when the candidate improves live first-partial and finalization p95 latency without transcript or protocol regressions.
+Use artifacts produced by `scripts/bench_local_stt_stream.py` with the same audio source, sample rate, `20 ms` input frames, `80` to `160 ms` send aggregation, partial interval, hardware, and concurrency. The comparison gate treats batched transcription as optional context only and blocks mismatched hardware evidence; it recommends stateful support only when the candidate improves live first-partial and finalization p95 latency without transcript or protocol regressions.

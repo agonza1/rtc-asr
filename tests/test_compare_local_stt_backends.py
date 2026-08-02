@@ -29,6 +29,7 @@ def write_artifact(
     final_transcript: str = "hello from the voice agent",
     peak_rss_mb: float | None = 512.5,
     cpu_utilization_percent: float | None = 42.0,
+    machine: str = "arm64",
 ) -> Path:
     partial_cadence_summary = (
         {"p50": partial_cadence_p95 - 10.0, "p95": partial_cadence_p95, "p99": partial_cadence_p95 + 10.0}
@@ -70,7 +71,7 @@ def write_artifact(
                 },
                 "environment": {
                     "platform": "TestOS",
-                    "machine": "arm64",
+                    "machine": machine,
                     "processor": "TestCPU",
                     "cpu_logical_cores": 8,
                     "memory_total_mb": 32768.0,
@@ -177,7 +178,9 @@ def test_compare_backends_keeps_candidate_experimental_for_input_mismatch(tmp_pa
     assert comparison["candidate_status"] == "experimental"
     assert "benchmark_input:audio.send_aggregate_ms: baseline=80 candidate=160" in comparison["blocking_gaps"]
     assert "benchmark_input:settings.send_aggregate_ms: baseline=80 candidate=160" in comparison["blocking_gaps"]
-    assert comparison["recommendation"] == "Re-run backend benchmarks with matching audio, pacing, and scenario settings."
+    assert comparison["recommendation"] == (
+        "Re-run backend benchmarks with matching audio, pacing, scenario settings, and hardware."
+    )
 
 
 def test_compare_backends_keeps_candidate_experimental_for_concurrency_mismatch(tmp_path: Path) -> None:
@@ -204,7 +207,38 @@ def test_compare_backends_keeps_candidate_experimental_for_concurrency_mismatch(
 
     assert comparison["candidate_status"] == "experimental"
     assert "benchmark_input:settings.concurrency: baseline=1 candidate=3" in comparison["blocking_gaps"]
-    assert comparison["recommendation"] == "Re-run backend benchmarks with matching audio, pacing, and scenario settings."
+    assert comparison["recommendation"] == (
+        "Re-run backend benchmarks with matching audio, pacing, scenario settings, and hardware."
+    )
+
+
+def test_compare_backends_keeps_candidate_experimental_for_hardware_mismatch(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=220.0,
+        machine="arm64",
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=140.0,
+        machine="x86_64",
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["candidate_status"] == "experimental"
+    assert "benchmark_input:environment.machine: baseline='arm64' candidate='x86_64'" in comparison["blocking_gaps"]
+    assert comparison["recommendation"] == (
+        "Re-run backend benchmarks with matching audio, pacing, scenario settings, and hardware."
+    )
 
 
 def test_compare_backends_treats_missing_legacy_concurrency_as_single_session(tmp_path: Path) -> None:

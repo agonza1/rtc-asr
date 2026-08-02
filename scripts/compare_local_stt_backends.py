@@ -27,6 +27,13 @@ COMPARABLE_SETTING_KEYS = (
     "concurrency",
     "scenario",
 )
+COMPARABLE_ENVIRONMENT_KEYS = (
+    "platform",
+    "machine",
+    "processor",
+    "cpu_logical_cores",
+    "memory_total_mb",
+)
 BACKEND_KEY_METRICS = (
     *TRANSPORT_KEY_METRICS,
     "partial_cadence_p95_ms",
@@ -110,9 +117,11 @@ def nested_value(mapping: dict[str, Any], *keys: str) -> Any:
 def comparable_snapshot(artifact: dict[str, Any]) -> dict[str, Any]:
     audio = artifact.get("audio") if isinstance(artifact.get("audio"), dict) else {}
     settings = artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {}
+    environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
     return {
         "audio": {key: audio.get(key) for key in COMPARABLE_AUDIO_KEYS},
         "settings": {key: comparable_setting_value(settings, key) for key in COMPARABLE_SETTING_KEYS},
+        "environment": {key: environment.get(key) for key in COMPARABLE_ENVIRONMENT_KEYS},
     }
 
 
@@ -259,7 +268,7 @@ def comparable_input_gaps(by_backend: dict[str, dict[str, Any]], baseline_key: s
     baseline = by_backend[baseline_key]["comparable_snapshot"]
     candidate = by_backend[candidate_key]["comparable_snapshot"]
     gaps: list[str] = []
-    for section in ("audio", "settings"):
+    for section in ("audio", "settings", "environment"):
         for key, baseline_value in baseline[section].items():
             candidate_value = candidate[section].get(key)
             if baseline_value != candidate_value:
@@ -319,7 +328,7 @@ def recommendation_text(blockers: list[str], *, candidate_key: str) -> str:
     if any(blocker.startswith("missing_backend:") for blocker in blockers):
         return "Run the missing backend benchmark before deciding on Vosk stateful streaming."
     if any(blocker.startswith("benchmark_input:") for blocker in blockers):
-        return "Re-run backend benchmarks with matching audio, pacing, and scenario settings."
+        return "Re-run backend benchmarks with matching audio, pacing, scenario settings, and hardware."
     if any(blocker.startswith("protocol_errors:") for blocker in blockers):
         return "Fix streaming protocol errors before comparing backend latency."
     if any("final_transcript" in blocker for blocker in blockers):
