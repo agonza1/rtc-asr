@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import builtins
 from pathlib import Path
+import tempfile
 import threading
 from types import ModuleType, SimpleNamespace
 import sys
 
+import numpy as np
 import pytest
 
 from src.audio_processor import AudioProcessor
@@ -623,7 +625,7 @@ def test_parakeet_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pyt
     assert getattr(audio["array"], "shape", (0,))[0] > 0
 
 
-def test_parakeet_nemo_adapter_transcribe_uses_nemo_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_parakeet_nemo_adapter_transcribe_uses_in_memory_nemo_arrays(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
     class FakeNemoModel:
@@ -636,8 +638,8 @@ def test_parakeet_nemo_adapter_transcribe_uses_nemo_model(monkeypatch: pytest.Mo
         def float(self) -> None:
             calls["float"] = True
 
-        def transcribe(self, paths: list[str], *, batch_size: int) -> list[str]:
-            calls["paths"] = paths
+        def transcribe(self, audio: list[object], *, batch_size: int) -> list[str]:
+            calls["audio"] = audio
             calls["batch_size"] = batch_size
             return [" Yesterday it worked. "]
 
@@ -649,14 +651,12 @@ def test_parakeet_nemo_adapter_transcribe_uses_nemo_model(monkeypatch: pytest.Mo
 
     fake_models = ModuleType("nemo.collections.asr.models")
     fake_models.ASRModel = FakeASRModel
-    fake_soundfile = ModuleType("soundfile")
-    fake_soundfile.write = lambda path, samples, sample_rate: calls.update({"sample_rate": sample_rate})
 
-    monkeypatch.setitem(sys.modules, "soundfile", fake_soundfile)
     monkeypatch.setitem(sys.modules, "nemo", ModuleType("nemo"))
     monkeypatch.setitem(sys.modules, "nemo.collections", ModuleType("nemo.collections"))
     monkeypatch.setitem(sys.modules, "nemo.collections.asr", ModuleType("nemo.collections.asr"))
     monkeypatch.setitem(sys.modules, "nemo.collections.asr.models", fake_models)
+    monkeypatch.setattr(tempfile, "NamedTemporaryFile", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("temporary WAV path should not be used")))
 
     adapter = ParakeetNemoAdapter(
         config=AppConfig(
@@ -682,7 +682,28 @@ def test_parakeet_nemo_adapter_transcribe_uses_nemo_model(monkeypatch: pytest.Mo
     assert calls["eval"] is True
     assert calls["float"] is True
     assert calls["batch_size"] == 1
-    assert str(calls["paths"][0]).endswith(".wav")
+    audio = calls["audio"]
+    assert isinstance(audio, list)
+    samples = audio[0]
+    assert getattr(samples, "dtype", None) == np.float32
+    assert getattr(samples, "flags", {})["C_CONTIGUOUS"] is True
+    assert getattr(samples, "ndim", 0) == 1
+    assert getattr(samples, "shape", (0,))[0] > 0
+
+
+def test_parakeet_nemo_adapter_reports_array_incompatibility(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeNemoModel:
+        def transcribe(self, audio: list[object], *, batch_size: int) -> list[str]:
+            raise TypeError("expected a path-like object")
+
+    adapter = ParakeetNemoAdapter(
+        config=AppConfig(asr_backend="parakeet-nemo"),
+        audio_processor=AudioProcessor(),
+    )
+    adapter._model = FakeNemoModel()
+
+    with pytest.raises(ASRUnavailableError, match="in-memory NumPy audio arrays"):
+        adapter.transcribe(FIXTURE_PATH.read_bytes(), language=None, sample_rate=16000)
 
 
 def test_voxtral_adapter_transcribe_uses_transformers_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
