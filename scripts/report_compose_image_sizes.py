@@ -151,6 +151,11 @@ def records_summary(
         key=lambda record: record.size_bytes or 0,
         default=None,
     )
+    smallest = min(
+        (record for record in records if record.present and record.size_bytes is not None),
+        key=lambda record: record.size_bytes or 0,
+        default=None,
+    )
     summary = {
         "requested": len(records),
         "present": len(records) - len(missing),
@@ -165,6 +170,9 @@ def records_summary(
         "largest_present_tag": largest.tag if largest else None,
         "largest_present_size_bytes": largest.size_bytes if largest else None,
         "largest_present_size_mb": largest.size_mb if largest else None,
+        "smallest_present_tag": smallest.tag if smallest else None,
+        "smallest_present_size_bytes": smallest.size_bytes if smallest else None,
+        "smallest_present_size_mb": smallest.size_mb if smallest else None,
     }
     if max_size_mb is not None:
         over_budget = records_over_size_budget(records, max_size_mb)
@@ -256,6 +264,13 @@ def records_to_markdown(
     )
     if largest and largest.size_mb is not None:
         rows.append(f"Largest present image: {largest.tag} ({largest.size_mb:.1f} MB)")
+    smallest = min(
+        (record for record in records if record.present and record.size_bytes is not None),
+        key=lambda record: record.size_bytes or 0,
+        default=None,
+    )
+    if smallest and smallest.size_mb is not None:
+        rows.append(f"Smallest present image: {smallest.tag} ({smallest.size_mb:.1f} MB)")
     present_sizes = [record.size_bytes for record in records if record.present and record.size_bytes is not None]
     if present_sizes:
         average_size_mb = sum(present_sizes) / len(present_sizes) / 1_000_000
