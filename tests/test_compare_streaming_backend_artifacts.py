@@ -373,6 +373,68 @@ def test_compare_artifacts_blocks_non_live_voice_agent_workloads() -> None:
     assert report["recommendation"]["decision"] == "keep_experimental"
 
 
+def test_compare_artifacts_requires_rolling_window_baseline_and_stateful_candidate() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="stateful",
+            first_partial=500.0,
+            final=300.0,
+            transcript="hello world",
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="rolling_window",
+            first_partial=300.0,
+            final=200.0,
+            transcript="hello world",
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["benchmark_input_gaps"] == [
+        "benchmark_input:baseline.decoder_modes.rolling_window: required=True actual=['stateful']",
+        "benchmark_input:candidate.decoder_modes.stateful: required=True actual=['rolling_window']",
+    ]
+    assert report["recommendation"]["decision"] == "keep_experimental"
+
+
+def test_decoder_mode_gate_reads_mode_counts_when_modes_are_missing() -> None:
+    baseline = artifact(
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_partial=500.0,
+        final=300.0,
+        transcript="hello world",
+    )
+    candidate = artifact(
+        backend="vosk",
+        decoder_mode="stateful",
+        first_partial=300.0,
+        final=200.0,
+        transcript="hello world",
+    )
+    baseline["samples"][0].pop("decoder_modes")
+    candidate["samples"][0].pop("decoder_modes")
+    baseline["samples"][0]["decoder_mode_counts"] = {"rolling_window": 3}
+    candidate["samples"][0]["decoder_mode_counts"] = {"stateful": 3}
+
+    report = compare_module.compare_artifacts(
+        baseline=baseline,
+        candidate=candidate,
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["benchmark_input_gaps"] == []
+    assert report["recommendation"]["decision"] == "support_low_latency_backend"
+
+
 def test_main_writes_comparison_report(tmp_path) -> None:
     baseline = tmp_path / "baseline.json"
     candidate = tmp_path / "candidate.json"

@@ -122,6 +122,18 @@ def compare_benchmark_inputs(baseline: dict[str, Any], candidate: dict[str, Any]
         gaps.append("benchmark_input:baseline.workload.live_voice_agent_profile: required=True actual=False")
     if not is_live_voice_agent_artifact(candidate):
         gaps.append("benchmark_input:candidate.workload.live_voice_agent_profile: required=True actual=False")
+    baseline_decoder_modes = decoder_modes(baseline)
+    candidate_decoder_modes = decoder_modes(candidate)
+    if "rolling_window" not in baseline_decoder_modes:
+        gaps.append(
+            "benchmark_input:baseline.decoder_modes.rolling_window: "
+            f"required=True actual={sorted(baseline_decoder_modes)!r}"
+        )
+    if "stateful" not in candidate_decoder_modes:
+        gaps.append(
+            "benchmark_input:candidate.decoder_modes.stateful: "
+            f"required=True actual={sorted(candidate_decoder_modes)!r}"
+        )
     return gaps
 
 
@@ -178,6 +190,23 @@ def is_live_voice_agent_artifact(artifact: dict[str, Any]) -> bool:
         and audio.get("frame_ms") == 20
         and settings.get("send_aggregate_ms") in {80, 100, 120, 140, 160}
     )
+
+
+def decoder_modes(artifact: dict[str, Any]) -> set[str]:
+    samples = artifact.get("samples", [])
+    if not isinstance(samples, list):
+        return set()
+    modes: set[str] = set()
+    for sample in samples:
+        if not isinstance(sample, dict):
+            continue
+        raw_modes = sample.get("decoder_modes")
+        if isinstance(raw_modes, list):
+            modes.update(mode for mode in raw_modes if isinstance(mode, str))
+        raw_counts = sample.get("decoder_mode_counts")
+        if isinstance(raw_counts, dict):
+            modes.update(mode for mode in raw_counts if isinstance(mode, str))
+    return modes
 
 
 def compare_resource_metrics(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
