@@ -117,7 +117,7 @@ def compare_benchmark_inputs(baseline: dict[str, Any], candidate: dict[str, Any]
         candidate_value = candidate_settings.get(key)
         if baseline_value != candidate_value:
             gaps.append(f"benchmark_input:settings.{key}: baseline={baseline_value!r} candidate={candidate_value!r}")
-    for key in ("platform", "machine", "processor", "cpu_logical_cores", "memory_total_mb"):
+    for key in ("platform", "machine", "processor", "cpu_logical_cores", "memory_total_mb", "accelerator"):
         baseline_value = baseline_environment.get(key)
         candidate_value = candidate_environment.get(key)
         if baseline_value != candidate_value:
@@ -179,6 +179,7 @@ def normalized_environment(artifact: dict[str, Any]) -> dict[str, Any]:
         "processor": environment.get("processor"),
         "cpu_logical_cores": environment.get("cpu_logical_cores"),
         "memory_total_mb": environment.get("memory_total_mb"),
+        "accelerator": environment.get("accelerator"),
     }
 
 

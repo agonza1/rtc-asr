@@ -35,6 +35,7 @@ def artifact(
     scenario: str = "voice-agent-20ms-80ms",
     concurrency: int | None = 1,
     machine: str = "arm64",
+    accelerator: str | None = None,
     peak_rss_mb: float | None = None,
     cpu_utilization_percent: float | None = None,
     package_power_watts: float | None = None,
@@ -66,6 +67,7 @@ def artifact(
             "processor": "TestCPU",
             "cpu_logical_cores": 8,
             "memory_total_mb": 32768.0,
+            "accelerator": accelerator,
             "peak_rss_mb": peak_rss_mb,
             "cpu_utilization_percent": cpu_utilization_percent,
             "package_power_watts": package_power_watts,
@@ -372,6 +374,36 @@ def test_compare_artifacts_blocks_duration_timeout_and_hardware_mismatch() -> No
         "benchmark_input:audio.duration_ms: baseline=1000 candidate=2200",
         "benchmark_input:settings.receive_timeout_seconds: baseline=5 candidate=10",
         "benchmark_input:environment.machine: baseline='arm64' candidate='x86_64'",
+    ]
+    assert report["recommendation"]["decision"] == "keep_experimental"
+
+
+def test_compare_artifacts_blocks_accelerator_mismatch() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="rolling_window",
+            first_partial=500.0,
+            final=300.0,
+            transcript="hello world",
+            accelerator="cpu",
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="stateful",
+            first_partial=300.0,
+            final=200.0,
+            transcript="hello world",
+            accelerator="mps",
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["benchmark_input_gaps"] == [
+        "benchmark_input:environment.accelerator: baseline='cpu' candidate='mps'"
     ]
     assert report["recommendation"]["decision"] == "keep_experimental"
 
