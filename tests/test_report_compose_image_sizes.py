@@ -37,6 +37,7 @@ def test_records_to_markdown_reports_present_and_missing_images() -> None:
     assert "Smallest present image: realtime-asr:faster-whisper-cpu (1234.6 MB)" in markdown
     assert "Average present image size: 1234.6 MB" in markdown
     assert "Median present image size: 1234.6 MB" in markdown
+    assert "Present image size range: 0.0 MB" in markdown
     assert "Missing images: realtime-asr:qwen-cpu" in markdown
 
 
@@ -80,6 +81,8 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "average_present_size_mb": 987.7,
                 "median_present_size_bytes": 987_654_321,
                 "median_present_size_mb": 987.7,
+                "range_present_size_bytes": 0,
+                "range_present_size_mb": 0.0,
                 "missing": 0,
                 "missing_tags": [],
                 "present": 1,
@@ -147,6 +150,8 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "average_present_size_mb": 1234.6,
         "median_present_size_bytes": 1_234_567_890,
         "median_present_size_mb": 1234.6,
+        "range_present_size_bytes": 0,
+        "range_present_size_mb": 0.0,
         "missing": 1,
         "missing_tags": ["realtime-asr:qwen-cpu"],
         "present": 1,
@@ -191,6 +196,22 @@ def test_records_summary_reports_median_present_image_size() -> None:
     assert summary["median_present_size_bytes"] == 250_000_000
     assert summary["median_present_size_mb"] == 250.0
     assert "Median present image size: 250.0 MB" in markdown
+
+
+def test_records_summary_reports_present_image_size_range() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=100_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="large:image", image_id="large", size_bytes=300_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="unknown:image", image_id="unknown", size_bytes=None, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    summary = reporter.records_summary(records)
+    markdown = reporter.records_to_markdown(records)
+
+    assert summary["range_present_size_bytes"] == 200_000_000
+    assert summary["range_present_size_mb"] == 200.0
+    assert "Present image size range: 200.0 MB" in markdown
 
 
 def test_records_summary_reports_even_count_median_present_image_size() -> None:
@@ -432,6 +453,8 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "average_present_size_mb": 100.0,
         "median_present_size_bytes": 100_000_000,
         "median_present_size_mb": 100.0,
+        "range_present_size_bytes": 0,
+        "range_present_size_mb": 0.0,
         "missing": 0,
         "missing_tags": [],
         "present": 1,
