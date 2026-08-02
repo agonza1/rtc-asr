@@ -4800,15 +4800,16 @@ def render_summary_csv(
             continue
         summary_key = SUMMARY_GROUP_KEYS[group]
         bucket_key = summary_key.removeprefix("by_")
-        buckets = limit_summary_buckets(
+        filtered_buckets = limit_summary_buckets(
             summary[summary_key],
-            summary_limit,
+            None,
             sort_by=summary_sort,
             min_count=summary_min_count,
             max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
             max_size_bytes=summary_max_size_bytes,
         )
+        buckets = filtered_buckets if summary_limit is None else filtered_buckets[:summary_limit]
         if is_average_summary_sort(summary_sort):
             buckets = with_summary_average_sizes(buckets)
         if include_share:
@@ -4831,6 +4832,25 @@ def render_summary_csv(
                 row["average_size_bytes"] = bucket.get("average_size_bytes", "")
                 row["average_size"] = bucket.get("average_size", "")
             writer.writerow(row)
+        omitted_buckets = filtered_buckets[len(buckets) :]
+        if summary_limit is not None and omitted_buckets:
+            omitted_size_bytes = sum(bucket["total_size_bytes"] for bucket in omitted_buckets)
+            writer.writerow(
+                {
+                    "group": group,
+                    "bucket": "__omitted_buckets__",
+                    "count": len(omitted_buckets),
+                    "total_size_bytes": omitted_size_bytes,
+                    "total_size": format_bytes(omitted_size_bytes),
+                    "count_share_percent": "",
+                    "size_share_percent": "",
+                    **(
+                        {"average_size_bytes": "", "average_size": ""}
+                        if is_average_summary_sort(summary_sort)
+                        else {}
+                    ),
+                }
+            )
     return output.getvalue()
 
 
@@ -4881,15 +4901,16 @@ def render_summary_markdown(
             continue
         summary_key = SUMMARY_GROUP_KEYS[group]
         bucket_key = summary_key.removeprefix("by_")
-        buckets = limit_summary_buckets(
+        filtered_buckets = limit_summary_buckets(
             summary[summary_key],
-            summary_limit,
+            None,
             sort_by=summary_sort,
             min_count=summary_min_count,
             max_count=summary_max_count,
             min_size_bytes=summary_min_size_bytes,
             max_size_bytes=summary_max_size_bytes,
         )
+        buckets = filtered_buckets if summary_limit is None else filtered_buckets[:summary_limit]
         if include_average_size:
             buckets = with_summary_average_sizes(buckets)
         if include_share:
@@ -4914,6 +4935,21 @@ def render_summary_markdown(
                     average_size_cell=average_size_cell,
                     count_share=markdown_cell(bucket.get("count_share_percent", "")),
                     size_share=markdown_cell(bucket.get("size_share_percent", "")),
+                )
+            )
+        omitted_buckets = filtered_buckets[len(buckets) :]
+        if summary_limit is not None and omitted_buckets:
+            omitted_size_bytes = sum(bucket["total_size_bytes"] for bucket in omitted_buckets)
+            average_size_cell = " unknown |" if include_average_size else ""
+            lines.append(
+                (
+                    "| {group} | __omitted_buckets__ | {count} | {total_size} |"
+                    "{average_size_cell} unknown | unknown |"
+                ).format(
+                    group=markdown_cell(group),
+                    count=len(omitted_buckets),
+                    total_size=markdown_cell(format_bytes(omitted_size_bytes)),
+                    average_size_cell=average_size_cell,
                 )
             )
     return "\n".join(lines)
