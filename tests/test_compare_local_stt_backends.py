@@ -618,6 +618,45 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "not provided" in markdown
     assert "hello from the voice agent" in markdown
     assert "- none" in markdown
+
+
+def test_cli_creates_report_parent_directories(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+        final_after_finalize_p95=90.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        final_after_finalize_p95=85.0,
+    )
+    output = tmp_path / "reports" / "nested" / "comparison.json"
+    markdown_output = tmp_path / "reports" / "nested" / "comparison.md"
+
+    status = compare_module.main(
+        [
+            "--baseline",
+            "faster-whisper:rolling_window",
+            "--candidate",
+            "vosk:stateful",
+            "--output",
+            str(output),
+            "--markdown-output",
+            str(markdown_output),
+            str(baseline),
+            str(candidate),
+        ]
+    )
+
+    assert status == 0
+    assert json.loads(output.read_text(encoding="utf8"))["candidate_status"] == "supported"
+    markdown = markdown_output.read_text(encoding="utf8")
+    assert "Candidate status: supported" in markdown
     assert "Run context:" in markdown
     assert "Command: python scripts/bench_local_stt_stream.py" in markdown
     assert "Model: tiny-fixture" in markdown

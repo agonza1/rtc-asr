@@ -622,6 +622,11 @@ def _format_hardware(environment: dict[str, Any]) -> str:
     return _format_mapping(hardware)
 
 
+def write_report(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf8")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     comparison = compare_artifacts(
@@ -634,11 +639,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     encoded = json.dumps(comparison, indent=2, sort_keys=True) + "\n"
     if args.output is not None:
-        args.output.write_text(encoded, encoding="utf8")
+        write_report(args.output, encoded)
     else:
         print(encoded, end="")
     if args.markdown_output is not None:
-        args.markdown_output.write_text(format_markdown_report(comparison), encoding="utf8")
+        write_report(args.markdown_output, format_markdown_report(comparison))
     return 1 if comparison["blocking_gaps"] else 0
 
 
