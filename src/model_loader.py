@@ -320,16 +320,15 @@ class ParakeetNemoAdapter:
     def transcribe(self, audio_data: bytes, *, language: str | None, sample_rate: int | None) -> dict[str, Any]:
         decoded_audio = self.audio_processor.load_audio(audio_data, sample_rate=sample_rate)
         model = self._load_model()
-        try:
-            import soundfile as sf
-        except ImportError as exc:
-            raise ASRUnavailableError(
-                "The parakeet-nemo backend requires soundfile. Install requirements.txt to enable ASR_BACKEND=parakeet-nemo."
-            ) from exc
 
-        with tempfile.NamedTemporaryFile(prefix="rtc_asr_parakeet_", suffix=".wav") as audio_file:
-            sf.write(audio_file.name, decoded_audio.samples, decoded_audio.sample_rate)
-            result = model.transcribe([audio_file.name], batch_size=1)
+        samples = np.ascontiguousarray(decoded_audio.samples, dtype=np.float32)
+        try:
+            result = model.transcribe([samples], batch_size=1)
+        except (TypeError, ValueError) as exc:
+            raise ASRUnavailableError(
+                "The parakeet-nemo backend requires a NeMo ASRModel.transcribe implementation that accepts "
+                "in-memory NumPy audio arrays. Update nemo_toolkit[asr] or use a compatible Parakeet NeMo model."
+            ) from exc
         text = _extract_nemo_text(result)
 
         return {
