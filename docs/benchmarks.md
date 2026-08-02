@@ -195,12 +195,12 @@ That writes the full comparison JSON, the Markdown summary, and `docs/benchmark-
 Compare a stateful backend artifact, such as Vosk, against the current rolling-window/default Local STT path with:
 
 ```bash
-python scripts/compare_streaming_backend_artifacts.py \
-  --baseline docs/benchmark-results/default-rolling-window.json \
-  --baseline-name "default rolling-window" \
-  --candidate docs/benchmark-results/vosk-stateful.json \
-  --candidate-name "Vosk stateful" \
-  --output docs/benchmark-results/vosk-stateful-streaming-comparison.json
+python scripts/compare_local_stt_backends.py \
+  --baseline faster-whisper:rolling_window \
+  --candidate vosk:stateful \
+  --markdown-output docs/benchmark-results/vosk-stateful-streaming-comparison.md \
+  docs/benchmark-results/default-rolling-window.json \
+  docs/benchmark-results/vosk-stateful.json
 ```
 
 Use artifacts produced by `scripts/bench_local_stt_stream.py` with the same audio source, sample rate, `20 ms` input frames, `80` to `160 ms` send aggregation, partial interval, hardware, and concurrency. The comparison gate treats batched transcription as optional context only and blocks mismatched hardware evidence; it recommends stateful support only when the candidate improves live first-partial and finalization p95 latency without transcript or protocol regressions.

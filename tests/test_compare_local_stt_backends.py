@@ -165,6 +165,7 @@ def test_compare_backends_recommends_supported_when_candidate_clears_latency_gat
         "cpu_utilization_percent": 42.0,
     }
     assert comparison["backends"]["vosk:stateful"]["model"] == "tiny-fixture"
+    assert comparison["batched_transcription_role"] == "nice_to_have_context_only"
     assert comparison["recommendation"] == "Keep vosk:stateful as a supported low-latency backend."
 
 
@@ -487,6 +488,7 @@ def test_format_markdown_report_includes_backend_decision_evidence(tmp_path: Pat
     assert "# Local STT v1 Backend Comparison" in markdown
     assert "Candidate status: supported" in markdown
     assert "Recommendation: Keep vosk:stateful as a supported low-latency backend." in markdown
+    assert "Batched transcription role: nice_to_have_context_only" in markdown
     assert "| time_to_first_interim_ms | 80 ms |" in markdown
     assert "| faster-whisper:rolling_window | tiny-fixture |" in markdown
     assert "| vosk:stateful | tiny-fixture |" in markdown
