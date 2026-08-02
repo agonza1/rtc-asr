@@ -462,6 +462,34 @@ def test_compare_backends_requires_voice_agent_streaming_scenario(tmp_path: Path
     )
 
 
+def test_compare_backends_accepts_midrange_voice_agent_aggregation(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+        send_aggregate_ms=120,
+        scenario="voice-agent-120ms-aggregation",
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        send_aggregate_ms=120,
+        scenario="voice-agent-120ms-aggregation",
+    )
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["candidate_status"] == "supported"
+    assert not any("missing_voice_agent_streaming_scenario" in gap for gap in comparison["blocking_gaps"])
+
+
 def test_compare_backends_requires_realtime_paced_voice_agent_stream(tmp_path: Path) -> None:
     baseline = write_artifact(
         tmp_path / "rolling.json",
