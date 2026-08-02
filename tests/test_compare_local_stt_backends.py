@@ -35,6 +35,7 @@ def write_artifact(
     peak_rss_mb: float | None = 512.5,
     cpu_utilization_percent: float | None = 42.0,
     machine: str = "arm64",
+    accelerator: str | None = None,
     model: str = "tiny-fixture",
     expected_final_transcript: str | None = None,
     scenario: str | None = "voice-agent-80ms-aggregation",
@@ -143,6 +144,7 @@ def write_artifact(
                     "processor": "TestCPU",
                     "cpu_logical_cores": 8,
                     "memory_total_mb": 32768.0,
+                    "accelerator": accelerator,
                     "peak_rss_mb": peak_rss_mb,
                     "cpu_utilization_percent": cpu_utilization_percent,
                 },
@@ -298,6 +300,7 @@ def test_compare_backends_keeps_candidate_experimental_for_hardware_mismatch(tmp
         decoder_mode="rolling_window",
         first_interim_p95=220.0,
         machine="arm64",
+        accelerator="none",
     )
     candidate = write_artifact(
         tmp_path / "vosk.json",
@@ -305,6 +308,7 @@ def test_compare_backends_keeps_candidate_experimental_for_hardware_mismatch(tmp
         decoder_mode="stateful",
         first_interim_p95=140.0,
         machine="x86_64",
+        accelerator="mps",
     )
 
     comparison = compare_module.compare_artifacts(
@@ -315,6 +319,7 @@ def test_compare_backends_keeps_candidate_experimental_for_hardware_mismatch(tmp
 
     assert comparison["candidate_status"] == "experimental"
     assert "benchmark_input:environment.machine: baseline='arm64' candidate='x86_64'" in comparison["blocking_gaps"]
+    assert "benchmark_input:environment.accelerator: baseline='none' candidate='mps'" in comparison["blocking_gaps"]
     assert comparison["recommendation"] == (
         "Re-run backend benchmarks with matching audio, pacing, scenario settings, and hardware."
     )
