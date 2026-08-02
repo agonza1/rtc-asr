@@ -765,6 +765,19 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["audio"]["send_aggregate_ms"] == 20
     assert payload["audio"]["frames_per_send_chunk"] == 1
     assert payload["audio"]["duration_ms"] == 40
+    assert payload["workload"] == {
+        "kind": "local-stt-v1-streaming",
+        "scenario": "warm-service-regression",
+        "transport": "tcp_ws",
+        "live_voice_agent_profile": False,
+        "input_frame_ms": 20,
+        "send_aggregate_ms": 20,
+        "frames_per_send_chunk": 1,
+        "partial_interval_ms": 100,
+        "realtime_pace": False,
+        "concurrency": 1,
+        "batched_transcription_role": "nice_to_have_context_only",
+    }
     assert payload["settings"] == {
         "partial_interval_ms": 100,
         "receive_timeout_seconds": 5,
@@ -899,6 +912,7 @@ def test_run_benchmark_sends_aggregated_voice_agent_chunks() -> None:
     sample = payload["samples"][0]
     assert payload["audio"]["send_aggregate_ms"] == 80
     assert payload["audio"]["frames_per_send_chunk"] == 4
+    assert payload["workload"]["live_voice_agent_profile"] is False
     assert payload["settings"]["send_aggregate_ms"] == 80
     assert payload["settings"]["scenario"] == "voice-agent-80ms-aggregation"
     assert sample["audio_frames_sent"] == 5
@@ -906,6 +920,39 @@ def test_run_benchmark_sends_aggregated_voice_agent_chunks() -> None:
     assert sample["audio_payload_bytes_sent"] == 3200
     assert sample["audio_frames_dropped"] == 0
     assert payload["summary"]["audio_chunks_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+
+
+def test_describe_workload_marks_realtime_voice_agent_profile() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    workload = benchmark_module.describe_workload(
+        audio=audio,
+        transport="tcp_ws",
+        partial_interval_ms=100,
+        send_aggregate_ms=80,
+        concurrency=3,
+        realtime_pace=True,
+        scenario="voice-agent-20ms-80ms-load",
+    )
+
+    assert workload == {
+        "kind": "local-stt-v1-streaming",
+        "scenario": "voice-agent-20ms-80ms-load",
+        "transport": "tcp_ws",
+        "live_voice_agent_profile": True,
+        "input_frame_ms": 20,
+        "send_aggregate_ms": 80,
+        "frames_per_send_chunk": 4,
+        "partial_interval_ms": 100,
+        "realtime_pace": True,
+        "concurrency": 3,
+        "batched_transcription_role": "nice_to_have_context_only",
+    }
 
 
 def test_run_benchmark_records_concurrent_streaming_sessions() -> None:

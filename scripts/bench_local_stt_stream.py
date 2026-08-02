@@ -740,6 +740,15 @@ async def run_benchmark(
             "frames": len(audio.frames),
             "duration_ms": audio_duration_ms(audio),
         },
+        "workload": describe_workload(
+            audio=audio,
+            transport=transport,
+            partial_interval_ms=partial_interval_ms,
+            send_aggregate_ms=resolved_send_aggregate_ms,
+            concurrency=concurrency,
+            realtime_pace=realtime_pace,
+            scenario=scenario,
+        ),
         "settings": {
             "partial_interval_ms": partial_interval_ms,
             "receive_timeout_seconds": receive_timeout_seconds,
@@ -777,6 +786,38 @@ def _count_codes(samples: list[dict[str, Any]], key: str) -> dict[str, int]:
             continue
         counts.update(code for code in codes if isinstance(code, str))
     return dict(sorted(counts.items()))
+
+
+def describe_workload(
+    *,
+    audio: AudioInput,
+    transport: str,
+    partial_interval_ms: int,
+    send_aggregate_ms: int,
+    concurrency: int,
+    realtime_pace: bool,
+    scenario: str | None,
+) -> dict[str, Any]:
+    frames_per_send_chunk = send_aggregate_ms // audio.frame_ms
+    live_voice_agent = (
+        realtime_pace
+        and audio.sample_rate == HOT_PATH_SAMPLE_RATE
+        and audio.frame_ms == HOT_PATH_FRAME_MS
+        and 80 <= send_aggregate_ms <= 160
+    )
+    return {
+        "kind": "local-stt-v1-streaming",
+        "scenario": scenario,
+        "transport": transport,
+        "live_voice_agent_profile": live_voice_agent,
+        "input_frame_ms": audio.frame_ms,
+        "send_aggregate_ms": send_aggregate_ms,
+        "frames_per_send_chunk": frames_per_send_chunk,
+        "partial_interval_ms": partial_interval_ms,
+        "realtime_pace": realtime_pace,
+        "concurrency": concurrency,
+        "batched_transcription_role": "nice_to_have_context_only",
+    }
 
 
 async def _run_once(
