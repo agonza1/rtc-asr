@@ -527,6 +527,9 @@ class PipecatDemoBridge:
             "asr_compute_type": self.default_asr_model_option["compute_type"],
             "bridge_status": bridge_status,
             "can_start_session": bridge_status == "ready",
+            "active_session_count": sum(
+                1 for session in self._sessions.values() if session.state != SessionState.FAILED
+            ),
             "default_use_smart_turn": True,
             "dependency_message": dependency_message,
         }
