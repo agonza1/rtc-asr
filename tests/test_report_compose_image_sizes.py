@@ -303,7 +303,7 @@ def test_records_summary_reports_newest_and_oldest_present_images() -> None:
     assert "Oldest present image: old:image (2026-07-30T19:00:00Z)" in markdown
 
 
-def test_records_summary_orders_created_times_by_instant_not_raw_string() -> None:
+def test_records_summary_and_markdown_order_created_times_by_instant_not_raw_string() -> None:
     records = [
         reporter.ImageSizeRecord(
             tag="early-offset:image",
@@ -322,9 +322,12 @@ def test_records_summary_orders_created_times_by_instant_not_raw_string() -> Non
     ]
 
     summary = reporter.records_summary(records)
+    markdown = reporter.records_to_markdown(records)
 
     assert summary["newest_present_tag"] == "later-zulu:image"
     assert summary["oldest_present_tag"] == "early-offset:image"
+    assert "Newest present image: later-zulu:image (2026-07-31T19:00:00Z)" in markdown
+    assert "Oldest present image: early-offset:image (2026-07-31T20:00:00+02:00)" in markdown
 
 
 def test_records_summary_reports_present_images_with_unknown_size() -> None:
