@@ -4386,7 +4386,7 @@ def stale_summary(stale: list[dict[str, Any]]) -> dict[str, Any]:
         quarter_bucket["total_size_bytes"] += entry.get("artifact_size_bytes") or 0
         quarter_bucket["total_size"] = format_bytes(quarter_bucket["total_size_bytes"])
 
-        month = measured_month(entry.get("measured_at"))
+        month = str(entry.get("measured_month") or measured_month(entry.get("measured_at")))
         month_bucket = by_measured_month.setdefault(
             month,
             {
