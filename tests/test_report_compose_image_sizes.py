@@ -269,6 +269,9 @@ def test_records_summary_to_markdown_emits_compact_aggregate_table() -> None:
     assert "| Unknown creation times | 1: second:image |" in markdown
     assert "| Per-image size budget | 200.0 MB; 1 over; 100.0 MB excess |" in markdown
     assert "| Total image size budget | 350.0 MB; 114.3% utilization; 50.0 MB excess |" in markdown
+    assert "| Known image ID references | 2 |" in markdown
+    assert "| Unique image IDs | 1 |" in markdown
+    assert "| Duplicate image ID tag refs | 2 |" in markdown
     assert "| Missing tags | missing:image |" in markdown
     assert "| Tags over size budget | second:image |" in markdown
     assert "| Duplicate groups | shared123: first:image, second:image |" in markdown
