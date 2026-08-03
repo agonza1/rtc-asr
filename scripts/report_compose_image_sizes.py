@@ -358,6 +358,7 @@ def records_over_size_budget(records: Sequence[ImageSizeRecord], max_size_mb: fl
 def parse_created_datetime(value: str | None) -> datetime | None:
     if not value:
         return None
+    value = truncate_fractional_seconds(value)
     normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
     try:
         parsed = datetime.fromisoformat(normalized)
@@ -366,6 +367,27 @@ def parse_created_datetime(value: str | None) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=UTC)
     return parsed.astimezone(UTC)
+
+
+def truncate_fractional_seconds(value: str) -> str:
+    fraction_start = value.find(".")
+    if fraction_start == -1:
+        return value
+
+    timezone_markers = (
+        index
+        for index in (
+            value.find("+", fraction_start),
+            value.find("-", fraction_start),
+            value.find("Z", fraction_start),
+        )
+        if index != -1
+    )
+    fraction_end = min(timezone_markers, default=len(value))
+    fraction = value[fraction_start + 1 : fraction_end]
+    if len(fraction) <= 6:
+        return value
+    return f"{value[: fraction_start + 1]}{fraction[:6]}{value[fraction_end:]}"
 
 
 def image_age_days(record: ImageSizeRecord, now: datetime | None = None) -> float | None:
