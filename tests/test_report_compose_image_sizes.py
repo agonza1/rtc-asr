@@ -573,6 +573,20 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
     ]
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("age-desc", "age-desc"),
+        ("AGE-DESC", "age-desc"),
+        ("age_desc", "age-desc"),
+        ("created_asc", "created-asc"),
+        ("SIZE-DESC", "size-desc"),
+    ],
+)
+def test_parse_sort_choice_accepts_case_and_underscore_aliases(value: str, expected: str) -> None:
+    assert reporter.parse_sort_choice(value) == expected
+
+
 def test_records_over_size_budget_ignores_missing_and_unknown_sizes() -> None:
     records = [
         reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=199_000_000, created=None, present=True),
@@ -790,6 +804,12 @@ def test_main_applies_sort_order_before_rendering(monkeypatch: pytest.MonkeyPatc
     lines = capsys.readouterr().out.splitlines()
     assert lines[2].startswith("| small:image |")
     assert lines[3].startswith("| large:image |")
+
+    assert reporter.main(["--sort", "SIZE-DESC", "small:image", "large:image"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[2].startswith("| large:image |")
+    assert lines[3].startswith("| small:image |")
 
 
 def test_main_fails_when_present_image_exceeds_size_budget(

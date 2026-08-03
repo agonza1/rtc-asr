@@ -31,6 +31,7 @@ SORT_CHOICES = (
     "age-asc",
     "age-desc",
 )
+SORT_CHOICE_SET = set(SORT_CHOICES)
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,14 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
     if sort_by == "age-desc":
         return sorted(records, key=lambda record: (image_age_days(record) is not None, image_age_days(record) or 0), reverse=True)
     raise ValueError(f"unknown sort mode: {sort_by}")
+
+
+def parse_sort_choice(value: str) -> str:
+    normalized = value.lower().replace("_", "-")
+    if normalized not in SORT_CHOICE_SET:
+        choices = ", ".join(SORT_CHOICES)
+        raise argparse.ArgumentTypeError(f"invalid sort mode: {value!r}; choose one of: {choices}")
+    return normalized
 
 
 def records_to_json(
@@ -550,8 +559,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of markdown.")
     parser.add_argument("--csv", action="store_true", help="Emit CSV rows instead of markdown.")
     parser.add_argument(
+        "--sort",
         "--sort-by",
-        choices=SORT_CHOICES,
+        dest="sort_by",
+        type=parse_sort_choice,
         default="input",
         help="Order output records by input order, image tag, image size, image creation time, or image age.",
     )
