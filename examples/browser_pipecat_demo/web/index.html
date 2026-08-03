@@ -103,8 +103,12 @@
 
         <section class="panel transcript-panel" aria-labelledby="transcript-title">
           <h2 id="transcript-title">Transcript</h2>
+          <p id="transcript-state" class="transcript-state" aria-live="polite">No transcript events yet.</p>
           <div class="transcript" aria-live="polite" aria-atomic="false">
-            <p id="partial-text" class="partial">Waiting for a Pipecat bridge.</p>
+            <p class="partial-line">
+              <span class="transcript-label">Live</span>
+              <span id="partial-text" class="partial">Waiting for a Pipecat bridge.</span>
+            </p>
             <ul id="final-log" class="log-list final-log"></ul>
           </div>
         </section>

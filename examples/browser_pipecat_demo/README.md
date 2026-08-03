@@ -138,6 +138,8 @@ The browser will:
 8. Stream live speech or real-time file playback through Pipecat into `rtc-asr`
 9. Render transcript events received over the data channel
 
+Partial transcript events update the *Live* row as they arrive, so the browser shows streaming ASR progress before an utterance is finalized. Final transcript events move into the transcript history with a separate timestamped row and clear the interim text for the next utterance. Starting a new session resets the transcript view; stopping a session preserves the last visible partial as a captured partial segment so useful text is not lost.
+
 ## Docker Compose Sidecar
 
 The repository compose stack can run the browser Pipecat demo beside `rtc-asr` with Docker service discovery:

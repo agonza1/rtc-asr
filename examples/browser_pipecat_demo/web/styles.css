@@ -314,8 +314,33 @@ button:disabled {
   padding: 1rem;
 }
 
+.transcript-state {
+  margin-bottom: 0.7rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.partial-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  margin-bottom: 0.85rem;
+}
+
+.transcript-label {
+  border: 1px solid #b8d7d2;
+  border-radius: 999px;
+  background: #e8f5f3;
+  color: var(--accent-dark);
+  padding: 0.08rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .partial {
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .log-list {
@@ -345,6 +370,11 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #fff;
+}
+
+.final-log .log-entry {
+  border-color: #c9ddd9;
+  background: #f7fbfa;
 }
 
 .log-time {
