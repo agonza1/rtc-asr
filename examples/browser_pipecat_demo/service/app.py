@@ -120,6 +120,10 @@ async def demo_ready() -> dict[str, object]:
         "ready": can_start_session,
         "bridge_status": config["bridge_status"],
         "can_start_session": can_start_session,
+        "rtc_asr_ws_url": config["rtc_asr_ws_url"],
+        "asr_model_label": config["asr_model_label"],
+        "asr_backend": config["asr_backend"],
+        "asr_model": config["asr_model"],
     }
 
 
