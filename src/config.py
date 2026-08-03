@@ -91,6 +91,13 @@ def _positive_int_first_env(*names: str, default: int) -> int:
     return default
 
 
+def _tcp_port_env(name: str, default: int) -> int:
+    value = _positive_int_env(name, default)
+    if value > 65535:
+        raise ValueError(f"{name} must be a valid TCP port")
+    return value
+
+
 def _socket_path_env(name: str, default: str, *, required: bool) -> str:
     value = os.getenv(name)
     if value is None:
@@ -300,7 +307,7 @@ class AppConfig:
             app_name=os.getenv("APP_NAME", defaults.app_name),
             app_version=os.getenv("APP_VERSION", defaults.app_version),
             host=os.getenv("HOST", defaults.host),
-            port=_positive_int_env("PORT", defaults.port),
+            port=_tcp_port_env("PORT", defaults.port),
             cors_origins=_cors_origins(os.getenv("CORS_ORIGINS"), defaults.cors_origins),
             sample_rate=_positive_int_first_env(
                 "SAMPLE_RATE",

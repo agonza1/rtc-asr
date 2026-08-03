@@ -3380,6 +3380,13 @@ def test_positive_integer_env_values_reject_nonpositive_values(
         AppConfig.from_env()
 
 
+def test_port_env_rejects_values_outside_tcp_port_range(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PORT", "65536")
+
+    with pytest.raises(ValueError, match="PORT must be a valid TCP port"):
+        AppConfig.from_env()
+
+
 @pytest.mark.parametrize(
     ("env_name", "invalid_value"),
     [
