@@ -109,6 +109,8 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "newest_present_created": "2026-07-31T19:00:00Z",
                 "oldest_present_tag": "realtime-asr:parakeet-nemo-cpu",
                 "oldest_present_created": "2026-07-31T19:00:00Z",
+                "duplicate_image_ids": 0,
+                "duplicate_image_id_groups": [],
             }
         },
     ]
@@ -188,6 +190,8 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "newest_present_created": "2026-07-31T19:00:00Z",
         "oldest_present_tag": "realtime-asr:faster-whisper-cpu",
         "oldest_present_created": "2026-07-31T19:00:00Z",
+        "duplicate_image_ids": 0,
+        "duplicate_image_id_groups": [],
     }
 
 
@@ -315,6 +319,24 @@ def test_records_summary_reports_present_images_with_unknown_creation_time() -> 
     assert summary["unknown_created_percent"] == 33.3
     assert summary["unknown_created_tags"] == ["unknown:image"]
     assert "Images with unknown creation time: 1/3 (33.3%): unknown:image" in markdown
+
+
+def test_records_summary_reports_duplicate_image_ids() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="first:image", image_id="shared123", size_bytes=100_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="second:image", image_id="shared123", size_bytes=100_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="unique:image", image_id="unique123", size_bytes=100_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    summary = reporter.records_summary(records)
+    markdown = reporter.records_to_markdown(records)
+
+    assert summary["duplicate_image_ids"] == 1
+    assert summary["duplicate_image_id_groups"] == [
+        {"image_id": "shared123", "tags": ["first:image", "second:image"]}
+    ]
+    assert "Duplicate image IDs: shared123: first:image, second:image" in markdown
 
 
 def test_records_summary_reports_size_budget_status() -> None:
@@ -541,6 +563,8 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "newest_present_created": None,
         "oldest_present_tag": None,
         "oldest_present_created": None,
+        "duplicate_image_ids": 0,
+        "duplicate_image_id_groups": [],
     }
 
 

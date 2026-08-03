@@ -162,6 +162,7 @@ def records_summary(
     records_with_created = [record for record in records if record.present and record.created]
     newest = max(records_with_created, key=lambda record: record.created or "", default=None)
     oldest = min(records_with_created, key=lambda record: record.created or "", default=None)
+    duplicate_image_id_groups = records_with_duplicate_image_ids(records)
     summary = {
         "requested": len(records),
         "present": len(records) - len(missing),
@@ -201,6 +202,8 @@ def records_summary(
         "newest_present_created": newest.created if newest else None,
         "oldest_present_tag": oldest.tag if oldest else None,
         "oldest_present_created": oldest.created if oldest else None,
+        "duplicate_image_ids": len(duplicate_image_id_groups),
+        "duplicate_image_id_groups": duplicate_image_id_groups,
     }
     if max_size_mb is not None:
         over_budget = records_over_size_budget(records, max_size_mb)
@@ -261,6 +264,18 @@ def records_over_size_budget(records: Sequence[ImageSizeRecord], max_size_mb: fl
         record
         for record in records
         if record.present and record.size_bytes is not None and record.size_bytes > max_size_bytes
+    ]
+
+
+def records_with_duplicate_image_ids(records: Sequence[ImageSizeRecord]) -> list[dict[str, Any]]:
+    tags_by_image_id: dict[str, list[str]] = {}
+    for record in records:
+        if record.present and record.image_id:
+            tags_by_image_id.setdefault(record.image_id, []).append(record.tag)
+    return [
+        {"image_id": image_id, "tags": tags}
+        for image_id, tags in tags_by_image_id.items()
+        if len(tags) > 1
     ]
 
 
@@ -387,6 +402,19 @@ def records_to_markdown(
                 requested=len(records),
                 percent=len(unknown_created) / len(records) * 100 if records else 0.0,
                 tags=", ".join(unknown_created),
+            )
+        )
+    duplicate_image_id_groups = records_with_duplicate_image_ids(records)
+    if duplicate_image_id_groups:
+        rows.append(
+            "Duplicate image IDs: {groups}".format(
+                groups="; ".join(
+                    "{image_id}: {tags}".format(
+                        image_id=group["image_id"],
+                        tags=", ".join(group["tags"]),
+                    )
+                    for group in duplicate_image_id_groups
+                )
             )
         )
     return "\n".join(rows)
