@@ -92,6 +92,7 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "present_percent": 100.0,
                 "requested": 1,
                 "unknown_size": 0,
+                "unknown_size_percent": 0.0,
                 "unknown_size_tags": [],
                 "total_size_bytes": 987_654_321,
                 "total_size_mb": 987.7,
@@ -167,6 +168,7 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "present_percent": 50.0,
         "requested": 2,
         "unknown_size": 0,
+        "unknown_size_percent": 0.0,
         "unknown_size_tags": [],
         "total_size_bytes": 1_234_567_890,
         "total_size_mb": 1234.6,
@@ -288,8 +290,9 @@ def test_records_summary_reports_present_images_with_unknown_size() -> None:
     markdown = reporter.records_to_markdown(records)
 
     assert summary["unknown_size"] == 1
+    assert summary["unknown_size_percent"] == 33.3
     assert summary["unknown_size_tags"] == ["unknown:image"]
-    assert "Images with unknown size: unknown:image" in markdown
+    assert "Images with unknown size: 1/3 (33.3%): unknown:image" in markdown
 
 
 def test_records_summary_reports_size_budget_status() -> None:
@@ -499,6 +502,7 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "present_percent": 100.0,
         "requested": 1,
         "unknown_size": 0,
+        "unknown_size_percent": 0.0,
         "unknown_size_tags": [],
         "total_size_bytes": 100_000_000,
         "total_size_mb": 100.0,
