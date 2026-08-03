@@ -169,6 +169,7 @@ def records_summary(
         "missing_percent": round(len(missing) / len(records) * 100, 1) if records else 0.0,
         "missing_tags": missing,
         "unknown_size": len(unknown_size),
+        "unknown_size_percent": round(len(unknown_size) / len(records) * 100, 1) if records else 0.0,
         "unknown_size_tags": unknown_size,
         "total_size_bytes": total_bytes,
         "total_size_mb": round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
@@ -366,7 +367,14 @@ def records_to_markdown(
         rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
     if unknown_size:
-        rows.append("Images with unknown size: {tags}".format(tags=", ".join(unknown_size)))
+        rows.append(
+            "Images with unknown size: {count}/{requested} ({percent:.1f}%): {tags}".format(
+                count=len(unknown_size),
+                requested=len(records),
+                percent=len(unknown_size) / len(records) * 100 if records else 0.0,
+                tags=", ".join(unknown_size),
+            )
+        )
     return "\n".join(rows)
 
 
