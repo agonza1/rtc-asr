@@ -21,7 +21,16 @@ DEFAULT_IMAGES = (
     "realtime-asr:parakeet-nemo-cpu",
 )
 
-SORT_CHOICES = ("input", "tag", "size-asc", "size-desc", "created-asc", "created-desc")
+SORT_CHOICES = (
+    "input",
+    "tag",
+    "size-asc",
+    "size-desc",
+    "created-asc",
+    "created-desc",
+    "age-asc",
+    "age-desc",
+)
 
 
 @dataclass(frozen=True)
@@ -92,6 +101,10 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
         return sorted(records, key=lambda record: (record.created is None, record.created or ""))
     if sort_by == "created-desc":
         return sorted(records, key=lambda record: (record.created is not None, record.created or ""), reverse=True)
+    if sort_by == "age-asc":
+        return sorted(records, key=lambda record: (image_age_days(record) is None, image_age_days(record) or 0))
+    if sort_by == "age-desc":
+        return sorted(records, key=lambda record: (image_age_days(record) is not None, image_age_days(record) or 0), reverse=True)
     raise ValueError(f"unknown sort mode: {sort_by}")
 
 
@@ -540,7 +553,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--sort-by",
         choices=SORT_CHOICES,
         default="input",
-        help="Order output records by input order, image tag, image size, or image creation time.",
+        help="Order output records by input order, image tag, image size, image creation time, or image age.",
     )
     parser.add_argument(
         "--summary-only",

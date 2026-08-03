@@ -531,6 +531,48 @@ def test_sort_records_orders_by_tag_size_and_created() -> None:
     ]
 
 
+def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="old:image",
+            image_id="old",
+            size_bytes=200,
+            created="2026-07-15T12:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="fresh:image",
+            image_id="fresh",
+            size_bytes=100,
+            created="2026-07-31T12:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="unknown:image",
+            image_id="unknown",
+            size_bytes=300,
+            created=None,
+            present=True,
+        ),
+    ]
+    monkeypatch.setattr(
+        reporter,
+        "image_age_days",
+        lambda record, now=None: {"old:image": 17.0, "fresh:image": 1.0}.get(record.tag),
+    )
+
+    assert [record.tag for record in reporter.sort_records(records, "age-asc")] == [
+        "fresh:image",
+        "old:image",
+        "unknown:image",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "age-desc")] == [
+        "old:image",
+        "fresh:image",
+        "unknown:image",
+    ]
+
+
 def test_records_over_size_budget_ignores_missing_and_unknown_sizes() -> None:
     records = [
         reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=199_000_000, created=None, present=True),
