@@ -111,6 +111,9 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "oldest_present_created": "2026-07-31T19:00:00Z",
                 "duplicate_image_ids": 0,
                 "duplicate_image_id_groups": [],
+                "known_image_ids": 1,
+                "unique_image_ids": 1,
+                "duplicate_image_id_tag_refs": 0,
             }
         },
     ]
@@ -192,6 +195,9 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "oldest_present_created": "2026-07-31T19:00:00Z",
         "duplicate_image_ids": 0,
         "duplicate_image_id_groups": [],
+        "known_image_ids": 1,
+        "unique_image_ids": 1,
+        "duplicate_image_id_tag_refs": 0,
     }
 
 
@@ -336,6 +342,10 @@ def test_records_summary_reports_duplicate_image_ids() -> None:
     assert summary["duplicate_image_id_groups"] == [
         {"image_id": "shared123", "tags": ["first:image", "second:image"]}
     ]
+    assert summary["known_image_ids"] == 3
+    assert summary["unique_image_ids"] == 2
+    assert summary["duplicate_image_id_tag_refs"] == 2
+    assert "Unique image IDs: 2/3 present image references with IDs." in markdown
     assert "Duplicate image IDs: shared123: first:image, second:image" in markdown
 
 
@@ -565,6 +575,9 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "oldest_present_created": None,
         "duplicate_image_ids": 0,
         "duplicate_image_id_groups": [],
+        "known_image_ids": 1,
+        "unique_image_ids": 1,
+        "duplicate_image_id_tag_refs": 0,
     }
 
 

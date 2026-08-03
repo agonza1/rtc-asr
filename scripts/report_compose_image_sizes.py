@@ -163,6 +163,8 @@ def records_summary(
     newest = max(records_with_created, key=lambda record: record.created or "", default=None)
     oldest = min(records_with_created, key=lambda record: record.created or "", default=None)
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
+    known_image_ids = [record.image_id for record in records if record.present and record.image_id]
+    unique_image_ids = sorted(set(known_image_ids))
     summary = {
         "requested": len(records),
         "present": len(records) - len(missing),
@@ -204,6 +206,9 @@ def records_summary(
         "oldest_present_created": oldest.created if oldest else None,
         "duplicate_image_ids": len(duplicate_image_id_groups),
         "duplicate_image_id_groups": duplicate_image_id_groups,
+        "known_image_ids": len(known_image_ids),
+        "unique_image_ids": len(unique_image_ids),
+        "duplicate_image_id_tag_refs": sum(len(group["tags"]) for group in duplicate_image_id_groups),
     }
     if max_size_mb is not None:
         over_budget = records_over_size_budget(records, max_size_mb)
@@ -405,6 +410,14 @@ def records_to_markdown(
             )
         )
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
+    known_image_ids = [record.image_id for record in records if record.present and record.image_id]
+    if known_image_ids:
+        rows.append(
+            "Unique image IDs: {unique}/{known} present image references with IDs.".format(
+                unique=len(set(known_image_ids)),
+                known=len(known_image_ids),
+            )
+        )
     if duplicate_image_id_groups:
         rows.append(
             "Duplicate image IDs: {groups}".format(
