@@ -36,7 +36,7 @@ const state = {
   audioObjectUrl: null,
   serviceConfig: null,
   lastPartialTranscript: "",
-  lastFinalTranscript: "",
+  seenFinalTranscriptEvents: new Set(),
   finalTranscriptCount: 0,
 };
 
@@ -68,19 +68,47 @@ function logEvent(message) {
   prependLog(elements.eventLog, message);
 }
 
-function appendFinalTranscript(text) {
-  const transcript = (text || "").trim();
+function finalTranscriptEventKey(message, transcript) {
+  if (message.event_id) {
+    return String(message.event_id);
+  }
+
+  const naturalIdentityParts = [
+    message.stream_id,
+    message.revision,
+    message.audio_received_ms,
+    message.audio_transcribed_ms,
+  ].filter((value) => value !== undefined && value !== null && value !== "");
+
+  if (naturalIdentityParts.length === 0) {
+    return "";
+  }
+
+  return [
+    message.session_id,
+    ...naturalIdentityParts,
+    message.chunks_received,
+  ]
+    .filter((value) => value !== undefined && value !== null && value !== "")
+    .join(":");
+}
+
+function appendFinalTranscript(message) {
+  const transcript = (message.text || "").trim();
   if (!transcript) {
     return;
   }
 
-  if (transcript === state.lastFinalTranscript) {
+  const eventKey = finalTranscriptEventKey(message, transcript);
+  if (eventKey && state.seenFinalTranscriptEvents.has(eventKey)) {
     setText(elements.transcriptState, `Skipped duplicate final segment. ${state.finalTranscriptCount} final segment(s) captured.`);
     return;
   }
 
+  if (eventKey) {
+    state.seenFinalTranscriptEvents.add(eventKey);
+  }
   state.finalTranscriptCount += 1;
-  state.lastFinalTranscript = transcript;
   prependLog(elements.finalLog, transcript);
   setText(elements.transcriptState, `${state.finalTranscriptCount} final segment(s) captured.`);
 }
@@ -105,15 +133,15 @@ function setLivePartial(text) {
   );
 }
 
-function commitFinalTranscript(text) {
-  appendFinalTranscript(text);
+function commitFinalTranscript(message) {
+  appendFinalTranscript(message);
   state.lastPartialTranscript = "";
   setText(elements.partialText, "Listening for the next utterance.");
 }
 
 function resetTranscriptDisplay(message = "Waiting for a Pipecat bridge.") {
   state.lastPartialTranscript = "";
-  state.lastFinalTranscript = "";
+  state.seenFinalTranscriptEvents.clear();
   state.finalTranscriptCount = 0;
   elements.finalLog.replaceChildren();
   setText(elements.partialText, message);
@@ -303,7 +331,7 @@ function handleDataChannelMessage(event) {
   }
 
   if (message.type === "final") {
-    commitFinalTranscript(message.text || "");
+    commitFinalTranscript(message);
     setText(elements.bridgeStatus, "received final");
     return;
   }

@@ -264,6 +264,7 @@ class RTCASRAudioRelay:
         self._final_event: asyncio.Future[TranscriptEvent] | None = None
         self._receiver_task: asyncio.Task[None] | None = None
         self._utterance_bytes_sent = 0
+        self._event_sequence = 0
 
     async def handle_audio_frame(self, frame: Any) -> None:
         audio = bytes(getattr(frame, "audio", b""))
@@ -430,11 +431,37 @@ class RTCASRAudioRelay:
         event_type = "final" if event.is_final or event.type == "final" else event.type
         if event_type not in {"partial", "final", "error", "canceled"}:
             event_type = "status"
+        self._event_sequence += 1
+        stream_id = getattr(event, "stream_id", None)
+        revision = getattr(event, "revision", None)
+        audio_received_ms = getattr(event, "audio_received_ms", None)
+        audio_transcribed_ms = getattr(event, "audio_transcribed_ms", None)
+        chunks_received = getattr(event, "chunks_received", 0)
+        natural_identity_parts = [
+            stream_id,
+            revision,
+            audio_received_ms,
+            audio_transcribed_ms,
+        ]
+        if any(part is not None for part in natural_identity_parts):
+            identity_parts = [
+                self.session_id,
+                *natural_identity_parts,
+                chunks_received,
+            ]
+            event_id = ":".join(str(part) for part in identity_parts if part is not None)
+        else:
+            event_id = f"{self.session_id}:event:{self._event_sequence}"
         self._send_app_message({
             "type": event_type,
             "text": event.text,
             "session_id": self.session_id,
-            "chunks_received": event.chunks_received,
+            "event_id": event_id,
+            "stream_id": stream_id,
+            "revision": revision,
+            "audio_received_ms": audio_received_ms,
+            "audio_transcribed_ms": audio_transcribed_ms,
+            "chunks_received": chunks_received,
         })
 
     def _send_error(self, message: str) -> None:
