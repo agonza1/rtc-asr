@@ -167,6 +167,15 @@ def _asr_model_option_from_env(value: str | None) -> dict[str, str]:
     return ASR_MODEL_OPTION_BY_ID.get(value, ASR_MODEL_OPTION_BY_ID[DEFAULT_ASR_MODEL_OPTION_ID])
 
 
+def _string_request_metadata(request_data: Any, key: str) -> str | None:
+    if not isinstance(request_data, dict):
+        return None
+    value = request_data.get(key)
+    if value is None:
+        return None
+    return str(value)
+
+
 def _max_buffer_seconds_from_env(value: str | None) -> float:
     if value is None or value == "":
         return DEFAULT_RTC_ASR_MAX_BUFFER_SECONDS
@@ -537,6 +546,8 @@ class PipecatDemoBridge:
             asr_model_option_id or "",
             self.default_asr_model_option,
         )
+        demo_audio_source = _string_request_metadata(request_data, "demo_audio_source")
+        smart_turn_label = _string_request_metadata(request_data, "smart_turn_label")
         session = DemoSession(
             session_id=str(uuid4()),
             created_at=datetime.now(timezone.utc),
@@ -557,6 +568,10 @@ class PipecatDemoBridge:
                 "smart_turn_mode": "requested" if use_smart_turn else "disabled",
             },
         )
+        if demo_audio_source is not None:
+            session.metadata["demo_audio_source"] = demo_audio_source
+        if smart_turn_label is not None:
+            session.metadata["smart_turn_label"] = smart_turn_label
         self._sessions[session.session_id] = session
 
         try:

@@ -428,12 +428,18 @@ def test_offer_returns_answer_with_fake_pipecat_handler(monkeypatch: pytest.Monk
     assert session is not None
     assert session.metadata["use_smart_turn_requested"] == "true"
     assert session.metadata["smart_turn_mode"] == "requested"
+    assert session.metadata["demo_audio_source"] == "mic"
     assert session.metadata["asr_model_option_id"] == "parakeet-mlx-110m"
     assert session.metadata["asr_model_label"] == "Parakeet 110M MLX"
     assert session.metadata["asr_backend"] == "parakeet-mlx"
     assert session.metadata["asr_model"] == "mlx-community/parakeet-tdt_ctc-110m"
     assert session.metadata["asr_device"] == "apple-silicon"
     assert session.metadata["asr_compute_type"] == "auto"
+
+    session_response = client.get(f"/rtc-asr/session/{payload['session_id']}")
+
+    assert session_response.status_code == 200
+    assert session_response.json()["metadata"]["demo_audio_source"] == "mic"
 
 
 @pytest.mark.anyio
