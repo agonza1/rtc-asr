@@ -361,6 +361,24 @@ def test_records_summary_and_markdown_order_created_times_by_instant_not_raw_str
     assert "Oldest present image: early-offset:image (2026-07-31T20:00:00+02:00)" in markdown
 
 
+def test_parse_created_datetime_accepts_docker_nanosecond_precision() -> None:
+    parsed = reporter.parse_created_datetime("2026-07-31T19:00:00.123456789Z")
+
+    assert parsed == datetime(2026, 7, 31, 19, 0, 0, 123456, tzinfo=UTC)
+
+
+def test_image_age_days_accepts_docker_nanosecond_precision() -> None:
+    record = reporter.ImageSizeRecord(
+        tag="fresh:image",
+        image_id="fresh",
+        size_bytes=100_000_000,
+        created="2026-07-31T12:00:00.987654321Z",
+        present=True,
+    )
+
+    assert reporter.image_age_days(record, now=datetime(2026, 8, 1, 12, 0, tzinfo=UTC)) == 1.0
+
+
 def test_records_summary_reports_present_images_with_unknown_size() -> None:
     records = [
         reporter.ImageSizeRecord(tag="known:image", image_id="known", size_bytes=100_000_000, created=None, present=True),
