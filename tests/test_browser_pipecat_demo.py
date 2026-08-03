@@ -225,6 +225,21 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
     }
 
 
+def test_demo_ready_reports_compact_bridge_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_bridge = PipecatDemoBridge(runtime_loader=missing_runtime_loader)
+    monkeypatch.setattr(app_module, "bridge", fake_bridge)
+    client = TestClient(app_module.app)
+
+    response = client.get("/rtc-asr/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "service": "browser-pipecat-demo",
+        "route": "/rtc-asr",
+        "bridge_status": "dependency_missing",
+        "can_start_session": False,
+    }
+
 
 def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> None:
     readme = (Path("examples") / "browser_pipecat_demo" / "README.md").read_text(encoding="utf-8")
@@ -249,6 +264,7 @@ def test_compose_keeps_browser_demo_profile_opt_in() -> None:
     assert "browser-pipecat-demo:\n    profiles:\n      - demo" in compose
     assert "target: ${ASR_BUILD_TARGET:-asr-faster-whisper-cpu}" in compose
     assert "target: browser-pipecat-demo" in compose
+    assert 'curl", "-fsS", "http://localhost:8090/rtc-asr/ready"' in compose
 
 
 def test_dockerfile_exposes_backend_specific_build_targets() -> None:
