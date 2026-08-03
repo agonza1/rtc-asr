@@ -138,9 +138,12 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
     assert app_js_response.status_code == 200
     assert 'navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" })' in app_js_response.text
     assert "function setLivePartial(text)" in app_js_response.text
-    assert "function commitFinalTranscript(text)" in app_js_response.text
+    assert "function finalTranscriptEventKey(message, transcript)" in app_js_response.text
+    assert "function commitFinalTranscript(message)" in app_js_response.text
     assert "function resetTranscriptDisplay(message = \"Waiting for a Pipecat bridge.\")" in app_js_response.text
     assert "Skipped duplicate final segment." in app_js_response.text
+    assert "state.seenFinalTranscriptEvents.has(eventKey)" in app_js_response.text
+    assert "transcript === state.lastFinalTranscript" not in app_js_response.text
     assert "partial captured on stop" in app_js_response.text
     assert "state.lastPartialTranscript || elements.partialText.textContent" not in app_js_response.text
     assert "beforeinstallprompt" not in app_js_response.text
@@ -681,6 +684,78 @@ async def test_asr_relay_close_swallows_receiver_failure_and_closes_client() -> 
         "message": "ASR websocket receive failed: receiver failed",
         "session_id": "session_1",
     } in app_messages
+
+
+@pytest.mark.anyio
+async def test_asr_relay_transcript_messages_include_stable_event_identity() -> None:
+    app_messages: list[dict[str, object]] = []
+
+    relay = RTCASRAudioRelay(
+        session_id="session_1",
+        rtc_asr_ws_url="ws://example.test/ws",
+        chunk_ms=100,
+        send_app_message=app_messages.append,
+        mark_failed=lambda message: None,
+        max_buffer_seconds=12.0,
+    )
+
+    relay._send_transcript_event(  # noqa: SLF001 - event serialization is the behavior under test.
+        type(
+            "FakeEvent",
+            (),
+            {
+                "type": "final",
+                "text": "yes",
+                "is_final": True,
+                "stream_id": 7,
+                "revision": 2,
+                "audio_received_ms": 1200,
+                "audio_transcribed_ms": 1180,
+                "chunks_received": 12,
+            },
+        )()
+    )
+    relay._send_transcript_event(  # noqa: SLF001 - event serialization is the behavior under test.
+        type(
+            "FakeEvent",
+            (),
+            {
+                "type": "final",
+                "text": "yes",
+                "is_final": True,
+                "stream_id": 7,
+                "revision": 3,
+                "audio_received_ms": 2200,
+                "audio_transcribed_ms": 2180,
+                "chunks_received": 22,
+            },
+        )()
+    )
+
+    assert app_messages == [
+        {
+            "type": "final",
+            "text": "yes",
+            "session_id": "session_1",
+            "event_id": "session_1:7:2:1200:1180:12",
+            "stream_id": 7,
+            "revision": 2,
+            "audio_received_ms": 1200,
+            "audio_transcribed_ms": 1180,
+            "chunks_received": 12,
+        },
+        {
+            "type": "final",
+            "text": "yes",
+            "session_id": "session_1",
+            "event_id": "session_1:7:3:2200:2180:22",
+            "stream_id": 7,
+            "revision": 3,
+            "audio_received_ms": 2200,
+            "audio_transcribed_ms": 2180,
+            "chunks_received": 22,
+        },
+    ]
 
 
 def test_unknown_session_returns_404() -> None:
