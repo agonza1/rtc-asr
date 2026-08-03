@@ -91,6 +91,7 @@ class LocalStreamingSTTService(STTService):
         self._generation = 0
         self._suppress_transcripts = False
         self._final_events: dict[int, asyncio.Event] = {}
+        self._final_started_at: dict[int, float] = {}
         self._session_id = uuid4().hex
         settings = kwargs.pop("settings", None) or STTSettings(model=None, language=self.config.language)
         super().__init__(
@@ -151,7 +152,7 @@ class LocalStreamingSTTService(STTService):
         if not self._utterance_active or self._websocket is None:
             return
         final_event = self._final_events.setdefault(generation, asyncio.Event())
-        final_started_at = asyncio.get_running_loop().time()
+        self._final_started_at[generation] = asyncio.get_running_loop().time()
         await self._send_control({"type": "finalize"}, ensure_started=False)
         self.metrics.local_stt_finalize_messages_sent_total += 1
         self._utterance_active = False
@@ -159,15 +160,12 @@ class LocalStreamingSTTService(STTService):
             if self.config.final_timeout_s > 0:
                 try:
                     await asyncio.wait_for(final_event.wait(), timeout=self.config.final_timeout_s)
-                    self.metrics.local_stt_final_latency_ms = round(
-                        (asyncio.get_running_loop().time() - final_started_at) * 1000,
-                        3,
-                    )
                 except asyncio.TimeoutError:
                     self.metrics.local_stt_final_timeouts_total += 1
                     logger.debug("Timed out waiting for Local STT final transcript for generation %s", generation)
         finally:
             self._final_events.pop(generation, None)
+            self._final_started_at.pop(generation, None)
 
     async def cancel_current_utterance(self) -> None:
         self._generation += 1
@@ -389,14 +387,11 @@ class LocalStreamingSTTService(STTService):
             if self._suppress_transcripts:
                 self.metrics.local_stt_transcripts_suppressed_total += 1
                 return
+            if event.is_final:
+                self._record_final_transcript_received(event)
             await self._push_transcript(event)
             if event.is_final:
                 self._utterance_active = False
-                generation = self._event_generation(event)
-                if isinstance(generation, int):
-                    final_event = self._final_events.get(generation)
-                    if final_event is not None:
-                        final_event.set()
             return
         if event_type == "warning":
             self.metrics.local_stt_warning_events_total += 1
@@ -429,6 +424,20 @@ class LocalStreamingSTTService(STTService):
     def _is_stale_transcript(self, event: LocalSTTTranscriptEvent) -> bool:
         generation = self._event_generation(event)
         return isinstance(generation, int) and generation != self._generation
+
+    def _record_final_transcript_received(self, event: LocalSTTTranscriptEvent) -> None:
+        generation = self._event_generation(event)
+        if not isinstance(generation, int):
+            return
+        final_started_at = self._final_started_at.get(generation)
+        if final_started_at is not None:
+            self.metrics.local_stt_final_latency_ms = round(
+                (asyncio.get_running_loop().time() - final_started_at) * 1000,
+                3,
+            )
+        final_event = self._final_events.get(generation)
+        if final_event is not None:
+            final_event.set()
 
     async def _push_transcript(self, event: LocalSTTTranscriptEvent) -> None:
         timestamp = datetime.now(timezone.utc).isoformat()
