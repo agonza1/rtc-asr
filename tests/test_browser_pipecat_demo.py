@@ -247,6 +247,7 @@ def test_demo_ready_reports_compact_bridge_status(monkeypatch: pytest.MonkeyPatc
         "asr_model_label": "Faster-Whisper Base English int8",
         "asr_backend": "faster-whisper",
         "asr_model": "base.en",
+        "default_use_smart_turn": True,
     }
 
 
@@ -272,6 +273,7 @@ def test_demo_ready_reports_ready_boolean(monkeypatch: pytest.MonkeyPatch) -> No
         "asr_model_label": "Faster-Whisper Base English int8",
         "asr_backend": "faster-whisper",
         "asr_model": "base.en",
+        "default_use_smart_turn": True,
     }
 
 
@@ -292,7 +294,7 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "Final transcript events move into the transcript history" in readme
     assert (
         "`GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, `can_start_session`, "
-        "`rtc_asr_ws_url`, stream settings, and selected ASR target fields"
+        "`rtc_asr_ws_url`, stream settings, selected ASR target fields, and `default_use_smart_turn`"
     ) in readme
 
 
