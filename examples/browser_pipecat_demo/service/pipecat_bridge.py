@@ -321,6 +321,8 @@ class RTCASRAudioRelay:
             "asr_model_label": self.asr_model_option.get("label"),
             "asr_backend": self.asr_model_option.get("backend"),
             "asr_model": self.asr_model_option.get("model"),
+            "asr_device": self.asr_model_option.get("device"),
+            "asr_compute_type": self.asr_model_option.get("compute_type"),
         })
 
     async def _send_chunk(self, chunk: bytes) -> None:
@@ -512,6 +514,8 @@ class PipecatDemoBridge:
             "asr_model_label": self.default_asr_model_option["label"],
             "asr_backend": self.default_asr_model_option["backend"],
             "asr_model": self.default_asr_model_option["model"],
+            "asr_device": self.default_asr_model_option["device"],
+            "asr_compute_type": self.default_asr_model_option["compute_type"],
             "bridge_status": bridge_status,
             "can_start_session": bridge_status == "ready",
             "default_use_smart_turn": True,
@@ -547,6 +551,8 @@ class PipecatDemoBridge:
                 "asr_model_label": asr_model_option["label"],
                 "asr_backend": asr_model_option["backend"],
                 "asr_model": asr_model_option["model"],
+                "asr_device": asr_model_option["device"],
+                "asr_compute_type": asr_model_option["compute_type"],
                 "use_smart_turn_requested": str(use_smart_turn).lower(),
                 "smart_turn_mode": "requested" if use_smart_turn else "disabled",
             },
@@ -561,6 +567,8 @@ class PipecatDemoBridge:
             merged_request_data.setdefault("asr_model_label", asr_model_option["label"])
             merged_request_data.setdefault("asr_backend", asr_model_option["backend"])
             merged_request_data.setdefault("asr_model", asr_model_option["model"])
+            merged_request_data.setdefault("asr_device", asr_model_option["device"])
+            merged_request_data.setdefault("asr_compute_type", asr_model_option["compute_type"])
             request = runtime.request_cls(
                 sdp=offer_sdp,
                 type=offer_type,
@@ -692,6 +700,8 @@ class PipecatDemoBridge:
                 "label": session.metadata["asr_model_label"],
                 "backend": session.metadata["asr_backend"],
                 "model": session.metadata["asr_model"],
+                "device": session.metadata["asr_device"],
+                "compute_type": session.metadata["asr_compute_type"],
             },
             send_app_message=send_app_message,
             mark_failed=mark_failed,

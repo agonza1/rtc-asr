@@ -145,6 +145,8 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
     assert "state.lastPartialTranscript || elements.partialText.textContent" not in app_js_response.text
     assert "beforeinstallprompt" not in app_js_response.text
     assert "deferredInstallPrompt" not in app_js_response.text
+    assert "asr_device: asrModel?.device || null" in app_js_response.text
+    assert "asr_compute_type: asrModel?.compute_type || null" in app_js_response.text
 
 
 def missing_runtime_loader() -> PipecatRuntime:
@@ -216,6 +218,8 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
         "asr_model_label": "Faster-Whisper Base English int8",
         "asr_backend": "faster-whisper",
         "asr_model": "base.en",
+        "asr_device": "cpu",
+        "asr_compute_type": "int8",
         "bridge_status": "dependency_missing",
         "can_start_session": False,
         "default_use_smart_turn": True,
@@ -247,6 +251,8 @@ def test_demo_ready_reports_compact_bridge_status(monkeypatch: pytest.MonkeyPatc
         "asr_model_label": "Faster-Whisper Base English int8",
         "asr_backend": "faster-whisper",
         "asr_model": "base.en",
+        "asr_device": "cpu",
+        "asr_compute_type": "int8",
         "default_use_smart_turn": True,
         "dependency_message": "Install the demo WebRTC extras with "
         "`pip install -r examples/browser_pipecat_demo/requirements.txt` "
@@ -276,6 +282,8 @@ def test_demo_ready_reports_ready_boolean(monkeypatch: pytest.MonkeyPatch) -> No
         "asr_model_label": "Faster-Whisper Base English int8",
         "asr_backend": "faster-whisper",
         "asr_model": "base.en",
+        "asr_device": "cpu",
+        "asr_compute_type": "int8",
         "default_use_smart_turn": True,
         "dependency_message": None,
     }
@@ -298,7 +306,8 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "Final transcript events move into the transcript history" in readme
     assert (
         "`GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, `can_start_session`, "
-        "`rtc_asr_ws_url`, stream settings, selected ASR target fields, `default_use_smart_turn`, "
+        "`rtc_asr_ws_url`, stream settings, selected ASR target fields including device and compute type, "
+        "`default_use_smart_turn`, "
         "and dependency diagnostics"
     ) in readme
 
@@ -423,6 +432,8 @@ def test_offer_returns_answer_with_fake_pipecat_handler(monkeypatch: pytest.Monk
     assert session.metadata["asr_model_label"] == "Parakeet 110M MLX"
     assert session.metadata["asr_backend"] == "parakeet-mlx"
     assert session.metadata["asr_model"] == "mlx-community/parakeet-tdt_ctc-110m"
+    assert session.metadata["asr_device"] == "apple-silicon"
+    assert session.metadata["asr_compute_type"] == "auto"
 
 
 @pytest.mark.anyio
@@ -471,6 +482,8 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
             "label": "Parakeet 110M MLX",
             "backend": "parakeet-mlx",
             "model": "mlx-community/parakeet-tdt_ctc-110m",
+            "device": "apple-silicon",
+            "compute_type": "auto",
         },
         asr_client_factory=FakeASRClient,
     )
@@ -491,6 +504,8 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
         "asr_model_label": "Parakeet 110M MLX",
         "asr_backend": "parakeet-mlx",
         "asr_model": "mlx-community/parakeet-tdt_ctc-110m",
+        "asr_device": "apple-silicon",
+        "asr_compute_type": "auto",
     }
 
 
