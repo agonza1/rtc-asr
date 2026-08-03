@@ -104,6 +104,8 @@ def test_demo_page_serves_static_app() -> None:
     assert "/rtc-asr/manifest.webmanifest" in response.text
     assert 'id="asr-model-select"' in response.text
     assert "ASR model" in response.text
+    assert 'id="transcript-state"' in response.text
+    assert '<span class="transcript-label">Live</span>' in response.text
     assert 'id="install-help"' not in response.text
     assert "Silero VAD + smart turn" in response.text
     assert '<span class="smart-toggle" aria-hidden="true">' not in response.text
@@ -135,6 +137,10 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
 
     assert app_js_response.status_code == 200
     assert 'navigator.serviceWorker.register("/rtc-asr/sw.js", { scope: "/rtc-asr" })' in app_js_response.text
+    assert "function setLivePartial(text)" in app_js_response.text
+    assert "function commitFinalTranscript(text)" in app_js_response.text
+    assert "function resetTranscriptDisplay(message = \"Waiting for a Pipecat bridge.\")" in app_js_response.text
+    assert "Skipped duplicate final segment." in app_js_response.text
     assert "partial captured on stop" in app_js_response.text
     assert "state.lastPartialTranscript || elements.partialText.textContent" not in app_js_response.text
     assert "beforeinstallprompt" not in app_js_response.text
@@ -233,6 +239,8 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "partial_window_seconds=1.0" in readme
     assert "Pipecat Whisper runs local/offline inside the Pipecat process" in readme
     assert "Local STT v1 can produce partial/final transcript events" in readme
+    assert "Partial transcript events update the *Live* row as they arrive" in readme
+    assert "Final transcript events move into the transcript history" in readme
 
 
 def test_compose_keeps_browser_demo_profile_opt_in() -> None:

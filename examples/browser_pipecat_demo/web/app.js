@@ -10,6 +10,7 @@ const elements = {
   startButton: document.querySelector("#start-button"),
   stopButton: document.querySelector("#stop-button"),
   errorMessage: document.querySelector("#error-message"),
+  transcriptState: document.querySelector("#transcript-state"),
   partialText: document.querySelector("#partial-text"),
   finalLog: document.querySelector("#final-log"),
   eventLog: document.querySelector("#event-log"),
@@ -35,6 +36,8 @@ const state = {
   audioObjectUrl: null,
   serviceConfig: null,
   lastPartialTranscript: "",
+  lastFinalTranscript: "",
+  finalTranscriptCount: 0,
 };
 
 function setText(node, value) {
@@ -66,7 +69,20 @@ function logEvent(message) {
 }
 
 function appendFinalTranscript(text) {
-  prependLog(elements.finalLog, text || "[final transcript event]");
+  const transcript = (text || "").trim();
+  if (!transcript) {
+    return;
+  }
+
+  if (transcript === state.lastFinalTranscript) {
+    setText(elements.transcriptState, `Skipped duplicate final segment. ${state.finalTranscriptCount} final segment(s) captured.`);
+    return;
+  }
+
+  state.finalTranscriptCount += 1;
+  state.lastFinalTranscript = transcript;
+  prependLog(elements.finalLog, transcript);
+  setText(elements.transcriptState, `${state.finalTranscriptCount} final segment(s) captured.`);
 }
 
 function currentPartialTranscript() {
@@ -75,6 +91,33 @@ function currentPartialTranscript() {
     return "";
   }
   return text;
+}
+
+function setLivePartial(text) {
+  const transcript = (text || "").trim();
+  state.lastPartialTranscript = transcript;
+  setText(elements.partialText, transcript || "Listening for live transcript updates.");
+  setText(
+    elements.transcriptState,
+    transcript
+      ? `Streaming interim text. ${state.finalTranscriptCount} final segment(s) captured.`
+      : `${state.finalTranscriptCount} final segment(s) captured.`
+  );
+}
+
+function commitFinalTranscript(text) {
+  appendFinalTranscript(text);
+  state.lastPartialTranscript = "";
+  setText(elements.partialText, "Listening for the next utterance.");
+}
+
+function resetTranscriptDisplay(message = "Waiting for a Pipecat bridge.") {
+  state.lastPartialTranscript = "";
+  state.lastFinalTranscript = "";
+  state.finalTranscriptCount = 0;
+  elements.finalLog.replaceChildren();
+  setText(elements.partialText, message);
+  setText(elements.transcriptState, "No transcript events yet.");
 }
 
 function showError(message) {
@@ -254,16 +297,13 @@ function handleDataChannelMessage(event) {
   }
 
   if (message.type === "partial") {
-    state.lastPartialTranscript = message.text || "";
-    setText(elements.partialText, state.lastPartialTranscript);
+    setLivePartial(message.text || "");
     setText(elements.bridgeStatus, "receiving partials");
     return;
   }
 
   if (message.type === "final") {
-    appendFinalTranscript(message.text || "");
-    state.lastPartialTranscript = "";
-    setText(elements.partialText, "");
+    commitFinalTranscript(message.text || "");
     setText(elements.bridgeStatus, "received final");
     return;
   }
@@ -443,7 +483,11 @@ async function startDemo() {
   }
 
   clearError();
-  state.lastPartialTranscript = "";
+  resetTranscriptDisplay(
+    currentSourceMode() === "file"
+      ? "Preparing uploaded audio transcript."
+      : "Preparing live microphone transcript."
+  );
   state.isStarting = true;
   renderControls();
 
@@ -588,6 +632,7 @@ function stopDemo(preserveError = false) {
   setText(elements.webrtcStatus, "idle");
   setText(elements.bridgeStatus, "stopped");
   setText(elements.partialText, "Waiting for a Pipecat bridge.");
+  setText(elements.transcriptState, state.finalTranscriptCount ? `${state.finalTranscriptCount} final segment(s) captured.` : "No transcript events yet.");
   logEvent("Stopped local media and peer connection.");
   renderControls();
 }
