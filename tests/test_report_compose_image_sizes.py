@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import io
 import json
 import subprocess
 from datetime import UTC, datetime
@@ -207,6 +209,35 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "unique_image_ids": 1,
         "duplicate_image_id_tag_refs": 0,
     }
+
+
+def test_records_summary_to_csv_emits_single_aggregate_row() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="first:image",
+            image_id="shared123",
+            size_bytes=100_000_000,
+            created=None,
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="second:image",
+            image_id="shared123",
+            size_bytes=300_000_000,
+            created=None,
+            present=True,
+        ),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    rows = list(csv.DictReader(io.StringIO(reporter.records_summary_to_csv(records))))
+
+    assert len(rows) == 1
+    assert rows[0]["requested"] == "3"
+    assert rows[0]["present"] == "2"
+    assert rows[0]["missing_tags"] == '["missing:image"]'
+    assert rows[0]["duplicate_image_id_groups"] == '[{"image_id": "shared123", "tags": ["first:image", "second:image"]}]'
+    assert rows[0]["total_size_mb"] == "400.0"
 
 
 def test_records_summary_reports_average_present_image_size() -> None:
@@ -803,9 +834,38 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
     }
 
 
+def test_main_summary_csv_emits_summary_row(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(
+                tag=images[0],
+                image_id="abcdef123456",
+                size_bytes=100_000_000,
+                created=None,
+                present=True,
+            )
+        ],
+    )
+
+    assert reporter.main(["--summary-csv", "present:image"]) == 0
+
+    rows = list(csv.DictReader(io.StringIO(capsys.readouterr().out)))
+    assert len(rows) == 1
+    assert rows[0]["present"] == "1"
+    assert rows[0]["total_size_mb"] == "100.0"
+    assert rows[0]["unknown_created_tags"] == '["present:image"]'
+
+
 def test_parse_args_accepts_json_summary_aliases() -> None:
     assert reporter.parse_args(["--json-summary"]).summary_only is True
     assert reporter.parse_args(["--summary-json"]).summary_only is True
+
+
+def test_parse_args_accepts_csv_summary_aliases() -> None:
+    assert reporter.parse_args(["--summary-csv"]).summary_csv is True
+    assert reporter.parse_args(["--csv-summary"]).summary_csv is True
 
 
 def test_parse_args_accepts_fail_on_missing_alias() -> None:
