@@ -872,6 +872,10 @@ def test_parse_args_accepts_fail_on_missing_alias() -> None:
     assert reporter.parse_args(["--fail-on-missing"]).require_present is True
 
 
+def test_parse_args_accepts_fail_on_all_missing_alias() -> None:
+    assert reporter.parse_args(["--fail-on-all-missing"]).require_any_present is True
+
+
 def test_parse_args_accepts_fail_on_unknown_size_alias() -> None:
     assert reporter.parse_args(["--fail-on-unknown-size"]).require_size is True
 
@@ -999,6 +1003,23 @@ def test_main_fails_when_present_image_creation_time_is_required_but_unknown(
     assert reporter.main(["--require-created", "unknown:image"]) == 1
     assert "Images with unknown creation time: unknown:image" in capsys.readouterr().err
     assert reporter.main(["unknown:image"]) == 0
+
+
+def test_main_fails_when_any_present_image_is_required_but_all_are_missing(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag=image, image_id=None, size_bytes=None, created=None, present=False)
+            for image in images
+        ],
+    )
+
+    assert reporter.main(["--require-any-present", "missing-one:image", "missing-two:image"]) == 1
+    assert "No requested images are present: missing-one:image, missing-two:image" in capsys.readouterr().err
+    assert reporter.main(["missing-one:image", "missing-two:image"]) == 0
 
 
 def test_main_fails_when_unique_image_ids_are_required_but_tags_share_an_image(

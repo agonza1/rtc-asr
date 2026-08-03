@@ -650,6 +650,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Exit non-zero when any requested image is absent.",
     )
     parser.add_argument(
+        "--require-any-present",
+        "--fail-on-all-missing",
+        dest="require_any_present",
+        action="store_true",
+        help="Exit non-zero when none of the requested images are present.",
+    )
+    parser.add_argument(
         "--require-size",
         "--fail-on-unknown-size",
         dest="require_size",
@@ -710,6 +717,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     print(output)
     missing_records = [record for record in records if not record.present]
+    any_present = any(record.present for record in records)
     unknown_size_records = [record for record in records if record.present and record.size_bytes is None]
     unknown_created_records = [record for record in records if record.present and record.created is None]
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
@@ -722,6 +730,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.require_present and missing_records:
         print(
             "Missing required images: {tags}".format(tags=", ".join(record.tag for record in missing_records)),
+            file=sys.stderr,
+        )
+    if args.require_any_present and records and not any_present:
+        print(
+            "No requested images are present: {tags}".format(tags=", ".join(record.tag for record in records)),
             file=sys.stderr,
         )
     if args.require_size and unknown_size_records:
@@ -783,6 +796,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     if (
         (args.require_present and missing_records)
+        or (args.require_any_present and records and not any_present)
         or (args.require_size and unknown_size_records)
         or (args.require_created and unknown_created_records)
         or (args.require_unique_image_ids and duplicate_image_id_groups)
