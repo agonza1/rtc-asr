@@ -240,6 +240,40 @@ def test_records_summary_to_csv_emits_single_aggregate_row() -> None:
     assert rows[0]["total_size_mb"] == "400.0"
 
 
+def test_records_summary_to_markdown_emits_compact_aggregate_table() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="first:image",
+            image_id="shared123",
+            size_bytes=100_000_000,
+            created="2026-07-31T12:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="second:image",
+            image_id="shared123",
+            size_bytes=300_000_000,
+            created=None,
+            present=True,
+        ),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    markdown = reporter.records_summary_to_markdown(records, max_size_mb=200.0, max_total_size_mb=350.0)
+
+    assert "| Metric | Value |" in markdown
+    assert "| Present images | 2 (66.7%) |" in markdown
+    assert "| Missing images | 1 (33.3%) |" in markdown
+    assert "| Total present image size | 400.0 MB |" in markdown
+    assert "| Largest present image | second:image (300.0 MB) |" in markdown
+    assert "| Unknown creation times | 1: second:image |" in markdown
+    assert "| Per-image size budget | 200.0 MB; 1 over; 100.0 MB excess |" in markdown
+    assert "| Total image size budget | 350.0 MB; 114.3% utilization; 50.0 MB excess |" in markdown
+    assert "| Missing tags | missing:image |" in markdown
+    assert "| Tags over size budget | second:image |" in markdown
+    assert "| Duplicate groups | shared123: first:image, second:image |" in markdown
+
+
 def test_records_summary_reports_average_present_image_size() -> None:
     records = [
         reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=100_000_000, created=None, present=True),
@@ -876,6 +910,28 @@ def test_main_summary_csv_emits_summary_row(monkeypatch: pytest.MonkeyPatch, cap
     assert rows[0]["unknown_created_tags"] == '["present:image"]'
 
 
+def test_main_summary_markdown_emits_summary_table(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(
+                tag=images[0],
+                image_id="abcdef123456",
+                size_bytes=100_000_000,
+                created=None,
+                present=True,
+            )
+        ],
+    )
+
+    assert reporter.main(["--summary-markdown", "present:image"]) == 0
+
+    assert "| Present images | 1 (100.0%) |" in capsys.readouterr().out
+
+
 def test_parse_args_accepts_json_summary_aliases() -> None:
     assert reporter.parse_args(["--json-summary"]).summary_only is True
     assert reporter.parse_args(["--summary-json"]).summary_only is True
@@ -884,6 +940,11 @@ def test_parse_args_accepts_json_summary_aliases() -> None:
 def test_parse_args_accepts_csv_summary_aliases() -> None:
     assert reporter.parse_args(["--summary-csv"]).summary_csv is True
     assert reporter.parse_args(["--csv-summary"]).summary_csv is True
+
+
+def test_parse_args_accepts_markdown_summary_aliases() -> None:
+    assert reporter.parse_args(["--summary-markdown"]).summary_markdown is True
+    assert reporter.parse_args(["--markdown-summary"]).summary_markdown is True
 
 
 def test_parse_args_accepts_fail_on_missing_alias() -> None:

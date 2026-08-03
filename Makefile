@@ -98,7 +98,7 @@ ifeq ($(shell uname -s),Darwin)
 LOW_LATENCY_SWEEP_TARGETS += benchmark-qwen-mps-low-latency-sweep
 endif
 
-.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-local-stt-backend-compare compose-image-size-report compose-config-check benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan benchmark-artifact-cleanup-check clean lint docs start start-demo stop status
+.PHONY: help venv mlx-venv setup build run dev test benchmark benchmark-faster-whisper-matrix benchmark-faster-whisper-base benchmark-faster-whisper-small benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps benchmark-qwen-mps-legacy benchmark-qwen-mps-low-latency-sweep benchmark-compose-matrix benchmark-compose-qwen benchmark-compose-qwen-legacy benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo benchmark-compose-parakeet-nemo-legacy benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-parakeet-mlx benchmark-parakeet-mlx-110m benchmark-parakeet-mlx-service benchmark-parakeet-mlx-service-legacy benchmark-parakeet-mlx-service-110m benchmark-parakeet-mlx-service-110m-legacy benchmark-voxtral-mlx-service benchmark-pipecat-e2e benchmark-local-stt-transport-compare benchmark-local-stt-backend-compare compose-image-size-report compose-image-size-summary-markdown compose-config-check benchmark-site benchmark-site-check benchmark-artifact-report benchmark-artifact-cleanup-summary benchmark-artifact-cleanup-plan benchmark-artifact-cleanup-check clean lint docs start start-demo stop status
 .NOTPARALLEL: benchmark-faster-whisper-matrix benchmark-faster-whisper-base-low-latency-sweep benchmark-faster-whisper-small-low-latency-sweep benchmark-qwen-mps-low-latency-sweep benchmark-compose-qwen-low-latency-sweep benchmark-compose-parakeet-low-latency-sweep benchmark-compose-parakeet-nemo-low-latency-sweep benchmark-all-asr-low-latency-sweep benchmark-compose-matrix
 
 help:
@@ -124,6 +124,7 @@ help:
 	@echo "  make benchmark-local-stt-transport-compare - Compare tcp_ws, uds_ws, and raw_uds Local STT artifacts and write the Raw UDS decision record"
 	@echo "  make benchmark-local-stt-backend-compare - Compare default rolling-window and Vosk stateful Local STT artifacts"
 	@echo "  make compose-image-size-report - Report installed Compose backend image sizes"
+	@echo "  make compose-image-size-summary-markdown - Report a compact markdown summary of Compose backend image sizes"
 	@echo "  make compose-config-check - Validate default, demo, Qwen, Parakeet, and NeMo Compose configs"
 	@echo "  make benchmark-compose-matrix - Run all Compose model benchmarks with $(BENCHMARK_SAMPLE_COUNT) samples each"
 	@echo "  make benchmark-compose-qwen - Start compose, wait for readiness, and benchmark qwen-asr over /v1/stt/stream"
@@ -537,6 +538,9 @@ benchmark-local-stt-backend-compare:
 
 compose-image-size-report:
 	@python3 scripts/report_compose_image_sizes.py $(COMPOSE_IMAGE_SIZE_REPORT_FLAGS) $(FASTER_WHISPER_COMPOSE_IMAGE) $(QWEN_COMPOSE_IMAGE) $(PARAKEET_COMPOSE_IMAGE) $(PARAKEET_NEMO_COMPOSE_IMAGE)
+
+compose-image-size-summary-markdown:
+	@$(MAKE) compose-image-size-report COMPOSE_IMAGE_SIZE_REPORT_FLAGS="--summary-markdown $(COMPOSE_IMAGE_SIZE_REPORT_FLAGS)"
 
 benchmark-parakeet-mlx: mlx-venv
 	@echo "Benchmarking $(PARAKEET_MLX_MODEL) with parakeet-mlx on Apple Silicon..."

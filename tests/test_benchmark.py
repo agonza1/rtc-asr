@@ -661,9 +661,11 @@ def test_makefile_exposes_compose_image_size_report_target() -> None:
     makefile = Path("Makefile").read_text(encoding="utf-8")
 
     assert "make compose-image-size-report - Report installed Compose backend image sizes" in makefile
+    assert "make compose-image-size-summary-markdown - Report a compact markdown summary of Compose backend image sizes" in makefile
     phony_line = next(line for line in makefile.splitlines() if line.startswith(".PHONY:"))
     phony_targets = set(phony_line.removeprefix(".PHONY:").split())
     assert "compose-image-size-report" in phony_targets
+    assert "compose-image-size-summary-markdown" in phony_targets
 
     block = makefile.split("compose-image-size-report:\n", 1)[1].split("\n\n", 1)[0]
     assert "python3 scripts/report_compose_image_sizes.py" in block
@@ -672,6 +674,10 @@ def test_makefile_exposes_compose_image_size_report_target() -> None:
     assert "$(QWEN_COMPOSE_IMAGE)" in block
     assert "$(PARAKEET_COMPOSE_IMAGE)" in block
     assert "$(PARAKEET_NEMO_COMPOSE_IMAGE)" in block
+
+    summary_block = makefile.split("compose-image-size-summary-markdown:\n", 1)[1].split("\n\n", 1)[0]
+    assert 'COMPOSE_IMAGE_SIZE_REPORT_FLAGS="--summary-markdown $(COMPOSE_IMAGE_SIZE_REPORT_FLAGS)"' in summary_block
+    assert "$(MAKE) compose-image-size-report" in summary_block
 
 
 def test_makefile_qwen_compose_target_uses_v1_stream_contract() -> None:

@@ -346,6 +346,110 @@ def records_summary_to_csv(
     return output.getvalue().rstrip("\n")
 
 
+def records_summary_to_markdown(
+    records: Sequence[ImageSizeRecord],
+    max_size_mb: float | None = None,
+    max_total_size_mb: float | None = None,
+    max_age_days: float | None = None,
+) -> str:
+    summary = records_summary(
+        records,
+        max_size_mb=max_size_mb,
+        max_total_size_mb=max_total_size_mb,
+        max_age_days=max_age_days,
+    )
+    rows = [
+        "| Metric | Value |",
+        "| --- | ---: |",
+        f"| Requested images | {summary['requested']} |",
+        f"| Present images | {summary['present']} ({summary['present_percent']:.1f}%) |",
+        f"| Missing images | {summary['missing']} ({summary['missing_percent']:.1f}%) |",
+        f"| Total present image size | {summary['total_size_mb']:.1f} MB |",
+        f"| Average present image size | {format_optional_mb(summary['average_present_size_mb'])} |",
+        f"| Median present image size | {format_optional_mb(summary['median_present_size_mb'])} |",
+        f"| Largest present image | {format_tag_mb(summary['largest_present_tag'], summary['largest_present_size_mb'])} |",
+        f"| Smallest present image | {format_tag_mb(summary['smallest_present_tag'], summary['smallest_present_size_mb'])} |",
+        f"| Newest present image | {format_tag_value(summary['newest_present_tag'], summary['newest_present_created'])} |",
+        f"| Oldest present image | {format_tag_value(summary['oldest_present_tag'], summary['oldest_present_created'])} |",
+        f"| Unknown sizes | {format_tag_list(summary['unknown_size'], summary['unknown_size_tags'])} |",
+        f"| Unknown creation times | {format_tag_list(summary['unknown_created'], summary['unknown_created_tags'])} |",
+        f"| Duplicate image IDs | {summary['duplicate_image_ids']} |",
+    ]
+    if max_size_mb is not None:
+        rows.append(
+            "| Per-image size budget | {budget:.1f} MB; {count} over; {excess:.1f} MB excess |".format(
+                budget=summary["image_size_budget_mb"],
+                count=summary["over_budget_count"],
+                excess=summary["over_budget_excess_mb"],
+            )
+        )
+    if max_total_size_mb is not None:
+        rows.append(
+            "| Total image size budget | {budget:.1f} MB; {utilization} utilization; {excess:.1f} MB excess |".format(
+                budget=summary["total_image_size_budget_mb"],
+                utilization=format_optional_percent(summary["total_budget_utilization_percent"]),
+                excess=summary["total_budget_excess_mb"],
+            )
+        )
+    if max_age_days is not None:
+        rows.append(
+            "| Image age budget | {budget:.1f} days; {count} over; oldest {oldest} |".format(
+                budget=summary["image_age_budget_days"],
+                count=summary["over_age_count"],
+                oldest=format_optional_days(summary["oldest_image_age_days"]),
+            )
+        )
+    if summary["missing_tags"]:
+        rows.append(f"| Missing tags | {markdown_cell(', '.join(summary['missing_tags']))} |")
+    if summary.get("over_budget_tags"):
+        rows.append(f"| Tags over size budget | {markdown_cell(', '.join(summary['over_budget_tags']))} |")
+    if summary.get("over_age_tags"):
+        rows.append(f"| Tags over age budget | {markdown_cell(', '.join(summary['over_age_tags']))} |")
+    if summary["duplicate_image_id_groups"]:
+        rows.append(f"| Duplicate groups | {markdown_cell(format_duplicate_image_id_groups(summary['duplicate_image_id_groups']))} |")
+    return "\n".join(rows)
+
+
+def format_optional_mb(value: float | None) -> str:
+    return "" if value is None else f"{value:.1f} MB"
+
+
+def format_optional_percent(value: float | None) -> str:
+    return "" if value is None else f"{value:.1f}%"
+
+
+def format_optional_days(value: float | None) -> str:
+    return "" if value is None else f"{value:.1f} days"
+
+
+def format_tag_value(tag: str | None, value: Any) -> str:
+    if tag is None or value is None:
+        return ""
+    return markdown_cell(f"{tag} ({value})")
+
+
+def format_tag_mb(tag: str | None, value: float | None) -> str:
+    if tag is None or value is None:
+        return ""
+    return markdown_cell(f"{tag} ({value:.1f} MB)")
+
+
+def format_tag_list(count: int, tags: Sequence[str]) -> str:
+    if not tags:
+        return str(count)
+    return markdown_cell(f"{count}: {', '.join(tags)}")
+
+
+def format_duplicate_image_id_groups(groups: Sequence[dict[str, Any]]) -> str:
+    return "; ".join(
+        "{image_id}: {tags}".format(
+            image_id=group["image_id"],
+            tags=", ".join(group["tags"]),
+        )
+        for group in groups
+    )
+
+
 def records_over_size_budget(records: Sequence[ImageSizeRecord], max_size_mb: float) -> list[ImageSizeRecord]:
     max_size_bytes = max_size_mb * 1_000_000
     return [
@@ -650,6 +754,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Emit only the aggregate image count and size summary as a single CSV row.",
     )
     parser.add_argument(
+        "--summary-markdown",
+        "--markdown-summary",
+        dest="summary_markdown",
+        action="store_true",
+        help="Emit only the aggregate image count and size summary as a compact markdown table.",
+    )
+    parser.add_argument(
         "--max-size-mb",
         type=float,
         help="Exit non-zero when any present image is larger than this decimal-megabyte budget.",
@@ -707,6 +818,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     records = sort_records(inspect_images(args.images), args.sort_by)
     if args.summary_csv:
         output = records_summary_to_csv(
+            records,
+            max_size_mb=args.max_size_mb,
+            max_total_size_mb=args.max_total_size_mb,
+            max_age_days=args.max_age_days,
+        )
+    elif args.summary_markdown:
+        output = records_summary_to_markdown(
             records,
             max_size_mb=args.max_size_mb,
             max_total_size_mb=args.max_total_size_mb,
