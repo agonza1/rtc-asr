@@ -148,6 +148,7 @@ def records_summary(
     median_size_bytes = round(median(present_sizes)) if present_sizes else None
     missing = [record.tag for record in records if not record.present]
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
+    unknown_created = [record.tag for record in records if record.present and record.created is None]
     largest = max(
         (record for record in records if record.present and record.size_bytes is not None),
         key=lambda record: record.size_bytes or 0,
@@ -171,6 +172,9 @@ def records_summary(
         "unknown_size": len(unknown_size),
         "unknown_size_percent": round(len(unknown_size) / len(records) * 100, 1) if records else 0.0,
         "unknown_size_tags": unknown_size,
+        "unknown_created": len(unknown_created),
+        "unknown_created_percent": round(len(unknown_created) / len(records) * 100, 1) if records else 0.0,
+        "unknown_created_tags": unknown_created,
         "total_size_bytes": total_bytes,
         "total_size_mb": round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
         "average_present_size_bytes": round(total_bytes / len(present_sizes)) if present_sizes else None,
@@ -375,6 +379,16 @@ def records_to_markdown(
                 tags=", ".join(unknown_size),
             )
         )
+    unknown_created = [record.tag for record in records if record.present and record.created is None]
+    if unknown_created:
+        rows.append(
+            "Images with unknown creation time: {count}/{requested} ({percent:.1f}%): {tags}".format(
+                count=len(unknown_created),
+                requested=len(records),
+                percent=len(unknown_created) / len(records) * 100 if records else 0.0,
+                tags=", ".join(unknown_created),
+            )
+        )
     return "\n".join(rows)
 
 
@@ -426,6 +440,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero when a present image does not report a Docker image size.",
     )
+    parser.add_argument(
+        "--require-created",
+        "--fail-on-unknown-created",
+        dest="require_created",
+        action="store_true",
+        help="Exit non-zero when a present image does not report a Docker creation timestamp.",
+    )
     return parser.parse_args(argv)
 
 
@@ -449,6 +470,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(output)
     missing_records = [record for record in records if not record.present]
     unknown_size_records = [record for record in records if record.present and record.size_bytes is None]
+    unknown_created_records = [record for record in records if record.present and record.created is None]
     oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
     total_size_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     total_over_budget = (
@@ -462,6 +484,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.require_size and unknown_size_records:
         print(
             "Images with unknown size: {tags}".format(tags=", ".join(record.tag for record in unknown_size_records)),
+            file=sys.stderr,
+        )
+    if args.require_created and unknown_created_records:
+        print(
+            "Images with unknown creation time: {tags}".format(
+                tags=", ".join(record.tag for record in unknown_created_records)
+            ),
             file=sys.stderr,
         )
     if args.max_size_mb is not None and oversized_records:
@@ -487,6 +516,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if (
         (args.require_present and missing_records)
         or (args.require_size and unknown_size_records)
+        or (args.require_created and unknown_created_records)
         or oversized_records
         or total_over_budget
     ):
