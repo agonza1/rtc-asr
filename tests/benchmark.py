@@ -121,6 +121,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--request-retries", type=positive_int, default=3, help="REST request attempts before failing a sample")
     parser.add_argument("--request-retry-delay", type=non_negative_float, default=2.0, help="Seconds to wait between REST request retries")
     parser.add_argument("--package-power-watts", type=non_negative_float, help="Optional externally measured package power average in watts")
+    parser.add_argument(
+        "--energy-per-audio-second-j",
+        type=non_negative_float,
+        help="Optional externally measured energy per audio second in joules",
+    )
+    parser.add_argument(
+        "--thermal-peak-celsius",
+        type=non_negative_float,
+        help="Optional externally observed peak thermal reading for the benchmark run",
+    )
     parser.add_argument("--thermal-state", help="Optional externally observed sustained thermal state for the benchmark run")
     parser.add_argument(
         "--thermal-duration-minutes",
@@ -421,6 +431,8 @@ def describe_environment(
     peak_rss_mb: float | None = None,
     cpu_utilization_percent: float | None = None,
     package_power_watts: float | None = None,
+    energy_per_audio_second_j: float | None = None,
+    thermal_peak_celsius: float | None = None,
     thermal_state: str | None = None,
     thermal_duration_minutes: float | None = None,
 ) -> dict[str, object]:
@@ -455,6 +467,8 @@ def describe_environment(
         "peak_rss_mb": measured_peak_rss_mb,
         "cpu_utilization_percent": cpu_utilization_percent,
         "package_power_watts": package_power_watts,
+        "energy_per_audio_second_j": energy_per_audio_second_j,
+        "thermal_peak_celsius": thermal_peak_celsius,
         "thermal_state": thermal_state,
         "thermal_duration_minutes": thermal_duration_minutes,
     }
@@ -1651,6 +1665,8 @@ async def async_main(args: argparse.Namespace) -> dict[str, object]:
                 peak_rss_mb=peak_rss_mb,
                 cpu_utilization_percent=cpu_utilization_percent,
                 package_power_watts=getattr(args, "package_power_watts", None),
+                energy_per_audio_second_j=getattr(args, "energy_per_audio_second_j", None),
+                thermal_peak_celsius=getattr(args, "thermal_peak_celsius", None),
                 thermal_state=getattr(args, "thermal_state", None),
                 thermal_duration_minutes=getattr(args, "thermal_duration_minutes", None),
             ),
