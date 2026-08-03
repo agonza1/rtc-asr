@@ -151,6 +151,7 @@ class LocalStreamingSTTService(STTService):
         if not self._utterance_active or self._websocket is None:
             return
         final_event = self._final_events.setdefault(generation, asyncio.Event())
+        final_started_at = asyncio.get_running_loop().time()
         await self._send_control({"type": "finalize"}, ensure_started=False)
         self.metrics.local_stt_finalize_messages_sent_total += 1
         self._utterance_active = False
@@ -158,6 +159,10 @@ class LocalStreamingSTTService(STTService):
             if self.config.final_timeout_s > 0:
                 try:
                     await asyncio.wait_for(final_event.wait(), timeout=self.config.final_timeout_s)
+                    self.metrics.local_stt_final_latency_ms = round(
+                        (asyncio.get_running_loop().time() - final_started_at) * 1000,
+                        3,
+                    )
                 except asyncio.TimeoutError:
                     self.metrics.local_stt_final_timeouts_total += 1
                     logger.debug("Timed out waiting for Local STT final transcript for generation %s", generation)

@@ -30,6 +30,7 @@ class LocalSTTMetrics:
     local_stt_ready_timeouts_total: int = 0
     local_stt_interim_events_total: int = 0
     local_stt_final_events_total: int = 0
+    local_stt_final_latency_ms: float = 0.0
     local_stt_stale_transcript_events_total: int = 0
     local_stt_transcripts_suppressed_total: int = 0
     local_stt_warning_events_total: int = 0

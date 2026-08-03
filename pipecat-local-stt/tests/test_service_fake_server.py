@@ -227,6 +227,7 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     assert service.metrics.local_stt_ready_latency_ms >= 0
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
+    assert service.metrics.local_stt_final_latency_ms >= 0
     assert service.metrics.local_stt_start_messages_sent_total == 1
     assert service.metrics.local_stt_finalize_messages_sent_total == 1
     assert service.metrics.local_stt_close_messages_sent_total == 1
@@ -388,6 +389,7 @@ async def _test_raw_uds_public_api_verifies_start_audio_finalize_and_transcript_
     assert service.metrics.local_stt_ready_events_total == 1
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
+    assert service.metrics.local_stt_final_latency_ms >= 0
 
 
 def test_config_validates_optional_uds_transport() -> None:

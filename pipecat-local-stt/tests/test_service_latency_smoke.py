@@ -62,4 +62,5 @@ async def _test_fake_server_latency_smoke_records_plugin_metrics_without_rtc_asr
     assert metrics["local_stt_ready_events_total"] == 1
     assert metrics["local_stt_interim_events_total"] >= 1
     assert metrics["local_stt_final_events_total"] == 1
+    assert metrics["local_stt_final_latency_ms"] >= 0
     assert metrics["local_stt_protocol_errors_total"] == 0
