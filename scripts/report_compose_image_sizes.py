@@ -374,6 +374,9 @@ def records_summary_to_markdown(
         f"| Unknown sizes | {format_tag_list(summary['unknown_size'], summary['unknown_size_tags'])} |",
         f"| Unknown creation times | {format_tag_list(summary['unknown_created'], summary['unknown_created_tags'])} |",
         f"| Duplicate image IDs | {summary['duplicate_image_ids']} |",
+        f"| Known image ID references | {summary['known_image_ids']} |",
+        f"| Unique image IDs | {summary['unique_image_ids']} |",
+        f"| Duplicate image ID tag refs | {summary['duplicate_image_id_tag_refs']} |",
     ]
     if max_size_mb is not None:
         rows.append(
