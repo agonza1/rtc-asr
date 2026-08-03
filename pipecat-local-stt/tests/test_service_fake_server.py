@@ -194,6 +194,10 @@ def test_service_counts_closed_acknowledgements() -> None:
     assert service.metrics_snapshot()["local_stt_closed_events_total"] == 1
 
 
+def test_service_reports_aggregate_buffer_depth_until_flush() -> None:
+    asyncio.run(_test_service_reports_aggregate_buffer_depth_until_flush())
+
+
 async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping() -> None:
     websocket = FakeLocalSTTWebSocket()
     service = LocalStreamingSTTService(LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20), connect_fn=lambda _url: asyncio.sleep(0, websocket))
@@ -226,6 +230,28 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     assert service.metrics.local_stt_start_messages_sent_total == 1
     assert service.metrics.local_stt_finalize_messages_sent_total == 1
     assert service.metrics.local_stt_close_messages_sent_total == 1
+
+
+async def _test_service_reports_aggregate_buffer_depth_until_flush() -> None:
+    websocket = FakeLocalSTTWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=40),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+
+    assert service.metrics_snapshot()["local_stt_aggregate_buffer_bytes"] == 640
+    assert service.metrics_snapshot()["local_stt_aggregate_buffer_ms"] == 20.0
+
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await service.stop(EndFrame())
+
+    assert service.metrics.local_stt_aggregate_buffer_bytes == 0
+    assert service.metrics.local_stt_aggregate_buffer_bytes_high_water == 1280
+    assert service.metrics.local_stt_aggregate_buffer_high_water_ms == 40.0
 
 
 async def _test_service_counts_ready_timeout() -> None:

@@ -13,6 +13,10 @@ class LocalSTTMetrics:
     local_stt_audio_dropped_ms_total: float = 0.0
     local_stt_oversized_audio_chunks_total: int = 0
     local_stt_oversized_audio_ms_total: float = 0.0
+    local_stt_aggregate_buffer_bytes: int = 0
+    local_stt_aggregate_buffer_bytes_high_water: int = 0
+    local_stt_aggregate_buffer_ms: float = 0.0
+    local_stt_aggregate_buffer_high_water_ms: float = 0.0
     local_stt_send_queue_chunks: int = 0
     local_stt_send_queue_chunks_high_water: int = 0
     local_stt_send_queue_depth_ms: float = 0.0

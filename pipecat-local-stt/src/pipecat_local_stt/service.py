@@ -171,6 +171,7 @@ class LocalStreamingSTTService(STTService):
         self._pre_roll_buffer.clear()
         self._aggregate_buffer.clear()
         self._aggregate_duration_ms = 0.0
+        self._update_aggregate_buffer_metric()
         self._clear_send_queue()
         self._release_final_waiters()
         if self._websocket is not None:
@@ -208,6 +209,7 @@ class LocalStreamingSTTService(STTService):
     async def _queue_audio_for_send(self, audio: bytes) -> None:
         self._aggregate_buffer.extend(audio)
         self._aggregate_duration_ms += self._audio_duration_ms(audio)
+        self._update_aggregate_buffer_metric()
         if len(self._aggregate_buffer) >= self.config.aggregation_bytes:
             await self._flush_aggregate_buffer()
 
@@ -221,6 +223,7 @@ class LocalStreamingSTTService(STTService):
         )
         self._aggregate_buffer.clear()
         self._aggregate_duration_ms = 0.0
+        self._update_aggregate_buffer_metric()
         await self._enqueue_chunk(chunk)
 
     async def _enqueue_chunk(self, chunk: _AudioChunk) -> None:
@@ -503,6 +506,7 @@ class LocalStreamingSTTService(STTService):
         self._pre_roll_buffer.clear()
         self._aggregate_buffer.clear()
         self._aggregate_duration_ms = 0.0
+        self._update_aggregate_buffer_metric()
         self._websocket = None
         self._utterance_active = False
 
@@ -578,6 +582,20 @@ class LocalStreamingSTTService(STTService):
         self.metrics.local_stt_send_queue_utilization_high_water_ratio = max(
             self.metrics.local_stt_send_queue_utilization_high_water_ratio,
             utilization_ratio,
+        )
+
+    def _update_aggregate_buffer_metric(self) -> None:
+        buffered_bytes = len(self._aggregate_buffer)
+        buffered_ms = round(self._aggregate_duration_ms, 3)
+        self.metrics.local_stt_aggregate_buffer_bytes = buffered_bytes
+        self.metrics.local_stt_aggregate_buffer_bytes_high_water = max(
+            self.metrics.local_stt_aggregate_buffer_bytes_high_water,
+            buffered_bytes,
+        )
+        self.metrics.local_stt_aggregate_buffer_ms = buffered_ms
+        self.metrics.local_stt_aggregate_buffer_high_water_ms = max(
+            self.metrics.local_stt_aggregate_buffer_high_water_ms,
+            buffered_ms,
         )
 
     def _record_dropped_audio_ms(self, duration_ms: float) -> None:
