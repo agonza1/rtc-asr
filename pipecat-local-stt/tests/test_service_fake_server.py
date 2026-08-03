@@ -113,6 +113,10 @@ def test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping
     asyncio.run(_test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping())
 
 
+def test_final_latency_records_before_slow_downstream_dispatch() -> None:
+    asyncio.run(_test_final_latency_records_before_slow_downstream_dispatch())
+
+
 def test_service_counts_ready_timeout() -> None:
     asyncio.run(_test_service_counts_ready_timeout())
 
@@ -227,9 +231,32 @@ async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_
     assert service.metrics.local_stt_ready_latency_ms >= 0
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
+    assert service.metrics.local_stt_final_latency_ms >= 0
     assert service.metrics.local_stt_start_messages_sent_total == 1
     assert service.metrics.local_stt_finalize_messages_sent_total == 1
     assert service.metrics.local_stt_close_messages_sent_total == 1
+
+
+async def _test_final_latency_records_before_slow_downstream_dispatch() -> None:
+    websocket = FakeLocalSTTWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, final_timeout_s=0.02),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    async def slow_push_frame(_frame: Any, _direction: FrameDirection = FrameDirection.DOWNSTREAM) -> None:
+        await asyncio.sleep(0.05)
+
+    service.push_frame = slow_push_frame  # type: ignore[method-assign]
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"x" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await service.process_frame(VADUserStoppedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.cleanup()
+
+    assert service.metrics.local_stt_final_timeouts_total == 0
+    assert service.metrics.local_stt_final_latency_ms < 20
 
 
 async def _test_service_reports_aggregate_buffer_depth_until_flush() -> None:
@@ -388,6 +415,7 @@ async def _test_raw_uds_public_api_verifies_start_audio_finalize_and_transcript_
     assert service.metrics.local_stt_ready_events_total == 1
     assert service.metrics.local_stt_interim_events_total == 1
     assert service.metrics.local_stt_final_events_total == 1
+    assert service.metrics.local_stt_final_latency_ms >= 0
 
 
 def test_config_validates_optional_uds_transport() -> None:
