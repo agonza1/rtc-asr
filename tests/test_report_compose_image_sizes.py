@@ -585,6 +585,10 @@ def test_parse_args_accepts_fail_on_unknown_created_alias() -> None:
     assert reporter.parse_args(["--fail-on-unknown-created"]).require_created is True
 
 
+def test_parse_args_accepts_fail_on_duplicate_image_ids_alias() -> None:
+    assert reporter.parse_args(["--fail-on-duplicate-image-ids"]).require_unique_image_ids is True
+
+
 def test_main_csv_flag_emits_csv(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setattr(
         reporter,
@@ -694,6 +698,35 @@ def test_main_fails_when_present_image_creation_time_is_required_but_unknown(
     assert reporter.main(["--require-created", "unknown:image"]) == 1
     assert "Images with unknown creation time: unknown:image" in capsys.readouterr().err
     assert reporter.main(["unknown:image"]) == 0
+
+
+def test_main_fails_when_unique_image_ids_are_required_but_tags_share_an_image(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(
+                tag="first:image",
+                image_id="shared123",
+                size_bytes=100_000_000,
+                created=None,
+                present=True,
+            ),
+            reporter.ImageSizeRecord(
+                tag="second:image",
+                image_id="shared123",
+                size_bytes=100_000_000,
+                created=None,
+                present=True,
+            ),
+        ],
+    )
+
+    assert reporter.main(["--require-unique-image-ids", "first:image", "second:image"]) == 1
+    assert "Duplicate image IDs: shared123: first:image, second:image" in capsys.readouterr().err
+    assert reporter.main(["first:image", "second:image"]) == 0
 
 
 def test_main_summary_only_includes_size_budget_status(

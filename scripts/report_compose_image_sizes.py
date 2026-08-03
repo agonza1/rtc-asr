@@ -475,6 +475,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero when a present image does not report a Docker creation timestamp.",
     )
+    parser.add_argument(
+        "--require-unique-image-ids",
+        "--fail-on-duplicate-image-ids",
+        dest="require_unique_image_ids",
+        action="store_true",
+        help="Exit non-zero when multiple requested tags point at the same Docker image ID.",
+    )
     return parser.parse_args(argv)
 
 
@@ -499,6 +506,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     missing_records = [record for record in records if not record.present]
     unknown_size_records = [record for record in records if record.present and record.size_bytes is None]
     unknown_created_records = [record for record in records if record.present and record.created is None]
+    duplicate_image_id_groups = records_with_duplicate_image_ids(records)
     oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
     total_size_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     total_over_budget = (
@@ -518,6 +526,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             "Images with unknown creation time: {tags}".format(
                 tags=", ".join(record.tag for record in unknown_created_records)
+            ),
+            file=sys.stderr,
+        )
+    if args.require_unique_image_ids and duplicate_image_id_groups:
+        print(
+            "Duplicate image IDs: {groups}".format(
+                groups="; ".join(
+                    "{image_id}: {tags}".format(
+                        image_id=group["image_id"],
+                        tags=", ".join(group["tags"]),
+                    )
+                    for group in duplicate_image_id_groups
+                )
             ),
             file=sys.stderr,
         )
@@ -545,6 +566,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         (args.require_present and missing_records)
         or (args.require_size and unknown_size_records)
         or (args.require_created and unknown_created_records)
+        or (args.require_unique_image_ids and duplicate_image_id_groups)
         or oversized_records
         or total_over_budget
     ):
