@@ -109,6 +109,17 @@ async def demo_config() -> dict[str, object]:
     return bridge.config()
 
 
+@app.get("/rtc-asr/ready")
+async def demo_ready() -> dict[str, object]:
+    config = bridge.config()
+    return {
+        "service": config["service"],
+        "route": config["route"],
+        "bridge_status": config["bridge_status"],
+        "can_start_session": config["can_start_session"],
+    }
+
+
 @app.post("/rtc-asr/offer", response_model=OfferResponse)
 async def create_offer(request: OfferRequest) -> OfferResponse:
     logger.info("browser_pipecat_demo_offer_received", extra={"sdp_length": len(request.sdp)})
