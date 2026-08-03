@@ -129,6 +129,14 @@ def test_parse_args_rejects_zero_or_negative_runtime_values(monkeypatch: pytest.
     with pytest.raises(SystemExit):
         benchmark.parse_args()
 
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--energy-per-audio-second-j", "-1"])
+    with pytest.raises(SystemExit):
+        benchmark.parse_args()
+
+    monkeypatch.setattr(sys, "argv", ["benchmark.py", "--thermal-peak-celsius", "-1"])
+    with pytest.raises(SystemExit):
+        benchmark.parse_args()
+
 
 def test_parse_args_accepts_external_low_power_observations(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
@@ -138,6 +146,10 @@ def test_parse_args_accepts_external_low_power_observations(monkeypatch: pytest.
             "benchmark.py",
             "--package-power-watts",
             "4.8",
+            "--energy-per-audio-second-j",
+            "1.9",
+            "--thermal-peak-celsius",
+            "61.5",
             "--thermal-state",
             "nominal",
             "--thermal-duration-minutes",
@@ -148,6 +160,8 @@ def test_parse_args_accepts_external_low_power_observations(monkeypatch: pytest.
     args = benchmark.parse_args()
 
     assert args.package_power_watts == 4.8
+    assert args.energy_per_audio_second_j == 1.9
+    assert args.thermal_peak_celsius == 61.5
     assert args.thermal_state == "nominal"
     assert args.thermal_duration_minutes == 5.0
 
@@ -178,6 +192,8 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
         peak_rss_mb=384.0,
         cpu_utilization_percent=47.5,
         package_power_watts=4.8,
+        energy_per_audio_second_j=1.9,
+        thermal_peak_celsius=61.5,
         thermal_state="nominal",
         thermal_duration_minutes=5.0,
     )
@@ -189,6 +205,8 @@ def test_describe_environment_reports_host_capacity(monkeypatch: pytest.MonkeyPa
     assert payload["peak_rss_mb"] == 384.0
     assert payload["cpu_utilization_percent"] == 47.5
     assert payload["package_power_watts"] == 4.8
+    assert payload["energy_per_audio_second_j"] == 1.9
+    assert payload["thermal_peak_celsius"] == 61.5
     assert payload["thermal_state"] == "nominal"
     assert payload["thermal_duration_minutes"] == 5.0
     assert requested_pids == [4321]
