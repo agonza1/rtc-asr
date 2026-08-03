@@ -537,6 +537,8 @@ async function startDemo() {
           asr_model_label: asrModel?.label || null,
           asr_backend: asrModel?.backend || null,
           asr_model: asrModel?.model || null,
+          asr_device: asrModel?.device || null,
+          asr_compute_type: asrModel?.compute_type || null,
         },
       }),
     });

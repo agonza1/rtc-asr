@@ -163,7 +163,7 @@ RTC_ASR_MAX_BUFFER_SECONDS=5
 ```
 
 Open `http://127.0.0.1:8090/rtc-asr` after both health checks pass. Use `PIPECAT_DEMO_PORT` when `8090` is already in use, and keep the host-facing `PORT` value aligned with any custom `asr-service` port mapping.
-The demo sidecar exposes `GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, `can_start_session`, `rtc_asr_ws_url`, stream settings, selected ASR target fields, `default_use_smart_turn`, and dependency diagnostics so compose and local probes can distinguish a usable Pipecat bridge from a degraded optional-runtime install.
+The demo sidecar exposes `GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, `can_start_session`, `rtc_asr_ws_url`, stream settings, selected ASR target fields including device and compute type, `default_use_smart_turn`, and dependency diagnostics so compose and local probes can distinguish a usable Pipecat bridge from a degraded optional-runtime install.
 
 The sidecar path is intentionally different from Pipecat's built-in local Whisper STT baseline. Pipecat Whisper runs local/offline inside the Pipecat process and emits segmented STT results. This demo uses Pipecat for WebRTC/session handling, then streams normalized `16` kHz mono PCM16 audio to a warmed `rtc-asr` sidecar so Local STT v1 can produce partial/final transcript events and latency metrics independently of the Pipecat worker.
 
