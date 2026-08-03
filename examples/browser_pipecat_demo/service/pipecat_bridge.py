@@ -237,12 +237,14 @@ class RTCASRAudioRelay:
         send_app_message: AppMessageSender,
         mark_failed: ErrorCallback,
         max_buffer_seconds: float,
+        asr_model_option: dict[str, str] | None = None,
         asr_client_factory: ASRClientFactory = AsyncLocalSttClient,
     ) -> None:
         self.session_id = session_id
         self.rtc_asr_ws_url = rtc_asr_ws_url
         self.chunk_ms = chunk_ms
         self.max_buffer_seconds = max_buffer_seconds
+        self.asr_model_option = asr_model_option or {}
         self._send_app_message = send_app_message
         self._mark_failed = mark_failed
         self._asr_client_factory = asr_client_factory
@@ -315,6 +317,10 @@ class RTCASRAudioRelay:
             "sample_rate": sample_rate,
             "num_channels": num_channels,
             "chunk_ms": self.chunk_ms,
+            "asr_model_option_id": self.asr_model_option.get("id"),
+            "asr_model_label": self.asr_model_option.get("label"),
+            "asr_backend": self.asr_model_option.get("backend"),
+            "asr_model": self.asr_model_option.get("model"),
         })
 
     async def _send_chunk(self, chunk: bytes) -> None:
@@ -681,6 +687,12 @@ class PipecatDemoBridge:
             rtc_asr_ws_url=self.rtc_asr_ws_url,
             chunk_ms=self.chunk_ms,
             max_buffer_seconds=self.max_buffer_seconds,
+            asr_model_option={
+                "id": session.metadata["asr_model_option_id"],
+                "label": session.metadata["asr_model_label"],
+                "backend": session.metadata["asr_backend"],
+                "model": session.metadata["asr_model"],
+            },
             send_app_message=send_app_message,
             mark_failed=mark_failed,
             asr_client_factory=self._asr_client_factory,

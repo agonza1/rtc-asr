@@ -405,6 +405,12 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
         send_app_message=app_messages.append,
         mark_failed=lambda message: None,
         max_buffer_seconds=12.0,
+        asr_model_option={
+            "id": "parakeet-mlx-110m",
+            "label": "Parakeet 110M MLX",
+            "backend": "parakeet-mlx",
+            "model": "mlx-community/parakeet-tdt_ctc-110m",
+        },
         asr_client_factory=FakeASRClient,
     )
     frame = FakeInputAudioRawFrame(audio=b"x" * 6400, sample_rate=16000, num_channels=1)
@@ -413,7 +419,18 @@ async def test_asr_relay_batches_audio_into_configured_chunks() -> None:
 
     assert [len(chunk) for chunk in sent_chunks] == [3200, 3200]
     assert start_calls == [{"sample_rate": 16000, "partial_interval_ms": 100, "max_buffer_seconds": 12.0, "client_stream_id": "session_1"}]
-    assert app_messages[0]["type"] == "status"
+    assert app_messages[0] == {
+        "type": "status",
+        "message": "ASR websocket connected.",
+        "session_id": "session_1",
+        "sample_rate": 16000,
+        "num_channels": 1,
+        "chunk_ms": 100,
+        "asr_model_option_id": "parakeet-mlx-110m",
+        "asr_model_label": "Parakeet 110M MLX",
+        "asr_backend": "parakeet-mlx",
+        "asr_model": "mlx-community/parakeet-tdt_ctc-110m",
+    }
 
 
 @pytest.mark.anyio
