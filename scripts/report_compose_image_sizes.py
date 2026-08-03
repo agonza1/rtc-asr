@@ -461,8 +461,8 @@ def records_to_markdown(
     if smallest and smallest.size_mb is not None:
         rows.append(f"Smallest present image: {smallest.tag} ({smallest.size_mb:.1f} MB)")
     records_with_created = [record for record in records if record.present and record.created]
-    newest = max(records_with_created, key=lambda record: record.created or "", default=None)
-    oldest = min(records_with_created, key=lambda record: record.created or "", default=None)
+    newest = max(records_with_created, key=lambda record: created_sort_datetime(record) or UTC_DATETIME_MIN, default=None)
+    oldest = min(records_with_created, key=lambda record: created_sort_datetime(record) or UTC_DATETIME_MAX, default=None)
     if newest:
         rows.append(f"Newest present image: {newest.tag} ({newest.created})")
     if oldest:
