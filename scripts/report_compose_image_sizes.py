@@ -316,6 +316,36 @@ def records_summary_to_json(
     )
 
 
+def summary_csv_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, sort_keys=True)
+    return str(value)
+
+
+def records_summary_to_csv(
+    records: Sequence[ImageSizeRecord],
+    max_size_mb: float | None = None,
+    max_total_size_mb: float | None = None,
+    max_age_days: float | None = None,
+) -> str:
+    summary = records_summary(
+        records,
+        max_size_mb=max_size_mb,
+        max_total_size_mb=max_total_size_mb,
+        max_age_days=max_age_days,
+    )
+    output = io.StringIO()
+    fieldnames = sorted(summary)
+    writer = csv.DictWriter(output, fieldnames=fieldnames, lineterminator="\n")
+    writer.writeheader()
+    writer.writerow({key: summary_csv_value(value) for key, value in summary.items()})
+    return output.getvalue().rstrip("\n")
+
+
 def records_over_size_budget(records: Sequence[ImageSizeRecord], max_size_mb: float) -> list[ImageSizeRecord]:
     max_size_bytes = max_size_mb * 1_000_000
     return [
@@ -591,6 +621,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Emit only the aggregate image count and size summary as JSON.",
     )
     parser.add_argument(
+        "--summary-csv",
+        "--csv-summary",
+        dest="summary_csv",
+        action="store_true",
+        help="Emit only the aggregate image count and size summary as a single CSV row.",
+    )
+    parser.add_argument(
         "--max-size-mb",
         type=float,
         help="Exit non-zero when any present image is larger than this decimal-megabyte budget.",
@@ -639,7 +676,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     records = sort_records(inspect_images(args.images), args.sort_by)
-    if args.summary_only:
+    if args.summary_csv:
+        output = records_summary_to_csv(
+            records,
+            max_size_mb=args.max_size_mb,
+            max_total_size_mb=args.max_total_size_mb,
+            max_age_days=args.max_age_days,
+        )
+    elif args.summary_only:
         output = records_summary_to_json(
             records,
             max_size_mb=args.max_size_mb,
