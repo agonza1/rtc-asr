@@ -244,6 +244,7 @@ def test_demo_ready_reports_compact_bridge_status(monkeypatch: pytest.MonkeyPatc
         "ready": False,
         "bridge_status": "dependency_missing",
         "can_start_session": False,
+        "pipecat_transport": "smallwebrtc",
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
         "rtc_asr_max_buffer_seconds": 5.0,
@@ -275,6 +276,7 @@ def test_demo_ready_reports_ready_boolean(monkeypatch: pytest.MonkeyPatch) -> No
         "ready": True,
         "bridge_status": "ready",
         "can_start_session": True,
+        "pipecat_transport": "smallwebrtc",
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
         "rtc_asr_max_buffer_seconds": 5.0,
@@ -306,7 +308,7 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "Final transcript events move into the transcript history" in readme
     assert (
         "`GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, `can_start_session`, "
-        "`rtc_asr_ws_url`, stream settings, selected ASR target fields including device and compute type, "
+        "`pipecat_transport`, `rtc_asr_ws_url`, stream settings, selected ASR target fields including device and compute type, "
         "`default_use_smart_turn`, "
         "and dependency diagnostics"
     ) in readme
