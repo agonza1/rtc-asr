@@ -112,11 +112,14 @@ async def demo_config() -> dict[str, object]:
 @app.get("/rtc-asr/ready")
 async def demo_ready() -> dict[str, object]:
     config = bridge.config()
+    can_start_session = bool(config["can_start_session"])
     return {
         "service": config["service"],
         "route": config["route"],
+        "status": "ready" if can_start_session else "degraded",
+        "ready": can_start_session,
         "bridge_status": config["bridge_status"],
-        "can_start_session": config["can_start_session"],
+        "can_start_session": can_start_session,
     }
 
 

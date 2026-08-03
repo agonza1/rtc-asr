@@ -236,8 +236,28 @@ def test_demo_ready_reports_compact_bridge_status(monkeypatch: pytest.MonkeyPatc
     assert response.json() == {
         "service": "browser-pipecat-demo",
         "route": "/rtc-asr",
+        "status": "degraded",
+        "ready": False,
         "bridge_status": "dependency_missing",
         "can_start_session": False,
+    }
+
+
+def test_demo_ready_reports_ready_boolean(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake_bridge = PipecatDemoBridge(runtime_loader=fake_runtime_loader)
+    monkeypatch.setattr(app_module, "bridge", fake_bridge)
+    client = TestClient(app_module.app)
+
+    response = client.get("/rtc-asr/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "service": "browser-pipecat-demo",
+        "route": "/rtc-asr",
+        "status": "ready",
+        "ready": True,
+        "bridge_status": "ready",
+        "can_start_session": True,
     }
 
 
@@ -256,6 +276,7 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "Local STT v1 can produce partial/final transcript events" in readme
     assert "Partial transcript events update the *Live* row as they arrive" in readme
     assert "Final transcript events move into the transcript history" in readme
+    assert "`GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, and `can_start_session` fields" in readme
 
 
 def test_compose_keeps_browser_demo_profile_opt_in() -> None:
