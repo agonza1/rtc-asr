@@ -240,6 +240,10 @@ def test_demo_ready_reports_compact_bridge_status(monkeypatch: pytest.MonkeyPatc
         "ready": False,
         "bridge_status": "dependency_missing",
         "can_start_session": False,
+        "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
+        "asr_model_label": "Faster-Whisper Base English int8",
+        "asr_backend": "faster-whisper",
+        "asr_model": "base.en",
     }
 
 
@@ -258,6 +262,10 @@ def test_demo_ready_reports_ready_boolean(monkeypatch: pytest.MonkeyPatch) -> No
         "ready": True,
         "bridge_status": "ready",
         "can_start_session": True,
+        "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
+        "asr_model_label": "Faster-Whisper Base English int8",
+        "asr_backend": "faster-whisper",
+        "asr_model": "base.en",
     }
 
 
@@ -276,7 +284,10 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "Local STT v1 can produce partial/final transcript events" in readme
     assert "Partial transcript events update the *Live* row as they arrive" in readme
     assert "Final transcript events move into the transcript history" in readme
-    assert "`GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, and `can_start_session` fields" in readme
+    assert (
+        "`GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, `can_start_session`, "
+        "`rtc_asr_ws_url`, and selected ASR target fields"
+    ) in readme
 
 
 def test_compose_keeps_browser_demo_profile_opt_in() -> None:
