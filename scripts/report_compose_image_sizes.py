@@ -32,6 +32,8 @@ SORT_CHOICES = (
     "age-desc",
 )
 SORT_CHOICE_SET = set(SORT_CHOICES)
+UTC_DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
+UTC_DATETIME_MAX = datetime.max.replace(tzinfo=UTC)
 
 
 @dataclass(frozen=True)
@@ -99,9 +101,9 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
     if sort_by == "size-desc":
         return sorted(records, key=lambda record: (record.size_bytes is not None, record.size_bytes or 0), reverse=True)
     if sort_by == "created-asc":
-        return sorted(records, key=lambda record: (record.created is None, record.created or ""))
+        return sorted(records, key=created_asc_sort_key)
     if sort_by == "created-desc":
-        return sorted(records, key=lambda record: (record.created is not None, record.created or ""), reverse=True)
+        return sorted(records, key=created_desc_sort_key, reverse=True)
     if sort_by == "age-asc":
         return sorted(records, key=lambda record: (image_age_days(record) is None, image_age_days(record) or 0))
     if sort_by == "age-desc":
@@ -193,8 +195,8 @@ def records_summary(
         default=None,
     )
     records_with_created = [record for record in records if record.present and record.created]
-    newest = max(records_with_created, key=lambda record: record.created or "", default=None)
-    oldest = min(records_with_created, key=lambda record: record.created or "", default=None)
+    newest = max(records_with_created, key=lambda record: created_sort_datetime(record) or UTC_DATETIME_MIN, default=None)
+    oldest = min(records_with_created, key=lambda record: created_sort_datetime(record) or UTC_DATETIME_MAX, default=None)
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
     known_image_ids = [record.image_id for record in records if record.present and record.image_id]
     unique_image_ids = sorted(set(known_image_ids))
@@ -344,6 +346,20 @@ def image_age_days(record: ImageSizeRecord, now: datetime | None = None) -> floa
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
     return max(0.0, round((now.astimezone(UTC) - created).total_seconds() / 86400, 1))
+
+
+def created_sort_datetime(record: ImageSizeRecord) -> datetime | None:
+    return parse_created_datetime(record.created)
+
+
+def created_asc_sort_key(record: ImageSizeRecord) -> tuple[bool, datetime]:
+    created = created_sort_datetime(record)
+    return created is None, created or UTC_DATETIME_MIN
+
+
+def created_desc_sort_key(record: ImageSizeRecord) -> tuple[bool, datetime]:
+    created = created_sort_datetime(record)
+    return created is not None, created or UTC_DATETIME_MIN
 
 
 def records_over_age_budget(
