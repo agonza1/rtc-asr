@@ -4089,6 +4089,24 @@ def test_transcript_event_parses_remaining_buffer_bytes() -> None:
     assert event.remaining_buffer_bytes == 1021
 
 
+def test_streaming_transcript_event_ignores_boolean_integer_fields() -> None:
+    event = TranscriptEvent.from_payload({
+        "type": "partial",
+        "text": "hel",
+        "stream_id": True,
+        "chunks_received": True,
+        "buffered_bytes": False,
+        "remaining_buffer_bytes": True,
+        "duration_ms": False,
+    })
+
+    assert event.stream_id is None
+    assert event.chunks_received == 0
+    assert event.buffered_bytes == 0
+    assert event.remaining_buffer_bytes == 0
+    assert event.duration_ms is None
+
+
 def test_streaming_client_stops_after_error_event() -> None:
     class FakeSocket:
         def __init__(self) -> None:

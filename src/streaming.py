@@ -188,7 +188,7 @@ def transcribe_chunks(url: str, chunks: Iterable[bytes], *, config: StreamConfig
 
 
 def _maybe_int(value: Any) -> int | None:
-    return value if isinstance(value, int) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
 def _is_positive_finite_number(value: object) -> bool:
