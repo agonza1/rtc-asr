@@ -39,6 +39,7 @@ from src.protocols.local_stt_v1 import (
     RAW_UDS_MAX_PAYLOAD_BYTES,
     PROTOCOL_VERSION,
     LocalSttProtocolError,
+    RawUdsFrameDecoder,
     decode_raw_uds_frame,
     encode_raw_uds_frame,
     encode_raw_uds_json_frame,
@@ -967,6 +968,40 @@ def test_api_models_reports_enabled_raw_uds_server_path(tmp_path: Path) -> None:
     }
     assert raw_uds["comparison_required_transports"] == ["tcp_ws", "uds_ws", "raw_uds"]
     assert not raw_socket_path.exists()
+
+
+def test_raw_uds_frame_decoder_buffers_partial_frames_and_emits_ordered_frames() -> None:
+    decoder = RawUdsFrameDecoder()
+    first = encode_raw_uds_frame(RawUdsFrameType.PING, b"")
+    second_payload = b"a" * HOT_PATH_BYTES_PER_FRAME
+    second = encode_raw_uds_frame(RawUdsFrameType.AUDIO_PCM16, second_payload)
+
+    assert decoder.feed(first[:2]) == []
+    assert decoder.buffered_bytes == 2
+
+    frames = decoder.feed(first[2:] + second[:7])
+    assert len(frames) == 1
+    assert frames[0].frame_type == RawUdsFrameType.PING
+    assert frames[0].payload == b""
+    assert decoder.buffered_bytes == 7
+
+    frames = decoder.feed(memoryview(second[7:]))
+    assert len(frames) == 1
+    assert frames[0].frame_type == RawUdsFrameType.AUDIO_PCM16
+    assert frames[0].payload == second_payload
+    assert decoder.buffered_bytes == 0
+
+
+def test_raw_uds_frame_decoder_reports_incomplete_frame_on_finish() -> None:
+    decoder = RawUdsFrameDecoder()
+    frame = encode_raw_uds_frame(RawUdsFrameType.JSON_CONTROL, b"{}")
+
+    assert decoder.feed(frame[:-1]) == []
+    with pytest.raises(LocalSttProtocolError) as exc_info:
+        decoder.finish()
+
+    assert exc_info.value.code == "raw_uds_incomplete_frame"
+    assert decoder.buffered_bytes == 0
 
 
 def test_raw_uds_server_shares_local_stt_v1_stream_runtime(tmp_path: Path) -> None:
