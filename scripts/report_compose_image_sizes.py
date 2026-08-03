@@ -10,6 +10,7 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from statistics import median
 from typing import Any, Iterable, Sequence
 
@@ -98,9 +99,15 @@ def records_to_json(
     records: Iterable[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_age_days: float | None = None,
 ) -> str:
     record_list = list(records)
-    summary = records_summary(record_list, max_size_mb=max_size_mb, max_total_size_mb=max_total_size_mb)
+    summary = records_summary(
+        record_list,
+        max_size_mb=max_size_mb,
+        max_total_size_mb=max_total_size_mb,
+        max_age_days=max_age_days,
+    )
     payload = [
         {
             "tag": record.tag,
@@ -142,6 +149,8 @@ def records_summary(
     records: Sequence[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_age_days: float | None = None,
+    now: datetime | None = None,
 ) -> dict[str, Any]:
     present_sizes = [record.size_bytes for record in records if record.present and record.size_bytes is not None]
     total_bytes = sum(present_sizes)
@@ -248,6 +257,18 @@ def records_summary(
                 "total_budget_excess_mb": round(total_budget_excess_bytes / 1_000_000, 1),
             }
         )
+    if max_age_days is not None:
+        now = now or datetime.now(UTC)
+        over_age = records_over_age_budget(records, max_age_days, now=now)
+        summary.update(
+            {
+                "image_age_budget_days": max_age_days,
+                "over_age": bool(over_age),
+                "over_age_count": len(over_age),
+                "over_age_tags": [record.tag for record in over_age],
+                "oldest_image_age_days": oldest_image_age_days(records, now=now),
+            }
+        )
     return summary
 
 
@@ -255,9 +276,15 @@ def records_summary_to_json(
     records: Sequence[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_age_days: float | None = None,
 ) -> str:
     return json.dumps(
-        records_summary(records, max_size_mb=max_size_mb, max_total_size_mb=max_total_size_mb),
+        records_summary(
+            records,
+            max_size_mb=max_size_mb,
+            max_total_size_mb=max_total_size_mb,
+            max_age_days=max_age_days,
+        ),
         indent=2,
         sort_keys=True,
     )
@@ -270,6 +297,52 @@ def records_over_size_budget(records: Sequence[ImageSizeRecord], max_size_mb: fl
         for record in records
         if record.present and record.size_bytes is not None and record.size_bytes > max_size_bytes
     ]
+
+
+def parse_created_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def image_age_days(record: ImageSizeRecord, now: datetime | None = None) -> float | None:
+    created = parse_created_datetime(record.created)
+    if created is None:
+        return None
+    now = now or datetime.now(UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+    return max(0.0, round((now.astimezone(UTC) - created).total_seconds() / 86400, 1))
+
+
+def records_over_age_budget(
+    records: Sequence[ImageSizeRecord],
+    max_age_days: float,
+    now: datetime | None = None,
+) -> list[ImageSizeRecord]:
+    return [
+        record
+        for record in records
+        if record.present
+        and (age_days := image_age_days(record, now=now)) is not None
+        and age_days > max_age_days
+    ]
+
+
+def oldest_image_age_days(records: Sequence[ImageSizeRecord], now: datetime | None = None) -> float | None:
+    ages = [
+        age_days
+        for record in records
+        if record.present and (age_days := image_age_days(record, now=now)) is not None
+    ]
+    return max(ages, default=None)
 
 
 def records_with_duplicate_image_ids(records: Sequence[ImageSizeRecord]) -> list[dict[str, Any]]:
@@ -294,6 +367,7 @@ def records_to_markdown(
     records: Sequence[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_age_days: float | None = None,
 ) -> str:
     rows = ["| Image | Present | Size MB | Image ID | Created |", "| --- | --- | ---: | --- | --- |"]
     for record in records:
@@ -387,6 +461,18 @@ def records_to_markdown(
         )
         if max_total_size_mb > 0:
             rows.append(f"Total image size budget utilization: {total_bytes / (max_total_size_mb * 1_000_000) * 100:.1f}%")
+    if max_age_days is not None:
+        over_age = records_over_age_budget(records, max_age_days)
+        oldest_age_days = oldest_image_age_days(records)
+        rows.append(
+            "Image age budget: {budget:.1f} days, {count} image{plural} older than budget.".format(
+                budget=max_age_days,
+                count=len(over_age),
+                plural="" if len(over_age) == 1 else "s",
+            )
+        )
+        if oldest_age_days is not None:
+            rows.append(f"Oldest present image age: {oldest_age_days:.1f} days")
     if missing:
         rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
@@ -468,6 +554,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Exit non-zero when all present images exceed this combined decimal-megabyte budget.",
     )
     parser.add_argument(
+        "--max-age-days",
+        type=float,
+        help="Exit non-zero when any present image creation timestamp is older than this many days.",
+    )
+    parser.add_argument(
         "--require-present",
         "--fail-on-missing",
         dest="require_present",
@@ -506,14 +597,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             records,
             max_size_mb=args.max_size_mb,
             max_total_size_mb=args.max_total_size_mb,
+            max_age_days=args.max_age_days,
         )
     elif args.csv:
         output = records_to_csv(records)
     else:
         output = (
-            records_to_json(records, max_size_mb=args.max_size_mb, max_total_size_mb=args.max_total_size_mb)
+            records_to_json(
+                records,
+                max_size_mb=args.max_size_mb,
+                max_total_size_mb=args.max_total_size_mb,
+                max_age_days=args.max_age_days,
+            )
             if args.json
-            else records_to_markdown(records, max_size_mb=args.max_size_mb, max_total_size_mb=args.max_total_size_mb)
+            else records_to_markdown(
+                records,
+                max_size_mb=args.max_size_mb,
+                max_total_size_mb=args.max_total_size_mb,
+                max_age_days=args.max_age_days,
+            )
         )
     print(output)
     missing_records = [record for record in records if not record.present]
@@ -521,6 +623,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     unknown_created_records = [record for record in records if record.present and record.created is None]
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
     oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
+    over_age_records = records_over_age_budget(records, args.max_age_days) if args.max_age_days is not None else []
     total_size_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     total_over_budget = (
         args.max_total_size_mb is not None and total_size_bytes > args.max_total_size_mb * 1_000_000
@@ -575,12 +678,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             file=sys.stderr,
         )
+    if over_age_records:
+        print(
+            "Images older than {budget:.1f} days: {tags}".format(
+                budget=args.max_age_days,
+                tags=", ".join(
+                    f"{record.tag} ({age_days:.1f} days)"
+                    for record in over_age_records
+                    if (age_days := image_age_days(record)) is not None
+                ),
+            ),
+            file=sys.stderr,
+        )
     if (
         (args.require_present and missing_records)
         or (args.require_size and unknown_size_records)
         or (args.require_created and unknown_created_records)
         or (args.require_unique_image_ids and duplicate_image_id_groups)
         or oversized_records
+        or over_age_records
         or total_over_budget
     ):
         return 1
