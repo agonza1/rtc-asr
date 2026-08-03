@@ -58,7 +58,7 @@ def test_records_to_markdown_escapes_pipe_cells() -> None:
     assert "| registry.local/realtime-asr:branch\\|preview | yes | 100.0 | sha\\|preview | 2026-07-31T19:00:00Z\\|main |" in markdown
 
 
-def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
+def test_records_to_json_includes_bytes_decimal_megabytes_and_age(monkeypatch: pytest.MonkeyPatch) -> None:
     record = reporter.ImageSizeRecord(
         tag="realtime-asr:parakeet-nemo-cpu",
         image_id="fedcba654321",
@@ -66,6 +66,7 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
         created="2026-07-31T19:00:00Z",
         present=True,
     )
+    monkeypatch.setattr(reporter, "image_age_days", lambda record, now=None: 2.4)
 
     payload = json.loads(reporter.records_to_json([record]))
 
@@ -77,6 +78,7 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
             "size_bytes": 987_654_321,
             "size_mb": 987.7,
             "created": "2026-07-31T19:00:00Z",
+            "age_days": 2.4,
         },
         {
             "summary": {
@@ -120,7 +122,7 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
     ]
 
 
-def test_records_to_csv_emits_tabular_image_rows() -> None:
+def test_records_to_csv_emits_tabular_image_rows(monkeypatch: pytest.MonkeyPatch) -> None:
     records = [
         reporter.ImageSizeRecord(
             tag="realtime-asr:faster-whisper-cpu",
@@ -137,11 +139,16 @@ def test_records_to_csv_emits_tabular_image_rows() -> None:
             present=False,
         ),
     ]
+    monkeypatch.setattr(
+        reporter,
+        "image_age_days",
+        lambda record, now=None: 2.4 if record.created else None,
+    )
 
     assert reporter.records_to_csv(records).splitlines() == [
-        "tag,present,image_id,size_bytes,size_mb,created",
-        "realtime-asr:faster-whisper-cpu,yes,abcdef123456,1234567890,1234.6,2026-07-31T19:00:00Z",
-        "realtime-asr:qwen-cpu,no,,,,",
+        "tag,present,image_id,size_bytes,size_mb,created,age_days",
+        "realtime-asr:faster-whisper-cpu,yes,abcdef123456,1234567890,1234.6,2026-07-31T19:00:00Z,2.4",
+        "realtime-asr:qwen-cpu,no,,,,,",
     ]
 
 
@@ -715,8 +722,8 @@ def test_main_csv_flag_emits_csv(monkeypatch: pytest.MonkeyPatch, capsys: pytest
     assert reporter.main(["--csv", "present:image"]) == 0
 
     assert capsys.readouterr().out.splitlines() == [
-        "tag,present,image_id,size_bytes,size_mb,created",
-        "present:image,yes,abcdef123456,100000000,100.0,",
+        "tag,present,image_id,size_bytes,size_mb,created,age_days",
+        "present:image,yes,abcdef123456,100000000,100.0,,",
     ]
 
 

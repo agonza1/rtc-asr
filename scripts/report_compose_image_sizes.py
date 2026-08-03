@@ -116,6 +116,7 @@ def records_to_json(
             "size_bytes": record.size_bytes,
             "size_mb": record.size_mb,
             "created": record.created,
+            "age_days": image_age_days(record),
         }
         for record in record_list
     ]
@@ -127,7 +128,7 @@ def records_to_csv(records: Iterable[ImageSizeRecord]) -> str:
     output = io.StringIO()
     writer = csv.DictWriter(
         output,
-        fieldnames=("tag", "present", "image_id", "size_bytes", "size_mb", "created"),
+        fieldnames=("tag", "present", "image_id", "size_bytes", "size_mb", "created", "age_days"),
         lineterminator="\n",
     )
     writer.writeheader()
@@ -140,6 +141,7 @@ def records_to_csv(records: Iterable[ImageSizeRecord]) -> str:
                 "size_bytes": record.size_bytes if record.size_bytes is not None else "",
                 "size_mb": f"{record.size_mb:.1f}" if record.size_mb is not None else "",
                 "created": record.created or "",
+                "age_days": f"{age_days:.1f}" if (age_days := image_age_days(record)) is not None else "",
             }
         )
     return output.getvalue().rstrip("\n")
@@ -369,26 +371,31 @@ def records_to_markdown(
     max_total_size_mb: float | None = None,
     max_age_days: float | None = None,
 ) -> str:
-    rows = ["| Image | Present | Size MB | Image ID | Created |", "| --- | --- | ---: | --- | --- |"]
+    rows = [
+        "| Image | Present | Size MB | Image ID | Created | Age days |",
+        "| --- | --- | ---: | --- | --- | ---: |",
+    ]
     for record in records:
         rows.append(
-            "| {tag} | {present} | {size} | {image_id} | {created} |".format(
+            "| {tag} | {present} | {size} | {image_id} | {created} | {age_days} |".format(
                 tag=markdown_cell(record.tag),
                 present="yes" if record.present else "no",
                 size=f"{record.size_mb:.1f}" if record.size_mb is not None else "",
                 image_id=markdown_cell(record.image_id),
                 created=markdown_cell(record.created),
+                age_days=f"{age_days:.1f}" if (age_days := image_age_days(record)) is not None else "",
             )
         )
     total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     if total_bytes:
         rows.append(
-            "| {tag} | {present} | {size:.1f} | {image_id} | {created} |".format(
+            "| {tag} | {present} | {size:.1f} | {image_id} | {created} | {age_days} |".format(
                 tag="Total present images",
                 present="",
                 size=round(total_bytes / 1_000_000, 1),
                 image_id="",
                 created="",
+                age_days="",
             )
         )
     missing = [record.tag for record in records if not record.present]
