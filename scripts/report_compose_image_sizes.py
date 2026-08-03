@@ -158,6 +158,9 @@ def records_summary(
         key=lambda record: record.size_bytes or 0,
         default=None,
     )
+    records_with_created = [record for record in records if record.present and record.created]
+    newest = max(records_with_created, key=lambda record: record.created or "", default=None)
+    oldest = min(records_with_created, key=lambda record: record.created or "", default=None)
     summary = {
         "requested": len(records),
         "present": len(records) - len(missing),
@@ -189,6 +192,10 @@ def records_summary(
         "smallest_present_tag": smallest.tag if smallest else None,
         "smallest_present_size_bytes": smallest.size_bytes if smallest else None,
         "smallest_present_size_mb": smallest.size_mb if smallest else None,
+        "newest_present_tag": newest.tag if newest else None,
+        "newest_present_created": newest.created if newest else None,
+        "oldest_present_tag": oldest.tag if oldest else None,
+        "oldest_present_created": oldest.created if oldest else None,
     }
     if max_size_mb is not None:
         over_budget = records_over_size_budget(records, max_size_mb)
@@ -309,6 +316,13 @@ def records_to_markdown(
     )
     if smallest and smallest.size_mb is not None:
         rows.append(f"Smallest present image: {smallest.tag} ({smallest.size_mb:.1f} MB)")
+    records_with_created = [record for record in records if record.present and record.created]
+    newest = max(records_with_created, key=lambda record: record.created or "", default=None)
+    oldest = min(records_with_created, key=lambda record: record.created or "", default=None)
+    if newest:
+        rows.append(f"Newest present image: {newest.tag} ({newest.created})")
+    if oldest:
+        rows.append(f"Oldest present image: {oldest.tag} ({oldest.created})")
     present_sizes = [record.size_bytes for record in records if record.present and record.size_bytes is not None]
     if present_sizes:
         average_size_mb = sum(present_sizes) / len(present_sizes) / 1_000_000
