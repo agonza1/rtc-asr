@@ -35,6 +35,8 @@ def test_records_to_markdown_reports_present_and_missing_images() -> None:
     assert "Summary: 1/2 images present (50.0%), 1 missing." in markdown
     assert "Largest present image: realtime-asr:faster-whisper-cpu (1234.6 MB)" in markdown
     assert "Smallest present image: realtime-asr:faster-whisper-cpu (1234.6 MB)" in markdown
+    assert "Newest present image: realtime-asr:faster-whisper-cpu (2026-07-31T19:00:00Z)" in markdown
+    assert "Oldest present image: realtime-asr:faster-whisper-cpu (2026-07-31T19:00:00Z)" in markdown
     assert "Average present image size: 1234.6 MB" in markdown
     assert "Median present image size: 1234.6 MB" in markdown
     assert "Present image size range: 0.0 MB" in markdown
@@ -99,6 +101,10 @@ def test_records_to_json_includes_bytes_and_decimal_megabytes() -> None:
                 "smallest_present_tag": "realtime-asr:parakeet-nemo-cpu",
                 "smallest_present_size_bytes": 987_654_321,
                 "smallest_present_size_mb": 987.7,
+                "newest_present_tag": "realtime-asr:parakeet-nemo-cpu",
+                "newest_present_created": "2026-07-31T19:00:00Z",
+                "oldest_present_tag": "realtime-asr:parakeet-nemo-cpu",
+                "oldest_present_created": "2026-07-31T19:00:00Z",
             }
         },
     ]
@@ -170,6 +176,10 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "smallest_present_tag": "realtime-asr:faster-whisper-cpu",
         "smallest_present_size_bytes": 1_234_567_890,
         "smallest_present_size_mb": 1234.6,
+        "newest_present_tag": "realtime-asr:faster-whisper-cpu",
+        "newest_present_created": "2026-07-31T19:00:00Z",
+        "oldest_present_tag": "realtime-asr:faster-whisper-cpu",
+        "oldest_present_created": "2026-07-31T19:00:00Z",
     }
 
 
@@ -246,6 +256,25 @@ def test_records_summary_reports_smallest_present_image_size() -> None:
     assert summary["smallest_present_size_bytes"] == 100_000_000
     assert summary["smallest_present_size_mb"] == 100.0
     assert "Smallest present image: small:image (100.0 MB)" in markdown
+
+
+def test_records_summary_reports_newest_and_oldest_present_images() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="old:image", image_id="old", size_bytes=100_000_000, created="2026-07-30T19:00:00Z", present=True),
+        reporter.ImageSizeRecord(tag="new:image", image_id="new", size_bytes=300_000_000, created="2026-07-31T19:00:00Z", present=True),
+        reporter.ImageSizeRecord(tag="unknown:image", image_id="unknown", size_bytes=200_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created="2026-08-01T19:00:00Z", present=False),
+    ]
+
+    summary = reporter.records_summary(records)
+    markdown = reporter.records_to_markdown(records)
+
+    assert summary["newest_present_tag"] == "new:image"
+    assert summary["newest_present_created"] == "2026-07-31T19:00:00Z"
+    assert summary["oldest_present_tag"] == "old:image"
+    assert summary["oldest_present_created"] == "2026-07-30T19:00:00Z"
+    assert "Newest present image: new:image (2026-07-31T19:00:00Z)" in markdown
+    assert "Oldest present image: old:image (2026-07-30T19:00:00Z)" in markdown
 
 
 def test_records_summary_reports_present_images_with_unknown_size() -> None:
@@ -479,6 +508,10 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "smallest_present_tag": "present:image",
         "smallest_present_size_bytes": 100_000_000,
         "smallest_present_size_mb": 100.0,
+        "newest_present_tag": None,
+        "newest_present_created": None,
+        "oldest_present_tag": None,
+        "oldest_present_created": None,
     }
 
 
