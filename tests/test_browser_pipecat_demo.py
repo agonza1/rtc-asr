@@ -222,6 +222,7 @@ def test_demo_config_reports_dependency_status(monkeypatch: pytest.MonkeyPatch) 
         "asr_compute_type": "int8",
         "bridge_status": "dependency_missing",
         "can_start_session": False,
+        "active_session_count": 0,
         "default_use_smart_turn": True,
         "dependency_message": "Install the demo WebRTC extras with "
         "`pip install -r examples/browser_pipecat_demo/requirements.txt` "
@@ -244,6 +245,7 @@ def test_demo_ready_reports_compact_bridge_status(monkeypatch: pytest.MonkeyPatc
         "ready": False,
         "bridge_status": "dependency_missing",
         "can_start_session": False,
+        "active_session_count": 0,
         "pipecat_transport": "smallwebrtc",
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
@@ -276,6 +278,7 @@ def test_demo_ready_reports_ready_boolean(monkeypatch: pytest.MonkeyPatch) -> No
         "ready": True,
         "bridge_status": "ready",
         "can_start_session": True,
+        "active_session_count": 0,
         "pipecat_transport": "smallwebrtc",
         "rtc_asr_ws_url": "ws://127.0.0.1:8080/v1/stt/stream",
         "rtc_asr_chunk_ms": 100,
@@ -308,7 +311,8 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
     assert "Final transcript events move into the transcript history" in readme
     assert (
         "`GET /rtc-asr/ready` with `status`, `ready`, `bridge_status`, `can_start_session`, "
-        "`pipecat_transport`, `rtc_asr_ws_url`, stream settings, selected ASR target fields including device and compute type, "
+        "`active_session_count`, `pipecat_transport`, `rtc_asr_ws_url`, stream settings, "
+        "selected ASR target fields including device and compute type, "
         "`default_use_smart_turn`, "
         "and dependency diagnostics"
     ) in readme
@@ -442,6 +446,11 @@ def test_offer_returns_answer_with_fake_pipecat_handler(monkeypatch: pytest.Monk
 
     assert session_response.status_code == 200
     assert session_response.json()["metadata"]["demo_audio_source"] == "mic"
+
+    ready_response = client.get("/rtc-asr/ready")
+
+    assert ready_response.status_code == 200
+    assert ready_response.json()["active_session_count"] == 1
 
 
 @pytest.mark.anyio
