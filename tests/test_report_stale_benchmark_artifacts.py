@@ -584,6 +584,34 @@ def test_render_json_summary_exposes_average_size_for_buckets() -> None:
     assert summary["by_slug"][0]["average_size"] == "60 B"
 
 
+def test_render_json_summary_uses_precomputed_measured_month() -> None:
+    stale = [
+        {
+            "artifact_path": "benchmark-results/base-a.json",
+            "status": "legacy",
+            "measured_month": "2026-08",
+            "artifact_size_bytes": 40,
+        },
+        {
+            "artifact_path": "benchmark-results/base-b.json",
+            "status": "legacy",
+            "measured_month": "2026-08",
+            "artifact_size_bytes": 60,
+        },
+    ]
+
+    summary = json.loads(render_json_summary(stale, groups=["measured-month"]))
+
+    assert summary["by_measured_month"] == [
+        {
+            "measured_month": "2026-08",
+            "count": 2,
+            "total_size_bytes": 100,
+            "total_size": "100 B",
+        }
+    ]
+
+
 def test_render_summary_markdown_formats_group_table_with_shares() -> None:
     stale = [
         {
