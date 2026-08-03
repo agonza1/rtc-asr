@@ -531,6 +531,62 @@ def test_sort_records_orders_by_tag_size_and_created() -> None:
     ]
 
 
+def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="old:image",
+            image_id="old",
+            size_bytes=200,
+            created="2026-07-15T12:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="fresh:image",
+            image_id="fresh",
+            size_bytes=100,
+            created="2026-07-31T12:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="unknown:image",
+            image_id="unknown",
+            size_bytes=300,
+            created=None,
+            present=True,
+        ),
+    ]
+    monkeypatch.setattr(
+        reporter,
+        "image_age_days",
+        lambda record, now=None: {"old:image": 17.0, "fresh:image": 1.0}.get(record.tag),
+    )
+
+    assert [record.tag for record in reporter.sort_records(records, "age-asc")] == [
+        "fresh:image",
+        "old:image",
+        "unknown:image",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "age-desc")] == [
+        "old:image",
+        "fresh:image",
+        "unknown:image",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("age-desc", "age-desc"),
+        ("AGE-DESC", "age-desc"),
+        ("age_desc", "age-desc"),
+        ("created_asc", "created-asc"),
+        ("SIZE-DESC", "size-desc"),
+    ],
+)
+def test_parse_sort_choice_accepts_case_and_underscore_aliases(value: str, expected: str) -> None:
+    assert reporter.parse_sort_choice(value) == expected
+
+
 def test_records_over_size_budget_ignores_missing_and_unknown_sizes() -> None:
     records = [
         reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=199_000_000, created=None, present=True),
@@ -748,6 +804,12 @@ def test_main_applies_sort_order_before_rendering(monkeypatch: pytest.MonkeyPatc
     lines = capsys.readouterr().out.splitlines()
     assert lines[2].startswith("| small:image |")
     assert lines[3].startswith("| large:image |")
+
+    assert reporter.main(["--sort", "SIZE-DESC", "small:image", "large:image"]) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[2].startswith("| large:image |")
+    assert lines[3].startswith("| small:image |")
 
 
 def test_main_fails_when_present_image_exceeds_size_budget(
