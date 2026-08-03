@@ -7,6 +7,7 @@ import argparse
 import csv
 import io
 import json
+import math
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -117,6 +118,16 @@ def parse_sort_choice(value: str) -> str:
         choices = ", ".join(SORT_CHOICES)
         raise argparse.ArgumentTypeError(f"invalid sort mode: {value!r}; choose one of: {choices}")
     return normalized
+
+
+def parse_positive_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"must be a positive finite number: {value!r}") from exc
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError(f"must be a positive finite number: {value!r}")
+    return parsed
 
 
 def records_to_json(
@@ -765,17 +776,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--max-size-mb",
-        type=float,
+        type=parse_positive_float,
         help="Exit non-zero when any present image is larger than this decimal-megabyte budget.",
     )
     parser.add_argument(
         "--max-total-size-mb",
-        type=float,
+        type=parse_positive_float,
         help="Exit non-zero when all present images exceed this combined decimal-megabyte budget.",
     )
     parser.add_argument(
         "--max-age-days",
-        type=float,
+        type=parse_positive_float,
         help="Exit non-zero when any present image creation timestamp is older than this many days.",
     )
     parser.add_argument(

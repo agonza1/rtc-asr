@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import csv
 import io
 import json
@@ -735,6 +736,17 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
 )
 def test_parse_sort_choice_accepts_case_and_underscore_aliases(value: str, expected: str) -> None:
     assert reporter.parse_sort_choice(value) == expected
+
+
+@pytest.mark.parametrize("value", ["1", "1.5", "0.001"])
+def test_parse_positive_float_accepts_positive_finite_values(value: str) -> None:
+    assert reporter.parse_positive_float(value) == float(value)
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "inf", "-inf", "not-a-number"])
+def test_parse_positive_float_rejects_nonpositive_nonfinite_and_invalid_values(value: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="must be a positive finite number"):
+        reporter.parse_positive_float(value)
 
 
 def test_records_over_size_budget_ignores_missing_and_unknown_sizes() -> None:
