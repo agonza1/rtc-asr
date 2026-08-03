@@ -128,6 +128,7 @@ async def demo_ready() -> dict[str, object]:
         "asr_backend": config["asr_backend"],
         "asr_model": config["asr_model"],
         "default_use_smart_turn": config["default_use_smart_turn"],
+        "dependency_message": config["dependency_message"],
     }
 
 
