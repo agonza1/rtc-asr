@@ -303,6 +303,30 @@ def test_records_summary_reports_newest_and_oldest_present_images() -> None:
     assert "Oldest present image: old:image (2026-07-30T19:00:00Z)" in markdown
 
 
+def test_records_summary_orders_created_times_by_instant_not_raw_string() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="early-offset:image",
+            image_id="early",
+            size_bytes=100_000_000,
+            created="2026-07-31T20:00:00+02:00",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="later-zulu:image",
+            image_id="later",
+            size_bytes=200_000_000,
+            created="2026-07-31T19:00:00Z",
+            present=True,
+        ),
+    ]
+
+    summary = reporter.records_summary(records)
+
+    assert summary["newest_present_tag"] == "later-zulu:image"
+    assert summary["oldest_present_tag"] == "early-offset:image"
+
+
 def test_records_summary_reports_present_images_with_unknown_size() -> None:
     records = [
         reporter.ImageSizeRecord(tag="known:image", image_id="known", size_bytes=100_000_000, created=None, present=True),
@@ -528,6 +552,43 @@ def test_sort_records_orders_by_tag_size_and_created() -> None:
         "realtime-asr:qwen-cpu",
         "realtime-asr:faster-whisper-cpu",
         "realtime-asr:missing",
+    ]
+
+
+def test_sort_records_orders_created_offsets_by_instant() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="early-offset:image",
+            image_id="early",
+            size_bytes=100,
+            created="2026-07-31T20:00:00+02:00",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="later-zulu:image",
+            image_id="later",
+            size_bytes=200,
+            created="2026-07-31T19:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="unknown:image",
+            image_id="unknown",
+            size_bytes=300,
+            created=None,
+            present=True,
+        ),
+    ]
+
+    assert [record.tag for record in reporter.sort_records(records, "created-asc")] == [
+        "early-offset:image",
+        "later-zulu:image",
+        "unknown:image",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "created-desc")] == [
+        "later-zulu:image",
+        "early-offset:image",
+        "unknown:image",
     ]
 
 
