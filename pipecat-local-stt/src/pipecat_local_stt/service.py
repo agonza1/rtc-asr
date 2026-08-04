@@ -709,6 +709,9 @@ def _pong_payload(payload: dict[str, Any]) -> dict[str, Any]:
         response["ping_id"] = payload["ping_id"]
     if payload.get("timestamp_ms") is not None:
         response["timestamp_ms"] = payload["timestamp_ms"]
+    metadata = payload.get("metadata")
+    if isinstance(metadata, dict):
+        response["metadata"] = dict(metadata)
     return response
 
 
