@@ -163,6 +163,7 @@ class LocalStreamingSTTService(STTService):
                 except asyncio.TimeoutError:
                     self.metrics.local_stt_final_timeouts_total += 1
                     logger.debug("Timed out waiting for Local STT final transcript for generation %s", generation)
+                    await self._disconnect()
         finally:
             self._final_events.pop(generation, None)
             self._final_started_at.pop(generation, None)
@@ -178,8 +179,11 @@ class LocalStreamingSTTService(STTService):
         self._clear_send_queue()
         self._release_final_waiters()
         if self._websocket is not None:
+            websocket = self._websocket
             await self._send_control({"type": "cancel"}, ensure_started=False)
             self.metrics.local_stt_cancel_messages_sent_total += 1
+            if self._websocket is websocket:
+                await self._disconnect()
 
     def metrics_snapshot(self) -> dict[str, int | float]:
         return self.metrics.as_dict()
@@ -430,7 +434,9 @@ class LocalStreamingSTTService(STTService):
     def _record_final_transcript_received(self, event: LocalSTTTranscriptEvent) -> None:
         generation = self._event_generation(event)
         if not isinstance(generation, int):
-            return
+            if len(self._final_events) != 1:
+                return
+            generation = next(iter(self._final_events))
         final_started_at = self._final_started_at.get(generation)
         if final_started_at is not None:
             self.metrics.local_stt_final_latency_ms = round(
