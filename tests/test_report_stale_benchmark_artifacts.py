@@ -99,7 +99,7 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
                 "YEAR, CALENDAR-YEAR, QUARTER, CALENDAR-QUARTER, MONTH, CALENDAR-MONTH, "
                 "WEEK, CALENDAR-WEEK, ISO-WEEK, MEASURED-AT-ISO-WEEK, MEASUREMENT-ISO-WEEK, "
                 "MEASURED-ON-YEAR, MEASURED-ON-QUARTER, MEASURED-ON-MONTH, MEASURED-ON-WEEK, "
-                "DAY, CALENDAR-DAY, CALENDAR-DATE, MEASURED-ON, MEASURED-ON-DATE, "
+                "DAY, CALENDAR-DAY, CALENDAR-DATE, MEASURED-ON, MEASURED-ON-DAY, MEASURED-ON-DATE, "
                 "MEASURED-DATE, AGE-RANGE"
             )
         ]
@@ -325,6 +325,8 @@ def test_parse_args_accepts_calendar_measured_period_filter_aliases() -> None:
             "2026-08",
             "--measured-on-week",
             "2026-W31",
+            "--measured-on-day",
+            "2026-08-02",
         ]
     )
 
@@ -332,7 +334,7 @@ def test_parse_args_accepts_calendar_measured_period_filter_aliases() -> None:
     assert args.measured_quarter == ["2026-Q3", "2026-Q3"]
     assert args.measured_month == ["2026-08", "2026-08"]
     assert args.measured_week == ["2026-W31", "2026-W31"]
-    assert args.measured_day == ["2026-08-01"]
+    assert args.measured_day == ["2026-08-01", "2026-08-02"]
 
 
 def test_parse_args_accepts_plural_measured_period_filter_aliases() -> None:
@@ -1035,6 +1037,9 @@ def test_parse_args_accepts_measured_day_summary_sort_aliases() -> None:
         "measured-on",
         "measured-on-desc",
         "measured-on-asc",
+        "measured-on-day",
+        "measured-on-day-desc",
+        "measured-on-day-asc",
         "measured-on-date",
         "measured-on-date-desc",
         "measured-on-date-asc",
@@ -1804,6 +1809,9 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "measured-on",
         "measured-on-asc",
         "measured-on-desc",
+        "measured-on-day",
+        "measured-on-day-asc",
+        "measured-on-day-desc",
         "measured-on-date",
         "measured-on-date-asc",
         "measured-on-date-desc",
