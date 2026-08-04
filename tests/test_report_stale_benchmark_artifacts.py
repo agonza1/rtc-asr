@@ -9408,11 +9408,15 @@ def test_render_summary_groups_stale_artifacts_by_slug() -> None:
         "- missing: 3 artifacts (65 B, 65 bytes)\n"
         "By detail page extension:\n"
         "- none: 3 artifacts (65 B, 65 bytes)\n"
+        "By measured year:\n"
+        "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By measured quarter:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By measured month:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By measured week:\n"
+        "- unknown: 3 artifacts (65 B, 65 bytes)\n"
+        "By measured day:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)\n"
         "By age bucket:\n"
         "- unknown: 3 artifacts (65 B, 65 bytes)"
@@ -9467,6 +9471,33 @@ def test_render_summary_can_focus_on_selected_groups() -> None:
         "By status:\n"
         "- legacy: 1 artifact (20 B, 20 bytes)\n"
         "- blocked: 1 artifact (10 B, 10 bytes)"
+    )
+
+
+def test_render_summary_can_focus_on_measured_year_and_day() -> None:
+    rendered = render_summary(
+        [
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "measured_at": "2026-06-10T00:00:00Z",
+                "artifact_size_bytes": 20,
+            },
+            {
+                "artifact_path": "benchmark-results/qwen-old.json",
+                "measured_at": "2026-06-11T00:00:00Z",
+                "artifact_size_bytes": 10,
+            },
+        ],
+        groups=["measured-year", "measured-day"],
+    )
+
+    assert rendered == (
+        "Found 2 stale benchmark artifacts (30 B, 30 bytes).\n"
+        "By measured year:\n"
+        "- 2026: 2 artifacts (30 B, 30 bytes)\n"
+        "By measured day:\n"
+        "- 2026-06-10: 1 artifact (20 B, 20 bytes)\n"
+        "- 2026-06-11: 1 artifact (10 B, 10 bytes)"
     )
 
 
@@ -10674,11 +10705,15 @@ def test_main_summary_only_reports_totals_before_limit(monkeypatch, capsys) -> N
         "- benchmark-results/pages: 2 artifacts (100 B, 100 bytes)\n"
         "By detail page extension:\n"
         "- .html: 2 artifacts (100 B, 100 bytes)\n"
+        "By measured year:\n"
+        "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By measured quarter:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By measured month:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By measured week:\n"
+        "- unknown: 2 artifacts (100 B, 100 bytes)\n"
+        "By measured day:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"
         "By age bucket:\n"
         "- unknown: 2 artifacts (100 B, 100 bytes)\n"

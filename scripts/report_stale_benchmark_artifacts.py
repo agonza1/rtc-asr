@@ -6118,6 +6118,40 @@ def render_summary(
             min_size_bytes=summary_min_size_bytes,
             max_size_bytes=summary_max_size_bytes,
         )
+    if "measured-year" in selected_groups and summary["by_measured_year"]:
+        lines.append("By measured year:")
+    if "measured-year" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_measured_year"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {measured_year}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    measured_year=bucket["measured_year"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_measured_year"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
     if "measured-quarter" in selected_groups and summary["by_measured_quarter"]:
         lines.append("By measured quarter:")
     if "measured-quarter" in selected_groups:
@@ -6212,6 +6246,40 @@ def render_summary(
         append_omitted_summary_buckets(
             lines,
             summary["by_measured_week"],
+            shown_buckets,
+            limit=summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+    if "measured-day" in selected_groups and summary["by_measured_day"]:
+        lines.append("By measured day:")
+    if "measured-day" in selected_groups:
+        shown_buckets = limit_summary_buckets(
+            summary["by_measured_day"],
+            summary_limit,
+            sort_by=summary_sort,
+            min_count=summary_min_count,
+            max_count=summary_max_count,
+            min_size_bytes=summary_min_size_bytes,
+            max_size_bytes=summary_max_size_bytes,
+        )
+        for bucket in shown_buckets:
+            bucket_noun = "artifact" if bucket["count"] == 1 else "artifacts"
+            lines.append(
+                "- {measured_day}: {count} {bucket_noun} ({size}, {bytes} bytes)".format(
+                    measured_day=bucket["measured_day"],
+                    count=bucket["count"],
+                    bucket_noun=bucket_noun,
+                    size=bucket["total_size"],
+                    bytes=bucket["total_size_bytes"],
+                )
+            )
+        append_omitted_summary_buckets(
+            lines,
+            summary["by_measured_day"],
             shown_buckets,
             limit=summary_limit,
             sort_by=summary_sort,
