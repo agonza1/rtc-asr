@@ -380,12 +380,15 @@ def records_summary(
         now = now or datetime.now(UTC)
         over_age = records_over_age_budget(records, max_age_days, now=now)
         oldest_age_record = oldest_image_age_record(records, now=now)
+        freshest_age_record = freshest_image_age_record(records, now=now)
         summary.update(
             {
                 "image_age_budget_days": max_age_days,
                 "over_age": bool(over_age),
                 "over_age_count": len(over_age),
                 "over_age_tags": [record.tag for record in over_age],
+                "freshest_image_age_tag": freshest_age_record.tag if freshest_age_record else None,
+                "freshest_image_age_days": freshest_image_age_days(records, now=now),
                 "oldest_image_age_tag": oldest_age_record.tag if oldest_age_record else None,
                 "oldest_image_age_days": oldest_image_age_days(records, now=now),
             }
@@ -491,9 +494,10 @@ def records_summary_to_markdown(
         )
     if max_age_days is not None:
         rows.append(
-            "| Image age budget | {budget:.1f} days; {count} over; oldest {oldest} |".format(
+            "| Image age budget | {budget:.1f} days; {count} over; freshest {freshest}; oldest {oldest} |".format(
                 budget=summary["image_age_budget_days"],
                 count=summary["over_age_count"],
+                freshest=format_tag_days(summary["freshest_image_age_tag"], summary["freshest_image_age_days"]),
                 oldest=format_tag_days(summary["oldest_image_age_tag"], summary["oldest_image_age_days"]),
             )
         )
@@ -641,6 +645,11 @@ def oldest_image_age_days(records: Sequence[ImageSizeRecord], now: datetime | No
     return image_age_days(oldest_record, now=now) if oldest_record else None
 
 
+def freshest_image_age_days(records: Sequence[ImageSizeRecord], now: datetime | None = None) -> float | None:
+    freshest_record = freshest_image_age_record(records, now=now)
+    return image_age_days(freshest_record, now=now) if freshest_record else None
+
+
 def oldest_image_age_record(records: Sequence[ImageSizeRecord], now: datetime | None = None) -> ImageSizeRecord | None:
     ages = [
         (age_days, record)
@@ -648,6 +657,15 @@ def oldest_image_age_record(records: Sequence[ImageSizeRecord], now: datetime | 
         if record.present and (age_days := image_age_days(record, now=now)) is not None
     ]
     return max(ages, key=lambda item: item[0], default=(None, None))[1]
+
+
+def freshest_image_age_record(records: Sequence[ImageSizeRecord], now: datetime | None = None) -> ImageSizeRecord | None:
+    ages = [
+        (age_days, record)
+        for record in records
+        if record.present and (age_days := image_age_days(record, now=now)) is not None
+    ]
+    return min(ages, key=lambda item: item[0], default=(None, None))[1]
 
 
 def records_with_duplicate_image_ids(records: Sequence[ImageSizeRecord]) -> list[dict[str, Any]]:
@@ -773,6 +791,7 @@ def records_to_markdown(
             rows.append(f"Total image size budget utilization: {total_bytes / (max_total_size_mb * 1_000_000) * 100:.1f}%")
     if max_age_days is not None:
         over_age = records_over_age_budget(records, max_age_days)
+        freshest_age_record = freshest_image_age_record(records)
         oldest_age_days = oldest_image_age_days(records)
         rows.append(
             "Image age budget: {budget:.1f} days, {count} image{plural} older than budget.".format(
@@ -781,6 +800,10 @@ def records_to_markdown(
                 plural="" if len(over_age) == 1 else "s",
             )
         )
+        if freshest_age_record is not None:
+            freshest_age_days = image_age_days(freshest_age_record)
+            if freshest_age_days is not None:
+                rows.append(f"Freshest present image age: {freshest_age_record.tag} ({freshest_age_days:.1f} days)")
         if oldest_age_days is not None:
             rows.append(f"Oldest present image age: {oldest_age_days:.1f} days")
     if missing:
