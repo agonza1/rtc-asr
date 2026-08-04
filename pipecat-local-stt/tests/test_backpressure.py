@@ -212,6 +212,36 @@ class FinalTranscriptWebSocket:
         return None
 
 
+class ManualFinalWebSocket:
+    def __init__(self) -> None:
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.closed = False
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str) and json.loads(data)["type"] == "start":
+            await self.incoming.put(json.dumps({"type": "ready"}))
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        self.closed = True
+
+    async def emit_untagged_final(self, text: str = "done") -> None:
+        await self.incoming.put(json.dumps({
+            "type": "transcript",
+            "text": text,
+            "is_final": True,
+            "speech_final": True,
+            "revision": 1,
+            "audio_received_ms": 20,
+            "audio_transcribed_ms": 20,
+            "metadata": {},
+        }))
+
+
 class ServerErrorOnFinalizeWebSocket:
     def __init__(self, event_type: str) -> None:
         self.event_type = event_type
@@ -586,6 +616,49 @@ async def _test_finalize_timeout_is_counted_and_cleans_waiter() -> None:
     await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
     await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await service.finalize_current_utterance()
+
+    assert service.metrics.local_stt_final_timeouts_total == 1
+    assert service._final_events == {}
+    await service.cleanup()
+
+
+def test_late_untagged_final_after_timeout_cannot_release_next_waiter() -> None:
+    asyncio.run(_test_late_untagged_final_after_timeout_cannot_release_next_waiter())
+
+
+async def _test_late_untagged_final_after_timeout_cannot_release_next_waiter() -> None:
+    first = ManualFinalWebSocket()
+    second = ManualFinalWebSocket()
+    websockets = [first, second]
+
+    async def connect(_url: str) -> ManualFinalWebSocket:
+        return websockets.pop(0)
+
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, final_timeout_s=0.01),
+        connect_fn=connect,
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await service.finalize_current_utterance()
+
+    assert first.closed is True
+    assert service._websocket is None
+    service.config.final_timeout_s = 30
+
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    finalize_task = asyncio.create_task(service.finalize_current_utterance())
+    await eventually(lambda: bool(service._final_events))
+
+    await first.emit_untagged_final("late")
+    await asyncio.sleep(0.05)
+    assert not finalize_task.done()
+
+    await second.emit_untagged_final("current")
+    await asyncio.wait_for(finalize_task, timeout=0.5)
 
     assert service.metrics.local_stt_final_timeouts_total == 1
     assert service._final_events == {}

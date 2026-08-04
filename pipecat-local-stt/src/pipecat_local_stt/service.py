@@ -163,6 +163,7 @@ class LocalStreamingSTTService(STTService):
                 except asyncio.TimeoutError:
                     self.metrics.local_stt_final_timeouts_total += 1
                     logger.debug("Timed out waiting for Local STT final transcript for generation %s", generation)
+                    await self._disconnect()
         finally:
             self._final_events.pop(generation, None)
             self._final_started_at.pop(generation, None)
