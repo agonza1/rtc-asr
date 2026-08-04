@@ -877,6 +877,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--max-image-age-days",
         "--image-max-age-days",
         "--stale-image-age-days",
+        "--stale-after-days",
+        "--fail-on-stale-after-days",
         type=parse_positive_float,
         dest="max_age_days",
         help="Exit non-zero when any present image creation timestamp is older than this many days.",
