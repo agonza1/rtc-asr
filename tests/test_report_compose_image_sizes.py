@@ -1062,6 +1062,21 @@ def test_main_fails_when_present_image_exceeds_size_budget(
     assert reporter.main(["--max-size-mb", "251", "large:image"]) == 0
 
 
+@pytest.mark.parametrize(
+    ("option", "expected_attr"),
+    [
+        ("--max-image-size-mb", "max_size_mb"),
+        ("--image-size-budget-mb", "max_size_mb"),
+        ("--total-image-size-budget-mb", "max_total_size_mb"),
+        ("--image-age-budget-days", "max_age_days"),
+    ],
+)
+def test_parse_args_accepts_image_budget_aliases(option: str, expected_attr: str) -> None:
+    args = reporter.parse_args([option, "42"])
+
+    assert getattr(args, expected_attr) == 42.0
+
+
 def test_main_fails_when_present_images_exceed_total_size_budget(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

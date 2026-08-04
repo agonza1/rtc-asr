@@ -805,17 +805,24 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--max-size-mb",
+        "--max-image-size-mb",
+        "--image-size-budget-mb",
         type=parse_positive_float,
+        dest="max_size_mb",
         help="Exit non-zero when any present image is larger than this decimal-megabyte budget.",
     )
     parser.add_argument(
         "--max-total-size-mb",
+        "--total-image-size-budget-mb",
         type=parse_positive_float,
+        dest="max_total_size_mb",
         help="Exit non-zero when all present images exceed this combined decimal-megabyte budget.",
     )
     parser.add_argument(
         "--max-age-days",
+        "--image-age-budget-days",
         type=parse_positive_float,
+        dest="max_age_days",
         help="Exit non-zero when any present image creation timestamp is older than this many days.",
     )
     parser.add_argument(
