@@ -797,6 +797,7 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
         ("lightest-first", "size-asc"),
         ("newest", "created-desc"),
         ("latest_first", "created-desc"),
+        ("recent-first", "created-desc"),
         ("oldest", "created-asc"),
         ("earliest-first", "created-asc"),
         ("freshest_age", "age-asc"),
