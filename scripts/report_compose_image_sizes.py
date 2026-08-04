@@ -379,12 +379,14 @@ def records_summary(
     if max_age_days is not None:
         now = now or datetime.now(UTC)
         over_age = records_over_age_budget(records, max_age_days, now=now)
+        oldest_age_record = oldest_image_age_record(records, now=now)
         summary.update(
             {
                 "image_age_budget_days": max_age_days,
                 "over_age": bool(over_age),
                 "over_age_count": len(over_age),
                 "over_age_tags": [record.tag for record in over_age],
+                "oldest_image_age_tag": oldest_age_record.tag if oldest_age_record else None,
                 "oldest_image_age_days": oldest_image_age_days(records, now=now),
             }
         )
@@ -492,7 +494,7 @@ def records_summary_to_markdown(
             "| Image age budget | {budget:.1f} days; {count} over; oldest {oldest} |".format(
                 budget=summary["image_age_budget_days"],
                 count=summary["over_age_count"],
-                oldest=format_optional_days(summary["oldest_image_age_days"]),
+                oldest=format_tag_days(summary["oldest_image_age_tag"], summary["oldest_image_age_days"]),
             )
         )
     if summary["missing_tags"]:
@@ -528,6 +530,12 @@ def format_tag_mb(tag: str | None, value: float | None) -> str:
     if tag is None or value is None:
         return ""
     return markdown_cell(f"{tag} ({value:.1f} MB)")
+
+
+def format_tag_days(tag: str | None, value: float | None) -> str:
+    if tag is None or value is None:
+        return ""
+    return markdown_cell(f"{tag} ({value:.1f} days)")
 
 
 def format_tag_list(count: int, tags: Sequence[str]) -> str:
@@ -629,12 +637,17 @@ def records_over_age_budget(
 
 
 def oldest_image_age_days(records: Sequence[ImageSizeRecord], now: datetime | None = None) -> float | None:
+    oldest_record = oldest_image_age_record(records, now=now)
+    return image_age_days(oldest_record, now=now) if oldest_record else None
+
+
+def oldest_image_age_record(records: Sequence[ImageSizeRecord], now: datetime | None = None) -> ImageSizeRecord | None:
     ages = [
-        age_days
+        (age_days, record)
         for record in records
         if record.present and (age_days := image_age_days(record, now=now)) is not None
     ]
-    return max(ages, default=None)
+    return max(ages, key=lambda item: item[0], default=(None, None))[1]
 
 
 def records_with_duplicate_image_ids(records: Sequence[ImageSizeRecord]) -> list[dict[str, Any]]:

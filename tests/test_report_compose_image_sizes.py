@@ -541,6 +541,7 @@ def test_records_summary_reports_image_age_budget_status() -> None:
     assert summary["over_age"] is True
     assert summary["over_age_count"] == 1
     assert summary["over_age_tags"] == ["old:image"]
+    assert summary["oldest_image_age_tag"] == "old:image"
     assert summary["oldest_image_age_days"] == 17.0
 
 
@@ -591,6 +592,30 @@ def test_records_to_markdown_reports_image_age_budget_status(monkeypatch: pytest
 
     assert "Image age budget: 14.0 days, 1 image older than budget." in markdown
     assert "Oldest present image age: 17.0 days" in markdown
+
+
+def test_records_summary_to_markdown_reports_oldest_image_age_tag(monkeypatch: pytest.MonkeyPatch) -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="fresh:image",
+            image_id="fresh",
+            size_bytes=199_000_000,
+            created="2026-07-31T12:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="old:image",
+            image_id="old",
+            size_bytes=201_000_000,
+            created="2026-07-15T12:00:00Z",
+            present=True,
+        ),
+    ]
+    monkeypatch.setattr(reporter, "image_age_days", lambda record, now=None: 1.0 if record.tag == "fresh:image" else 17.0)
+
+    markdown = reporter.records_summary_to_markdown(records, max_age_days=14.0)
+
+    assert "| Image age budget | 14.0 days; 1 over; oldest old:image (17.0 days) |" in markdown
 
 
 def test_sort_records_orders_by_tag_size_and_created() -> None:
