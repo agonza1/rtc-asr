@@ -2071,12 +2071,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--min-size-bytes",
+        "--min-size",
+        "--minimum-size",
+        "--at-least-size",
         type=parse_size_bytes,
         default=None,
         help="Only include stale artifacts at least this large; accepts bytes or KB, KiB, MB, MiB, GB, GiB, TB, TiB",
     )
     parser.add_argument(
         "--max-size-bytes",
+        "--max-size",
+        "--maximum-size",
+        "--at-most-size",
         type=parse_size_bytes,
         default=None,
         help="Only include stale artifacts no larger than this; accepts bytes or KB, KiB, MB, MiB, GB, GiB, TB, TiB",
