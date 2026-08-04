@@ -675,8 +675,7 @@ class VoskStreamingSession:
         payload = _parse_vosk_payload(self.recognizer.Result() if accepted else self.recognizer.PartialResult())
         text = payload.get("text") or payload.get("partial") or ""
         if not str(text).strip():
-            if not accepted:
-                self._has_unfinalized_audio = True
+            self._has_unfinalized_audio = not accepted
             return None
         if accepted:
             self._final_segments.append(str(text).strip())
