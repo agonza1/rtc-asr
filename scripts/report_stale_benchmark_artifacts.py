@@ -3015,6 +3015,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--json-summary",
         "--summary-json",
+        "--json-summary-output",
         action="store_true",
         dest="json_summary",
         help="Emit machine-readable stale artifact totals and summary groups",
@@ -3022,6 +3023,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--summary-csv",
         "--csv-summary",
+        "--summary-csv-output",
         action="store_true",
         dest="summary_csv",
         help="Emit stale artifact summary groups as CSV for spreadsheet cleanup review",
@@ -3029,6 +3031,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--summary-markdown",
         "--markdown-summary",
+        "--summary-md",
+        "--md-summary",
         action="store_true",
         dest="summary_markdown",
         help="Emit stale artifact summary groups as a Markdown table for issues and PRs",
