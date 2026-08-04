@@ -8,6 +8,7 @@ import csv
 import io
 import json
 import math
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -63,6 +64,40 @@ SORT_ALIASES = {
 }
 UTC_DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
 UTC_DATETIME_MAX = datetime.max.replace(tzinfo=UTC)
+BYTE_SIZE_UNITS = {
+    "": 1,
+    "b": 1,
+    "byte": 1,
+    "bytes": 1,
+    "k": 1000,
+    "kb": 1000,
+    "kilobyte": 1000,
+    "kilobytes": 1000,
+    "kib": 1024,
+    "kibibyte": 1024,
+    "kibibytes": 1024,
+    "m": 1000**2,
+    "mb": 1000**2,
+    "megabyte": 1000**2,
+    "megabytes": 1000**2,
+    "mib": 1024**2,
+    "mebibyte": 1024**2,
+    "mebibytes": 1024**2,
+    "g": 1000**3,
+    "gb": 1000**3,
+    "gigabyte": 1000**3,
+    "gigabytes": 1000**3,
+    "gib": 1024**3,
+    "gibibyte": 1024**3,
+    "gibibytes": 1024**3,
+    "t": 1000**4,
+    "tb": 1000**4,
+    "terabyte": 1000**4,
+    "terabytes": 1000**4,
+    "tib": 1024**4,
+    "tebibyte": 1024**4,
+    "tebibytes": 1024**4,
+}
 
 
 @dataclass(frozen=True)
@@ -157,6 +192,24 @@ def parse_positive_float(value: str) -> float:
     if not math.isfinite(parsed) or parsed <= 0:
         raise argparse.ArgumentTypeError(f"must be a positive finite number: {value!r}")
     return parsed
+
+
+def parse_size_mb(value: str) -> float:
+    match = re.fullmatch(r"\s*(-?(?:\d+(?:[,_]\d{3})+|\d+)(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
+    if match is None:
+        raise argparse.ArgumentTypeError("size must be megabytes or a value with B, K, KB, KiB, MB, MiB, GB, GiB, TB, or TiB")
+
+    amount_text, unit_text = match.groups()
+    amount = float(amount_text.replace(",", "").replace("_", ""))
+    if not math.isfinite(amount) or amount <= 0:
+        raise argparse.ArgumentTypeError(f"size must be a positive finite value: {value!r}")
+
+    unit = unit_text.lower()
+    multiplier = BYTE_SIZE_UNITS.get(unit if unit else "mb")
+    if multiplier is None:
+        raise argparse.ArgumentTypeError("size unit must be one of: B, K, KB, KiB, MB, MiB, GB, GiB, TB, TiB")
+
+    return amount * multiplier / 1_000_000
 
 
 def records_to_json(
@@ -807,16 +860,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--max-size-mb",
         "--max-image-size-mb",
         "--image-size-budget-mb",
-        type=parse_positive_float,
+        type=parse_size_mb,
         dest="max_size_mb",
-        help="Exit non-zero when any present image is larger than this decimal-megabyte budget.",
+        help="Exit non-zero when any present image is larger than this size budget. Bare numbers are decimal megabytes.",
     )
     parser.add_argument(
         "--max-total-size-mb",
         "--total-image-size-budget-mb",
-        type=parse_positive_float,
+        type=parse_size_mb,
         dest="max_total_size_mb",
-        help="Exit non-zero when all present images exceed this combined decimal-megabyte budget.",
+        help="Exit non-zero when all present images exceed this combined size budget. Bare numbers are decimal megabytes.",
     )
     parser.add_argument(
         "--max-age-days",

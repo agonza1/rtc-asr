@@ -761,6 +761,26 @@ def test_parse_positive_float_rejects_nonpositive_nonfinite_and_invalid_values(v
         reporter.parse_positive_float(value)
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("250", 250.0),
+        ("250MB", 250.0),
+        ("1.5G", 1500.0),
+        ("512 MiB", 536.870912),
+        ("1_000 KB", 1.0),
+    ],
+)
+def test_parse_size_mb_accepts_readable_size_units(value: str, expected: float) -> None:
+    assert reporter.parse_size_mb(value) == expected
+
+
+@pytest.mark.parametrize("value", ["0", "-1MB", "nan", "inf", "not-a-number"])
+def test_parse_size_mb_rejects_nonpositive_nonfinite_and_invalid_values(value: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError):
+        reporter.parse_size_mb(value)
+
+
 def test_records_over_size_budget_ignores_missing_and_unknown_sizes() -> None:
     records = [
         reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=199_000_000, created=None, present=True),
@@ -1075,6 +1095,13 @@ def test_parse_args_accepts_image_budget_aliases(option: str, expected_attr: str
     args = reporter.parse_args([option, "42"])
 
     assert getattr(args, expected_attr) == 42.0
+
+
+def test_parse_args_accepts_readable_image_size_budgets() -> None:
+    args = reporter.parse_args(["--max-size-mb", "1.5G", "--max-total-size-mb", "2GiB"])
+
+    assert args.max_size_mb == 1500.0
+    assert args.max_total_size_mb == 2147.483648
 
 
 def test_main_fails_when_present_images_exceed_total_size_budget(
