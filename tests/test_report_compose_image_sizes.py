@@ -808,10 +808,12 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
         ("earliest-first", "created-asc"),
         ("freshest_age", "age-asc"),
         ("youngest-age-first", "age-asc"),
+        ("newest_age", "age-asc"),
         ("stale_age", "age-desc"),
         ("stale-age-first", "age-desc"),
         ("stalest_age", "age-desc"),
         ("oldest-age-first", "age-desc"),
+        ("oldest_by_age", "age-desc"),
     ],
 )
 def test_parse_sort_choice_accepts_case_and_aliases(value: str, expected: str) -> None:

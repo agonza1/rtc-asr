@@ -67,12 +67,16 @@ SORT_ALIASES = {
     "freshest-age-first": "age-asc",
     "youngest-age": "age-asc",
     "youngest-age-first": "age-asc",
+    "newest-age": "age-asc",
+    "newest-age-first": "age-asc",
     "stale-age": "age-desc",
     "stale-age-first": "age-desc",
     "stalest-age": "age-desc",
     "stalest-age-first": "age-desc",
     "oldest-age": "age-desc",
     "oldest-age-first": "age-desc",
+    "oldest-by-age": "age-desc",
+    "oldest-by-age-first": "age-desc",
 }
 UTC_DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
 UTC_DATETIME_MAX = datetime.max.replace(tzinfo=UTC)
