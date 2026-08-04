@@ -1092,6 +1092,8 @@ def test_main_fails_when_present_image_exceeds_size_budget(
         ("--max-image-age-days", "max_age_days"),
         ("--image-max-age-days", "max_age_days"),
         ("--stale-image-age-days", "max_age_days"),
+        ("--stale-after-days", "max_age_days"),
+        ("--fail-on-stale-after-days", "max_age_days"),
     ],
 )
 def test_parse_args_accepts_image_budget_aliases(option: str, expected_attr: str) -> None:
