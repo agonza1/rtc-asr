@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -154,6 +155,9 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
 
 
 def test_demo_app_renders_repeated_final_text_when_event_identity_differs() -> None:
+    if shutil.which("node") is None:
+        pytest.skip("node is required for the browser app.js renderer regression")
+
     app_js = (Path("examples") / "browser_pipecat_demo" / "web" / "app.js").read_text(encoding="utf-8")
     script = f"""
 const nodes = new Map();
