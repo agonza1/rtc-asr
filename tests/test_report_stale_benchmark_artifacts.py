@@ -98,6 +98,7 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
                 "Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, "
                 "YEAR, CALENDAR-YEAR, QUARTER, CALENDAR-QUARTER, MONTH, CALENDAR-MONTH, "
                 "WEEK, CALENDAR-WEEK, ISO-WEEK, MEASURED-AT-ISO-WEEK, MEASUREMENT-ISO-WEEK, "
+                "MEASURED-ON-YEAR, MEASURED-ON-QUARTER, MEASURED-ON-MONTH, MEASURED-ON-WEEK, "
                 "DAY, CALENDAR-DAY, CALENDAR-DATE, MEASURED-ON, MEASURED-ON-DATE, "
                 "MEASURED-DATE, AGE-RANGE"
             )
@@ -316,13 +317,21 @@ def test_parse_args_accepts_calendar_measured_period_filter_aliases() -> None:
             "2026-W31",
             "--measured-on-date",
             "2026-08-01",
+            "--measured-on-year",
+            "2026",
+            "--measured-on-quarter",
+            "2026-Q3",
+            "--measured-on-month",
+            "2026-08",
+            "--measured-on-week",
+            "2026-W31",
         ]
     )
 
-    assert args.measured_year == ["2026"]
-    assert args.measured_quarter == ["2026-Q3"]
-    assert args.measured_month == ["2026-08"]
-    assert args.measured_week == ["2026-W31"]
+    assert args.measured_year == ["2026", "2026"]
+    assert args.measured_quarter == ["2026-Q3", "2026-Q3"]
+    assert args.measured_month == ["2026-08", "2026-08"]
+    assert args.measured_week == ["2026-W31", "2026-W31"]
     assert args.measured_day == ["2026-08-01"]
 
 
@@ -339,13 +348,21 @@ def test_parse_args_accepts_plural_measured_period_filter_aliases() -> None:
             "2026-W31",
             "--calendar-dates",
             "2026-08-01",
+            "--measured-on-years",
+            "2026",
+            "--measured-on-quarters",
+            "2026-Q3",
+            "--measured-on-months",
+            "2026-08",
+            "--measured-on-weeks",
+            "2026-W31",
         ]
     )
 
-    assert args.measured_year == ["2026"]
-    assert args.measured_quarter == ["2026-Q3"]
-    assert args.measured_month == ["2026-08"]
-    assert args.measured_week == ["2026-W31"]
+    assert args.measured_year == ["2026", "2026"]
+    assert args.measured_quarter == ["2026-Q3", "2026-Q3"]
+    assert args.measured_month == ["2026-08", "2026-08"]
+    assert args.measured_week == ["2026-W31", "2026-W31"]
     assert args.measured_day == ["2026-08-01"]
 
 
@@ -449,12 +466,14 @@ def test_parse_args_accepts_case_insensitive_summary_sort_aliases() -> None:
     assert parse_args(["--summary-sort", "LARGEST"]).summary_sort == "largest"
     assert parse_args(["--summary-sort", "Avg-Size-Asc"]).summary_sort == "avg-size-asc"
     assert parse_args(["--summary-sort", "MEASURED-AT-ISO-WEEK-DESC"]).summary_sort == "measured-at-iso-week-desc"
+    assert parse_args(["--summary-sort", "MEASURED-ON-MONTH-DESC"]).summary_sort == "measured-on-month-desc"
 
 
 def test_parse_args_accepts_underscore_summary_sort_aliases() -> None:
     assert parse_args(["--summary-sort", "avg_bytes_asc"]).summary_sort == "avg-bytes-asc"
     assert parse_args(["--summary-sort", "largest_bytes_first"]).summary_sort == "largest-bytes-first"
     assert parse_args(["--summary-sort", "measurement_iso_week_asc"]).summary_sort == "measurement-iso-week-asc"
+    assert parse_args(["--summary-sort", "measured_on_quarter_asc"]).summary_sort == "measured-on-quarter-asc"
 
 
 def test_parse_args_accepts_least_count_summary_sort_aliases() -> None:
