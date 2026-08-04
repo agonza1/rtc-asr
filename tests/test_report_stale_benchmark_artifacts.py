@@ -1311,6 +1311,13 @@ def test_parse_size_bytes_accepts_long_unit_names() -> None:
     assert parse_size_bytes("4 gibibytes") == 4 * 1024**3
 
 
+def test_parse_size_bytes_accepts_short_decimal_unit_names() -> None:
+    assert parse_size_bytes("1.5k") == 1500
+    assert parse_size_bytes("2M") == 2_000_000
+    assert parse_size_bytes("3 g") == 3_000_000_000
+    assert parse_size_bytes("4T") == 4 * 1000**4
+
+
 def test_parse_args_accepts_readable_age_filter_aliases() -> None:
     args = parse_args(["--older-than", "2 months", "--newer-than", "1year"])
 

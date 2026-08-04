@@ -775,24 +775,28 @@ BYTE_SIZE_UNITS = {
     "b": 1,
     "byte": 1,
     "bytes": 1,
+    "k": 1000,
     "kb": 1000,
     "kilobyte": 1000,
     "kilobytes": 1000,
     "kib": 1024,
     "kibibyte": 1024,
     "kibibytes": 1024,
+    "m": 1000**2,
     "mb": 1000**2,
     "megabyte": 1000**2,
     "megabytes": 1000**2,
     "mib": 1024**2,
     "mebibyte": 1024**2,
     "mebibytes": 1024**2,
+    "g": 1000**3,
     "gb": 1000**3,
     "gigabyte": 1000**3,
     "gigabytes": 1000**3,
     "gib": 1024**3,
     "gibibyte": 1024**3,
     "gibibytes": 1024**3,
+    "t": 1000**4,
     "tb": 1000**4,
     "terabyte": 1000**4,
     "terabytes": 1000**4,
@@ -1335,7 +1339,7 @@ def format_average_bytes(size_bytes: float) -> str:
 def parse_size_bytes(value: str) -> int:
     match = re.fullmatch(r"\s*(-?(?:\d+(?:[,_]\d{3})+|\d+)(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
     if match is None:
-        raise argparse.ArgumentTypeError("size must be bytes or a value with KB, KiB, MB, MiB, GB, GiB, TB, or TiB")
+        raise argparse.ArgumentTypeError("size must be bytes or a value with K, KB, KiB, MB, MiB, GB, GiB, TB, or TiB")
 
     amount_text, unit_text = match.groups()
     amount = float(amount_text.replace(",", "").replace("_", ""))
@@ -1345,7 +1349,7 @@ def parse_size_bytes(value: str) -> int:
     unit = unit_text.lower()
     multiplier = BYTE_SIZE_UNITS.get(unit)
     if multiplier is None:
-        raise argparse.ArgumentTypeError("size unit must be one of: B, KB, KiB, MB, MiB, GB, GiB, TB, TiB")
+        raise argparse.ArgumentTypeError("size unit must be one of: B, K, KB, KiB, MB, MiB, GB, GiB, TB, TiB")
 
     return int(amount * multiplier)
 
