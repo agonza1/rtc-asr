@@ -45,14 +45,19 @@ class StreamingTranscriberSession(Protocol):
     def close(self) -> None: ...
 
 
-def _merge_vosk_completed_and_final_tail(completed_text: str, final_text: str) -> str:
+def _merge_vosk_completed_and_final_tail(
+    completed_text: str,
+    final_text: str,
+    *,
+    has_unfinalized_audio: bool = False,
+) -> str:
     completed = completed_text.strip()
     final = final_text.strip()
     if not completed:
         return final
     if not final:
         return completed
-    if final == completed:
+    if final == completed and not has_unfinalized_audio:
         return final
     return f"{completed} {final}".strip()
 
@@ -659,6 +664,7 @@ class VoskStreamingSession:
     model_name: str
     language: str | None
     _final_segments: list[str] = field(default_factory=list, repr=False)
+    _has_unfinalized_audio: bool = False
     closed: bool = False
     canceled: bool = False
 
@@ -669,9 +675,14 @@ class VoskStreamingSession:
         payload = _parse_vosk_payload(self.recognizer.Result() if accepted else self.recognizer.PartialResult())
         text = payload.get("text") or payload.get("partial") or ""
         if not str(text).strip():
+            if not accepted:
+                self._has_unfinalized_audio = True
             return None
         if accepted:
             self._final_segments.append(str(text).strip())
+            self._has_unfinalized_audio = False
+        else:
+            self._has_unfinalized_audio = True
         return self._result(str(text), is_final=accepted)
 
     def finalize(self) -> dict[str, Any]:
@@ -680,7 +691,11 @@ class VoskStreamingSession:
         payload = _parse_vosk_payload(self.recognizer.FinalResult())
         final_text = str(payload.get("text") or "").strip()
         completed_text = " ".join(self._final_segments).strip()
-        text = _merge_vosk_completed_and_final_tail(completed_text, final_text)
+        text = _merge_vosk_completed_and_final_tail(
+            completed_text,
+            final_text,
+            has_unfinalized_audio=self._has_unfinalized_audio,
+        )
         return self._result(text)
 
     def cancel(self) -> None:

@@ -459,6 +459,47 @@ def test_vosk_adapter_does_not_duplicate_exact_final_result(monkeypatch: pytest.
     assert final["text"] == "hello world"
 
 
+def test_vosk_adapter_preserves_exact_repeated_final_tail(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeModel:
+        def __init__(self, model_path: str) -> None:
+            self.model_path = model_path
+
+    class FakeRecognizer:
+        def __init__(self, model: FakeModel, sample_rate: int) -> None:
+            self.chunks: list[bytes] = []
+
+        def AcceptWaveform(self, audio_data: bytes) -> bool:
+            self.chunks.append(audio_data)
+            return len(self.chunks) == 1
+
+        def PartialResult(self) -> str:
+            return '{"partial": "thank you"}'
+
+        def Result(self) -> str:
+            return '{"text": "thank you"}'
+
+        def FinalResult(self) -> str:
+            return '{"text": "thank you"}'
+
+    fake_vosk = ModuleType("vosk")
+    fake_vosk.Model = FakeModel
+    fake_vosk.KaldiRecognizer = FakeRecognizer
+    monkeypatch.setitem(sys.modules, "vosk", fake_vosk)
+
+    adapter = VoskAdapter(
+        config=AppConfig(asr_backend="vosk", asr_vosk_model_path="/models/vosk-small"),
+        audio_processor=AudioProcessor(),
+    )
+
+    session = adapter.start_stream({"language": "en", "sample_rate": 16000})
+    assert session.push_audio(b"first accepted")["text"] == "thank you"
+    assert session.push_audio(b"second pending")["text"] == "thank you"
+
+    final = session.finalize()
+
+    assert final["text"] == "thank you thank you"
+
+
 def test_vosk_adapter_preserves_repeated_phrase_in_final_tail(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeModel:
         def __init__(self, model_path: str) -> None:
