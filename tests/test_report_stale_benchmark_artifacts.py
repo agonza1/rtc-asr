@@ -5165,6 +5165,13 @@ def test_parse_args_accepts_reversed_summary_output_aliases() -> None:
     assert parse_args(["--markdown-summary"]).summary_markdown is True
 
 
+def test_parse_args_accepts_short_summary_output_aliases() -> None:
+    assert parse_args(["--json-summary-output"]).json_summary is True
+    assert parse_args(["--summary-csv-output"]).summary_csv is True
+    assert parse_args(["--summary-md"]).summary_markdown is True
+    assert parse_args(["--md-summary"]).summary_markdown is True
+
+
 def test_parse_args_accepts_summary_csv_output_flag() -> None:
     assert parse_args(["--summary-csv", "--summary-share"]).summary_csv is True
 
