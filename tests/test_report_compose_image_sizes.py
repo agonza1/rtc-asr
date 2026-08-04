@@ -1152,7 +1152,11 @@ def test_main_fails_when_present_image_exceeds_size_budget(
     ("option", "expected_attr"),
     [
         ("--max-image-size-mb", "max_size_mb"),
+        ("--max-image-size", "max_size_mb"),
+        ("--image-size-budget", "max_size_mb"),
         ("--image-size-budget-mb", "max_size_mb"),
+        ("--max-total-image-size-mb", "max_total_size_mb"),
+        ("--total-size-budget", "max_total_size_mb"),
         ("--total-image-size-budget-mb", "max_total_size_mb"),
         ("--image-age-budget-days", "max_age_days"),
         ("--max-image-age-days", "max_age_days"),
