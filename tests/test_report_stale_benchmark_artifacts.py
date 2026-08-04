@@ -98,7 +98,8 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
                 "Status, CURRENT-PATH-NAME, DETAIL-PATH, DETAIL-PAGE-PATH, TRACK-STATUS, "
                 "YEAR, CALENDAR-YEAR, QUARTER, CALENDAR-QUARTER, MONTH, CALENDAR-MONTH, "
                 "WEEK, CALENDAR-WEEK, ISO-WEEK, MEASURED-AT-ISO-WEEK, MEASUREMENT-ISO-WEEK, "
-                "DAY, CALENDAR-DAY, CALENDAR-DATE, MEASURED-DATE, AGE-RANGE"
+                "DAY, CALENDAR-DAY, CALENDAR-DATE, MEASURED-ON, MEASURED-ON-DATE, "
+                "MEASURED-DATE, AGE-RANGE"
             )
         ]
     ) == {
@@ -296,7 +297,7 @@ def test_parse_args_accepts_calendar_measured_period_filter_aliases() -> None:
             "2026-08",
             "--measured-at-week",
             "2026-W31",
-            "--calendar-date",
+            "--measured-on-date",
             "2026-08-01",
         ]
     )
@@ -986,6 +987,12 @@ def test_parse_args_accepts_measured_day_summary_sort_aliases() -> None:
         "measurement-day",
         "measurement-day-desc",
         "measurement-day-asc",
+        "measured-on",
+        "measured-on-desc",
+        "measured-on-asc",
+        "measured-on-date",
+        "measured-on-date-desc",
+        "measured-on-date-asc",
         "measured-date",
         "measured-date-desc",
         "measured-date-asc",
@@ -1741,6 +1748,12 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "measurement-day",
         "measurement-day-asc",
         "measurement-day-desc",
+        "measured-on",
+        "measured-on-asc",
+        "measured-on-desc",
+        "measured-on-date",
+        "measured-on-date-asc",
+        "measured-on-date-desc",
         "measured-date",
         "measured-date-asc",
         "measured-date-desc",
@@ -1784,12 +1797,14 @@ def test_parse_args_accepts_measured_day_filter_aliases() -> None:
             "2026-07-02",
             "--measurement-date",
             "2026-07-03",
-            "--measured-date",
+            "--measured-on",
             "2026-07-04",
+            "--measured-date",
+            "2026-07-05",
         ]
     )
 
-    assert args.measured_day == ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04"]
+    assert args.measured_day == ["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04", "2026-07-05"]
 
 
 def test_parse_args_accepts_measured_year_filter_aliases() -> None:
