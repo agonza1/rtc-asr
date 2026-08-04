@@ -1777,7 +1777,11 @@ def _local_stt_cancel_warning_event(session: StreamSession) -> dict[str, object]
 def _local_stt_pong_event(message: object) -> dict[str, object]:
     ping_id = getattr(message, "ping_id", None)
     timestamp_ms = getattr(message, "timestamp_ms", None)
-    payload: dict[str, object] = {"type": "pong", "metadata": {}}
+    metadata = getattr(message, "metadata", {})
+    payload: dict[str, object] = {
+        "type": "pong",
+        "metadata": dict(metadata) if isinstance(metadata, dict) else {},
+    }
     if ping_id is not None:
         payload["ping_id"] = ping_id
     if timestamp_ms is not None:

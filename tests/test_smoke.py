@@ -3290,10 +3290,17 @@ def test_local_stt_v1_stream_pong_and_close_semantics() -> None:
 
     with TestClient(create_app(transcriber=transcriber)) as client:
         with client.websocket_connect("/v1/stt/stream") as websocket:
-            websocket.send_json({"type": "ping", "ping_id": "heartbeat-1", "timestamp_ms": 1234})
+            websocket.send_json(
+                {
+                    "type": "ping",
+                    "ping_id": "heartbeat-1",
+                    "timestamp_ms": 1234,
+                    "metadata": {"tenant": "demo", "turn_id": "turn-1"},
+                }
+            )
             assert websocket.receive_json() == {
                 "type": "pong",
-                "metadata": {},
+                "metadata": {"tenant": "demo", "turn_id": "turn-1"},
                 "ping_id": "heartbeat-1",
                 "timestamp_ms": 1234,
             }
