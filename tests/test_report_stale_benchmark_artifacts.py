@@ -116,6 +116,17 @@ def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     }
 
 
+def test_summary_groups_accept_plural_age_bucket_aliases() -> None:
+    assert normalize_summary_groups(
+        [
+            (
+                "age-buckets, age-ranges, age-range-buckets, "
+                "stale-age-buckets, staleness-buckets"
+            )
+        ]
+    ) == {"age-bucket"}
+
+
 def test_summary_groups_accept_underscore_values_and_aliases() -> None:
     assert normalize_summary_groups(["artifact_path, current_path_name, detail_page_path, track_status"]) == {
         "artifact-path",
@@ -286,6 +297,12 @@ def test_parse_args_accepts_age_range_filter_aliases() -> None:
     assert readable_args.newer_than_days == 90
 
 
+def test_parse_args_accepts_plural_age_bucket_filter_aliases() -> None:
+    args = parse_args(["--age-buckets", "30-89d", "--staleness-buckets", "90d+"])
+
+    assert args.age_bucket == ["30-89d", "90d+"]
+
+
 def test_parse_args_accepts_calendar_measured_period_filter_aliases() -> None:
     args = parse_args(
         [
@@ -454,6 +471,12 @@ def test_parse_args_accepts_bucket_name_summary_sort_aliases() -> None:
         "bucket-name-asc",
         "bucket-name-desc",
     ]:
+        assert parse_args(["--summary-sort", alias]).summary_sort == alias
+
+
+def test_parse_args_accepts_plural_age_bucket_sort_aliases() -> None:
+    for alias in ["age-buckets", "age-buckets-desc", "age-buckets-asc", "staleness-buckets"]:
+        assert parse_args(["--sort", alias]).sort == alias
         assert parse_args(["--summary-sort", alias]).summary_sort == alias
 
 
