@@ -934,6 +934,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--require-present",
         "--fail-on-missing",
+        "--fail-on-missing-image",
+        "--fail-on-missing-images",
+        "--require-images-present",
         dest="require_present",
         action="store_true",
         help="Exit non-zero when any requested image is absent.",
@@ -948,6 +951,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--require-size",
         "--fail-on-unknown-size",
+        "--require-image-size",
+        "--fail-on-unknown-image-size",
         dest="require_size",
         action="store_true",
         help="Exit non-zero when a present image does not report a Docker image size.",
@@ -955,6 +960,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--require-created",
         "--fail-on-unknown-created",
+        "--require-created-time",
+        "--require-image-created",
+        "--fail-on-unknown-created-time",
+        "--fail-on-unknown-image-created",
         dest="require_created",
         action="store_true",
         help="Exit non-zero when a present image does not report a Docker creation timestamp.",
@@ -962,6 +971,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--require-unique-image-ids",
         "--fail-on-duplicate-image-ids",
+        "--fail-on-shared-image-id",
+        "--fail-on-shared-image-ids",
         dest="require_unique_image_ids",
         action="store_true",
         help="Exit non-zero when multiple requested tags point at the same Docker image ID.",

@@ -1060,24 +1060,48 @@ def test_parse_args_accepts_markdown_summary_aliases() -> None:
     assert reporter.parse_args(["--markdown-summary"]).summary_markdown is True
 
 
-def test_parse_args_accepts_fail_on_missing_alias() -> None:
-    assert reporter.parse_args(["--fail-on-missing"]).require_present is True
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--fail-on-missing",
+        "--fail-on-missing-image",
+        "--fail-on-missing-images",
+        "--require-images-present",
+    ],
+)
+def test_parse_args_accepts_fail_on_missing_aliases(option: str) -> None:
+    assert reporter.parse_args([option]).require_present is True
 
 
 def test_parse_args_accepts_fail_on_all_missing_alias() -> None:
     assert reporter.parse_args(["--fail-on-all-missing"]).require_any_present is True
 
 
-def test_parse_args_accepts_fail_on_unknown_size_alias() -> None:
-    assert reporter.parse_args(["--fail-on-unknown-size"]).require_size is True
+@pytest.mark.parametrize("option", ["--fail-on-unknown-size", "--require-image-size", "--fail-on-unknown-image-size"])
+def test_parse_args_accepts_fail_on_unknown_size_aliases(option: str) -> None:
+    assert reporter.parse_args([option]).require_size is True
 
 
-def test_parse_args_accepts_fail_on_unknown_created_alias() -> None:
-    assert reporter.parse_args(["--fail-on-unknown-created"]).require_created is True
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--fail-on-unknown-created",
+        "--require-created-time",
+        "--require-image-created",
+        "--fail-on-unknown-created-time",
+        "--fail-on-unknown-image-created",
+    ],
+)
+def test_parse_args_accepts_fail_on_unknown_created_aliases(option: str) -> None:
+    assert reporter.parse_args([option]).require_created is True
 
 
-def test_parse_args_accepts_fail_on_duplicate_image_ids_alias() -> None:
-    assert reporter.parse_args(["--fail-on-duplicate-image-ids"]).require_unique_image_ids is True
+@pytest.mark.parametrize(
+    "option",
+    ["--fail-on-duplicate-image-ids", "--fail-on-shared-image-id", "--fail-on-shared-image-ids"],
+)
+def test_parse_args_accepts_fail_on_duplicate_image_ids_aliases(option: str) -> None:
+    assert reporter.parse_args([option]).require_unique_image_ids is True
 
 
 def test_main_csv_flag_emits_csv(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
