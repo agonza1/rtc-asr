@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -150,6 +151,104 @@ def test_demo_manifest_and_service_worker_are_served() -> None:
     assert "deferredInstallPrompt" not in app_js_response.text
     assert "asr_device: asrModel?.device || null" in app_js_response.text
     assert "asr_compute_type: asrModel?.compute_type || null" in app_js_response.text
+
+
+def test_demo_app_renders_repeated_final_text_when_event_identity_differs() -> None:
+    app_js = (Path("examples") / "browser_pipecat_demo" / "web" / "app.js").read_text(encoding="utf-8")
+    script = f"""
+const nodes = new Map();
+class FakeNode {{
+  constructor(selector) {{
+    this.selector = selector;
+    this.textContent = "";
+    this.hidden = false;
+    this.disabled = false;
+    this.checked = selector === "#source-mic" || selector === "#smart-turn-input";
+    this.options = [];
+    this.files = [];
+    this.children = [];
+    this.className = "";
+    this.value = "";
+  }}
+  append(...items) {{
+    this.children.push(...items);
+    this.options.push(...items);
+  }}
+  prepend(item) {{
+    this.children.unshift(item);
+  }}
+  replaceChildren(...items) {{
+    this.children = items;
+    this.options = items;
+  }}
+  addEventListener() {{}}
+}}
+globalThis.document = {{
+  querySelector(selector) {{
+    if (!nodes.has(selector)) {{
+      nodes.set(selector, new FakeNode(selector));
+    }}
+    return nodes.get(selector);
+  }},
+  createElement(tagName) {{
+    return new FakeNode(tagName);
+  }},
+}};
+globalThis.navigator = {{}};
+globalThis.window = {{
+  RTCPeerConnection: function () {{}},
+  RTCSessionDescription: function () {{}},
+  AudioContext: function () {{}},
+  clearTimeout() {{}},
+  setTimeout() {{ return 0; }},
+}};
+globalThis.location = {{ hostname: "127.0.0.1" }};
+globalThis.fetch = async () => ({{
+  ok: true,
+  json: async () => ({{
+    can_start_session: true,
+    bridge_status: "ready",
+    rtc_asr_ws_url: "ws://127.0.0.1:8080/v1/stt/stream",
+    rtc_asr_max_buffer_seconds: 5,
+    asr_model_options: [],
+  }}),
+}});
+{app_js}
+resetTranscriptDisplay();
+commitFinalTranscript({{
+  type: "final",
+  text: "yes",
+  event_id: "session_1:7:2:1200:1180:12",
+}});
+commitFinalTranscript({{
+  type: "final",
+  text: "yes",
+  event_id: "session_1:7:3:2200:2180:22",
+}});
+commitFinalTranscript({{
+  type: "final",
+  text: "yes",
+  event_id: "session_1:7:3:2200:2180:22",
+}});
+const finalLog = nodes.get("#final-log");
+const transcriptState = nodes.get("#transcript-state");
+const partialText = nodes.get("#partial-text");
+if (finalLog.children.length !== 2) {{
+  throw new Error(`expected 2 rendered final rows, got ${{finalLog.children.length}}`);
+}}
+if (finalLog.children[0].children[1].textContent !== "yes" || finalLog.children[1].children[1].textContent !== "yes") {{
+  throw new Error("expected repeated final text to be preserved");
+}}
+if (transcriptState.textContent !== "Skipped duplicate final segment. 2 final segment(s) captured.") {{
+  throw new Error(`unexpected transcript state: ${{transcriptState.textContent}}`);
+}}
+if (partialText.textContent !== "Listening for the next utterance.") {{
+  throw new Error(`unexpected partial text: ${{partialText.textContent}}`);
+}}
+"""
+
+    subprocess.run(["node", "--check", "examples/browser_pipecat_demo/web/app.js"], check=True)
+    subprocess.run(["node", "-e", script], check=True)
 
 
 def missing_runtime_loader() -> PipecatRuntime:
