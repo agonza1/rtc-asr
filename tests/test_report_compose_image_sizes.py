@@ -449,6 +449,34 @@ def test_records_summary_reports_present_images_with_unknown_creation_time() -> 
     assert "Images with unknown creation time: 1/3 (33.3%): unknown:image" in markdown
 
 
+def test_records_summary_treats_invalid_creation_time_as_unknown() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="known:image",
+            image_id="known",
+            size_bytes=100_000_000,
+            created="2026-07-31T19:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="invalid:image",
+            image_id="invalid",
+            size_bytes=200_000_000,
+            created="not-a-docker-time",
+            present=True,
+        ),
+    ]
+
+    summary = reporter.records_summary(records)
+    markdown = reporter.records_to_markdown(records)
+
+    assert summary["unknown_created"] == 1
+    assert summary["unknown_created_tags"] == ["invalid:image"]
+    assert summary["newest_present_tag"] == "known:image"
+    assert summary["oldest_present_tag"] == "known:image"
+    assert "Images with unknown creation time: 1/2 (50.0%): invalid:image" in markdown
+
+
 def test_records_summary_reports_duplicate_image_ids() -> None:
     records = [
         reporter.ImageSizeRecord(tag="first:image", image_id="shared123", size_bytes=100_000_000, created=None, present=True),
@@ -1102,6 +1130,27 @@ def test_parse_args_accepts_fail_on_unknown_size_aliases(option: str) -> None:
 )
 def test_parse_args_accepts_fail_on_unknown_created_aliases(option: str) -> None:
     assert reporter.parse_args([option]).require_created is True
+
+
+def test_main_require_created_rejects_invalid_creation_time(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(
+                tag=images[0],
+                image_id="abcdef123456",
+                size_bytes=100_000_000,
+                created="not-a-docker-time",
+                present=True,
+            )
+        ],
+    )
+
+    assert reporter.main(["--require-created", "invalid:image"]) == 1
+    assert "Images with unknown creation time: invalid:image" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(

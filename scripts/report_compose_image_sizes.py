@@ -296,7 +296,7 @@ def records_summary(
     median_size_bytes = round(median(present_sizes)) if present_sizes else None
     missing = [record.tag for record in records if not record.present]
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
-    unknown_created = [record.tag for record in records if record.present and record.created is None]
+    unknown_created = [record.tag for record in records if record.present and parse_created_datetime(record.created) is None]
     largest = max(
         (record for record in records if record.present and record.size_bytes is not None),
         key=lambda record: record.size_bytes or 0,
@@ -307,9 +307,13 @@ def records_summary(
         key=lambda record: record.size_bytes or 0,
         default=None,
     )
-    records_with_created = [record for record in records if record.present and record.created]
-    newest = max(records_with_created, key=lambda record: created_sort_datetime(record) or UTC_DATETIME_MIN, default=None)
-    oldest = min(records_with_created, key=lambda record: created_sort_datetime(record) or UTC_DATETIME_MAX, default=None)
+    records_with_created = [
+        (created, record)
+        for record in records
+        if record.present and (created := parse_created_datetime(record.created)) is not None
+    ]
+    newest = max(records_with_created, key=lambda item: item[0], default=(None, None))[1]
+    oldest = min(records_with_created, key=lambda item: item[0], default=(None, None))[1]
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
     known_image_ids = [record.image_id for record in records if record.present and record.image_id]
     unique_image_ids = sorted(set(known_image_ids))
@@ -763,9 +767,13 @@ def records_to_markdown(
     )
     if smallest and smallest.size_mb is not None:
         rows.append(f"Smallest present image: {smallest.tag} ({smallest.size_mb:.1f} MB)")
-    records_with_created = [record for record in records if record.present and record.created]
-    newest = max(records_with_created, key=lambda record: created_sort_datetime(record) or UTC_DATETIME_MIN, default=None)
-    oldest = min(records_with_created, key=lambda record: created_sort_datetime(record) or UTC_DATETIME_MAX, default=None)
+    records_with_created = [
+        (created, record)
+        for record in records
+        if record.present and (created := parse_created_datetime(record.created)) is not None
+    ]
+    newest = max(records_with_created, key=lambda item: item[0], default=(None, None))[1]
+    oldest = min(records_with_created, key=lambda item: item[0], default=(None, None))[1]
     if newest:
         rows.append(f"Newest present image: {newest.tag} ({newest.created})")
     if oldest:
@@ -838,7 +846,7 @@ def records_to_markdown(
                 tags=", ".join(unknown_size),
             )
         )
-    unknown_created = [record.tag for record in records if record.present and record.created is None]
+    unknown_created = [record.tag for record in records if record.present and parse_created_datetime(record.created) is None]
     if unknown_created:
         rows.append(
             "Images with unknown creation time: {count}/{requested} ({percent:.1f}%): {tags}".format(
@@ -1042,7 +1050,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     missing_records = [record for record in records if not record.present]
     any_present = any(record.present for record in records)
     unknown_size_records = [record for record in records if record.present and record.size_bytes is None]
-    unknown_created_records = [record for record in records if record.present and record.created is None]
+    unknown_created_records = [
+        record for record in records if record.present and parse_created_datetime(record.created) is None
+    ]
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
     oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
     over_age_records = records_over_age_budget(records, args.max_age_days) if args.max_age_days is not None else []
