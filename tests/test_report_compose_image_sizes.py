@@ -796,6 +796,8 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
         ("smallest", "size-asc"),
         ("lightest-first", "size-asc"),
         ("newest", "created-desc"),
+        ("newest_created", "created-desc"),
+        ("newest-created-first", "created-desc"),
         ("newer-first", "created-desc"),
         ("latest_first", "created-desc"),
         ("recent-first", "created-desc"),
@@ -804,6 +806,8 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
         ("youngest", "age-asc"),
         ("youngest_first", "age-asc"),
         ("oldest", "created-asc"),
+        ("oldest_created", "created-asc"),
+        ("oldest-created-first", "created-asc"),
         ("older_first", "created-asc"),
         ("earliest-first", "created-asc"),
         ("freshest_age", "age-asc"),
@@ -1102,7 +1106,15 @@ def test_parse_args_accepts_fail_on_unknown_created_aliases(option: str) -> None
 
 @pytest.mark.parametrize(
     "option",
-    ["--fail-on-duplicate-image-ids", "--fail-on-shared-image-id", "--fail-on-shared-image-ids"],
+    [
+        "--fail-on-duplicate-image-ids",
+        "--fail-on-shared-image-id",
+        "--fail-on-shared-image-ids",
+        "--fail-on-shared-image",
+        "--fail-on-shared-images",
+        "--require-distinct-image-ids",
+        "--require-unique-images",
+    ],
 )
 def test_parse_args_accepts_fail_on_duplicate_image_ids_aliases(option: str) -> None:
     assert reporter.parse_args([option]).require_unique_image_ids is True
