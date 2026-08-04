@@ -63,6 +63,8 @@ SORT_ALIASES = {
     "freshest-age-first": "age-asc",
     "youngest-age": "age-asc",
     "youngest-age-first": "age-asc",
+    "stale-age": "age-desc",
+    "stale-age-first": "age-desc",
     "stalest-age": "age-desc",
     "stalest-age-first": "age-desc",
     "oldest-age": "age-desc",
