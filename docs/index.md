@@ -4,7 +4,7 @@
 
 ## Quick Links
 
-- [Overview & Installation](../../README.md)
+- [Overview & Installation](../README.md)
 - [API Reference](./api-reference.md)
 - [Local STT v1](./local-stt-v1.md)
 - [Pipecat Integration](./pipecat-integration.md)
@@ -17,7 +17,7 @@
 
 - Start with [Benchmarks](./benchmarks.md) if you are deciding which ASR lane deserves a closer look.
 - Treat the benchmark leaderboard as an edge/local comparison. High-power GPU or hosted inference results may be much faster and should be tracked separately.
-- Use the [README](../../README.md) for local setup and operator defaults.
+- Use the [README](../README.md) for local setup and operator defaults.
 - Use the [API Reference](./api-reference.md) for the current service contract, and [Local STT v1](./local-stt-v1.md) when you need the shared next-step websocket protocol for colocated plugins or sidecars.
 - Use the [Pipecat](./pipecat-integration.md) or [LiveKit](./livekit-integration.md) guide when you are wiring an RTC client around that service contract. Use the [Browser Pipecat Demo](../examples/browser_pipecat_demo/README.md) when you need the local browser -> Pipecat -> `rtc-asr` sidecar path and Docker Compose commands.
 - Use [Troubleshooting](./troubleshooting.md) for preload, backend runtime, and streaming failure modes.
