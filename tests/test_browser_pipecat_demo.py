@@ -302,6 +302,8 @@ def test_browser_pipecat_demo_readme_documents_compose_sidecar_defaults() -> Non
 
     assert "PYTHON_BASE_IMAGE=python:3.11-slim docker compose --profile demo up --build asr-service browser-pipecat-demo" in readme
     assert "RTC_ASR_WS_URL=ws://asr-service:8080/v1/stt/stream" in readme
+    assert "| `RTC_ASR_MAX_BUFFER_SECONDS` | `5` |" in readme
+    assert 'export RTC_ASR_MAX_BUFFER_SECONDS="5"' in readme
     assert "sample_rate=16000" in readme
     assert "channels=1" in readme
     assert "format=pcm_s16le" in readme

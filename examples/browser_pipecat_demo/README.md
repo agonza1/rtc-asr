@@ -85,7 +85,7 @@ That example requirements file includes only the lightweight FastAPI/WebSocket b
 | `RTC_ASR_WS_URL` | `ws://127.0.0.1:8080/v1/stt/stream` | `rtc-asr` websocket target for transcript streaming |
 | `RTC_ASR_CHUNK_MS` | `100` | PCM batch duration sent to `rtc-asr`; must be between `80` and `160` |
 | `RTC_ASR_MODEL_OPTION` | `faster-whisper-base.en-int8` | Demo dropdown default. Options include `faster-whisper-base.en-int8`, `parakeet-mlx-110m`, `parakeet-nemo-110m`, `parakeet-v3`, and `qwen3-asr-0.6b` |
-| `RTC_ASR_MAX_BUFFER_SECONDS` | `12` | Caps one Local STT utterance before rollover so long continuous speech does not hit the backend buffer ceiling |
+| `RTC_ASR_MAX_BUFFER_SECONDS` | `5` | Caps one Local STT utterance before rollover so long continuous speech does not hit the backend buffer ceiling |
 | `PIPECAT_ICE_SERVERS` | unset | Reserved for future STUN/TURN configuration; local `127.0.0.1` testing usually does not need it |
 
 Example:
@@ -94,7 +94,7 @@ Example:
 export RTC_ASR_WS_URL="ws://127.0.0.1:8080/v1/stt/stream"
 export RTC_ASR_CHUNK_MS="100"
 export RTC_ASR_MODEL_OPTION="parakeet-mlx-110m"
-export RTC_ASR_MAX_BUFFER_SECONDS="12"
+export RTC_ASR_MAX_BUFFER_SECONDS="5"
 ```
 
 ## Run the Demo
