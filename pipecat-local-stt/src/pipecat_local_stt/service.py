@@ -430,7 +430,9 @@ class LocalStreamingSTTService(STTService):
     def _record_final_transcript_received(self, event: LocalSTTTranscriptEvent) -> None:
         generation = self._event_generation(event)
         if not isinstance(generation, int):
-            return
+            if len(self._final_events) != 1:
+                return
+            generation = next(iter(self._final_events))
         final_started_at = self._final_started_at.get(generation)
         if final_started_at is not None:
             self.metrics.local_stt_final_latency_ms = round(

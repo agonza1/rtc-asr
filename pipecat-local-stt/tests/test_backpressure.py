@@ -182,9 +182,10 @@ class FinalizeWaitWebSocket:
 
 
 class FinalTranscriptWebSocket:
-    def __init__(self) -> None:
+    def __init__(self, *, include_generation: bool = True) -> None:
         self.sent: list[str | bytes] = []
         self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.include_generation = include_generation
 
     async def send(self, data: str | bytes) -> None:
         self.sent.append(data)
@@ -201,7 +202,7 @@ class FinalTranscriptWebSocket:
                     "revision": 1,
                     "audio_received_ms": 20,
                     "audio_transcribed_ms": 20,
-                    "metadata": {"local_stt_generation": 1},
+                    "metadata": {"local_stt_generation": 1} if self.include_generation else {},
                 }))
 
     async def recv(self) -> str:
@@ -544,6 +545,28 @@ async def _test_finalize_drops_completed_waiter() -> None:
     await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
     await service.finalize_current_utterance()
 
+    assert service._final_events == {}
+    await service.cleanup()
+
+
+def test_finalize_accepts_untagged_final_when_single_waiter() -> None:
+    asyncio.run(_test_finalize_accepts_untagged_final_when_single_waiter())
+
+
+async def _test_finalize_accepts_untagged_final_when_single_waiter() -> None:
+    websocket = FinalTranscriptWebSocket(include_generation=False)
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, final_timeout_s=30),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await asyncio.wait_for(service.finalize_current_utterance(), timeout=0.5)
+
+    assert service.metrics.local_stt_final_timeouts_total == 0
+    assert service.metrics.local_stt_final_latency_ms >= 0
     assert service._final_events == {}
     await service.cleanup()
 
