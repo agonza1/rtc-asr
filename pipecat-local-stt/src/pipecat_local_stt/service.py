@@ -179,8 +179,11 @@ class LocalStreamingSTTService(STTService):
         self._clear_send_queue()
         self._release_final_waiters()
         if self._websocket is not None:
+            websocket = self._websocket
             await self._send_control({"type": "cancel"}, ensure_started=False)
             self.metrics.local_stt_cancel_messages_sent_total += 1
+            if self._websocket is websocket:
+                await self._disconnect()
 
     def metrics_snapshot(self) -> dict[str, int | float]:
         return self.metrics.as_dict()

@@ -35,6 +35,7 @@ class CancelWebSocket:
     def __init__(self) -> None:
         self.sent: list[str | bytes] = []
         self.incoming: asyncio.Queue[str] = asyncio.Queue()
+        self.closed = False
 
     async def send(self, data: str | bytes) -> None:
         self.sent.append(data)
@@ -58,7 +59,7 @@ class CancelWebSocket:
         return await self.incoming.get()
 
     async def close(self, code: int = 1000) -> None:
-        return None
+        self.closed = True
 
 
 class ReconnectWebSocket:
@@ -449,7 +450,8 @@ async def _test_cancel_suppresses_stale_results() -> None:
 
     final_frames = [frame for frame, _ in pushed_frames if isinstance(frame, TranscriptionFrame)]
     assert final_frames == []
-    assert service.metrics.local_stt_stale_transcript_events_total == 1
+    assert websocket.closed is True
+    assert service.metrics.local_stt_stale_transcript_events_total == 0
     assert service.metrics.local_stt_transcripts_suppressed_total == 0
     assert service.metrics.local_stt_cancel_messages_sent_total == 1
 
@@ -661,6 +663,48 @@ async def _test_late_untagged_final_after_timeout_cannot_release_next_waiter() -
     await asyncio.wait_for(finalize_task, timeout=0.5)
 
     assert service.metrics.local_stt_final_timeouts_total == 1
+    assert service._final_events == {}
+    await service.cleanup()
+
+
+def test_late_untagged_final_after_cancel_cannot_release_next_waiter() -> None:
+    asyncio.run(_test_late_untagged_final_after_cancel_cannot_release_next_waiter())
+
+
+async def _test_late_untagged_final_after_cancel_cannot_release_next_waiter() -> None:
+    first = ManualFinalWebSocket()
+    second = ManualFinalWebSocket()
+    websockets = [first, second]
+
+    async def connect(_url: str) -> ManualFinalWebSocket:
+        return websockets.pop(0)
+
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, final_timeout_s=30),
+        connect_fn=connect,
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await service.cancel_current_utterance()
+
+    assert first.closed is True
+    assert service._websocket is None
+
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    finalize_task = asyncio.create_task(service.finalize_current_utterance())
+    await eventually(lambda: bool(service._final_events))
+
+    await first.emit_untagged_final("late")
+    await asyncio.sleep(0.05)
+    assert not finalize_task.done()
+
+    await second.emit_untagged_final("current")
+    await asyncio.wait_for(finalize_task, timeout=0.5)
+
+    assert service.metrics.local_stt_final_timeouts_total == 0
     assert service._final_events == {}
     await service.cleanup()
 
