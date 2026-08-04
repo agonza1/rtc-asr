@@ -33,6 +33,34 @@ SORT_CHOICES = (
     "age-desc",
 )
 SORT_CHOICE_SET = set(SORT_CHOICES)
+SORT_ALIASES = {
+    "largest": "size-desc",
+    "largest-first": "size-desc",
+    "biggest": "size-desc",
+    "biggest-first": "size-desc",
+    "heaviest": "size-desc",
+    "heaviest-first": "size-desc",
+    "smallest": "size-asc",
+    "smallest-first": "size-asc",
+    "lightest": "size-asc",
+    "lightest-first": "size-asc",
+    "newest": "created-desc",
+    "newest-first": "created-desc",
+    "latest": "created-desc",
+    "latest-first": "created-desc",
+    "oldest": "created-asc",
+    "oldest-first": "created-asc",
+    "earliest": "created-asc",
+    "earliest-first": "created-asc",
+    "freshest-age": "age-asc",
+    "freshest-age-first": "age-asc",
+    "youngest-age": "age-asc",
+    "youngest-age-first": "age-asc",
+    "stalest-age": "age-desc",
+    "stalest-age-first": "age-desc",
+    "oldest-age": "age-desc",
+    "oldest-age-first": "age-desc",
+}
 UTC_DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
 UTC_DATETIME_MAX = datetime.max.replace(tzinfo=UTC)
 
@@ -114,6 +142,7 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
 
 def parse_sort_choice(value: str) -> str:
     normalized = value.lower().replace("_", "-")
+    normalized = SORT_ALIASES.get(normalized, normalized)
     if normalized not in SORT_CHOICE_SET:
         choices = ", ".join(SORT_CHOICES)
         raise argparse.ArgumentTypeError(f"invalid sort mode: {value!r}; choose one of: {choices}")
