@@ -399,9 +399,11 @@ class LocalStreamingSTTService(STTService):
             return
         if event_type == "closed":
             self.metrics.local_stt_closed_events_total += 1
+            self._release_final_waiters()
             return
         if event_type == "error":
             self.metrics.local_stt_protocol_errors_total += 1
+            self._release_final_waiters()
             logger.warning("Local STT protocol error: %s", payload.get("message", payload))
 
     def _event_generation(self, event: LocalSTTTranscriptEvent) -> int | None:

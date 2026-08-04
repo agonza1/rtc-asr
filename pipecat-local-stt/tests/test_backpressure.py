@@ -211,6 +211,28 @@ class FinalTranscriptWebSocket:
         return None
 
 
+class ServerErrorOnFinalizeWebSocket:
+    def __init__(self, event_type: str) -> None:
+        self.event_type = event_type
+        self.sent: list[str | bytes] = []
+        self.incoming: asyncio.Queue[str] = asyncio.Queue()
+
+    async def send(self, data: str | bytes) -> None:
+        self.sent.append(data)
+        if isinstance(data, str):
+            payload = json.loads(data)
+            if payload["type"] == "start":
+                await self.incoming.put(json.dumps({"type": "ready"}))
+            elif payload["type"] == "finalize":
+                await self.incoming.put(json.dumps({"type": self.event_type, "message": "stream ended"}))
+
+    async def recv(self) -> str:
+        return await self.incoming.get()
+
+    async def close(self, code: int = 1000) -> None:
+        return None
+
+
 class AlwaysFailSendWebSocket:
     def __init__(self) -> None:
         self.sent: list[str | bytes] = []
@@ -544,6 +566,36 @@ async def _test_finalize_timeout_is_counted_and_cleans_waiter() -> None:
 
     assert service.metrics.local_stt_final_timeouts_total == 1
     assert service._final_events == {}
+    await service.cleanup()
+
+
+def test_server_error_releases_pending_finalize_waiter() -> None:
+    asyncio.run(_test_server_terminal_event_releases_pending_finalize_waiter("error"))
+
+
+def test_server_closed_releases_pending_finalize_waiter() -> None:
+    asyncio.run(_test_server_terminal_event_releases_pending_finalize_waiter("closed"))
+
+
+async def _test_server_terminal_event_releases_pending_finalize_waiter(event_type: str) -> None:
+    websocket = ServerErrorOnFinalizeWebSocket(event_type)
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20, final_timeout_s=30),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+
+    await asyncio.wait_for(service.finalize_current_utterance(), timeout=0.5)
+
+    assert service.metrics.local_stt_final_timeouts_total == 0
+    assert service._final_events == {}
+    if event_type == "error":
+        assert service.metrics.local_stt_protocol_errors_total == 1
+    else:
+        assert service.metrics.local_stt_closed_events_total == 1
     await service.cleanup()
 
 
