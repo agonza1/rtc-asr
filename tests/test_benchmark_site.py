@@ -146,6 +146,24 @@ def test_current_benchmark_notes_table_matches_manifest_entries() -> None:
         assert metric_pair(entry["streaming"]["final_mean_ms"], entry["streaming"]["final_p95_ms"]) in row
 
 
+def test_docs_index_local_links_resolve_inside_repo() -> None:
+    repo_root = Path.cwd().resolve()
+    docs_index = DOCS_INDEX_PATH.resolve()
+    docs = DOCS_INDEX_PATH.read_text(encoding="utf-8")
+
+    for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", docs):
+        if target.startswith(("http://", "https://", "#")):
+            continue
+
+        local_path = target.split("#", 1)[0]
+        if not local_path:
+            continue
+
+        resolved = (docs_index.parent / local_path).resolve()
+        assert resolved.is_relative_to(repo_root), f"{target} escapes repository root"
+        assert resolved.exists(), f"{target} does not resolve from {DOCS_INDEX_PATH}"
+
+
 def test_manifest_keeps_latest_artifact_per_benchmark() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
 
@@ -1438,20 +1456,20 @@ def test_container_files_keep_uds_runtime_path_writable_and_healthchecked() -> N
     assert "mkdir -p /run/rtc-asr" in dockerfile_text
     assert "chown -R app:app /app /run/rtc-asr" in dockerfile_text
     assert 'CMD ["python", "-m", "src.main"]' in dockerfile_text
-    assert 'ARG ENABLE_QWEN_RUNTIME=""' in dockerfile_text
     assert "requirements/docker-common.txt" in dockerfile_text
     assert "requirements/docker-qwen.txt" in dockerfile_text
     assert "requirements/docker-faster-whisper.txt" in dockerfile_text
+    assert "FROM asr-common AS asr-faster-whisper-cpu" in dockerfile_text
+    assert "FROM asr-common AS asr-qwen-cpu" in dockerfile_text
+    assert "FROM asr-common AS asr-parakeet-transformers-cpu" in dockerfile_text
+    assert "FROM asr-common AS asr-parakeet-nemo-cpu" in dockerfile_text
     assert dockerfile_text.startswith("# syntax=docker/dockerfile:1.7")
     assert "PIP_CACHE_DIR=/root/.cache/pip" in dockerfile_text
     assert "RUN --mount=type=cache,target=/root/.cache/pip" in dockerfile_text
     assert "PIP_NO_CACHE_DIR" not in dockerfile_text
-    assert 'if [ -n "$ENABLE_QWEN_RUNTIME" ]; then' in dockerfile_text
-    assert 'if [ -z "$ENABLE_QWEN_RUNTIME" ] && [ -z "$ENABLE_PARAKEET_RUNTIME" ] && [ -z "$ENABLE_NEMO_RUNTIME" ]; then /opt/venv/bin/pip install' in dockerfile_text
     assert '--unix-socket "${LOCAL_STT_UDS_PATH:-/run/rtc-asr/stt.sock}"' in dockerfile_text
     assert "image: ${ASR_IMAGE:-realtime-asr:faster-whisper-cpu}" in compose_text
     assert '"${HOST_PORT:-8080}:8080"' in compose_text
-    assert "ENABLE_QWEN_RUNTIME: ${ENABLE_QWEN_RUNTIME:-}" in compose_text
     assert "PORT: 8080" in compose_text
     assert "PORT: ${PORT:-8080}" not in compose_text
     assert "LOCAL_STT_SOCKET_MODE: ${LOCAL_STT_SOCKET_MODE:-tcp}" in compose_text
@@ -1505,7 +1523,10 @@ def test_make_start_keeps_demo_profile_explicit() -> None:
 
     assert "make start          - Start the ASR-only docker compose stack" in makefile_text
     assert "make start-demo     - Start ASR plus the browser Pipecat demo profile" in makefile_text
-    assert "ASR_IMAGE=$(FASTER_WHISPER_COMPOSE_IMAGE) docker compose up -d --build asr-service" in makefile_text
+    assert (
+        "ASR_IMAGE=$(FASTER_WHISPER_COMPOSE_IMAGE) "
+        "ASR_BUILD_TARGET=$(FASTER_WHISPER_COMPOSE_TARGET) docker compose up -d --build asr-service"
+    ) in makefile_text
     assert "docker compose --profile demo up -d --build asr-service browser-pipecat-demo" in makefile_text
     assert "make start` is the equivalent ASR-only shortcut" in readme_text
     assert "Use `make start-demo`" in readme_text
@@ -1522,9 +1543,18 @@ def test_make_compose_config_check_covers_supported_compose_profiles() -> None:
     assert "PARAKEET_NEMO_COMPOSE_IMAGE ?= realtime-asr:parakeet-nemo-cpu" in makefile_text
     assert "docker compose config >/dev/null" in makefile_text
     assert "docker compose --profile demo config >/dev/null" in makefile_text
-    assert "ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr docker compose config >/dev/null" in makefile_text
-    assert "ASR_IMAGE=$(PARAKEET_COMPOSE_IMAGE) ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet docker compose config >/dev/null" in makefile_text
-    assert "ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo docker compose config >/dev/null" in makefile_text
+    assert (
+        "ASR_IMAGE=$(QWEN_COMPOSE_IMAGE) ENABLE_QWEN_RUNTIME=1 ASR_BACKEND=qwen-asr "
+        "ASR_BUILD_TARGET=$(QWEN_COMPOSE_TARGET) docker compose config >/dev/null"
+    ) in makefile_text
+    assert (
+        "ASR_IMAGE=$(PARAKEET_COMPOSE_IMAGE) ENABLE_PARAKEET_RUNTIME=1 ASR_BACKEND=parakeet "
+        "ASR_BUILD_TARGET=$(PARAKEET_COMPOSE_TARGET) docker compose config >/dev/null"
+    ) in makefile_text
+    assert (
+        "ASR_IMAGE=$(PARAKEET_NEMO_COMPOSE_IMAGE) ENABLE_NEMO_RUNTIME=1 ASR_BACKEND=parakeet-nemo "
+        "ASR_BUILD_TARGET=$(PARAKEET_NEMO_COMPOSE_TARGET) docker compose config >/dev/null"
+    ) in makefile_text
     assert "fast structural check of the default ASR-only config" in readme_text
     assert "Qwen, Transformers Parakeet, and NeMo Parakeet backend selections" in readme_text
     assert "`realtime-asr:faster-whisper-cpu`" in readme_text
