@@ -2687,6 +2687,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--repo-relative-paths",
+        "--repo-paths",
+        "--repo-relative",
+        "--relative-paths",
+        "--relative",
         action="store_true",
         help=(
             "With --paths-only, print paths relative to the repository root, "

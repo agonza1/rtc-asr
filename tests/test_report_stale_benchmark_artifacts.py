@@ -2753,6 +2753,14 @@ def test_parse_args_accepts_repo_relative_paths_mode() -> None:
     assert args.repo_relative_paths is True
 
 
+def test_parse_args_accepts_repo_relative_paths_aliases() -> None:
+    for alias in ["--repo-paths", "--repo-relative", "--relative-paths", "--relative"]:
+        args = parse_args(["--paths-only", alias])
+
+        assert args.paths_only is True
+        assert args.repo_relative_paths is True
+
+
 def test_parse_args_accepts_existing_manifest_path() -> None:
     args = parse_args(["--manifest", "docs/benchmark-results/manifest.json"])
 
