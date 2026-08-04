@@ -732,9 +732,21 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
         ("age_desc", "age-desc"),
         ("created_asc", "created-asc"),
         ("SIZE-DESC", "size-desc"),
+        ("largest", "size-desc"),
+        ("heaviest_first", "size-desc"),
+        ("smallest", "size-asc"),
+        ("lightest-first", "size-asc"),
+        ("newest", "created-desc"),
+        ("latest_first", "created-desc"),
+        ("oldest", "created-asc"),
+        ("earliest-first", "created-asc"),
+        ("freshest_age", "age-asc"),
+        ("youngest-age-first", "age-asc"),
+        ("stalest_age", "age-desc"),
+        ("oldest-age-first", "age-desc"),
     ],
 )
-def test_parse_sort_choice_accepts_case_and_underscore_aliases(value: str, expected: str) -> None:
+def test_parse_sort_choice_accepts_case_and_aliases(value: str, expected: str) -> None:
     assert reporter.parse_sort_choice(value) == expected
 
 
