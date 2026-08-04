@@ -223,14 +223,18 @@ def test_summary_groups_accept_extension_aliases() -> None:
             (
                 "extension, ext, file-ext, file-extension, artifact-ext, "
                 "artifact-file-ext, artifact-file-extension, path-extension, "
-                "path-ext, path-file-ext, path-file-extension, artifact-path-extension, "
-                "artifact-path-ext, artifact-path-file-ext, artifact-path-file-extension"
+                "path-ext, path-file-ext, path-file-extension, suffix, file-suffix, "
+                "path-suffix, path-file-suffix, artifact-path-extension, "
+                "artifact-path-ext, artifact-path-file-ext, artifact-path-file-extension, "
+                "artifact-suffix, artifact-file-suffix, artifact-path-suffix, artifact-path-file-suffix"
             ),
-            "current-extension, current-ext, current-artifact-ext, current-file-ext",
+            "current-extension, current-ext, current-suffix, current-artifact-ext, current-file-ext",
             "current-file-extension, current-path-ext, current-path-file-ext, "
-            "current-path-file-extension, current-path-extension",
-            "detail-extension, detail-ext, detail-file-ext, detail-file-extension, detail-page-ext",
-            "detail-page-file-ext, detail-page-file-extension",
+            "current-path-file-extension, current-path-extension, current-file-suffix, current-path-suffix, "
+            "current-path-file-suffix, current-artifact-suffix, current-artifact-file-suffix",
+            "detail-extension, detail-ext, detail-suffix, detail-file-ext, detail-file-extension, detail-page-ext",
+            "detail-page-suffix, detail-file-suffix, detail-page-file-ext, detail-page-file-extension, "
+            "detail-page-file-suffix",
         ]
     ) == {
         "artifact-extension",
@@ -2182,6 +2186,9 @@ def test_parse_args_accepts_file_extension_sort_aliases() -> None:
         "path-extension",
         "path-extension-asc",
         "path-extension-desc",
+        "path-suffix",
+        "path-suffix-asc",
+        "path-suffix-desc",
         "path-ext",
         "path-ext-asc",
         "path-ext-desc",
@@ -2191,18 +2198,27 @@ def test_parse_args_accepts_file_extension_sort_aliases() -> None:
         "path-file-extension",
         "path-file-extension-asc",
         "path-file-extension-desc",
+        "path-file-suffix",
+        "path-file-suffix-asc",
+        "path-file-suffix-desc",
         "current-path-file-ext",
         "current-path-file-ext-asc",
         "current-path-file-ext-desc",
         "current-path-file-extension",
         "current-path-file-extension-asc",
         "current-path-file-extension-desc",
+        "current-path-file-suffix",
+        "current-path-file-suffix-asc",
+        "current-path-file-suffix-desc",
         "detail-page-file-ext",
         "detail-page-file-ext-asc",
         "detail-page-file-ext-desc",
         "detail-page-file-extension",
         "detail-page-file-extension-asc",
         "detail-page-file-extension-desc",
+        "detail-page-file-suffix",
+        "detail-page-file-suffix-asc",
+        "detail-page-file-suffix-desc",
     ]:
         assert parse_args(["--sort", alias]).sort == alias
 
@@ -2521,24 +2537,40 @@ def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() ->
             "json.gz",
             "--artifact-file-extension",
             "jsonl",
+            "--artifact-suffix",
+            "aiff",
+            "--artifact-file-suffix",
+            "aifc",
             "--path-ext",
             "wav",
             "--path-file-ext",
             "flac",
             "--path-file-extension",
             "opus",
+            "--path-suffix",
+            "csv",
+            "--path-file-suffix",
+            "txt",
             "--artifact-ext-contains",
             "json",
             "--artifact-file-ext-contains",
             "gz",
             "--artifact-file-extension-contains",
             "jsonl",
+            "--artifact-suffix-contains",
+            "aiff",
+            "--artifact-file-suffix-contains",
+            "aifc",
             "--path-ext-contains",
             "wav",
             "--path-file-ext-contains",
             "flac",
             "--path-file-extension-contains",
             "opus",
+            "--path-suffix-contains",
+            "csv",
+            "--path-file-suffix-contains",
+            "txt",
         ]
     )
 
@@ -2564,8 +2596,8 @@ def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() ->
         "path-folder",
         "path-folder-name",
     ]
-    assert args.artifact_extension == [".json", "json.gz", "jsonl", "wav", "flac", "opus"]
-    assert args.artifact_extension_contains == ["json", "gz", "jsonl", "wav", "flac", "opus"]
+    assert args.artifact_extension == [".json", "json.gz", "jsonl", "aiff", "aifc", "wav", "flac", "opus", "csv", "txt"]
+    assert args.artifact_extension_contains == ["json", "gz", "jsonl", "aiff", "aifc", "wav", "flac", "opus", "csv", "txt"]
 
 
 def test_parse_args_accepts_file_stem_filter_aliases() -> None:
