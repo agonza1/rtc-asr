@@ -198,6 +198,33 @@ def test_service_counts_closed_acknowledgements() -> None:
     assert service.metrics_snapshot()["local_stt_closed_events_total"] == 1
 
 
+def test_service_echoes_ping_metadata_in_pong() -> None:
+    asyncio.run(_test_service_echoes_ping_metadata_in_pong())
+
+
+async def _test_service_echoes_ping_metadata_in_pong() -> None:
+    websocket = FakeLocalSTTWebSocket()
+    service = LocalStreamingSTTService()
+    service._websocket = websocket
+
+    await service._handle_server_payload({
+        "type": "ping",
+        "ping_id": "keepalive-1",
+        "timestamp_ms": 1710000000,
+        "metadata": {"local_stt_generation": 3, "trace_id": "abc"},
+    })
+
+    pong = json.loads(websocket.sent[-1])
+    assert pong == {
+        "type": "pong",
+        "metadata": {"local_stt_generation": 3, "trace_id": "abc"},
+        "ping_id": "keepalive-1",
+        "timestamp_ms": 1710000000,
+    }
+    assert service.metrics.local_stt_ping_events_total == 1
+    assert service.metrics.local_stt_pong_events_sent_total == 1
+
+
 def test_service_reports_aggregate_buffer_depth_until_flush() -> None:
     asyncio.run(_test_service_reports_aggregate_buffer_depth_until_flush())
 
