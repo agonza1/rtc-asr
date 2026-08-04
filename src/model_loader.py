@@ -408,18 +408,9 @@ class ParakeetMLXAdapter:
     def _transcribe_decoded(self, decoded_audio: Any, *, language: str | None) -> dict[str, Any]:
         model = self._load_model()
         try:
-            import soundfile as sf
-        except ImportError as exc:
-            raise ASRUnavailableError(
-                "The parakeet-mlx backend requires soundfile. Install the MLX benchmark runtime to enable ASR_BACKEND=parakeet-mlx."
-            ) from exc
-
-        with tempfile.NamedTemporaryFile(prefix="rtc_asr_parakeet_mlx_", suffix=".wav") as audio_file:
-            sf.write(audio_file.name, decoded_audio.samples, decoded_audio.sample_rate)
-            result = model.transcribe(
-                audio_file.name,
-                dtype=_resolve_mlx_dtype(self.config.asr_parakeet_dtype),
-            )
+            result = self._transcribe_decoded_in_memory(model, decoded_audio)
+        except (AttributeError, TypeError):
+            result = self._transcribe_decoded_from_temp_wav(model, decoded_audio)
         text = _extract_mlx_text(result)
 
         return {
@@ -429,6 +420,34 @@ class ParakeetMLXAdapter:
             "backend": self.backend_name,
             "model": self.model_name,
         }
+
+    def _transcribe_decoded_in_memory(self, model: Any, decoded_audio: Any) -> Any:
+        try:
+            import mlx.core as mx
+            from parakeet_mlx.audio import get_logmel
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The parakeet-mlx backend requires mlx and parakeet-mlx. Install the MLX benchmark runtime to enable ASR_BACKEND=parakeet-mlx."
+            ) from exc
+
+        audio = mx.array(np.asarray(decoded_audio.samples, dtype=np.float32)).astype(mx.float32)
+        mel = get_logmel(audio, model.preprocessor_config)
+        return model.generate(mel)[0]
+
+    def _transcribe_decoded_from_temp_wav(self, model: Any, decoded_audio: Any) -> Any:
+        try:
+            import soundfile as sf
+        except ImportError as exc:
+            raise ASRUnavailableError(
+                "The parakeet-mlx backend requires soundfile. Install the MLX benchmark runtime to enable ASR_BACKEND=parakeet-mlx."
+            ) from exc
+
+        with tempfile.NamedTemporaryFile(prefix="rtc_asr_parakeet_mlx_", suffix=".wav") as audio_file:
+            sf.write(audio_file.name, decoded_audio.samples, decoded_audio.sample_rate)
+            return model.transcribe(
+                audio_file.name,
+                dtype=_resolve_mlx_dtype(self.config.asr_parakeet_dtype),
+            )
 
     def _run_on_worker(self, callback: Any) -> Any:
         return self._executor.submit(callback).result()
