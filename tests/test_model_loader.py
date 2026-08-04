@@ -854,26 +854,44 @@ def test_parakeet_mlx_adapter_transcribe_uses_mlx_model(monkeypatch: pytest.Monk
     class FakeAlignedResult:
         text = " Yesterday it worked. "
 
+    class FakeMlxArray:
+        def __init__(self, samples: object):
+            self.samples = samples
+            self.dtype = None
+
+        def astype(self, dtype: object) -> "FakeMlxArray":
+            self.dtype = dtype
+            return self
+
     class FakeModel:
-        def transcribe(self, path: str, *, dtype: object) -> FakeAlignedResult:
-            calls["path"] = path
-            calls["dtype"] = dtype
+        preprocessor_config = object()
+
+        def generate(self, mel: object) -> list[FakeAlignedResult]:
+            calls["mel"] = mel
             calls["transcribe_thread"] = threading.current_thread().name
-            return FakeAlignedResult()
+            return [FakeAlignedResult()]
 
     fake_parakeet_mlx = ModuleType("parakeet_mlx")
+    fake_parakeet_mlx_audio = ModuleType("parakeet_mlx.audio")
 
     def fake_from_pretrained(model_name: str, *, dtype: object) -> FakeModel:
         calls.update({"model_name": model_name, "load_dtype": dtype, "load_thread": threading.current_thread().name})
         return FakeModel()
 
+    def fake_get_logmel(audio: FakeMlxArray, config: object) -> object:
+        calls["audio"] = audio
+        calls["preprocessor_config"] = config
+        return "mel"
+
     fake_parakeet_mlx.from_pretrained = fake_from_pretrained
+    fake_parakeet_mlx_audio.get_logmel = fake_get_logmel
     fake_mx = ModuleType("mlx.core")
     fake_mx.bfloat16 = object()
-    fake_soundfile = ModuleType("soundfile")
-    fake_soundfile.write = lambda path, samples, sample_rate: calls.update({"sample_rate": sample_rate})
-    monkeypatch.setitem(sys.modules, "soundfile", fake_soundfile)
+    fake_mx.float32 = object()
+    fake_mx.array = lambda samples: FakeMlxArray(samples)
+    monkeypatch.setattr(tempfile, "NamedTemporaryFile", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("temporary WAV path should not be used")))
     monkeypatch.setitem(sys.modules, "parakeet_mlx", fake_parakeet_mlx)
+    monkeypatch.setitem(sys.modules, "parakeet_mlx.audio", fake_parakeet_mlx_audio)
     monkeypatch.setitem(sys.modules, "mlx", ModuleType("mlx"))
     monkeypatch.setitem(sys.modules, "mlx.core", fake_mx)
 
@@ -899,8 +917,61 @@ def test_parakeet_mlx_adapter_transcribe_uses_mlx_model(monkeypatch: pytest.Monk
     }
     assert calls["model_name"] == "mlx-community/parakeet-tdt_ctc-110m"
     assert calls["load_dtype"] is fake_mx.bfloat16
-    assert calls["dtype"] is fake_mx.bfloat16
     assert calls["load_thread"] == calls["transcribe_thread"]
+    assert calls["mel"] == "mel"
+    assert isinstance(calls["audio"], FakeMlxArray)
+    assert calls["audio"].dtype is fake_mx.float32
+    assert calls["preprocessor_config"] is FakeModel.preprocessor_config
+
+
+def test_parakeet_mlx_adapter_transcribe_falls_back_to_temp_wav_when_in_memory_runtime_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: dict[str, object] = {}
+
+    class FakeAlignedResult:
+        text = " Yesterday it worked. "
+
+    class FakeModel:
+        def generate(self, mel: object) -> list[FakeAlignedResult]:
+            raise AssertionError("generate should not be called after in-memory setup fails")
+
+        def transcribe(self, path: str, *, dtype: object) -> FakeAlignedResult:
+            calls["path"] = path
+            calls["dtype"] = dtype
+            return FakeAlignedResult()
+
+    fake_parakeet_mlx = ModuleType("parakeet_mlx")
+    fake_parakeet_mlx_audio = ModuleType("parakeet_mlx.audio")
+    fake_parakeet_mlx.from_pretrained = lambda model_name, *, dtype: FakeModel()
+    fake_parakeet_mlx_audio.get_logmel = lambda audio, config: "mel"
+    fake_mx = ModuleType("mlx.core")
+    fake_mx.bfloat16 = object()
+    fake_mx.float32 = object()
+    fake_mx.array = lambda samples: samples
+    fake_soundfile = ModuleType("soundfile")
+    fake_soundfile.write = lambda path, samples, sample_rate: calls.update({"sample_rate": sample_rate})
+    monkeypatch.setitem(sys.modules, "soundfile", fake_soundfile)
+    monkeypatch.setitem(sys.modules, "parakeet_mlx", fake_parakeet_mlx)
+    monkeypatch.setitem(sys.modules, "parakeet_mlx.audio", fake_parakeet_mlx_audio)
+    monkeypatch.setitem(sys.modules, "mlx", ModuleType("mlx"))
+    monkeypatch.setitem(sys.modules, "mlx.core", fake_mx)
+
+    adapter = ParakeetMLXAdapter(
+        config=AppConfig(
+            asr_backend="parakeet-mlx",
+            asr_device="apple-silicon",
+            asr_parakeet_model="mlx-community/parakeet-tdt_ctc-110m",
+            asr_parakeet_dtype="auto",
+        ),
+        audio_processor=AudioProcessor(),
+    )
+
+    result = adapter.transcribe(FIXTURE_PATH.read_bytes(), language="en", sample_rate=16000)
+
+    assert result["text"] == "Yesterday it worked."
+    assert calls["sample_rate"] == 16000
+    assert calls["dtype"] is fake_mx.bfloat16
     assert str(calls["path"]).endswith(".wav")
 
 
