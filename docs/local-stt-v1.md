@@ -172,9 +172,14 @@ Required behavior:
   "type": "ping",
   "ping_id": "heartbeat-1",
   "timestamp_ms": 1710000000,
-  "metadata": {}
+  "metadata": {
+    "tenant": "demo",
+    "turn_id": "turn-1"
+  }
 }
 ```
+
+The service echoes `ping_id`, `timestamp_ms`, and `metadata` in the matching `pong`.
 
 ## Server Messages
 
@@ -272,7 +277,10 @@ Use protocol `error` events for invalid control messages, unsupported required f
   "type": "pong",
   "ping_id": "heartbeat-1",
   "timestamp_ms": 1710000000,
-  "metadata": {}
+  "metadata": {
+    "tenant": "demo",
+    "turn_id": "turn-1"
+  }
 }
 ```
 
