@@ -49,6 +49,8 @@ SORT_ALIASES = {
     "newest-first": "created-desc",
     "latest": "created-desc",
     "latest-first": "created-desc",
+    "recent": "created-desc",
+    "recent-first": "created-desc",
     "oldest": "created-asc",
     "oldest-first": "created-asc",
     "earliest": "created-asc",
