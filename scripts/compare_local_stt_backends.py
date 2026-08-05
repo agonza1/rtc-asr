@@ -58,23 +58,53 @@ EXPECTED_TRANSCRIPT_KEYS = (
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare Local STT v1 backend benchmark artifacts")
     parser.add_argument("artifacts", nargs="+", type=Path, help="Benchmark JSON artifacts from bench_local_stt_stream.py")
-    parser.add_argument("--baseline", required=True, help="Baseline backend key, for example faster-whisper:rolling_window")
-    parser.add_argument("--candidate", required=True, help="Candidate backend key, for example vosk:stateful")
-    parser.add_argument("--output", type=Path, help="Optional JSON comparison output path")
-    parser.add_argument("--markdown-output", type=Path, help="Optional Markdown decision report output path")
+    parser.add_argument(
+        "--baseline",
+        "--baseline-key",
+        "--baseline-backend",
+        required=True,
+        help="Baseline backend key, for example faster-whisper:rolling_window",
+    )
+    parser.add_argument(
+        "--candidate",
+        "--candidate-key",
+        "--candidate-backend",
+        required=True,
+        help="Candidate backend key, for example vosk:stateful",
+    )
+    parser.add_argument(
+        "--output",
+        "--json-output",
+        "--comparison-output",
+        type=Path,
+        help="Optional JSON comparison output path",
+    )
+    parser.add_argument(
+        "--markdown-output",
+        "--markdown-report",
+        "--report-output",
+        type=Path,
+        help="Optional Markdown decision report output path",
+    )
     parser.add_argument(
         "--min-first-partial-win-ms",
+        "--min-ttfb-win-ms",
+        "--min-first-interim-win-ms",
         type=float,
         default=DEFAULT_MIN_FIRST_PARTIAL_WIN_MS,
         help="Minimum candidate P95 first-partial win required for a supported-backend recommendation",
     )
     parser.add_argument(
         "--require-resource-metrics",
+        "--require-resources",
+        "--require-resource-evidence",
         action="store_true",
         help="Require each backend artifact to include peak RSS and CPU utilization evidence",
     )
     parser.add_argument(
         "--min-concurrency",
+        "--min-streams",
+        "--minimum-concurrency",
         type=positive_int,
         default=1,
         help="Minimum concurrent stream count required in each backend artifact",
