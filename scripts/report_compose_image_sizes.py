@@ -35,6 +35,10 @@ SORT_CHOICES = (
 )
 SORT_CHOICE_SET = set(SORT_CHOICES)
 SORT_ALIASES = {
+    "as-listed": "input",
+    "input-order": "input",
+    "listed": "input",
+    "requested": "input",
     "largest": "size-desc",
     "largest-first": "size-desc",
     "biggest": "size-desc",
@@ -46,6 +50,8 @@ SORT_ALIASES = {
     "lightest": "size-asc",
     "lightest-first": "size-asc",
     "newest": "created-desc",
+    "created": "created-desc",
+    "created-first": "created-desc",
     "newest-first": "created-desc",
     "newest-created": "created-desc",
     "newest-created-first": "created-desc",
@@ -67,6 +73,8 @@ SORT_ALIASES = {
     "older-first": "created-asc",
     "earliest": "created-asc",
     "earliest-first": "created-asc",
+    "age": "age-desc",
+    "age-first": "age-desc",
     "freshest-age": "age-asc",
     "freshest-age-first": "age-asc",
     "youngest-age": "age-asc",
