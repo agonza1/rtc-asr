@@ -21,6 +21,70 @@ RESOURCE_METRICS = [
     "cpu_utilization_percent",
     "package_power_watts",
 ]
+RESOURCE_METRIC_ALIASES = {
+    "peak_rss_mb": (
+        ("environment", "peak_rss_mb"),
+        ("system", "peak_rss_mb"),
+        ("metrics", "peak_rss_mb"),
+        ("metrics", "memory", "peak_rss_mb"),
+        ("metrics", "memory", "rss_peak_mb"),
+        ("metrics", "memory", "max_rss_mb"),
+        ("metrics", "memory", "rss_max_mb"),
+        ("memory", "peak_rss_mb"),
+        ("memory", "rss_peak_mb"),
+        ("memory", "max_rss_mb"),
+        ("memory", "rss_max_mb"),
+        ("process", "peak_rss_mb"),
+        ("process", "rss_peak_mb"),
+    ),
+    "cpu_utilization_percent": (
+        ("environment", "cpu_utilization_percent"),
+        ("environment", "cpu_percent"),
+        ("environment", "cpu_usage_percent"),
+        ("system", "cpu_utilization_percent"),
+        ("system", "cpu_percent"),
+        ("system", "cpu_usage_percent"),
+        ("metrics", "cpu_utilization_percent"),
+        ("metrics", "cpu_percent"),
+        ("metrics", "cpu_usage_percent"),
+        ("metrics", "cpu", "percent"),
+        ("metrics", "cpu", "utilization_percent"),
+        ("metrics", "cpu", "average_utilization_percent"),
+        ("metrics", "cpu", "average_percent"),
+        ("metrics", "cpu", "usage_percent"),
+        ("cpu", "utilization_percent"),
+        ("cpu", "average_utilization_percent"),
+        ("cpu", "percent"),
+        ("cpu", "average_percent"),
+        ("cpu", "usage_percent"),
+    ),
+    "package_power_watts": (
+        ("environment", "package_power_watts"),
+        ("environment", "package_power_avg_watts"),
+        ("environment", "package_power_average_watts"),
+        ("environment", "package_power_mean_watts"),
+        ("system", "package_power_watts"),
+        ("system", "package_power_avg_watts"),
+        ("system", "package_power_average_watts"),
+        ("system", "package_power_mean_watts"),
+        ("metrics", "package_power_watts"),
+        ("metrics", "package_power_avg_watts"),
+        ("metrics", "package_power_average_watts"),
+        ("metrics", "package_power_mean_watts"),
+        ("metrics", "power", "package_power_watts"),
+        ("metrics", "power", "package_power_avg_watts"),
+        ("metrics", "power", "package_power_average_watts"),
+        ("metrics", "power", "package_power_mean_watts"),
+        ("metrics", "power", "package_watts"),
+        ("metrics", "power", "average_package_watts"),
+        ("power", "package_watts"),
+        ("power", "package_power_watts"),
+        ("power", "package_power_avg_watts"),
+        ("power", "package_power_average_watts"),
+        ("power", "package_power_mean_watts"),
+        ("power", "average_package_watts"),
+    ),
+}
 EXPECTED_TRANSCRIPT_KEYS = [
     "expected_final_transcript",
     "expected_transcript",
@@ -297,12 +361,36 @@ def compare_resource_metric(baseline: dict[str, Any], candidate: dict[str, Any],
 
 
 def resource_value(artifact: dict[str, Any], metric: str) -> float | None:
-    environment = artifact.get("environment", {}) if isinstance(artifact.get("environment"), dict) else {}
-    value = environment.get(metric)
+    for path in RESOURCE_METRIC_ALIASES.get(metric, (("environment", metric),)):
+        value = nested_value(artifact, path)
+        parsed = numeric_value(value)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def nested_value(source: dict[str, Any], path: tuple[str, ...]) -> Any:
+    value: Any = source
+    for key in path:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
+
+
+def numeric_value(value: Any) -> float | None:
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, (int, float)):
         return float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.endswith("%"):
+            stripped = stripped[:-1].strip()
+        try:
+            return float(stripped)
+        except ValueError:
+            return None
     return None
 
 
