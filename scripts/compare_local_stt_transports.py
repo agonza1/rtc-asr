@@ -111,9 +111,31 @@ RAW_UDS_REQUIRED_START_CONTROL_PAYLOAD = {
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compare Local STT v1 transport benchmark artifacts")
     parser.add_argument("artifacts", nargs="+", type=Path, help="Benchmark JSON artifacts from bench_local_stt_stream.py")
-    parser.add_argument("--output", type=Path, help="Optional JSON comparison output path")
-    parser.add_argument("--markdown-output", type=Path, help="Optional Markdown summary output path")
-    parser.add_argument("--decision-output", type=Path, help="Optional compact raw UDS decision JSON output path")
+    parser.add_argument(
+        "--output",
+        "--json-output",
+        "--comparison-output",
+        type=Path,
+        dest="output",
+        help="Optional JSON comparison output path",
+    )
+    parser.add_argument(
+        "--markdown-output",
+        "--markdown-summary-output",
+        "--summary-markdown-output",
+        "--md-output",
+        type=Path,
+        dest="markdown_output",
+        help="Optional Markdown summary output path",
+    )
+    parser.add_argument(
+        "--decision-output",
+        "--raw-uds-decision-output",
+        "--decision-json-output",
+        type=Path,
+        dest="decision_output",
+        help="Optional compact raw UDS decision JSON output path",
+    )
     parser.add_argument(
         "--require-raw-uds-recommendation",
         action="store_true",
