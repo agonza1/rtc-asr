@@ -49,10 +49,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help="Candidate backend artifact JSON, for example Vosk stateful",
     )
-    parser.add_argument("--candidate-name", default="candidate", help="Human-readable candidate backend label")
-    parser.add_argument("--baseline-name", default="baseline", help="Human-readable baseline backend label")
+    parser.add_argument(
+        "--candidate-name",
+        "--candidate-label",
+        "--candidate-backend",
+        dest="candidate_name",
+        default="candidate",
+        help="Human-readable candidate backend label",
+    )
+    parser.add_argument(
+        "--baseline-name",
+        "--baseline-label",
+        "--baseline-backend",
+        dest="baseline_name",
+        default="baseline",
+        help="Human-readable baseline backend label",
+    )
     parser.add_argument(
         "--latency-win-percent",
+        "--min-latency-win-percent",
+        "--min-live-latency-win-percent",
+        "--live-latency-win-percent",
+        "--latency-gate-percent",
+        "--latency-win-gate-percent",
+        dest="latency_win_percent",
         type=float,
         default=10.0,
         help="Minimum p95 latency improvement required on key live metrics",
@@ -521,6 +541,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     output = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(output)
     else:
         print(output, end="")
