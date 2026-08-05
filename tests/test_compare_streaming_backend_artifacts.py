@@ -593,6 +593,20 @@ def test_parse_args_accepts_review_friendly_path_aliases() -> None:
     assert args.output == Path("comparison.json")
 
 
+def test_parse_args_accepts_json_report_output_aliases() -> None:
+    for alias in ("--output-json", "--report-json", "--json-report"):
+        args = compare_module.parse_args([
+            "--baseline-json",
+            "baseline.json",
+            "--candidate-json",
+            "candidate.json",
+            alias,
+            "report.json",
+        ])
+
+        assert args.output == Path("report.json")
+
+
 def test_parse_args_accepts_review_friendly_gate_and_label_aliases() -> None:
     args = compare_module.parse_args([
         "--baseline-json",

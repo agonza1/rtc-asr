@@ -80,7 +80,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output",
         "--json-output",
+        "--output-json",
         "--comparison-output",
+        "--report-json",
+        "--json-report",
         dest="output",
         type=Path,
         help="Optional path for JSON comparison output",
@@ -542,7 +545,7 @@ def main(argv: list[str] | None = None) -> int:
     output = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(output)
+        args.output.write_text(output, encoding="utf8")
     else:
         print(output, end="")
     return 0
