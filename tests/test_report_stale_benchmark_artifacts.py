@@ -6976,6 +6976,43 @@ def test_stale_artifacts_can_sort_by_artifact_extension_descending_with_prefix_e
     ]
 
 
+def test_stale_artifacts_accepts_short_artifact_file_sort_aliases() -> None:
+    manifest = {
+        "tracks": [],
+        "artifacts": [
+            {
+                "artifact_path": "benchmark-results/archive/qwen-old.wav",
+                "status": "legacy",
+                "slug": "qwen",
+                "artifact_size_bytes": 30,
+            },
+            {
+                "artifact_path": "benchmark-results/base-old.json",
+                "status": "legacy",
+                "slug": "base",
+                "artifact_size_bytes": 20,
+            },
+        ],
+    }
+
+    assert stale_artifacts(manifest, sort_by="filename") == stale_artifacts(
+        manifest,
+        sort_by="artifact-name",
+    )
+    assert stale_artifacts(manifest, sort_by="stem-desc") == stale_artifacts(
+        manifest,
+        sort_by="artifact-stem-desc",
+    )
+    assert stale_artifacts(manifest, sort_by="directory") == stale_artifacts(
+        manifest,
+        sort_by="artifact-dir",
+    )
+    assert stale_artifacts(manifest, sort_by="file-extension-desc") == stale_artifacts(
+        manifest,
+        sort_by="artifact-extension-desc",
+    )
+
+
 def test_stale_artifacts_can_sort_by_detail_page_path() -> None:
     manifest = {
         "tracks": [],
