@@ -415,6 +415,28 @@ def test_parse_args_accepts_short_artifact_file_filter_aliases() -> None:
     assert args.artifact_extension_contains == ["json"]
 
 
+def test_parse_args_accepts_current_path_file_name_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--current-path-basename",
+            "current-a.json",
+            "--current-path-filename",
+            "current-b.json",
+            "--current-path-file-name",
+            "current-c.json",
+            "--current-path-basename-contains",
+            "current-a",
+            "--current-path-filename-contains",
+            "current-b",
+            "--current-path-file-name-contains",
+            "current-c",
+        ]
+    )
+
+    assert args.current_path_name == ["current-a.json", "current-b.json", "current-c.json"]
+    assert args.current_path_name_contains == ["current-a", "current-b", "current-c"]
+
+
 def test_parse_args_accepts_average_size_summary_sort_aliases() -> None:
     for alias in [
         "average-size",
