@@ -31,8 +31,24 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Compare two Local STT v1 streaming benchmark artifacts and produce a real-time ASR recommendation."
     )
-    parser.add_argument("--baseline", type=Path, required=True, help="Current default/rolling-window artifact JSON")
-    parser.add_argument("--candidate", type=Path, required=True, help="Candidate backend artifact JSON, for example Vosk stateful")
+    parser.add_argument(
+        "--baseline",
+        "--baseline-artifact",
+        "--baseline-json",
+        dest="baseline",
+        type=Path,
+        required=True,
+        help="Current default/rolling-window artifact JSON",
+    )
+    parser.add_argument(
+        "--candidate",
+        "--candidate-artifact",
+        "--candidate-json",
+        dest="candidate",
+        type=Path,
+        required=True,
+        help="Candidate backend artifact JSON, for example Vosk stateful",
+    )
     parser.add_argument("--candidate-name", default="candidate", help="Human-readable candidate backend label")
     parser.add_argument("--baseline-name", default="baseline", help="Human-readable baseline backend label")
     parser.add_argument(
@@ -41,7 +57,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=10.0,
         help="Minimum p95 latency improvement required on key live metrics",
     )
-    parser.add_argument("--output", type=Path, help="Optional path for JSON comparison output")
+    parser.add_argument(
+        "--output",
+        "--json-output",
+        "--comparison-output",
+        dest="output",
+        type=Path,
+        help="Optional path for JSON comparison output",
+    )
     return parser.parse_args(argv)
 
 
