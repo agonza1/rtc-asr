@@ -1156,12 +1156,14 @@ def test_parse_args_accepts_json_summary_aliases() -> None:
     assert reporter.parse_args(["--json-summary"]).summary_only is True
     assert reporter.parse_args(["--summary-json"]).summary_only is True
     assert reporter.parse_args(["--json-summary-output"]).summary_only is True
+    assert reporter.parse_args(["--summary-json-output"]).summary_only is True
 
 
 def test_parse_args_accepts_csv_summary_aliases() -> None:
     assert reporter.parse_args(["--summary-csv"]).summary_csv is True
     assert reporter.parse_args(["--csv-summary"]).summary_csv is True
     assert reporter.parse_args(["--summary-csv-output"]).summary_csv is True
+    assert reporter.parse_args(["--csv-summary-output"]).summary_csv is True
 
 
 def test_parse_args_accepts_markdown_summary_aliases() -> None:
@@ -1169,6 +1171,10 @@ def test_parse_args_accepts_markdown_summary_aliases() -> None:
     assert reporter.parse_args(["--markdown-summary"]).summary_markdown is True
     assert reporter.parse_args(["--summary-md"]).summary_markdown is True
     assert reporter.parse_args(["--md-summary"]).summary_markdown is True
+    assert reporter.parse_args(["--markdown-summary-output"]).summary_markdown is True
+    assert reporter.parse_args(["--summary-markdown-output"]).summary_markdown is True
+    assert reporter.parse_args(["--summary-md-output"]).summary_markdown is True
+    assert reporter.parse_args(["--md-summary-output"]).summary_markdown is True
     assert reporter.parse_args(["--summary-table"]).summary_markdown is True
     assert reporter.parse_args(["--table-summary"]).summary_markdown is True
 
