@@ -4474,14 +4474,22 @@ def test_streaming_client_can_cancel_a_stream() -> None:
     asyncio.run(scenario())
 
 
-def test_stream_config_rejects_invalid_partial_interval_chunks() -> None:
+@pytest.mark.parametrize("value", [0, 1.5, True])
+def test_stream_config_rejects_invalid_partial_interval_chunks(value: object) -> None:
     with pytest.raises(ValueError, match='partial_interval_chunks must be a positive integer'):
-        StreamConfig(partial_interval_chunks=0)
+        StreamConfig(partial_interval_chunks=value)
 
 
-def test_stream_config_rejects_negative_partial_event_timeout() -> None:
-    with pytest.raises(ValueError, match='partial_event_timeout_seconds must be zero or greater'):
-        StreamConfig(partial_event_timeout_seconds=-0.1)
+@pytest.mark.parametrize("value", [-0.1, True, float("inf"), float("nan")])
+def test_stream_config_rejects_invalid_partial_event_timeout(value: object) -> None:
+    with pytest.raises(ValueError, match='partial_event_timeout_seconds must be zero or a finite positive number'):
+        StreamConfig(partial_event_timeout_seconds=value)
+
+
+@pytest.mark.parametrize("value", [0, 1.5, True])
+def test_stream_config_rejects_invalid_sample_rate(value: object) -> None:
+    with pytest.raises(ValueError, match='sample_rate must be a positive integer'):
+        StreamConfig(sample_rate=value)
 
 
 @pytest.mark.parametrize("value", [0, True, float("inf"), float("nan")])
