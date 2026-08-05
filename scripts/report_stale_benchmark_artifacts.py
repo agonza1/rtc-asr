@@ -2848,7 +2848,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--detail-page-name",
         "--detail-basename",
+        "--detail-page-basename",
         "--detail-filename",
+        "--detail-page-filename",
         "--detail-file-name",
         "--detail-page-file-name",
         action="append",
@@ -2858,7 +2860,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--detail-page-name-contains",
         "--detail-basename-contains",
+        "--detail-page-basename-contains",
         "--detail-filename-contains",
+        "--detail-page-filename-contains",
         "--detail-file-name-contains",
         "--detail-page-file-name-contains",
         action="append",
