@@ -124,6 +124,7 @@ DEFAULT_PROTOCOLS = [
                     "transport": "raw_uds",
                     "uds_path": AppConfig().local_stt_raw_uds_path,
                 },
+                "path_env_fallbacks": ["LOCAL_STT_UDS_PATH"],
                 "frame_header_bytes": RAW_UDS_HEADER_BYTES,
                 "per_frame_overhead_bytes": RAW_UDS_HEADER_BYTES,
                 "max_payload_bytes": RAW_UDS_MAX_PAYLOAD_BYTES,
@@ -830,6 +831,7 @@ def test_health_reports_configured_raw_uds_experiment_path(tmp_path: Path) -> No
     assert raw_uds["enabled"] is False
     assert raw_uds["enable_env"] == "LOCAL_STT_RAW_UDS_ENABLED"
     assert raw_uds["path_env"] == "LOCAL_STT_RAW_UDS_PATH"
+    assert raw_uds["path_env_fallbacks"] == ["LOCAL_STT_UDS_PATH"]
     assert raw_uds["uds_path"] == str(raw_socket_path)
     assert raw_uds["plugin_config"] == {"transport": "raw_uds", "uds_path": str(raw_socket_path)}
     assert raw_uds["frame_format"] == "uint8_type_uint32_len_le"
