@@ -786,22 +786,30 @@ def test_render_json_summary_accepts_readable_size_sort_aliases() -> None:
     ]
 
     largest = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="largest-first"))
+    largest_to_smallest = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="largest-to-smallest")
+    )
     largest_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="largest-bytes-first"))
     top_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="top-bytes"))
     max_size = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="max-size"))
     max_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="max-bytes-first"))
     smallest = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="smallest-first"))
+    smallest_to_largest = json.loads(
+        render_json_summary(stale, groups=["slug"], summary_sort="smallest-to-largest")
+    )
     bottom_size = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="bottom-size"))
     smallest_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="smallest-bytes-first"))
     min_size = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="min-size"))
     min_bytes = json.loads(render_json_summary(stale, groups=["slug"], summary_sort="min-bytes-first"))
 
     assert [bucket["slug"] for bucket in largest["by_slug"]] == ["qwen", "base"]
+    assert [bucket["slug"] for bucket in largest_to_smallest["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in largest_bytes["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in top_bytes["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in max_size["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in max_bytes["by_slug"]] == ["qwen", "base"]
     assert [bucket["slug"] for bucket in smallest["by_slug"]] == ["base", "qwen"]
+    assert [bucket["slug"] for bucket in smallest_to_largest["by_slug"]] == ["base", "qwen"]
     assert [bucket["slug"] for bucket in bottom_size["by_slug"]] == ["base", "qwen"]
     assert [bucket["slug"] for bucket in smallest_bytes["by_slug"]] == ["base", "qwen"]
     assert [bucket["slug"] for bucket in min_size["by_slug"]] == ["base", "qwen"]
@@ -880,6 +888,7 @@ def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
         "biggest-first",
         "largest",
         "largest-first",
+        "largest-to-smallest",
         "largest-bytes",
         "largest-bytes-first",
         "top",
@@ -894,6 +903,7 @@ def test_parse_args_accepts_readable_size_summary_sort_aliases() -> None:
         "max-bytes-first",
         "smallest",
         "smallest-first",
+        "smallest-to-largest",
         "smallest-bytes",
         "smallest-bytes-first",
         "bottom",
@@ -1665,6 +1675,7 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "heaviest-first",
         "largest",
         "largest-first",
+        "largest-to-smallest",
         "largest-bytes",
         "largest-bytes-first",
         "top",
@@ -1681,6 +1692,7 @@ def test_parse_args_accepts_size_stale_sort_aliases() -> None:
         "lightest-first",
         "smallest",
         "smallest-first",
+        "smallest-to-largest",
         "smallest-bytes",
         "smallest-bytes-first",
         "bottom",
@@ -1761,6 +1773,7 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
     for alias in [
         "oldest",
         "oldest-first",
+        "oldest-to-newest",
         "earliest",
         "earliest-first",
         "measurement-time",
@@ -1777,6 +1790,7 @@ def test_parse_args_accepts_readable_measured_time_sort_aliases() -> None:
         "time-desc",
         "newest",
         "newest-first",
+        "newest-to-oldest",
         "latest",
         "latest-first",
         "recent",
@@ -3880,11 +3894,13 @@ def test_stale_artifacts_accepts_size_sort_aliases() -> None:
     descending = stale_artifacts(manifest, sort_by="disk-size-desc")
     ascending = stale_artifacts(manifest, sort_by="disk-size-asc")
     largest = stale_artifacts(manifest, sort_by="largest")
+    largest_to_smallest = stale_artifacts(manifest, sort_by="largest-to-smallest")
     file_size = stale_artifacts(manifest, sort_by="file-size")
     file_bytes_desc = stale_artifacts(manifest, sort_by="file-bytes-desc")
     heaviest = stale_artifacts(manifest, sort_by="heaviest")
     heaviest_first = stale_artifacts(manifest, sort_by="heaviest-first")
     smallest = stale_artifacts(manifest, sort_by="smallest")
+    smallest_to_largest = stale_artifacts(manifest, sort_by="smallest-to-largest")
     file_size_asc = stale_artifacts(manifest, sort_by="file-size-asc")
     lightest = stale_artifacts(manifest, sort_by="lightest")
     lightest_first = stale_artifacts(manifest, sort_by="lightest-first")
@@ -3894,6 +3910,10 @@ def test_stale_artifacts_accepts_size_sort_aliases() -> None:
         "benchmark-results/small.json",
     ]
     assert [entry["artifact_path"] for entry in largest] == [
+        "benchmark-results/large.json",
+        "benchmark-results/small.json",
+    ]
+    assert [entry["artifact_path"] for entry in largest_to_smallest] == [
         "benchmark-results/large.json",
         "benchmark-results/small.json",
     ]
@@ -3918,6 +3938,10 @@ def test_stale_artifacts_accepts_size_sort_aliases() -> None:
         "benchmark-results/large.json",
     ]
     assert [entry["artifact_path"] for entry in smallest] == [
+        "benchmark-results/small.json",
+        "benchmark-results/large.json",
+    ]
+    assert [entry["artifact_path"] for entry in smallest_to_largest] == [
         "benchmark-results/small.json",
         "benchmark-results/large.json",
     ]
@@ -6596,6 +6620,10 @@ def test_stale_artifacts_accepts_readable_measured_time_sort_aliases() -> None:
         "benchmark-results/older.json",
         "benchmark-results/newer.json",
     ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="oldest-to-newest")] == [
+        "benchmark-results/older.json",
+        "benchmark-results/newer.json",
+    ]
     assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="earliest-first")] == [
         "benchmark-results/older.json",
         "benchmark-results/newer.json",
@@ -6617,6 +6645,10 @@ def test_stale_artifacts_accepts_readable_measured_time_sort_aliases() -> None:
         "benchmark-results/newer.json",
     ]
     assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="newest")] == [
+        "benchmark-results/newer.json",
+        "benchmark-results/older.json",
+    ]
+    assert [entry["artifact_path"] for entry in stale_artifacts(manifest, sort_by="newest-to-oldest")] == [
         "benchmark-results/newer.json",
         "benchmark-results/older.json",
     ]
