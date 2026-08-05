@@ -695,6 +695,54 @@ def test_cli_creates_report_parent_directories(tmp_path: Path) -> None:
     assert "| decoder_compute_rtf | 0 |" in markdown
 
 
+def test_cli_accepts_readable_backend_comparison_aliases(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+        final_after_finalize_p95=90.0,
+        concurrency=2,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        final_after_finalize_p95=85.0,
+        concurrency=2,
+    )
+    output = tmp_path / "reports" / "comparison.json"
+    markdown_output = tmp_path / "reports" / "comparison.md"
+
+    status = compare_module.main(
+        [
+            "--baseline-backend",
+            "faster-whisper:rolling_window",
+            "--candidate-key",
+            "vosk:stateful",
+            "--comparison-output",
+            str(output),
+            "--markdown-report",
+            str(markdown_output),
+            "--min-ttfb-win-ms",
+            "50",
+            "--require-resources",
+            "--min-streams",
+            "2",
+            str(baseline),
+            str(candidate),
+        ]
+    )
+
+    comparison = json.loads(output.read_text(encoding="utf8"))
+    assert status == 0
+    assert comparison["candidate_status"] == "supported"
+    assert comparison["resource_metrics_required"] is True
+    assert comparison["min_concurrency"] == 2
+    assert "Candidate status: supported" in markdown_output.read_text(encoding="utf8")
+
+
 def test_compare_backends_keeps_candidate_experimental_for_missing_live_duration_or_compute_metrics(tmp_path: Path) -> None:
     baseline = write_artifact(
         tmp_path / "rolling.json",

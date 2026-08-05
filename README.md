@@ -252,6 +252,7 @@ Use `make benchmark-artifact-cleanup-plan` when you want the matching artifact a
 For direct script usage, `--repo-relative-paths` also accepts shorter cleanup aliases like `--repo-paths`, `--repo-relative`, `--relative-paths`, and `--relative`.
 The stale-artifact summary output flags also accept review-friendly aliases such as `--summary-json`, `--summary-json-output`, `--json-summary-output`, `--csv-summary`, `--csv-summary-output`, `--summary-csv-output`, `--markdown-summary`, `--markdown-summary-output`, `--summary-md`, `--md-summary`, `--summary-md-output`, and `--md-summary-output`.
 The Compose image size report accepts readable gate aliases including `--all-images-present`, `--any-image-present`, `--require-known-image-size`, `--require-known-image-created`, and `--unique-image-ids`.
+The Local STT backend comparison script accepts review-friendly aliases such as `--baseline-key`, `--baseline-backend`, `--candidate-key`, `--candidate-backend`, `--json-output`, `--comparison-output`, `--markdown-report`, `--report-output`, `--min-ttfb-win-ms`, `--min-first-interim-win-ms`, `--require-resources`, `--require-resource-evidence`, and `--min-streams`.
 
 ## Project Structure
 
