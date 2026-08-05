@@ -623,7 +623,7 @@ def test_records_to_markdown_reports_image_age_budget_status(monkeypatch: pytest
 
     assert "Image age budget: 14.0 days, 1 image older than budget." in markdown
     assert "Freshest present image age: fresh:image (1.0 days)" in markdown
-    assert "Oldest present image age: 17.0 days" in markdown
+    assert "Oldest present image age: old:image (17.0 days)" in markdown
     assert "Oldest image age budget utilization: 121.4%" in markdown
 
 
