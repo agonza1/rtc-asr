@@ -2542,6 +2542,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--current-path-name",
+        "--current-path-basename",
+        "--current-path-filename",
+        "--current-path-file-name",
         "--current-artifact-name",
         "--current-artifact-file-name",
         "--current-basename",
@@ -2553,6 +2556,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--current-path-name-contains",
+        "--current-path-basename-contains",
+        "--current-path-filename-contains",
+        "--current-path-file-name-contains",
         "--current-artifact-name-contains",
         "--current-artifact-file-name-contains",
         "--current-basename-contains",
