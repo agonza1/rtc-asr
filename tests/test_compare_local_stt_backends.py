@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
 import sys
 from pathlib import Path
+
+import pytest
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "compare_local_stt_backends.py"
@@ -189,6 +192,16 @@ def write_artifact(
         encoding="utf8",
     )
     return path
+
+
+def test_positive_int_rejects_non_integer_values() -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="integer greater than 0"):
+        compare_module.positive_int("two")
+
+
+def test_positive_int_rejects_non_positive_values() -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="greater than 0"):
+        compare_module.positive_int("0")
 
 
 def test_compare_backends_recommends_supported_when_candidate_clears_latency_gate(tmp_path: Path) -> None:
