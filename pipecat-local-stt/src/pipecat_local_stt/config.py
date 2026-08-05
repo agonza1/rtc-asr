@@ -66,9 +66,9 @@ class LocalSTTConfig:
             _require_boolean(getattr(self, field_name), field_name)
         if self.transport not in {"tcp_ws", "uds_ws", "raw_uds"}:
             raise ValueError("transport must be tcp_ws, uds_ws, or raw_uds")
-        if not self.url:
+        if not self.url or not self.url.strip():
             raise ValueError("url must not be empty")
-        if self.transport in {"uds_ws", "raw_uds"} and not self.uds_path:
+        if self.transport in {"uds_ws", "raw_uds"} and not (self.uds_path and self.uds_path.strip()):
             raise ValueError(f"uds_path is required when transport is {self.transport}")
         if self.transport == "tcp_ws" and self.uds_path is not None:
             raise ValueError("uds_path is only valid when transport is uds_ws or raw_uds")

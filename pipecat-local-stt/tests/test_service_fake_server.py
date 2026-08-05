@@ -464,8 +464,17 @@ def test_config_requires_uds_path_for_socket_transports() -> None:
         LocalSTTConfig(transport="uds_ws")
     with pytest.raises(ValueError, match="uds_path is required"):
         LocalSTTConfig(transport="raw_uds")
+    with pytest.raises(ValueError, match="uds_path is required"):
+        LocalSTTConfig(transport="uds_ws", uds_path="  ")
+    with pytest.raises(ValueError, match="uds_path is required"):
+        LocalSTTConfig(transport="raw_uds", uds_path="  ")
     with pytest.raises(ValueError, match="only valid"):
         LocalSTTConfig(uds_path="/tmp/rtc-asr.sock")
+
+
+def test_config_rejects_blank_websocket_url() -> None:
+    with pytest.raises(ValueError, match="url must not be empty"):
+        LocalSTTConfig(url="  ")
 
 
 def test_default_connect_uses_tcp_websocket_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
