@@ -714,7 +714,7 @@ def test_local_stt_config_from_env_selects_uds_ws(monkeypatch) -> None:
 
 
 def test_local_stt_config_from_env_accepts_readable_transport_alias(monkeypatch) -> None:
-    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "unix domain websocket")
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "unix")
     monkeypatch.setenv("LOCAL_STT_UDS_PATH", "/tmp/stt.sock")
 
     config = LocalSTTConfig.from_env()
