@@ -292,6 +292,18 @@ def test_parse_args_accepts_short_summary_size_filter_aliases() -> None:
     assert args.summary_max_size_bytes == 2048
 
 
+def test_parse_args_accepts_readable_summary_size_filter_aliases() -> None:
+    min_args = parse_args(["--summary-at-least-size", "1 KiB"])
+    minimum_args = parse_args(["--summary-minimum-size", "2 KiB"])
+    max_args = parse_args(["--summary-at-most-size", "3 KiB"])
+    maximum_args = parse_args(["--summary-maximum-size", "4 KiB"])
+
+    assert min_args.summary_min_size_bytes == 1024
+    assert minimum_args.summary_min_size_bytes == 2048
+    assert max_args.summary_max_size_bytes == 3072
+    assert maximum_args.summary_max_size_bytes == 4096
+
+
 def test_parse_args_accepts_short_artifact_size_filter_aliases() -> None:
     args = parse_args(["--min-size", "1 KiB", "--max-size", "2 KiB"])
     readable_args = parse_args(["--at-least-size", "1 KiB", "--at-most-size", "2 KiB"])

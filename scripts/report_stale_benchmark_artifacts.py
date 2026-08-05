@@ -3119,6 +3119,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--summary-min-size",
         "--summary-min-size-bytes",
+        "--summary-minimum-size",
+        "--summary-at-least-size",
         dest="summary_min_size_bytes",
         type=parse_size_bytes,
         default=None,
@@ -3130,6 +3132,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--summary-max-size",
         "--summary-max-size-bytes",
+        "--summary-maximum-size",
+        "--summary-at-most-size",
         dest="summary_max_size_bytes",
         type=parse_size_bytes,
         default=None,
