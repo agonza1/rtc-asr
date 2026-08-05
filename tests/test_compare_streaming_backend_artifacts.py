@@ -593,10 +593,29 @@ def test_parse_args_accepts_review_friendly_path_aliases() -> None:
     assert args.output == Path("comparison.json")
 
 
+def test_parse_args_accepts_review_friendly_gate_and_label_aliases() -> None:
+    args = compare_module.parse_args([
+        "--baseline-json",
+        "baseline.json",
+        "--candidate-json",
+        "candidate.json",
+        "--baseline-label",
+        "rolling window",
+        "--candidate-backend",
+        "Vosk stateful",
+        "--latency-gate-percent",
+        "15",
+    ])
+
+    assert args.baseline_name == "rolling window"
+    assert args.candidate_name == "Vosk stateful"
+    assert args.latency_win_percent == 15.0
+
+
 def test_main_writes_comparison_report(tmp_path) -> None:
     baseline = tmp_path / "baseline.json"
     candidate = tmp_path / "candidate.json"
-    output = tmp_path / "report.json"
+    output = tmp_path / "reports" / "report.json"
     baseline.write_text(json.dumps(artifact(
         backend="faster-whisper",
         decoder_mode="rolling_window",
