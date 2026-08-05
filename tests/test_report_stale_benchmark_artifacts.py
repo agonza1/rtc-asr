@@ -5180,6 +5180,8 @@ def test_parse_args_accepts_short_summary_output_aliases() -> None:
     assert parse_args(["--summary-csv-output"]).summary_csv is True
     assert parse_args(["--summary-md"]).summary_markdown is True
     assert parse_args(["--md-summary"]).summary_markdown is True
+    assert parse_args(["--summary-md-output"]).summary_markdown is True
+    assert parse_args(["--md-summary-output"]).summary_markdown is True
 
 
 def test_parse_args_accepts_summary_csv_output_flag() -> None:
