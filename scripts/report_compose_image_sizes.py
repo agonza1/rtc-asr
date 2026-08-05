@@ -840,7 +840,11 @@ def records_to_markdown(
             if freshest_age_days is not None:
                 rows.append(f"Freshest present image age: {freshest_age_record.tag} ({freshest_age_days:.1f} days)")
         if oldest_age_days is not None:
-            rows.append(f"Oldest present image age: {oldest_age_days:.1f} days")
+            oldest_age_record = oldest_image_age_record(records)
+            if oldest_age_record is not None:
+                rows.append(f"Oldest present image age: {oldest_age_record.tag} ({oldest_age_days:.1f} days)")
+            else:
+                rows.append(f"Oldest present image age: {oldest_age_days:.1f} days")
             if max_age_days > 0:
                 rows.append(f"Oldest image age budget utilization: {oldest_age_days / max_age_days * 100:.1f}%")
     if missing:
