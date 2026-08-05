@@ -62,11 +62,14 @@ class LocalSTTConfig:
         transport = _normalize_local_stt_transport(os.getenv("LOCAL_STT_TRANSPORT", defaults.transport))
         if transport not in {"tcp_ws", "uds_ws", "raw_uds"}:
             raise ValueError("LOCAL_STT_TRANSPORT must be 'tcp_ws', 'uds_ws', or 'raw_uds'")
-        uds_path_env = "LOCAL_STT_RAW_UDS_PATH" if transport == "raw_uds" else "LOCAL_STT_UDS_PATH"
+        if transport == "raw_uds":
+            uds_path = os.getenv("LOCAL_STT_RAW_UDS_PATH") or os.getenv("LOCAL_STT_UDS_PATH")
+        else:
+            uds_path = os.getenv("LOCAL_STT_UDS_PATH")
         return cls(
             transport=transport,
             url=os.getenv("LOCAL_STT_URL", defaults.url),
-            uds_path=os.getenv(uds_path_env),
+            uds_path=uds_path,
         )
 
 
