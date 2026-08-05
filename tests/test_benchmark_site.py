@@ -22,6 +22,7 @@ build_warning_summary = manifest_module.build_warning_summary
 comparable_manifest = manifest_module.comparable_manifest
 extract_system_signals = manifest_module.extract_system_signals
 extract_experimental_transports = manifest_module.extract_experimental_transports
+streaming_frame_drop_count = manifest_module.streaming_frame_drop_count
 load_catalog = manifest_module.load_catalog
 render_manifest = manifest_module.render_manifest
 parse_args = manifest_module.parse_args
@@ -48,6 +49,7 @@ telemetry_coverage_text = prerender_module.telemetry_coverage_text
 extract_prerender_system_signals = prerender_module.extract_system_signals
 detail_variable_measured = prerender_module.detail_variable_measured
 rss_delta_mb = prerender_module.rss_delta_mb
+stream_frame_drop_count = prerender_module.stream_frame_drop_count
 render_sitemap = prerender_module.render_sitemap
 render_robots = prerender_module.render_robots
 render_llms = prerender_module.render_llms
@@ -736,10 +738,34 @@ def test_detail_structured_data_lists_low_power_measurements_when_recorded() -> 
     assert '"thermal observation duration"' in detail_html
 
 
+def test_detail_page_surfaces_streaming_frame_drop_metadata() -> None:
+    detail_html = render_detail_page(
+        {
+            "label": "Demo artifact",
+            "artifact_path": "benchmark-results/demo-artifact-2026-06-14.json",
+            "measured_at": "2026-06-14T00:00:00Z",
+            "rest": {},
+            "streaming": {},
+            "contract": {},
+            "derived": {},
+        },
+        {"streaming": {"bridge": {"source_frames_dropped": 2}}},
+    )
+
+    assert stream_frame_drop_count({}, {"summary": {"audio_frames_dropped": {"p95": 3.0}}}) == 3.0
+    assert "Dropped frames 2" in detail_html
+
+
 def test_manifest_preserves_energy_per_audio_second_metadata() -> None:
     system = extract_system_signals({"metrics": {"energy_per_audio_second_j": 2.4}})
 
     assert system["energy_per_audio_second_j"] == 2.4
+
+
+def test_manifest_preserves_streaming_frame_drop_metadata() -> None:
+    assert streaming_frame_drop_count({"streaming": {"audio_frames_dropped": 2}}) == 2
+    assert streaming_frame_drop_count({"streaming": {"bridge": {"source_frames_dropped": 3}}}) == 3
+    assert streaming_frame_drop_count({"summary": {"audio_frames_dropped": {"p95": 4.0}}}) == 4.0
 
 
 def test_manifest_preserves_nested_memory_metadata_aliases() -> None:

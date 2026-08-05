@@ -754,6 +754,18 @@ def summarize_warnings(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def streaming_frame_drop_count(payload: dict[str, Any]) -> Any:
+    streaming = payload.get("streaming") or {}
+    summary = payload.get("summary") or {}
+    bridge = streaming.get("bridge") or {}
+    return first_defined(
+        streaming.get("audio_frames_dropped"),
+        bridge.get("source_frames_dropped"),
+        nested_value(summary, "audio_frames_dropped", "p95"),
+        nested_value(summary, "source_frames_dropped", "p95"),
+    )
+
+
 def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     backend = payload["backend"]
     rest = payload["rest"]
@@ -794,6 +806,7 @@ def build_asr_entry(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
             "partial_transcript_churn_word_mean": streaming.get("partial_transcript_churn_word_mean"),
             "late_partial_events": streaming.get("late_partial_events"),
             "late_partial_ratio": streaming.get("late_partial_ratio"),
+            "audio_frames_dropped": streaming_frame_drop_count(payload),
             "final_mean_ms": streaming.get("time_to_final_from_audio_end_mean_ms", streaming.get("final_mean_ms", streaming.get("time_to_final_from_audio_end_ms", streaming.get("final_ms")))),
             "final_p95_ms": streaming.get("time_to_final_from_audio_end_p95_ms", streaming.get("final_p95_ms", streaming.get("time_to_final_from_audio_end_ms", streaming.get("final_ms")))),
         },
@@ -1124,6 +1137,7 @@ def build_track_entry(track: dict[str, Any], artifact: tuple[str, Path, dict[str
             "partial_gap_p95_ms": None,
             "late_partial_events": None,
             "late_partial_ratio": None,
+            "audio_frames_dropped": None,
             "final_mean_ms": None,
             "final_p95_ms": None,
         },

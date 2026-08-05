@@ -700,6 +700,20 @@ def detail_variable_measured(system_signals: dict[str, Any], warnings: dict[str,
     return variables
 
 
+def stream_frame_drop_count(entry: dict[str, Any], artifact_payload: dict[str, Any] | None = None) -> Any:
+    streaming = entry.get("streaming") or {}
+    payload_streaming = (artifact_payload or {}).get("streaming") or {}
+    payload_summary = (artifact_payload or {}).get("summary") or {}
+    payload_bridge = payload_streaming.get("bridge") or {}
+    return first_defined(
+        streaming.get("audio_frames_dropped"),
+        payload_streaming.get("audio_frames_dropped"),
+        payload_bridge.get("source_frames_dropped"),
+        nested_value(payload_summary, "audio_frames_dropped", "p95"),
+        nested_value(payload_summary, "source_frames_dropped", "p95"),
+    )
+
+
 def citation_text(entry: dict[str, Any]) -> str:
     label = entry.get("label") or "rtc-asr benchmark artifact"
     artifact_name = Path(entry.get("artifact_path") or "").name or "unknown artifact"
@@ -892,6 +906,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
     thermal_note = format_system_text(system_signals.get("thermal_observation") or "Artifact does not record sustained thermal notes yet.")
     telemetry_coverage = telemetry_coverage_text(system_signals)
     telemetry_count, telemetry_missing = telemetry_coverage.split(". ", 1)
+    dropped_frame_count = stream_frame_drop_count(entry, artifact_payload)
     return f"""<!doctype html>
 <html lang="en">
   <head>
@@ -958,7 +973,7 @@ def render_detail_page(entry: dict[str, Any], artifact_payload: dict[str, Any] |
         <article class="card"><span class="label">Overall score</span><div class="value">{score}</div><p>Confidence {confidence}</p></article>
         <article class="card"><span class="label">TTFB / first partial</span><div class="value">{format_ms(streaming.get("first_partial_end_to_end_mean_ms"))}</div><p>P95 {format_ms(streaming.get("first_partial_end_to_end_p95_ms"))}</p></article>
         <article class="card"><span class="label">Partial cadence</span><div class="value">{format_ms(partial_backlog_mean(entry))}</div><p>Time gap between visible partial transcript updates after streaming is underway. P95 {format_ms(partial_backlog_p95(entry))} . Late ratio {format_percent(streaming.get("late_partial_ratio"))}</p></article>
-        <article class="card"><span class="label">Transcript stability</span><div class="value">{format_ratio(streaming.get("partial_transcript_churn_word_mean"))}</div><p>Mean word churn across interim transcripts. Character churn {format_ratio(streaming.get("partial_transcript_churn_char_mean"))} · Late partial events {format_count(streaming.get("late_partial_events"))}</p></article>
+        <article class="card"><span class="label">Transcript stability</span><div class="value">{format_ratio(streaming.get("partial_transcript_churn_word_mean"))}</div><p>Mean word churn across interim transcripts. Character churn {format_ratio(streaming.get("partial_transcript_churn_char_mean"))} · Late partial events {format_count(streaming.get("late_partial_events"))} · Dropped frames {format_count(dropped_frame_count)}</p></article>
         <article class="card"><span class="label">Audio-end finalization</span><div class="value">{format_ms(streaming.get("final_mean_ms"))}</div><p>P95 {format_ms(streaming.get("final_p95_ms"))}</p></article>
         <article class="card"><span class="label">REST throughput context</span><div class="value">{format_ms(rest.get("mean_ms"))}</div><p>P95 {format_ms(rest.get("p95_ms"))} · RTF {format_ratio(rest.get("rtf_mean"))}</p></article>
         <article class="card"><span class="label">Transport contract</span><div class="value">{html.escape(str(transport_value))}</div><p>{contract_value} · Window {contract.get("partial_window_seconds") or 'n/a'} s · Interval {contract.get("partial_interval_chunks") or 'n/a'} · Sample rate {contract.get("sample_rate") or 'n/a'} Hz · Binary {contract.get("binary_frames") if contract.get("binary_frames") is not None else 'n/a'}</p><p>UDS path {html.escape(str(uds_path_value))} · Frame format {html.escape(str(frame_format_value))} · Header bytes {html.escape(str(frame_header_value if frame_header_value is not None else 'n/a'))}</p></article>
