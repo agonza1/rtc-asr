@@ -160,6 +160,8 @@ def _normalize_local_stt_transport(value: str) -> str:
         "ws_uds": "uds_ws",
         "ws_unix": "uds_ws",
         "ws_unix_socket": "uds_ws",
+        "unix": "uds_ws",
+        "unix_domain": "uds_ws",
         "unix_ws": "uds_ws",
         "unix_websocket": "uds_ws",
         "unix_websocket_transport": "uds_ws",
