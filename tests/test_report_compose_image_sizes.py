@@ -61,6 +61,43 @@ def test_records_to_markdown_escapes_pipe_cells() -> None:
     assert "| registry.local/realtime-asr:branch\\|preview | yes | 100.0 | sha\\|preview | 2026-07-31T19:00:00Z\\|main |" in markdown
 
 
+def test_records_to_markdown_escapes_pipe_in_prose_summary() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="registry.local/realtime-asr:branch|preview",
+            image_id="shared|sha",
+            size_bytes=300_000_000,
+            created="2026-07-31T19:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="registry.local/realtime-asr:alias|preview",
+            image_id="shared|sha",
+            size_bytes=None,
+            created=None,
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="registry.local/realtime-asr:missing|preview",
+            image_id=None,
+            size_bytes=None,
+            created=None,
+            present=False,
+        ),
+    ]
+
+    markdown = reporter.records_to_markdown(records)
+
+    assert "Largest present image: registry.local/realtime-asr:branch\\|preview (300.0 MB)" in markdown
+    assert "Newest present image: registry.local/realtime-asr:branch\\|preview (2026-07-31T19:00:00Z)" in markdown
+    assert "Missing images: registry.local/realtime-asr:missing\\|preview" in markdown
+    assert "Images with unknown size: 1/3 (33.3%): registry.local/realtime-asr:alias\\|preview" in markdown
+    assert (
+        "Duplicate image IDs: shared\\|sha: registry.local/realtime-asr:branch\\|preview, "
+        "registry.local/realtime-asr:alias\\|preview"
+    ) in markdown
+
+
 def test_records_to_json_includes_bytes_decimal_megabytes_and_age(monkeypatch: pytest.MonkeyPatch) -> None:
     record = reporter.ImageSizeRecord(
         tag="realtime-asr:parakeet-nemo-cpu",
