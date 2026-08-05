@@ -400,6 +400,60 @@ def test_compare_artifacts_reads_nested_resource_metric_aliases() -> None:
     assert report["recommendation"]["resource_regressions"] == ["cpu_utilization_percent"]
 
 
+def test_compare_artifacts_reads_manifest_canonical_resource_aliases() -> None:
+    baseline = artifact(
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_partial=500.0,
+        final=300.0,
+        transcript="hello world",
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+        package_power_watts=None,
+    )
+    candidate = artifact(
+        backend="vosk",
+        decoder_mode="stateful",
+        first_partial=300.0,
+        final=200.0,
+        transcript="hello world",
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+        package_power_watts=None,
+    )
+    baseline["environment"]["cpu_usage_percent"] = "100%"
+    baseline["metrics"] = {
+        "memory": {"max_rss_mb": "800.0"},
+        "power": {"package_watts": "5.0"},
+    }
+    candidate["environment"]["cpu_usage_percent"] = "140%"
+    candidate["metrics"] = {
+        "memory": {"max_rss_mb": 900.0},
+        "power": {"package_watts": 5.5},
+    }
+
+    report = compare_module.compare_artifacts(
+        baseline=baseline,
+        candidate=candidate,
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["baseline"]["resource_metrics"] == {
+        "peak_rss_mb": 800.0,
+        "cpu_utilization_percent": 100.0,
+        "package_power_watts": 5.0,
+    }
+    assert report["candidate"]["resource_metrics"] == {
+        "peak_rss_mb": 900.0,
+        "cpu_utilization_percent": 140.0,
+        "package_power_watts": 5.5,
+    }
+    assert report["recommendation"]["resource_regressions"] == ["cpu_utilization_percent"]
+
+
 def test_compare_artifacts_blocks_concurrency_mismatch() -> None:
     report = compare_module.compare_artifacts(
         baseline=artifact(
