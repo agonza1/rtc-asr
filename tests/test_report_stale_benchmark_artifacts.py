@@ -155,7 +155,8 @@ def test_summary_groups_accept_current_path_aliases() -> None:
     assert normalize_summary_groups(
         [
             (
-                "current-path, current-artifact-path, current-path-name, current-artifact-file-name, "
+                "current-path, current-artifact-path, current-file-path, current-artifact-file-path, "
+                "current-path-name, current-artifact-file-name, "
                 "current-path-stem, current-artifact-file-stem, current-file-stem"
             )
         ]
@@ -184,19 +185,22 @@ def test_summary_groups_accept_filename_aliases() -> None:
     assert normalize_summary_groups(
         [
             (
-                "filename, file-name, basename, artifact-filename, artifact-basename, artifact-file-name, path-name, "
-                "path-basename, path-filename, path-file-name, artifact-path-name, "
+                "filename, file-name, basename, artifact-filename, artifact-basename, artifact-file-name, "
+                "artifact-file-path, path-name, path-basename, path-filename, path-file-name, artifact-path-name, "
                 "artifact-path-basename, artifact-path-filename, artifact-path-file-name"
             ),
             "current-filename, current-basename, current-file-name",
             (
-                "detail-filename, detail-page-filename, detail-basename, detail-page-basename, "
+                "detail-file-path, detail-page-file-path, detail-filename, detail-page-filename, "
+                "detail-basename, detail-page-basename, "
                 "detail-file-name, detail-page-file-name"
             ),
         ]
     ) == {
+        "artifact-path",
         "artifact-name",
         "current-artifact-name",
+        "detail-page",
         "detail-page-name",
     }
 
