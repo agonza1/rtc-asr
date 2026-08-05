@@ -766,14 +766,14 @@ def records_to_markdown(
         default=None,
     )
     if largest and largest.size_mb is not None:
-        rows.append(f"Largest present image: {largest.tag} ({largest.size_mb:.1f} MB)")
+        rows.append(f"Largest present image: {format_tag_mb(largest.tag, largest.size_mb)}")
     smallest = min(
         (record for record in records if record.present and record.size_bytes is not None),
         key=lambda record: record.size_bytes or 0,
         default=None,
     )
     if smallest and smallest.size_mb is not None:
-        rows.append(f"Smallest present image: {smallest.tag} ({smallest.size_mb:.1f} MB)")
+        rows.append(f"Smallest present image: {format_tag_mb(smallest.tag, smallest.size_mb)}")
     records_with_created = [
         (created, record)
         for record in records
@@ -782,9 +782,9 @@ def records_to_markdown(
     newest = max(records_with_created, key=lambda item: item[0], default=(None, None))[1]
     oldest = min(records_with_created, key=lambda item: item[0], default=(None, None))[1]
     if newest:
-        rows.append(f"Newest present image: {newest.tag} ({newest.created})")
+        rows.append(f"Newest present image: {format_tag_value(newest.tag, newest.created)}")
     if oldest:
-        rows.append(f"Oldest present image: {oldest.tag} ({oldest.created})")
+        rows.append(f"Oldest present image: {format_tag_value(oldest.tag, oldest.created)}")
     present_sizes = [record.size_bytes for record in records if record.present and record.size_bytes is not None]
     if present_sizes:
         average_size_mb = sum(present_sizes) / len(present_sizes) / 1_000_000
@@ -848,7 +848,7 @@ def records_to_markdown(
             if max_age_days > 0:
                 rows.append(f"Oldest image age budget utilization: {oldest_age_days / max_age_days * 100:.1f}%")
     if missing:
-        rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
+        rows.append("Missing images: {tags}".format(tags=markdown_cell(", ".join(missing))))
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
     if unknown_size:
         rows.append(
@@ -856,7 +856,7 @@ def records_to_markdown(
                 count=len(unknown_size),
                 requested=len(records),
                 percent=len(unknown_size) / len(records) * 100 if records else 0.0,
-                tags=", ".join(unknown_size),
+                tags=markdown_cell(", ".join(unknown_size)),
             )
         )
     unknown_created = [record.tag for record in records if record.present and parse_created_datetime(record.created) is None]
@@ -866,7 +866,7 @@ def records_to_markdown(
                 count=len(unknown_created),
                 requested=len(records),
                 percent=len(unknown_created) / len(records) * 100 if records else 0.0,
-                tags=", ".join(unknown_created),
+                tags=markdown_cell(", ".join(unknown_created)),
             )
         )
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
@@ -881,13 +881,7 @@ def records_to_markdown(
     if duplicate_image_id_groups:
         rows.append(
             "Duplicate image IDs: {groups}".format(
-                groups="; ".join(
-                    "{image_id}: {tags}".format(
-                        image_id=group["image_id"],
-                        tags=", ".join(group["tags"]),
-                    )
-                    for group in duplicate_image_id_groups
-                )
+                groups=markdown_cell(format_duplicate_image_id_groups(duplicate_image_id_groups))
             )
         )
     return "\n".join(rows)
