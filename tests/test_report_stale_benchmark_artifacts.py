@@ -2777,6 +2777,14 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
             "stale",
             "--detail-page-path-contains",
             "older",
+            "--detail-page-basename",
+            "stale.html",
+            "--detail-page-filename",
+            "older.html",
+            "--detail-page-basename-contains",
+            "stale",
+            "--detail-page-filename-contains",
+            "older",
             "--detail-dir",
             "benchmark-results/pages",
             "--detail-directory",
@@ -2846,6 +2854,8 @@ def test_parse_args_accepts_detail_path_filter_aliases() -> None:
 
     assert args.detail_page == ["benchmark-results/pages/stale.html", "benchmark-results/pages/older.html"]
     assert args.detail_page_contains == ["stale", "older"]
+    assert args.detail_page_name == ["stale.html", "older.html"]
+    assert args.detail_page_name_contains == ["stale", "older"]
     assert args.detail_page_dir == [
         "benchmark-results/pages",
         "benchmark-results/legacy-pages",
