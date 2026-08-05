@@ -88,6 +88,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="Optional path for JSON comparison output",
     )
+    parser.add_argument(
+        "--markdown-output",
+        "--markdown-report",
+        "--report-output",
+        "--md-output",
+        dest="markdown_output",
+        type=Path,
+        help="Optional path for a Markdown comparison report",
+    )
     return parser.parse_args(argv)
 
 
@@ -531,6 +540,101 @@ def describe_artifact(artifact: dict[str, Any], path: Path, name: str) -> dict[s
     }
 
 
+def format_markdown_report(report: dict[str, Any]) -> str:
+    recommendation = report["recommendation"]
+    lines = [
+        "# Local STT v1 Streaming Backend Artifact Comparison",
+        "",
+        f"Baseline: {report['baseline']['name']} ({report['baseline']['artifact_path']})",
+        f"Candidate: {report['candidate']['name']} ({report['candidate']['artifact_path']})",
+        f"Decision: {recommendation['decision']}",
+        f"Rationale: {recommendation['rationale']}",
+        f"Batched transcription role: {recommendation['batched_transcription_role']}",
+        f"Latency win gate: {recommendation['latency_win_percent_gate']}%",
+        "",
+        "Live latency comparison:",
+        "",
+        "| Metric | Baseline p95 | Candidate p95 | Candidate improvement |",
+        "| --- | ---: | ---: | ---: |",
+    ]
+    for metric, values in report["comparison"].items():
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    metric,
+                    _format_optional_number(values["baseline_p95"]),
+                    _format_optional_number(values["candidate_p95"]),
+                    _format_percent(values["candidate_improvement_percent"]),
+                ]
+            )
+            + " |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "Resource comparison:",
+            "",
+            "| Metric | Baseline | Candidate | Candidate increase |",
+            "| --- | ---: | ---: | ---: |",
+        ]
+    )
+    for metric, values in report["resource_comparison"].items():
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    metric,
+                    _format_optional_number(values["baseline"]),
+                    _format_optional_number(values["candidate"]),
+                    _format_percent(values["candidate_increase_percent"]),
+                ]
+            )
+            + " |"
+        )
+
+    sanity = report["transcript_sanity"]
+    lines.extend(
+        [
+            "",
+            "Transcript sanity:",
+            "",
+            f"- Exact match: {sanity['exact_match']}",
+            f"- Word overlap ratio: {_format_optional_number(sanity['word_overlap_ratio'])}",
+            f"- Candidate final transcript runs: {sanity['candidate_sample_count'] - sanity['candidate_missing_final_transcript_runs']}/{sanity['candidate_sample_count']}",
+            f"- Candidate expected transcript mismatches: {_format_optional_number(sanity['candidate_expected_mismatch_runs'])}",
+            "",
+            "Blocking gaps:",
+        ]
+    )
+    blockers = recommendation["blocking_gaps"] + recommendation["transcript_blocking_gaps"]
+    if recommendation["resource_regressions"]:
+        blockers.extend(f"resource_regression:{metric}" for metric in recommendation["resource_regressions"])
+    if blockers:
+        lines.extend(f"- {blocker}" for blocker in blockers)
+    else:
+        lines.append("- none")
+    return "\n".join(lines) + "\n"
+
+
+def _format_optional_number(value: float | int | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:g}"
+
+
+def _format_percent(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value:g}%"
+
+
+def write_report(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf8")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     report = compare_artifacts(
@@ -544,10 +648,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     output = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(output, encoding="utf8")
+        write_report(args.output, output)
     else:
         print(output, end="")
+    if args.markdown_output:
+        write_report(args.markdown_output, format_markdown_report(report))
     return 0
 
 

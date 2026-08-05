@@ -607,6 +607,20 @@ def test_parse_args_accepts_json_report_output_aliases() -> None:
         assert args.output == Path("report.json")
 
 
+def test_parse_args_accepts_markdown_report_output_aliases() -> None:
+    for alias in ("--markdown-output", "--markdown-report", "--report-output", "--md-output"):
+        args = compare_module.parse_args([
+            "--baseline-json",
+            "baseline.json",
+            "--candidate-json",
+            "candidate.json",
+            alias,
+            "report.md",
+        ])
+
+        assert args.markdown_output == Path("report.md")
+
+
 def test_parse_args_accepts_review_friendly_gate_and_label_aliases() -> None:
     args = compare_module.parse_args([
         "--baseline-json",
@@ -660,3 +674,41 @@ def test_main_writes_comparison_report(tmp_path) -> None:
     saved = json.loads(output.read_text())
     assert saved["kind"] == "local-stt-v1-streaming-backend-comparison"
     assert saved["candidate"]["artifact_path"] == str(candidate)
+
+
+def test_main_writes_markdown_comparison_report(tmp_path) -> None:
+    baseline = tmp_path / "baseline.json"
+    candidate = tmp_path / "candidate.json"
+    markdown_output = tmp_path / "reports" / "report.md"
+    baseline.write_text(json.dumps(artifact(
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_partial=500.0,
+        final=300.0,
+        transcript="hello world",
+    )))
+    candidate.write_text(json.dumps(artifact(
+        backend="vosk",
+        decoder_mode="stateful",
+        first_partial=300.0,
+        final=200.0,
+        transcript="hello world",
+    )))
+
+    exit_code = compare_module.main([
+        "--baseline-json",
+        str(baseline),
+        "--candidate-json",
+        str(candidate),
+        "--candidate-name",
+        "Vosk stateful",
+        "--markdown-report",
+        str(markdown_output),
+    ])
+
+    assert exit_code == 0
+    markdown = markdown_output.read_text(encoding="utf8")
+    assert "# Local STT v1 Streaming Backend Artifact Comparison" in markdown
+    assert "Decision: support_low_latency_backend" in markdown
+    assert "| time_to_first_interim_ms | 500 | 300 | 40% |" in markdown
+    assert "- none" in markdown
