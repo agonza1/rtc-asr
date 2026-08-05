@@ -935,6 +935,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--markdown-summary",
         "--summary-md",
         "--md-summary",
+        "--summary-table",
+        "--table-summary",
         dest="summary_markdown",
         action="store_true",
         help="Emit only the aggregate image count and size summary as a compact markdown table.",

@@ -1169,6 +1169,8 @@ def test_parse_args_accepts_markdown_summary_aliases() -> None:
     assert reporter.parse_args(["--markdown-summary"]).summary_markdown is True
     assert reporter.parse_args(["--summary-md"]).summary_markdown is True
     assert reporter.parse_args(["--md-summary"]).summary_markdown is True
+    assert reporter.parse_args(["--summary-table"]).summary_markdown is True
+    assert reporter.parse_args(["--table-summary"]).summary_markdown is True
 
 
 @pytest.mark.parametrize(
