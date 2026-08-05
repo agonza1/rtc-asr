@@ -405,16 +405,22 @@ def records_summary(
         over_age = records_over_age_budget(records, max_age_days, now=now)
         oldest_age_record = oldest_image_age_record(records, now=now)
         freshest_age_record = freshest_image_age_record(records, now=now)
+        oldest_age = oldest_image_age_days(records, now=now)
         summary.update(
             {
                 "image_age_budget_days": max_age_days,
+                "oldest_image_age_budget_utilization_percent": (
+                    round(oldest_age / max_age_days * 100, 1)
+                    if oldest_age is not None and max_age_days > 0
+                    else None
+                ),
                 "over_age": bool(over_age),
                 "over_age_count": len(over_age),
                 "over_age_tags": [record.tag for record in over_age],
                 "freshest_image_age_tag": freshest_age_record.tag if freshest_age_record else None,
                 "freshest_image_age_days": freshest_image_age_days(records, now=now),
                 "oldest_image_age_tag": oldest_age_record.tag if oldest_age_record else None,
-                "oldest_image_age_days": oldest_image_age_days(records, now=now),
+                "oldest_image_age_days": oldest_age,
             }
         )
     return summary
@@ -518,9 +524,10 @@ def records_summary_to_markdown(
         )
     if max_age_days is not None:
         rows.append(
-            "| Image age budget | {budget:.1f} days; {count} over; freshest {freshest}; oldest {oldest} |".format(
+            "| Image age budget | {budget:.1f} days; {count} over; {utilization} oldest utilization; freshest {freshest}; oldest {oldest} |".format(
                 budget=summary["image_age_budget_days"],
                 count=summary["over_age_count"],
+                utilization=format_optional_percent(summary["oldest_image_age_budget_utilization_percent"]),
                 freshest=format_tag_days(summary["freshest_image_age_tag"], summary["freshest_image_age_days"]),
                 oldest=format_tag_days(summary["oldest_image_age_tag"], summary["oldest_image_age_days"]),
             )
@@ -834,6 +841,8 @@ def records_to_markdown(
                 rows.append(f"Freshest present image age: {freshest_age_record.tag} ({freshest_age_days:.1f} days)")
         if oldest_age_days is not None:
             rows.append(f"Oldest present image age: {oldest_age_days:.1f} days")
+            if max_age_days > 0:
+                rows.append(f"Oldest image age budget utilization: {oldest_age_days / max_age_days * 100:.1f}%")
     if missing:
         rows.append("Missing images: {tags}".format(tags=", ".join(missing)))
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
