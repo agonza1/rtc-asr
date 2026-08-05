@@ -680,6 +680,27 @@ def test_local_stt_config_from_env_selects_raw_uds(monkeypatch) -> None:
     assert config.uds_path == "/tmp/stt.raw.sock"
 
 
+def test_local_stt_config_from_env_accepts_generic_socket_path_for_raw_uds(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "raw_uds")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", "/tmp/stt.raw.sock")
+
+    config = LocalSTTConfig.from_env()
+
+    assert config.transport == "raw_uds"
+    assert config.uds_path == "/tmp/stt.raw.sock"
+
+
+def test_local_stt_config_from_env_prefers_raw_specific_socket_path(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "raw_uds")
+    monkeypatch.setenv("LOCAL_STT_UDS_PATH", "/tmp/stt.generic.sock")
+    monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", "/tmp/stt.raw.sock")
+
+    config = LocalSTTConfig.from_env()
+
+    assert config.transport == "raw_uds"
+    assert config.uds_path == "/tmp/stt.raw.sock"
+
+
 def test_local_stt_config_from_env_selects_uds_ws(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_STT_TRANSPORT", "uds_ws")
     monkeypatch.setenv("LOCAL_STT_URL", "ws://example.test/v1/stt/stream")
