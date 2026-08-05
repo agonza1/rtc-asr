@@ -915,6 +915,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--summary-only",
         "--json-summary",
         "--summary-json",
+        "--json-summary-output",
         dest="summary_only",
         action="store_true",
         help="Emit only the aggregate image count and size summary as JSON.",
@@ -922,6 +923,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--summary-csv",
         "--csv-summary",
+        "--summary-csv-output",
         dest="summary_csv",
         action="store_true",
         help="Emit only the aggregate image count and size summary as a single CSV row.",
@@ -929,6 +931,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--summary-markdown",
         "--markdown-summary",
+        "--summary-md",
+        "--md-summary",
         dest="summary_markdown",
         action="store_true",
         help="Emit only the aggregate image count and size summary as a compact markdown table.",
