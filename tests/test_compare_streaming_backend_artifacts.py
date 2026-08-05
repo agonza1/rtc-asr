@@ -608,7 +608,15 @@ def test_parse_args_accepts_json_report_output_aliases() -> None:
 
 
 def test_parse_args_accepts_markdown_report_output_aliases() -> None:
-    for alias in ("--markdown-output", "--markdown-report", "--report-output", "--md-output"):
+    for alias in (
+        "--markdown-output",
+        "--markdown-report",
+        "--report-output",
+        "--md-output",
+        "--md-report",
+        "--summary-markdown",
+        "--markdown-summary",
+    ):
         args = compare_module.parse_args([
             "--baseline-json",
             "baseline.json",
