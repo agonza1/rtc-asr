@@ -15,6 +15,20 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(compare_module)
 
 
+def test_parse_args_accepts_output_aliases(tmp_path: Path) -> None:
+    artifact = tmp_path / "artifact.json"
+
+    assert compare_module.parse_args(["--json-output", str(tmp_path / "comparison.json"), str(artifact)]).output == (
+        tmp_path / "comparison.json"
+    )
+    assert compare_module.parse_args(
+        ["--markdown-summary-output", str(tmp_path / "comparison.md"), str(artifact)]
+    ).markdown_output == (tmp_path / "comparison.md")
+    assert compare_module.parse_args(
+        ["--raw-uds-decision-output", str(tmp_path / "decision.json"), str(artifact)]
+    ).decision_output == (tmp_path / "decision.json")
+
+
 def test_normalized_transport_accepts_direct_target_aliases() -> None:
     assert compare_module.normalized_transport({"target": {"transport": "raw-uds"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "uds-websocket"}}) == "uds_ws"
