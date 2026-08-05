@@ -345,6 +345,61 @@ def test_compare_artifacts_weighs_latency_win_against_resource_regression() -> N
     assert report["recommendation"]["resource_regressions"] == ["cpu_utilization_percent"]
 
 
+def test_compare_artifacts_reads_nested_resource_metric_aliases() -> None:
+    baseline = artifact(
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_partial=500.0,
+        final=300.0,
+        transcript="hello world",
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+        package_power_watts=None,
+    )
+    candidate = artifact(
+        backend="vosk",
+        decoder_mode="stateful",
+        first_partial=300.0,
+        final=200.0,
+        transcript="hello world",
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+        package_power_watts=None,
+    )
+    baseline["metrics"] = {
+        "memory": {"rss_peak_mb": "800.0"},
+        "cpu": {"average_percent": "100%"},
+        "power": {"package_power_mean_watts": "5.0"},
+    }
+    candidate["metrics"] = {
+        "memory": {"peak_rss_mb": 900.0},
+        "cpu": {"usage_percent": "140%"},
+        "power": {"package_power_avg_watts": 5.5},
+    }
+
+    report = compare_module.compare_artifacts(
+        baseline=baseline,
+        candidate=candidate,
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["baseline"]["resource_metrics"] == {
+        "peak_rss_mb": 800.0,
+        "cpu_utilization_percent": 100.0,
+        "package_power_watts": 5.0,
+    }
+    assert report["candidate"]["resource_metrics"] == {
+        "peak_rss_mb": 900.0,
+        "cpu_utilization_percent": 140.0,
+        "package_power_watts": 5.5,
+    }
+    assert report["resource_comparison"]["cpu_utilization_percent"]["candidate_increase_percent"] == 40.0
+    assert report["recommendation"]["resource_regressions"] == ["cpu_utilization_percent"]
+
+
 def test_compare_artifacts_blocks_concurrency_mismatch() -> None:
     report = compare_module.compare_artifacts(
         baseline=artifact(
