@@ -91,6 +91,16 @@ def test_parse_args_accepts_summary_share_aliases() -> None:
         assert parse_args([alias]).summary_share is True
 
 
+def test_parse_args_accepts_symmetric_summary_output_aliases() -> None:
+    json_args = parse_args(["--summary-json-output"])
+    csv_args = parse_args(["--csv-summary-output"])
+    markdown_args = parse_args(["--markdown-summary-output"])
+
+    assert json_args.json_summary is True
+    assert csv_args.summary_csv is True
+    assert markdown_args.summary_markdown is True
+
+
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
         [

@@ -250,7 +250,7 @@ The benchmark harness now defaults to preloaded runs. Managed benchmark servers 
 Use `make benchmark-artifact-cleanup-check` in CI or release prep to fail when legacy benchmark artifacts older than `BENCHMARK_ARTIFACT_CLEANUP_DAYS` still need cleanup.
 Use `make benchmark-artifact-cleanup-plan` when you want the matching artifact and detail-page paths printed relative to the repo root for a reviewable cleanup commit.
 For direct script usage, `--repo-relative-paths` also accepts shorter cleanup aliases like `--repo-paths`, `--repo-relative`, `--relative-paths`, and `--relative`.
-The stale-artifact summary output flags also accept review-friendly aliases such as `--summary-json`, `--json-summary-output`, `--csv-summary`, `--summary-csv-output`, `--markdown-summary`, `--summary-md`, and `--md-summary`.
+The stale-artifact summary output flags also accept review-friendly aliases such as `--summary-json`, `--summary-json-output`, `--json-summary-output`, `--csv-summary`, `--csv-summary-output`, `--summary-csv-output`, `--markdown-summary`, `--markdown-summary-output`, `--summary-md`, and `--md-summary`.
 
 ## Project Structure
 
