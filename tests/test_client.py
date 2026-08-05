@@ -723,6 +723,14 @@ def test_local_stt_config_from_env_accepts_readable_transport_alias(monkeypatch)
     assert config.uds_path == "/tmp/stt.sock"
 
 
+def test_local_stt_config_from_env_ignores_blank_transport(monkeypatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_TRANSPORT", "  ")
+
+    config = LocalSTTConfig.from_env()
+
+    assert config.transport == "tcp_ws"
+
+
 def test_local_stt_config_from_env_rejects_unknown_transport(monkeypatch) -> None:
     monkeypatch.setenv("LOCAL_STT_TRANSPORT", "named_pipe")
 

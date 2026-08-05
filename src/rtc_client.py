@@ -59,7 +59,7 @@ class LocalSTTConfig:
     @classmethod
     def from_env(cls) -> "LocalSTTConfig":
         defaults = cls()
-        transport = _normalize_local_stt_transport(os.getenv("LOCAL_STT_TRANSPORT", defaults.transport))
+        transport = _normalize_local_stt_transport(os.getenv("LOCAL_STT_TRANSPORT", "").strip() or defaults.transport)
         if transport not in {"tcp_ws", "uds_ws", "raw_uds"}:
             raise ValueError("LOCAL_STT_TRANSPORT must be 'tcp_ws', 'uds_ws', or 'raw_uds'")
         if transport == "raw_uds":
