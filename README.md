@@ -254,6 +254,7 @@ The stale-artifact summary output flags also accept review-friendly aliases such
 The stale-artifact sort flags accept readable direction aliases such as `--sort largest-to-smallest`, `--sort smallest-to-largest`, `--sort newest-to-oldest`, and `--sort oldest-to-newest`.
 The Compose image size report accepts readable gate aliases including `--all-images-present`, `--any-image-present`, `--require-known-image-size`, `--require-known-image-created`, and `--unique-image-ids`.
 The Local STT backend comparison script accepts review-friendly aliases such as `--baseline-key`, `--baseline-backend`, `--candidate-key`, `--candidate-backend`, `--json-output`, `--comparison-output`, `--markdown-report`, `--report-output`, `--min-ttfb-win-ms`, `--min-first-interim-win-ms`, `--require-resources`, `--require-resource-evidence`, and `--min-streams`.
+The streaming backend artifact comparison script accepts path aliases such as `--baseline-artifact`, `--baseline-json`, `--candidate-artifact`, `--candidate-json`, `--json-output`, and `--comparison-output`.
 
 ## Project Structure
 

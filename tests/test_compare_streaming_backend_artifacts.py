@@ -578,6 +578,21 @@ def test_decoder_mode_gate_reads_mode_counts_when_modes_are_missing() -> None:
     assert report["recommendation"]["decision"] == "support_low_latency_backend"
 
 
+def test_parse_args_accepts_review_friendly_path_aliases() -> None:
+    args = compare_module.parse_args([
+        "--baseline-artifact",
+        "baseline.json",
+        "--candidate-json",
+        "candidate.json",
+        "--json-output",
+        "comparison.json",
+    ])
+
+    assert args.baseline == Path("baseline.json")
+    assert args.candidate == Path("candidate.json")
+    assert args.output == Path("comparison.json")
+
+
 def test_main_writes_comparison_report(tmp_path) -> None:
     baseline = tmp_path / "baseline.json"
     candidate = tmp_path / "candidate.json"
