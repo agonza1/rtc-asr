@@ -284,6 +284,8 @@ def compare_success(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict
 
 
 def compare_transcripts(baseline: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+    baseline_sample_count = sample_count(baseline)
+    candidate_sample_count = sample_count(candidate)
     baseline_texts = final_transcripts(baseline)
     candidate_texts = final_transcripts(candidate)
     baseline_tokens = token_list(" ".join(baseline_texts))
@@ -306,9 +308,13 @@ def compare_transcripts(baseline: dict[str, Any], candidate: dict[str, Any]) -> 
     overlap = round(len(shared_words) / len(union_words), 3) if union_words else None
     candidate_word_count = len(candidate_tokens)
     baseline_word_count = len(baseline_tokens)
+    candidate_missing_final_transcript_runs = candidate_sample_count - len(candidate_texts)
     return {
         "baseline_final_transcripts": baseline_texts,
         "candidate_final_transcripts": candidate_texts,
+        "baseline_sample_count": baseline_sample_count,
+        "candidate_sample_count": candidate_sample_count,
+        "candidate_missing_final_transcript_runs": candidate_missing_final_transcript_runs,
         "exact_match": bool(baseline_texts and baseline_texts == candidate_texts),
         "word_overlap_ratio": overlap,
         "baseline_word_count": baseline_word_count,
@@ -316,7 +322,11 @@ def compare_transcripts(baseline: dict[str, Any], candidate: dict[str, Any]) -> 
         "word_count_delta": candidate_word_count - baseline_word_count,
         "candidate_missing_token_counts": dict(sorted(missing_counts.items())),
         "candidate_extra_token_counts": dict(sorted(extra_counts.items())),
-        "candidate_has_final_transcript": bool(candidate_texts and all(text.strip() for text in candidate_texts)),
+        "candidate_has_final_transcript": bool(
+            candidate_texts
+            and candidate_missing_final_transcript_runs == 0
+            and all(normalize_transcript(text) for text in candidate_texts)
+        ),
         "expected_final_transcript": expected,
         "candidate_expected_match_runs": len(candidate_expected_matches) if expected is not None else None,
         "candidate_expected_mismatch_runs": (
@@ -325,6 +335,13 @@ def compare_transcripts(baseline: dict[str, Any], candidate: dict[str, Any]) -> 
             else None
         ),
     }
+
+
+def sample_count(artifact: dict[str, Any]) -> int:
+    samples = artifact.get("samples", [])
+    if not isinstance(samples, list):
+        return 0
+    return sum(1 for sample in samples if isinstance(sample, dict))
 
 
 def final_transcripts(artifact: dict[str, Any]) -> list[str]:
@@ -399,6 +416,14 @@ def recommend(
         if (values["candidate_increase_percent"] or 0.0) > 25.0
     ]
     transcript_blocking_gaps = []
+    if not transcript["candidate_has_final_transcript"]:
+        transcript_blocking_gaps.append("transcript_sanity:candidate.missing_final_transcript")
+    if (
+        transcript["candidate_has_final_transcript"]
+        and not transcript["exact_match"]
+        and (transcript["word_overlap_ratio"] is None or transcript["word_overlap_ratio"] < 0.8)
+    ):
+        transcript_blocking_gaps.append("transcript_sanity:candidate.low_word_overlap")
     if expected_mismatches:
         transcript_blocking_gaps.append("transcript_sanity:candidate.expected_final_transcript_mismatch")
 
