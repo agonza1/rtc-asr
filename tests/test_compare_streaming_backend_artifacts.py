@@ -233,6 +233,45 @@ def test_compare_artifacts_reports_low_word_overlap_as_transcript_gap() -> None:
     ]
 
 
+def test_compare_artifacts_blocks_missing_final_transcript_in_any_candidate_run() -> None:
+    baseline = artifact(
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_partial=500.0,
+        final=300.0,
+        transcript="hello world",
+    )
+    candidate = artifact(
+        backend="vosk",
+        decoder_mode="stateful",
+        first_partial=200.0,
+        final=100.0,
+        transcript="hello world",
+    )
+    candidate["samples"].append({
+        "backend": "vosk",
+        "model": "tiny",
+        "decoder_modes": ["stateful"],
+    })
+
+    report = compare_module.compare_artifacts(
+        baseline=baseline,
+        candidate=candidate,
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["transcript_sanity"]["candidate_sample_count"] == 2
+    assert report["transcript_sanity"]["candidate_missing_final_transcript_runs"] == 1
+    assert report["transcript_sanity"]["candidate_has_final_transcript"] is False
+    assert report["recommendation"]["decision"] == "keep_experimental"
+    assert report["recommendation"]["transcript_blocking_gaps"] == [
+        "transcript_sanity:candidate.missing_final_transcript"
+    ]
+
+
 def test_compare_artifacts_blocks_expected_final_transcript_mismatch() -> None:
     report = compare_module.compare_artifacts(
         baseline=artifact(
