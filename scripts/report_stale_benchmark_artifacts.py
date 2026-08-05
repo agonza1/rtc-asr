@@ -3037,6 +3037,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--markdown-summary-output",
         "--summary-md",
         "--md-summary",
+        "--summary-md-output",
+        "--md-summary-output",
         action="store_true",
         dest="summary_markdown",
         help="Emit stale artifact summary groups as a Markdown table for issues and PRs",
