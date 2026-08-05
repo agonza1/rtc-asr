@@ -1186,17 +1186,36 @@ def test_parse_args_accepts_markdown_summary_aliases() -> None:
         "--fail-on-missing-image",
         "--fail-on-missing-images",
         "--require-images-present",
+        "--require-all-present",
+        "--all-images-present",
     ],
 )
 def test_parse_args_accepts_fail_on_missing_aliases(option: str) -> None:
     assert reporter.parse_args([option]).require_present is True
 
 
-def test_parse_args_accepts_fail_on_all_missing_alias() -> None:
-    assert reporter.parse_args(["--fail-on-all-missing"]).require_any_present is True
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--fail-on-all-missing",
+        "--any-image-present",
+        "--require-at-least-one-present",
+    ],
+)
+def test_parse_args_accepts_fail_on_all_missing_alias(option: str) -> None:
+    assert reporter.parse_args([option]).require_any_present is True
 
 
-@pytest.mark.parametrize("option", ["--fail-on-unknown-size", "--require-image-size", "--fail-on-unknown-image-size"])
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--fail-on-unknown-size",
+        "--require-image-size",
+        "--fail-on-unknown-image-size",
+        "--require-known-size",
+        "--require-known-image-size",
+    ],
+)
 def test_parse_args_accepts_fail_on_unknown_size_aliases(option: str) -> None:
     assert reporter.parse_args([option]).require_size is True
 
@@ -1209,6 +1228,9 @@ def test_parse_args_accepts_fail_on_unknown_size_aliases(option: str) -> None:
         "--require-image-created",
         "--fail-on-unknown-created-time",
         "--fail-on-unknown-image-created",
+        "--require-known-created",
+        "--require-known-created-time",
+        "--require-known-image-created",
     ],
 )
 def test_parse_args_accepts_fail_on_unknown_created_aliases(option: str) -> None:
@@ -1246,6 +1268,8 @@ def test_main_require_created_rejects_invalid_creation_time(
         "--fail-on-shared-images",
         "--require-distinct-image-ids",
         "--require-unique-images",
+        "--unique-image-ids",
+        "--distinct-image-ids",
     ],
 )
 def test_parse_args_accepts_fail_on_duplicate_image_ids_aliases(option: str) -> None:
