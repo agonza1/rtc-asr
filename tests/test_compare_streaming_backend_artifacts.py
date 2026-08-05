@@ -168,6 +168,9 @@ def test_compare_artifacts_keeps_candidate_experimental_on_transcript_regression
 
     assert report["transcript_sanity"]["candidate_has_final_transcript"] is False
     assert report["recommendation"]["decision"] == "keep_experimental"
+    assert report["recommendation"]["transcript_blocking_gaps"] == [
+        "transcript_sanity:candidate.missing_final_transcript"
+    ]
 
 
 def test_compare_artifacts_reports_missing_tail_and_repeated_token_drift() -> None:
@@ -199,6 +202,35 @@ def test_compare_artifacts_reports_missing_tail_and_repeated_token_drift() -> No
     assert sanity["word_count_delta"] == -1
     assert sanity["candidate_missing_token_counts"] == {"now": 1, "transfer": 1}
     assert sanity["candidate_extra_token_counts"] == {"billing": 1}
+
+
+def test_compare_artifacts_reports_low_word_overlap_as_transcript_gap() -> None:
+    report = compare_module.compare_artifacts(
+        baseline=artifact(
+            backend="faster-whisper",
+            decoder_mode="rolling_window",
+            first_partial=500.0,
+            final=300.0,
+            transcript="please transfer me to billing",
+        ),
+        candidate=artifact(
+            backend="vosk",
+            decoder_mode="stateful",
+            first_partial=200.0,
+            final=100.0,
+            transcript="turn on the living room lights",
+        ),
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    assert report["transcript_sanity"]["word_overlap_ratio"] < 0.8
+    assert report["recommendation"]["decision"] == "keep_experimental"
+    assert report["recommendation"]["transcript_blocking_gaps"] == [
+        "transcript_sanity:candidate.low_word_overlap"
+    ]
 
 
 def test_compare_artifacts_blocks_expected_final_transcript_mismatch() -> None:

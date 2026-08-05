@@ -399,6 +399,14 @@ def recommend(
         if (values["candidate_increase_percent"] or 0.0) > 25.0
     ]
     transcript_blocking_gaps = []
+    if not transcript["candidate_has_final_transcript"]:
+        transcript_blocking_gaps.append("transcript_sanity:candidate.missing_final_transcript")
+    if (
+        transcript["candidate_has_final_transcript"]
+        and not transcript["exact_match"]
+        and (transcript["word_overlap_ratio"] is None or transcript["word_overlap_ratio"] < 0.8)
+    ):
+        transcript_blocking_gaps.append("transcript_sanity:candidate.low_word_overlap")
     if expected_mismatches:
         transcript_blocking_gaps.append("transcript_sanity:candidate.expected_final_transcript_mismatch")
 
