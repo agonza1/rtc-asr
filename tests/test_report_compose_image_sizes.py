@@ -664,6 +664,31 @@ def test_records_to_markdown_reports_image_age_budget_status(monkeypatch: pytest
     assert "Oldest image age budget utilization: 121.4%" in markdown
 
 
+def test_records_to_markdown_escapes_pipe_in_image_age_budget_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="fresh|image",
+            image_id="fresh",
+            size_bytes=100_000_000,
+            created="2026-07-31T19:00:00Z",
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="old|image",
+            image_id="old",
+            size_bytes=100_000_000,
+            created="2026-07-15T19:00:00Z",
+            present=True,
+        ),
+    ]
+    monkeypatch.setattr(reporter, "image_age_days", lambda record, now=None: 1.0 if record.tag == "fresh|image" else 17.0)
+
+    markdown = reporter.records_to_markdown(records, max_age_days=14.0)
+
+    assert "Freshest present image age: fresh\\|image (1.0 days)" in markdown
+    assert "Oldest present image age: old\\|image (17.0 days)" in markdown
+
+
 def test_records_summary_to_markdown_reports_oldest_image_age_tag(monkeypatch: pytest.MonkeyPatch) -> None:
     records = [
         reporter.ImageSizeRecord(
