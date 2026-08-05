@@ -225,6 +225,30 @@ def test_rtc_asr_wrapper_accepts_stream_tuning_overrides() -> None:
     assert service.config.partial_window_seconds == 1.5
 
 
+def test_rtc_asr_wrapper_accepts_runtime_policy_overrides() -> None:
+    service = RtcAsrSTTService(
+        final_timeout_s=2.5,
+        reconnect_on_error=False,
+        max_send_queue_ms=750,
+        drop_policy="block",
+        interim_results=False,
+        emit_interim_frames=False,
+        emit_final_frames=False,
+        pass_audio_downstream=False,
+        enable_timing_metadata=False,
+    )
+
+    assert service.config.final_timeout_s == 2.5
+    assert service.config.reconnect_on_error is False
+    assert service.config.max_send_queue_ms == 750
+    assert service.config.drop_policy == "block"
+    assert service.config.interim_results is False
+    assert service.config.emit_interim_frames is False
+    assert service.config.emit_final_frames is False
+    assert service.config.pass_audio_downstream is False
+    assert service.config.enable_timing_metadata is False
+
+
 @pytest.mark.parametrize("field", ["sample_rate", "channels", "frame_ms", "partial_interval_ms"])
 def test_local_stt_config_rejects_boolean_numeric_fields(field: str) -> None:
     with pytest.raises(ValueError, match=f"{field} must be numeric, not boolean"):
