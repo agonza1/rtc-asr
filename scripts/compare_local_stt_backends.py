@@ -113,7 +113,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def positive_int(value: str) -> int:
-    parsed = int(value)
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("value must be an integer greater than 0") from exc
     if parsed <= 0:
         raise argparse.ArgumentTypeError("value must be greater than 0")
     return parsed
