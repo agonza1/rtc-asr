@@ -1208,6 +1208,29 @@ def test_parse_args_accepts_markdown_summary_aliases() -> None:
     assert reporter.parse_args(["--table-summary"]).summary_markdown is True
 
 
+def test_parse_args_defaults_to_supported_compose_images() -> None:
+    assert reporter.parse_args([]).images == list(reporter.DEFAULT_IMAGES)
+
+
+def test_parse_args_accepts_image_options_and_comma_separated_values() -> None:
+    args = reporter.parse_args(
+        [
+            "--image",
+            "custom:first, custom:second",
+            "--images",
+            "custom:third",
+            "positional:image",
+        ]
+    )
+
+    assert args.images == [
+        "positional:image",
+        "custom:first",
+        "custom:second",
+        "custom:third",
+    ]
+
+
 @pytest.mark.parametrize(
     "option",
     [
