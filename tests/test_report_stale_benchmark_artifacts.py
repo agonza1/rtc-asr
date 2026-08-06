@@ -101,6 +101,35 @@ def test_parse_args_accepts_symmetric_summary_output_aliases() -> None:
     assert markdown_args.summary_markdown is True
 
 
+def test_parse_args_accepts_symmetric_artifact_output_aliases() -> None:
+    for alias in ["--json-lines-output", "--jsonl-output", "--ndjson-output"]:
+        assert parse_args([alias]).json_lines is True
+
+    for alias in [
+        "--csv-output",
+        "--artifact-csv",
+        "--artifact-csv-output",
+        "--artifacts-csv",
+        "--artifacts-csv-output",
+    ]:
+        assert parse_args([alias]).csv is True
+
+    for alias in [
+        "--markdown-output",
+        "--md",
+        "--md-output",
+        "--artifact-markdown",
+        "--artifact-markdown-output",
+        "--artifacts-markdown",
+        "--artifacts-markdown-output",
+        "--artifact-md",
+        "--artifact-md-output",
+        "--artifacts-md",
+        "--artifacts-md-output",
+    ]:
+        assert parse_args([alias]).markdown is True
+
+
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
         [
