@@ -421,7 +421,12 @@ def target_transport(url: Any) -> str | None:
         return None
     scheme = urlparse(url).scheme.lower()
     normalized_scheme = re.sub(r"[^a-z0-9]+", " ", scheme).strip()
-    if scheme in {"ws", "wss", "tcp+ws", "tcp+wss"} or normalized_scheme in {"tcp ws", "tcp wss"}:
+    if scheme in {"ws", "wss", "tcp+ws", "tcp+wss"} or normalized_scheme in {
+        "tcp ws",
+        "tcp wss",
+        "tcp websocket",
+        "tcp secure websocket",
+    }:
         return "tcp_ws"
     if scheme in {
         "unix",
@@ -436,9 +441,13 @@ def target_transport(url: Any) -> str | None:
         "websocket+uds",
     } or normalized_scheme in {
         "unix websocket",
+        "unix domain websocket",
+        "unix domain socket websocket",
         "websocket unix",
+        "websocket unix domain socket",
         "uds websocket",
         "websocket uds",
+        "domain socket websocket",
     }:
         return "uds_ws"
     if scheme in {
@@ -451,7 +460,12 @@ def target_transport(url: Any) -> str | None:
         "raw unix",
         "raw uds",
         "raw unix socket",
+        "raw unix domain socket",
         "raw uds socket",
+        "uds raw socket",
+        "unix raw socket",
+        "unix domain raw socket",
+        "domain socket raw",
     }:
         return "raw_uds"
     return None
