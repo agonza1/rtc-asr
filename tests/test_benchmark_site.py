@@ -125,8 +125,14 @@ def test_manifest_normalizes_common_transport_aliases() -> None:
 def test_manifest_infers_socket_transports_from_target_urls() -> None:
     for url, expected_transport in [
         ("tcp+wss://localhost/v1/stt/stream", "tcp_ws"),
+        ("tcp+websocket://localhost/v1/stt/stream", "tcp_ws"),
+        ("tcp+secure+websocket://localhost/v1/stt/stream", "tcp_ws"),
         ("unix+ws:///tmp/local-stt.sock", "uds_ws"),
+        ("unix+domain+socket+websocket:///tmp/local-stt.sock", "uds_ws"),
+        ("domain+socket+websocket:///tmp/local-stt.sock", "uds_ws"),
         ("raw+uds+socket:///tmp/local-stt.sock", "raw_uds"),
+        ("raw+unix+domain+socket:///tmp/local-stt.sock", "raw_uds"),
+        ("unix+domain+raw+socket:///tmp/local-stt.sock", "raw_uds"),
     ]:
         assert target_transport(url) == expected_transport
 
