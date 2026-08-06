@@ -65,8 +65,11 @@ RESOURCE_METRIC_ALIASES = {
         ("metrics", "memory", "peak_rss_mb"),
         ("metrics", "memory", "rss_peak_mb"),
         ("metrics", "memory", "max_rss_mb"),
+        ("metrics", "memory", "rss_max_mb"),
         ("memory", "peak_rss_mb"),
         ("memory", "rss_peak_mb"),
+        ("memory", "max_rss_mb"),
+        ("memory", "rss_max_mb"),
         ("process", "peak_rss_mb"),
         ("process", "rss_peak_mb"),
     ),
@@ -313,6 +316,16 @@ def float_or_none(value: object) -> float | None:
         return None
     if isinstance(value, int | float):
         return float(value)
+    if isinstance(value, str):
+        normalized = value.strip()
+        if normalized.endswith("%"):
+            normalized = normalized[:-1].strip()
+        if not normalized:
+            return None
+        try:
+            return float(normalized)
+        except ValueError:
+            return None
     return None
 
 
