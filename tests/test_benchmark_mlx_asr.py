@@ -168,6 +168,41 @@ def test_parse_args_accepts_external_low_power_observations(tmp_path: Path) -> N
     assert args.thermal_duration_minutes == 5.0
 
 
+def test_parse_args_accepts_readable_benchmark_cli_aliases(tmp_path: Path) -> None:
+    args = benchmark_module.parse_args(
+        [
+            "--mlx-model",
+            "mlx-community/parakeet-tdt-0.6b-v3",
+            "--runs",
+            "4",
+            "--input-audio",
+            str(tmp_path / "clip.wav"),
+            "--synthesis-text",
+            "custom speech",
+            "--cli-command",
+            "parakeet-mlx-custom",
+            "--average-package-power-watts",
+            "4.8",
+            "--thermal-status",
+            "nominal",
+            "--thermal-duration-min",
+            "5",
+            "--json-output",
+            str(tmp_path / "artifact.json"),
+        ]
+    )
+
+    assert args.model == "mlx-community/parakeet-tdt-0.6b-v3"
+    assert args.sample_count == 4
+    assert args.audio_file == tmp_path / "clip.wav"
+    assert args.speech_text == "custom speech"
+    assert args.command == "parakeet-mlx-custom"
+    assert args.package_power_watts == 4.8
+    assert args.thermal_state == "nominal"
+    assert args.thermal_duration_minutes == 5.0
+    assert args.output == tmp_path / "artifact.json"
+
+
 def test_parse_args_rejects_negative_low_power_observations(tmp_path: Path) -> None:
     for flag in ("--package-power-watts", "--thermal-duration-minutes"):
         try:
