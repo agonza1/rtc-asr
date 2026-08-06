@@ -824,6 +824,149 @@ def test_compare_backends_can_require_resource_metrics(tmp_path: Path) -> None:
     assert comparison["recommendation"] == "Re-run backend benchmarks with service resource monitoring enabled."
 
 
+def test_compare_backends_accepts_resource_metric_aliases(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+    )
+    payload = json.loads(candidate.read_text(encoding="utf8"))
+    payload["metrics"] = {
+        "memory": {"rss_peak_mb": 384.25},
+        "cpu": {"average_percent": 37.5},
+    }
+    candidate.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+        require_resource_metrics=True,
+    )
+
+    assert comparison["backends"]["vosk:stateful"]["resource_metrics"] == {
+        "peak_rss_mb": 384.25,
+        "cpu_utilization_percent": 37.5,
+    }
+    assert not any(gap.startswith("missing_resource_metric:vosk:stateful") for gap in comparison["blocking_gaps"])
+
+
+def test_compare_backends_accepts_top_level_resource_metric_aliases(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+    )
+    payload = json.loads(candidate.read_text(encoding="utf8"))
+    payload["cpu"] = {"usage_percent": 41.25}
+    payload["memory"] = {"rss_peak_mb": 390.0}
+    candidate.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+        require_resource_metrics=True,
+    )
+
+    assert comparison["backends"]["vosk:stateful"]["resource_metrics"] == {
+        "peak_rss_mb": 390.0,
+        "cpu_utilization_percent": 41.25,
+    }
+    assert not any(gap.startswith("missing_resource_metric:vosk:stateful") for gap in comparison["blocking_gaps"])
+
+
+def test_compare_backends_accepts_max_rss_and_string_resource_metric_aliases(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+    )
+    payload = json.loads(candidate.read_text(encoding="utf8"))
+    payload["metrics"] = {
+        "memory": {"rss_max_mb": "384.25"},
+        "cpu": {"usage_percent": "37.5%"},
+    }
+    candidate.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+        require_resource_metrics=True,
+    )
+
+    assert comparison["backends"]["vosk:stateful"]["resource_metrics"] == {
+        "peak_rss_mb": 384.25,
+        "cpu_utilization_percent": 37.5,
+    }
+    assert not any(gap.startswith("missing_resource_metric:vosk:stateful") for gap in comparison["blocking_gaps"])
+
+
+def test_compare_backends_rejects_non_finite_string_resource_metric_aliases(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=230.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+        peak_rss_mb=None,
+        cpu_utilization_percent=None,
+    )
+    payload = json.loads(candidate.read_text(encoding="utf8"))
+    payload["metrics"] = {
+        "memory": {"rss_peak_mb": "NaN"},
+        "cpu": {"usage_percent": "Infinity"},
+    }
+    candidate.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+        require_resource_metrics=True,
+    )
+
+    assert comparison["backends"]["vosk:stateful"]["resource_metrics"] == {
+        "peak_rss_mb": None,
+        "cpu_utilization_percent": None,
+    }
+    assert "missing_resource_metric:vosk:stateful:peak_rss_mb" in comparison["blocking_gaps"]
+    assert "missing_resource_metric:vosk:stateful:cpu_utilization_percent" in comparison["blocking_gaps"]
+
+
 def test_compare_backends_can_require_concurrent_session_load(tmp_path: Path) -> None:
     baseline = write_artifact(
         tmp_path / "rolling.json",

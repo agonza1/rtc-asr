@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -53,6 +54,48 @@ EXPECTED_TRANSCRIPT_KEYS = (
     "expected_transcript",
     "reference_transcript",
 )
+RESOURCE_METRIC_ALIASES = {
+    "peak_rss_mb": (
+        ("environment", "peak_rss_mb"),
+        ("environment", "rss_peak_mb"),
+        ("environment", "max_rss_mb"),
+        ("environment", "rss_max_mb"),
+        ("system", "peak_rss_mb"),
+        ("system", "rss_peak_mb"),
+        ("metrics", "peak_rss_mb"),
+        ("metrics", "memory", "peak_rss_mb"),
+        ("metrics", "memory", "rss_peak_mb"),
+        ("metrics", "memory", "max_rss_mb"),
+        ("metrics", "memory", "rss_max_mb"),
+        ("memory", "peak_rss_mb"),
+        ("memory", "rss_peak_mb"),
+        ("memory", "max_rss_mb"),
+        ("memory", "rss_max_mb"),
+        ("process", "peak_rss_mb"),
+        ("process", "rss_peak_mb"),
+    ),
+    "cpu_utilization_percent": (
+        ("environment", "cpu_utilization_percent"),
+        ("environment", "cpu_percent"),
+        ("environment", "cpu_usage_percent"),
+        ("system", "cpu_utilization_percent"),
+        ("system", "cpu_percent"),
+        ("system", "cpu_usage_percent"),
+        ("metrics", "cpu_utilization_percent"),
+        ("metrics", "cpu_percent"),
+        ("metrics", "cpu_usage_percent"),
+        ("metrics", "cpu", "percent"),
+        ("metrics", "cpu", "utilization_percent"),
+        ("metrics", "cpu", "average_utilization_percent"),
+        ("metrics", "cpu", "average_percent"),
+        ("metrics", "cpu", "usage_percent"),
+        ("cpu", "utilization_percent"),
+        ("cpu", "average_utilization_percent"),
+        ("cpu", "percent"),
+        ("cpu", "average_percent"),
+        ("cpu", "usage_percent"),
+    ),
+}
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -254,18 +297,38 @@ def transcript_sanity(artifact: dict[str, Any]) -> dict[str, Any]:
 
 
 def resource_metrics(artifact: dict[str, Any]) -> dict[str, float | None]:
-    environment = artifact.get("environment") if isinstance(artifact.get("environment"), dict) else {}
     return {
-        "peak_rss_mb": float_or_none(environment.get("peak_rss_mb")),
-        "cpu_utilization_percent": float_or_none(environment.get("cpu_utilization_percent")),
+        metric: first_float_at_paths(artifact, paths)
+        for metric, paths in RESOURCE_METRIC_ALIASES.items()
     }
+
+
+def first_float_at_paths(artifact: dict[str, Any], paths: tuple[tuple[str, ...], ...]) -> float | None:
+    for path in paths:
+        value = nested_value(artifact, *path)
+        parsed = float_or_none(value)
+        if parsed is not None:
+            return parsed
+    return None
 
 
 def float_or_none(value: object) -> float | None:
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, int | float):
-        return float(value)
+        parsed = float(value)
+        return parsed if math.isfinite(parsed) else None
+    if isinstance(value, str):
+        normalized = value.strip()
+        if normalized.endswith("%"):
+            normalized = normalized[:-1].strip()
+        if not normalized:
+            return None
+        try:
+            parsed = float(normalized)
+        except ValueError:
+            return None
+        return parsed if math.isfinite(parsed) else None
     return None
 
 
