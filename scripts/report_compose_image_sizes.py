@@ -273,6 +273,16 @@ def parse_size_mb(value: str) -> float:
     return amount * multiplier / 1_000_000
 
 
+def normalize_image_args(positional_images: Sequence[str], option_images: Sequence[str] | None = None) -> list[str]:
+    images = [
+        image.strip()
+        for value in (*positional_images, *(option_images or ()))
+        for image in value.split(",")
+        if image.strip()
+    ]
+    return images or list(DEFAULT_IMAGES)
+
+
 def records_to_json(
     records: Iterable[ImageSizeRecord],
     max_size_mb: float | None = None,
@@ -933,8 +943,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "images",
         nargs="*",
-        default=list(DEFAULT_IMAGES),
+        default=[],
         help="Docker image tags to inspect. Defaults to the supported Compose backend tags.",
+    )
+    parser.add_argument(
+        "--image",
+        "--images",
+        dest="option_images",
+        action="append",
+        help="Docker image tag to inspect. May be repeated or comma-separated.",
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of markdown.")
     parser.add_argument("--csv", action="store_true", help="Emit CSV rows instead of markdown.")
@@ -1072,7 +1089,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Exit non-zero when multiple requested tags point at the same Docker image ID.",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    args.images = normalize_image_args(args.images, args.option_images)
+    delattr(args, "option_images")
+    return args
 
 
 def main(argv: Sequence[str] | None = None) -> int:
