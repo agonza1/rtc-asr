@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -315,7 +316,8 @@ def float_or_none(value: object) -> float | None:
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, int | float):
-        return float(value)
+        parsed = float(value)
+        return parsed if math.isfinite(parsed) else None
     if isinstance(value, str):
         normalized = value.strip()
         if normalized.endswith("%"):
@@ -323,9 +325,10 @@ def float_or_none(value: object) -> float | None:
         if not normalized:
             return None
         try:
-            return float(normalized)
+            parsed = float(normalized)
         except ValueError:
             return None
+        return parsed if math.isfinite(parsed) else None
     return None
 
 
