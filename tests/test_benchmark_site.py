@@ -137,6 +137,25 @@ def test_manifest_infers_socket_transports_from_target_urls() -> None:
         assert target_transport(url) == expected_transport
 
 
+def test_parse_args_accepts_readable_manifest_cli_aliases(tmp_path: Path) -> None:
+    args = parse_args(
+        [
+            "--benchmark-results-dir",
+            str(tmp_path / "results"),
+            "--tracks-json",
+            str(tmp_path / "tracks.json"),
+            "--manifest-output",
+            str(tmp_path / "manifest.json"),
+            "--verify-manifest",
+        ]
+    )
+
+    assert args.results_dir == tmp_path / "results"
+    assert args.tracks == tmp_path / "tracks.json"
+    assert args.output == tmp_path / "manifest.json"
+    assert args.check is True
+
+
 def test_current_benchmark_notes_table_matches_manifest_entries() -> None:
     manifest = build_manifest(RESULTS_DIR, TRACKS_PATH)
     rows = current_comparison_rows()

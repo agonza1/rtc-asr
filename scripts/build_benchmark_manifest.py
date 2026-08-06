@@ -41,25 +41,43 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build the benchmark site manifest")
     parser.add_argument(
         "--results-dir",
+        "--benchmark-results-dir",
+        "--benchmark-results",
+        "--artifacts-dir",
+        "--artifact-dir",
         type=Path,
         default=DEFAULT_RESULTS_DIR,
+        dest="results_dir",
         help="Directory containing benchmark JSON artifacts",
     )
     parser.add_argument(
         "--tracks",
+        "--tracks-file",
+        "--tracks-json",
+        "--track-config",
         type=Path,
         default=DEFAULT_TRACKS_PATH,
+        dest="tracks",
         help="JSON file listing tracked benchmark lanes",
     )
     parser.add_argument(
         "--output",
+        "--manifest",
+        "--manifest-output",
+        "--output-json",
+        "--json-output",
         type=Path,
         default=DEFAULT_RESULTS_DIR / "manifest.json",
+        dest="output",
         help="Output manifest path",
     )
     parser.add_argument(
         "--check",
+        "--check-manifest",
+        "--verify",
+        "--verify-manifest",
         action="store_true",
+        dest="check",
         help="Exit non-zero when the checked-in manifest does not match generated output",
     )
     return parser.parse_args(argv)
