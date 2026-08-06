@@ -143,7 +143,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--min-runs",
+        "--minimum-runs",
+        "--min-run-count",
+        "--minimum-run-count",
+        "--min-samples",
+        "--minimum-samples",
         type=int,
+        dest="min_runs",
         help="Require each transport artifact to record at least this many benchmark runs",
     )
     parser.add_argument(
