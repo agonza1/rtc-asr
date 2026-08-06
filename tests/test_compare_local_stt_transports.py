@@ -108,6 +108,19 @@ def test_parse_args_accepts_readable_raw_uds_win_threshold_aliases() -> None:
         assert args.raw_uds_min_win_ms == 7.5
 
 
+def test_parse_args_accepts_readable_minimum_run_aliases() -> None:
+    for alias in [
+        "--minimum-runs",
+        "--min-run-count",
+        "--minimum-run-count",
+        "--min-samples",
+        "--minimum-samples",
+    ]:
+        args = compare_module.parse_args(["tcp.json", "uds.json", "raw.json", alias, "4"])
+
+        assert args.min_runs == 4
+
+
 def write_artifact(
     path: Path,
     transport: str,
