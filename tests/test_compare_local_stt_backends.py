@@ -204,6 +204,48 @@ def test_positive_int_rejects_non_positive_values() -> None:
         compare_module.positive_int("0")
 
 
+def test_parse_args_accepts_readable_first_partial_win_aliases() -> None:
+    for alias in [
+        "--minimum-first-partial-win-ms",
+        "--minimum-ttfb-win-ms",
+        "--minimum-first-interim-win-ms",
+        "--first-partial-win-threshold-ms",
+        "--ttfb-win-threshold-ms",
+    ]:
+        args = compare_module.parse_args(
+            [
+                "baseline.json",
+                "candidate.json",
+                "--baseline",
+                "faster-whisper:rolling_window",
+                "--candidate",
+                "vosk:stateful",
+                alias,
+                "42.5",
+            ]
+        )
+
+        assert args.min_first_partial_win_ms == 42.5
+
+
+def test_parse_args_accepts_readable_minimum_stream_aliases() -> None:
+    for alias in ["--minimum-streams", "--min-stream-count", "--minimum-stream-count"]:
+        args = compare_module.parse_args(
+            [
+                "baseline.json",
+                "candidate.json",
+                "--baseline",
+                "faster-whisper:rolling_window",
+                "--candidate",
+                "vosk:stateful",
+                alias,
+                "3",
+            ]
+        )
+
+        assert args.min_concurrency == 3
+
+
 def test_compare_backends_recommends_supported_when_candidate_clears_latency_gate(tmp_path: Path) -> None:
     baseline = write_artifact(
         tmp_path / "rolling.json",
