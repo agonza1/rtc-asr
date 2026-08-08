@@ -952,6 +952,28 @@ def test_parse_sort_choice_accepts_case_and_aliases(value: str, expected: str) -
     assert reporter.parse_sort_choice(value) == expected
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("markdown", "markdown"),
+        ("md", "markdown"),
+        ("table", "markdown"),
+        ("JSON", "json"),
+        ("csv", "csv"),
+        ("summary-json", "summary-json"),
+        ("json_summary", "summary-json"),
+        ("summary", "summary-json"),
+        ("summary_csv", "summary-csv"),
+        ("csv-summary", "summary-csv"),
+        ("summary-markdown", "summary-markdown"),
+        ("markdown_summary", "summary-markdown"),
+        ("summary-table", "summary-markdown"),
+    ],
+)
+def test_parse_output_format_accepts_case_and_aliases(value: str, expected: str) -> None:
+    assert reporter.parse_output_format(value) == expected
+
+
 @pytest.mark.parametrize("value", ["1", "1.5", "0.001"])
 def test_parse_positive_float_accepts_positive_finite_values(value: str) -> None:
     assert reporter.parse_positive_float(value) == float(value)
@@ -1177,6 +1199,28 @@ def test_main_summary_markdown_emits_summary_table(
     )
 
     assert reporter.main(["--summary-markdown", "present:image"]) == 0
+
+    assert "| Present images | 1 (100.0%) |" in capsys.readouterr().out
+
+
+def test_main_format_alias_emits_summary_markdown(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(
+                tag=images[0],
+                image_id="abcdef123456",
+                size_bytes=100_000_000,
+                created=None,
+                present=True,
+            )
+        ],
+    )
+
+    assert reporter.main(["--format", "summary-table", "present:image"]) == 0
 
     assert "| Present images | 1 (100.0%) |" in capsys.readouterr().out
 

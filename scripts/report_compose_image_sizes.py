@@ -34,6 +34,28 @@ SORT_CHOICES = (
     "age-desc",
 )
 SORT_CHOICE_SET = set(SORT_CHOICES)
+OUTPUT_FORMAT_CHOICES = (
+    "markdown",
+    "json",
+    "csv",
+    "summary-json",
+    "summary-csv",
+    "summary-markdown",
+)
+OUTPUT_FORMAT_CHOICE_SET = set(OUTPUT_FORMAT_CHOICES)
+OUTPUT_FORMAT_ALIASES = {
+    "md": "markdown",
+    "table": "markdown",
+    "rows": "markdown",
+    "json-summary": "summary-json",
+    "summary": "summary-json",
+    "csv-summary": "summary-csv",
+    "md-summary": "summary-markdown",
+    "markdown-summary": "summary-markdown",
+    "summary-md": "summary-markdown",
+    "summary-table": "summary-markdown",
+    "table-summary": "summary-markdown",
+}
 SORT_ALIASES = {
     "as-listed": "input",
     "by-input": "input",
@@ -242,6 +264,15 @@ def parse_sort_choice(value: str) -> str:
     if normalized not in SORT_CHOICE_SET:
         choices = ", ".join(SORT_CHOICES)
         raise argparse.ArgumentTypeError(f"invalid sort mode: {value!r}; choose one of: {choices}")
+    return normalized
+
+
+def parse_output_format(value: str) -> str:
+    normalized = value.lower().replace("_", "-")
+    normalized = OUTPUT_FORMAT_ALIASES.get(normalized, normalized)
+    if normalized not in OUTPUT_FORMAT_CHOICE_SET:
+        choices = ", ".join(OUTPUT_FORMAT_CHOICES)
+        raise argparse.ArgumentTypeError(f"invalid output format: {value!r}; choose one of: {choices}")
     return normalized
 
 
@@ -960,6 +991,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON instead of markdown.")
     parser.add_argument("--csv", action="store_true", help="Emit CSV rows instead of markdown.")
     parser.add_argument(
+        "--format",
+        "--output-format",
+        dest="output_format",
+        type=parse_output_format,
+        help=(
+            "Emit one output format: markdown, json, csv, summary-json, summary-csv, "
+            "or summary-markdown."
+        ),
+    )
+    parser.add_argument(
         "--sort",
         "--sort-by",
         dest="sort_by",
@@ -1094,6 +1135,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Exit non-zero when multiple requested tags point at the same Docker image ID.",
     )
     args = parser.parse_args(argv)
+    if args.output_format == "json":
+        args.json = True
+    elif args.output_format == "csv":
+        args.csv = True
+    elif args.output_format == "summary-json":
+        args.summary_only = True
+    elif args.output_format == "summary-csv":
+        args.summary_csv = True
+    elif args.output_format == "summary-markdown":
+        args.summary_markdown = True
     args.images = normalize_image_args(args.images, args.option_images)
     delattr(args, "option_images")
     return args
