@@ -949,6 +949,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--image",
         "--images",
+        "--tag",
+        "--tags",
+        "--image-tag",
+        "--image-tags",
         dest="option_images",
         action="append",
         help="Docker image tag to inspect. May be repeated or comma-separated.",
