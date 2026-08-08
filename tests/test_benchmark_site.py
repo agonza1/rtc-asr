@@ -144,7 +144,7 @@ def test_parse_args_accepts_readable_manifest_cli_aliases(tmp_path: Path) -> Non
             str(tmp_path / "results"),
             "--tracks-json",
             str(tmp_path / "tracks.json"),
-            "--manifest-output",
+            "--manifest-json-output",
             str(tmp_path / "manifest.json"),
             "--verify-manifest",
         ]
@@ -154,6 +154,12 @@ def test_parse_args_accepts_readable_manifest_cli_aliases(tmp_path: Path) -> Non
     assert args.tracks == tmp_path / "tracks.json"
     assert args.output == tmp_path / "manifest.json"
     assert args.check is True
+
+
+def test_parse_args_accepts_manifest_json_alias(tmp_path: Path) -> None:
+    args = parse_args(["--manifest-json", str(tmp_path / "manifest.json")])
+
+    assert args.output == tmp_path / "manifest.json"
 
 
 def test_current_benchmark_notes_table_matches_manifest_entries() -> None:

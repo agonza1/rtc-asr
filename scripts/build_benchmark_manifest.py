@@ -64,6 +64,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--output",
         "--manifest",
         "--manifest-output",
+        "--manifest-json",
+        "--manifest-json-output",
         "--output-json",
         "--json-output",
         type=Path,
