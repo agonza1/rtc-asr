@@ -203,6 +203,15 @@ def test_parse_args_accepts_readable_benchmark_cli_aliases(tmp_path: Path) -> No
     assert args.output == tmp_path / "artifact.json"
 
 
+def test_readme_documents_readable_benchmark_cli_aliases() -> None:
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+
+    assert "--mlx-model" in readme
+    assert "--runs" in readme
+    assert "--input-audio" in readme
+    assert "--json-output" in readme
+
+
 def test_parse_args_rejects_negative_low_power_observations(tmp_path: Path) -> None:
     for flag in ("--package-power-watts", "--thermal-duration-minutes"):
         try:

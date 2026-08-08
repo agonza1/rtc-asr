@@ -255,6 +255,7 @@ The stale-artifact sort flags accept readable direction aliases such as `--sort 
 The Compose image size report accepts readable gate aliases including `--all-images-present`, `--any-image-present`, `--require-known-image-size`, `--require-known-image-created`, and `--unique-image-ids`.
 The Local STT backend comparison script accepts review-friendly aliases such as `--baseline-key`, `--baseline-backend`, `--candidate-key`, `--candidate-backend`, `--json-output`, `--comparison-output`, `--markdown-report`, `--report-output`, `--min-ttfb-win-ms`, `--min-first-interim-win-ms`, `--require-resources`, `--require-resource-evidence`, and `--min-streams`. Its resource evidence check also accepts common artifact field aliases such as `metrics.memory.rss_peak_mb` and `metrics.cpu.average_utilization_percent`.
 The streaming backend artifact comparison script accepts path aliases such as `--baseline-artifact`, `--baseline-json`, `--candidate-artifact`, `--candidate-json`, `--json-output`, `--comparison-output`, `--markdown-report`, `--md-report`, `--summary-markdown`, and `--report-output`. The Local STT transport comparator also accepts readable minimum-run aliases such as `--minimum-runs`, `--min-run-count`, `--minimum-run-count`, `--min-samples`, and `--minimum-samples`.
+The one-shot Parakeet MLX benchmark accepts readable aliases such as `--mlx-model`, `--runs`, `--input-audio`, `--synthesis-text`, `--cli-command`, `--average-package-power-watts`, `--thermal-status`, `--thermal-duration-min`, and `--json-output`.
 
 ## Project Structure
 
