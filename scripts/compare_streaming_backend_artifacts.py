@@ -88,6 +88,8 @@ RESOURCE_METRIC_ALIASES = {
 EXPECTED_TRANSCRIPT_KEYS = [
     "expected_final_transcript",
     "expected_transcript",
+    "reference_text",
+    "normalized_reference",
 ]
 
 
@@ -514,10 +516,16 @@ def token_list(text: str) -> list[str]:
 
 
 def expected_final_transcript(artifact: dict[str, Any]) -> str | None:
+    audio = artifact.get("audio", {}) if isinstance(artifact.get("audio"), dict) else {}
     settings = artifact.get("settings", {}) if isinstance(artifact.get("settings"), dict) else {}
     metadata = settings.get("metadata", {}) if isinstance(settings.get("metadata"), dict) else {}
+    samples = artifact.get("samples", []) if isinstance(artifact.get("samples"), list) else []
     candidates = [artifact.get(key) for key in EXPECTED_TRANSCRIPT_KEYS]
+    candidates.extend(audio.get(key) for key in EXPECTED_TRANSCRIPT_KEYS)
     candidates.extend(metadata.get(key) for key in EXPECTED_TRANSCRIPT_KEYS)
+    for sample in samples:
+        if isinstance(sample, dict):
+            candidates.extend(sample.get(key) for key in EXPECTED_TRANSCRIPT_KEYS)
     for candidate in candidates:
         if isinstance(candidate, str):
             normalized = normalize_transcript(candidate)

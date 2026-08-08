@@ -306,6 +306,41 @@ def test_compare_artifacts_blocks_expected_final_transcript_mismatch() -> None:
     ]
 
 
+def test_compare_artifacts_reads_reference_transcript_aliases() -> None:
+    baseline = artifact(
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_partial=500.0,
+        final=300.0,
+        transcript="hello final tail",
+    )
+    candidate = artifact(
+        backend="vosk",
+        decoder_mode="stateful",
+        first_partial=200.0,
+        final=100.0,
+        transcript="hello final tail",
+    )
+    candidate["expected_final_transcript"] = ""
+    candidate["audio"]["reference_text"] = "Hello, final tail."
+    candidate["samples"][0]["normalized_reference"] = "ignored later candidate"
+
+    report = compare_module.compare_artifacts(
+        baseline=baseline,
+        candidate=candidate,
+        baseline_path=Path("baseline.json"),
+        candidate_path=Path("vosk.json"),
+        baseline_name="default rolling-window",
+        candidate_name="Vosk stateful",
+    )
+
+    sanity = report["transcript_sanity"]
+    assert sanity["expected_final_transcript"] == "hello final tail"
+    assert sanity["candidate_expected_match_runs"] == 1
+    assert sanity["candidate_expected_mismatch_runs"] == 0
+    assert report["recommendation"]["decision"] == "support_low_latency_backend"
+
+
 def test_compare_artifacts_weighs_latency_win_against_resource_regression() -> None:
     report = compare_module.compare_artifacts(
         baseline=artifact(
