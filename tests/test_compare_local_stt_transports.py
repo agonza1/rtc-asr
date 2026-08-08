@@ -121,6 +121,26 @@ def test_parse_args_accepts_readable_minimum_run_aliases() -> None:
         assert args.min_runs == 4
 
 
+def test_parse_args_accepts_readable_gate_aliases() -> None:
+    for alias in [
+        "--require-raw-uds",
+        "--require-raw-uds-win",
+        "--require-raw-uds-gate",
+    ]:
+        args = compare_module.parse_args(["tcp.json", "uds.json", "raw.json", alias])
+
+        assert args.require_raw_uds_recommendation is True
+
+    for alias in [
+        "--require-cpu",
+        "--require-cpu-evidence",
+        "--require-cpu-utilization-evidence",
+    ]:
+        args = compare_module.parse_args(["tcp.json", "uds.json", "raw.json", alias])
+
+        assert args.require_cpu_utilization is True
+
+
 def write_artifact(
     path: Path,
     transport: str,

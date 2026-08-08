@@ -138,7 +138,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--require-raw-uds-recommendation",
+        "--require-raw-uds",
+        "--require-raw-uds-win",
+        "--require-raw-uds-gate",
         action="store_true",
+        dest="require_raw_uds_recommendation",
         help="Exit non-zero unless raw UDS clears the recommendation gate",
     )
     parser.add_argument(
@@ -154,7 +158,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--require-cpu-utilization",
+        "--require-cpu",
+        "--require-cpu-evidence",
+        "--require-cpu-utilization-evidence",
         action="store_true",
+        dest="require_cpu_utilization",
         help="Exit non-zero unless every required transport artifact includes CPU utilization evidence",
     )
     parser.add_argument(
