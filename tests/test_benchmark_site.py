@@ -2259,6 +2259,42 @@ def test_manifest_parse_args_accepts_explicit_paths_and_check_flag(tmp_path: Pat
     assert args.check is True
 
 
+def test_prerender_parse_args_accepts_review_friendly_aliases(tmp_path: Path) -> None:
+    manifest = tmp_path / "manifest.json"
+    homepage = tmp_path / "index.html"
+    detail_dir = tmp_path / "pages"
+    sitemap = tmp_path / "sitemap.xml"
+    robots = tmp_path / "robots.txt"
+    llms = tmp_path / "llms.txt"
+
+    args = prerender_module.parse_args(
+        [
+            "--manifest-json",
+            str(manifest),
+            "--index-html",
+            str(homepage),
+            "--detail-pages-dir",
+            str(detail_dir),
+            "--sitemap-xml",
+            str(sitemap),
+            "--robots-txt",
+            str(robots),
+            "--llms-txt",
+            str(llms),
+            "--public-base-url",
+            "https://example.test/asr/",
+        ]
+    )
+
+    assert args.manifest == manifest
+    assert args.homepage == homepage
+    assert args.detail_dir == detail_dir
+    assert args.sitemap == sitemap
+    assert args.robots == robots
+    assert args.llms == llms
+    assert args.site_base_url == "https://example.test/asr/"
+
+
 def test_manifest_write_preserves_generated_at_when_content_is_unchanged(tmp_path: Path) -> None:
     manifest = build_manifest(DEFAULT_RESULTS_DIR, TRACKS_PATH)
     manifest["generated_at"] = "2026-06-20T00:00:00Z"

@@ -21,17 +21,69 @@ DEFAULT_LLMS_PATH = Path("docs") / "llms.txt"
 DEFAULT_SITE_BASE_URL = "https://benchmarks.webrtc.ventures/asr-latency/"
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prerender benchmark homepage summary")
-    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST_PATH, help="Manifest JSON path")
-    parser.add_argument("--homepage", type=Path, default=DEFAULT_HOMEPAGE_PATH, help="Homepage HTML path")
-    parser.add_argument("--detail-dir", type=Path, default=DEFAULT_DETAIL_DIR, help="Detail pages output directory")
-    parser.add_argument("--sitemap", type=Path, default=DEFAULT_SITEMAP_PATH, help="Sitemap XML path")
-    parser.add_argument("--robots", type=Path, default=DEFAULT_ROBOTS_PATH, help="Robots.txt output path")
-    parser.add_argument("--llms", type=Path, default=DEFAULT_LLMS_PATH, help="llms.txt output path")
-    parser.add_argument("--site-base-url", default=DEFAULT_SITE_BASE_URL, help="Absolute public base URL for sitemap entries")
+    parser.add_argument(
+        "--manifest",
+        "--manifest-json",
+        "--benchmark-manifest",
+        dest="manifest",
+        type=Path,
+        default=DEFAULT_MANIFEST_PATH,
+        help="Manifest JSON path",
+    )
+    parser.add_argument(
+        "--homepage",
+        "--homepage-html",
+        "--index-html",
+        dest="homepage",
+        type=Path,
+        default=DEFAULT_HOMEPAGE_PATH,
+        help="Homepage HTML path",
+    )
+    parser.add_argument(
+        "--detail-dir",
+        "--details-dir",
+        "--detail-pages-dir",
+        dest="detail_dir",
+        type=Path,
+        default=DEFAULT_DETAIL_DIR,
+        help="Detail pages output directory",
+    )
+    parser.add_argument(
+        "--sitemap",
+        "--sitemap-xml",
+        dest="sitemap",
+        type=Path,
+        default=DEFAULT_SITEMAP_PATH,
+        help="Sitemap XML path",
+    )
+    parser.add_argument(
+        "--robots",
+        "--robots-txt",
+        dest="robots",
+        type=Path,
+        default=DEFAULT_ROBOTS_PATH,
+        help="Robots.txt output path",
+    )
+    parser.add_argument(
+        "--llms",
+        "--llms-txt",
+        dest="llms",
+        type=Path,
+        default=DEFAULT_LLMS_PATH,
+        help="llms.txt output path",
+    )
+    parser.add_argument(
+        "--site-base-url",
+        "--base-url",
+        "--public-base-url",
+        dest="site_base_url",
+        default=DEFAULT_SITE_BASE_URL,
+        help="Absolute public base URL for sitemap entries",
+    )
     parser.add_argument("--check", action="store_true", help="Exit non-zero when the homepage prerender is stale")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def format_ms(value: float | None) -> str:
