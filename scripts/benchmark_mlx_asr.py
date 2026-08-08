@@ -38,27 +38,81 @@ def non_negative_float(value: str) -> float:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Benchmark Parakeet MLX ASR latency")
-    parser.add_argument("--model", required=True, help="Parakeet MLX model identifier to load")
-    parser.add_argument("--sample-count", type=positive_int, default=3, help="Number of transcription runs")
-    parser.add_argument("--audio-file", type=Path, help="Optional speech clip to transcribe")
+    parser.add_argument(
+        "--model",
+        "--model-name",
+        "--mlx-model",
+        required=True,
+        dest="model",
+        help="Parakeet MLX model identifier to load",
+    )
+    parser.add_argument(
+        "--sample-count",
+        "--samples",
+        "--runs",
+        type=positive_int,
+        default=3,
+        dest="sample_count",
+        help="Number of transcription runs",
+    )
+    parser.add_argument(
+        "--audio-file",
+        "--input-audio",
+        "--input-audio-file",
+        "--wav",
+        type=Path,
+        dest="audio_file",
+        help="Optional speech clip to transcribe",
+    )
     parser.add_argument(
         "--speech-text",
+        "--text",
+        "--synthesis-text",
+        "--synthetic-speech-text",
+        dest="speech_text",
         default=DEFAULT_SPEECH_TEXT,
         help="Speech text used when synthesizing a benchmark clip on macOS",
     )
-    parser.add_argument("--command", default="parakeet-mlx", help="CLI entry point to execute")
+    parser.add_argument(
+        "--command",
+        "--cli",
+        "--cli-command",
+        default="parakeet-mlx",
+        dest="command",
+        help="CLI entry point to execute",
+    )
     parser.add_argument(
         "--package-power-watts",
+        "--power-watts",
+        "--avg-package-power-watts",
+        "--average-package-power-watts",
         type=non_negative_float,
+        dest="package_power_watts",
         help="Optional externally measured average package power draw in watts",
     )
-    parser.add_argument("--thermal-state", help="Optional externally observed sustained thermal state")
+    parser.add_argument(
+        "--thermal-state",
+        "--thermal-status",
+        dest="thermal_state",
+        help="Optional externally observed sustained thermal state",
+    )
     parser.add_argument(
         "--thermal-duration-minutes",
+        "--thermal-duration-min",
+        "--thermal-minutes",
         type=non_negative_float,
+        dest="thermal_duration_minutes",
         help="Optional duration covered by the sustained thermal observation",
     )
-    parser.add_argument("--output", type=Path, help="Optional JSON artifact path")
+    parser.add_argument(
+        "--output",
+        "--output-json",
+        "--json-output",
+        "--artifact-output",
+        type=Path,
+        dest="output",
+        help="Optional JSON artifact path",
+    )
     return parser.parse_args(argv)
 
 
