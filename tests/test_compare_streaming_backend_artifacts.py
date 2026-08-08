@@ -760,6 +760,8 @@ def test_parse_args_accepts_markdown_report_output_aliases() -> None:
         "--md-report",
         "--summary-markdown",
         "--markdown-summary",
+        "--markdown-summary-output",
+        "--summary-markdown-output",
     ):
         args = compare_module.parse_args([
             "--baseline-json",
