@@ -162,6 +162,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--md-report",
         "--summary-markdown",
         "--markdown-summary",
+        "--markdown-summary-output",
+        "--summary-markdown-output",
         dest="markdown_output",
         type=Path,
         help="Optional path for a Markdown comparison report",
