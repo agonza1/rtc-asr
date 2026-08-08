@@ -1231,6 +1231,25 @@ def test_parse_args_accepts_image_options_and_comma_separated_values() -> None:
     ]
 
 
+def test_parse_args_accepts_tag_options_and_comma_separated_values() -> None:
+    args = reporter.parse_args(
+        [
+            "--tag",
+            "custom:first, custom:second",
+            "--image-tags",
+            "custom:third",
+            "positional:image",
+        ]
+    )
+
+    assert args.images == [
+        "positional:image",
+        "custom:first",
+        "custom:second",
+        "custom:third",
+    ]
+
+
 @pytest.mark.parametrize(
     "option",
     [
