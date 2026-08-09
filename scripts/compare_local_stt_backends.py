@@ -146,6 +146,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--require-resource-metrics",
         "--require-resources",
         "--require-resource-evidence",
+        "--require-resource-monitoring",
+        "--require-cpu-memory-metrics",
+        "--require-memory-cpu-metrics",
         action="store_true",
         help="Require each backend artifact to include peak RSS and CPU utilization evidence",
     )
@@ -156,6 +159,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--minimum-streams",
         "--min-stream-count",
         "--minimum-stream-count",
+        "--min-concurrent-streams",
+        "--minimum-concurrent-streams",
         type=positive_int,
         default=1,
         help="Minimum concurrent stream count required in each backend artifact",
