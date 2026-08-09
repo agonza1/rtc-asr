@@ -36,6 +36,8 @@ SORT_CHOICES = (
     "missing-first",
     "unknown-size-first",
     "unknown-created-first",
+    "duplicate-id-first",
+    "unique-id-first",
 )
 SORT_CHOICE_SET = set(SORT_CHOICES)
 OUTPUT_FORMAT_CHOICES = (
@@ -190,6 +192,27 @@ SORT_ALIASES = {
     "unknown-creation-first": "unknown-created-first",
     "missing-created": "unknown-created-first",
     "missing-created-first": "unknown-created-first",
+    "duplicates": "duplicate-id-first",
+    "duplicate": "duplicate-id-first",
+    "duplicate-id": "duplicate-id-first",
+    "duplicate-ids": "duplicate-id-first",
+    "duplicate-id-first": "duplicate-id-first",
+    "duplicate-image-id": "duplicate-id-first",
+    "duplicate-image-ids": "duplicate-id-first",
+    "duplicate-image-id-first": "duplicate-id-first",
+    "duplicate-image-ids-first": "duplicate-id-first",
+    "shared-id": "duplicate-id-first",
+    "shared-ids": "duplicate-id-first",
+    "shared-id-first": "duplicate-id-first",
+    "shared-image-id": "duplicate-id-first",
+    "shared-image-id-first": "duplicate-id-first",
+    "unique-id": "unique-id-first",
+    "unique-ids": "unique-id-first",
+    "unique-id-first": "unique-id-first",
+    "unique-image-id": "unique-id-first",
+    "unique-image-ids": "unique-id-first",
+    "unique-image-id-first": "unique-id-first",
+    "unique-image-ids-first": "unique-id-first",
 }
 UTC_DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
 UTC_DATETIME_MAX = datetime.max.replace(tzinfo=UTC)
@@ -312,6 +335,19 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
             records,
             key=lambda record: (not (record.present and parse_created_datetime(record.created) is None), record.tag),
         )
+    if sort_by in {"duplicate-id-first", "unique-id-first"}:
+        duplicate_ids = {
+            group["image_id"]
+            for group in records_with_duplicate_image_ids(records)
+            if isinstance(group.get("image_id"), str)
+        }
+
+        def duplicate_id_key(record: ImageSizeRecord) -> tuple[bool, str]:
+            has_duplicate_id = bool(record.present and record.image_id in duplicate_ids)
+            selected = has_duplicate_id if sort_by == "duplicate-id-first" else not has_duplicate_id
+            return (not selected, record.tag)
+
+        return sorted(records, key=duplicate_id_key)
     raise ValueError(f"unknown sort mode: {sort_by}")
 
 
