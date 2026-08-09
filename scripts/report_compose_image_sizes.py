@@ -32,6 +32,8 @@ SORT_CHOICES = (
     "created-desc",
     "age-asc",
     "age-desc",
+    "present-first",
+    "missing-first",
 )
 SORT_CHOICE_SET = set(SORT_CHOICES)
 OUTPUT_FORMAT_CHOICES = (
@@ -155,6 +157,22 @@ SORT_ALIASES = {
     "oldest-age-first": "age-desc",
     "oldest-by-age": "age-desc",
     "oldest-by-age-first": "age-desc",
+    "by-present": "present-first",
+    "present": "present-first",
+    "present-images": "present-first",
+    "present-first": "present-first",
+    "available": "present-first",
+    "available-first": "present-first",
+    "existing": "present-first",
+    "existing-first": "present-first",
+    "by-missing": "missing-first",
+    "missing": "missing-first",
+    "missing-images": "missing-first",
+    "missing-first": "missing-first",
+    "absent": "missing-first",
+    "absent-first": "missing-first",
+    "unavailable": "missing-first",
+    "unavailable-first": "missing-first",
 }
 UTC_DATETIME_MIN = datetime.min.replace(tzinfo=UTC)
 UTC_DATETIME_MAX = datetime.max.replace(tzinfo=UTC)
@@ -266,6 +284,10 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
         return sorted(records, key=lambda record: (image_age_days(record) is None, image_age_days(record) or 0))
     if sort_by == "age-desc":
         return sorted(records, key=lambda record: (image_age_days(record) is not None, image_age_days(record) or 0), reverse=True)
+    if sort_by == "present-first":
+        return sorted(records, key=lambda record: (not record.present, record.tag))
+    if sort_by == "missing-first":
+        return sorted(records, key=lambda record: (record.present, record.tag))
     raise ValueError(f"unknown sort mode: {sort_by}")
 
 
@@ -1017,7 +1039,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         dest="sort_by",
         type=parse_sort_choice,
         default="input",
-        help="Order output records by input order, image tag, image size, image creation time, or image age.",
+        help="Order output records by input order, image tag, image size, image creation time, image age, or presence.",
     )
     parser.add_argument(
         "--summary-only",
