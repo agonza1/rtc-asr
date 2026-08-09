@@ -46,6 +46,9 @@ OUTPUT_FORMAT_CHOICE_SET = set(OUTPUT_FORMAT_CHOICES)
 OUTPUT_FORMAT_ALIASES = {
     "md": "markdown",
     "table": "markdown",
+    "markdown-table": "markdown",
+    "md-table": "markdown",
+    "table-md": "markdown",
     "rows": "markdown",
     "json-summary": "summary-json",
     "summary": "summary-json",
@@ -53,8 +56,11 @@ OUTPUT_FORMAT_ALIASES = {
     "md-summary": "summary-markdown",
     "markdown-summary": "summary-markdown",
     "summary-md": "summary-markdown",
+    "summary-markdown-table": "summary-markdown",
     "summary-table": "summary-markdown",
+    "summary-md-table": "summary-markdown",
     "table-summary": "summary-markdown",
+    "table-summary-md": "summary-markdown",
 }
 SORT_ALIASES = {
     "as-listed": "input",

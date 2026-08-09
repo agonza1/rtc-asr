@@ -962,6 +962,9 @@ def test_parse_sort_choice_accepts_case_and_aliases(value: str, expected: str) -
         ("markdown", "markdown"),
         ("md", "markdown"),
         ("table", "markdown"),
+        ("markdown-table", "markdown"),
+        ("md_table", "markdown"),
+        ("table-md", "markdown"),
         ("JSON", "json"),
         ("csv", "csv"),
         ("summary-json", "summary-json"),
@@ -971,7 +974,10 @@ def test_parse_sort_choice_accepts_case_and_aliases(value: str, expected: str) -
         ("csv-summary", "summary-csv"),
         ("summary-markdown", "summary-markdown"),
         ("markdown_summary", "summary-markdown"),
+        ("summary_markdown_table", "summary-markdown"),
         ("summary-table", "summary-markdown"),
+        ("summary_md_table", "summary-markdown"),
+        ("table_summary_md", "summary-markdown"),
     ],
 )
 def test_parse_output_format_accepts_case_and_aliases(value: str, expected: str) -> None:
