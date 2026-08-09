@@ -919,6 +919,31 @@ def test_sort_records_orders_unknown_metadata_first_then_tag() -> None:
     ]
 
 
+def test_sort_records_orders_duplicate_image_ids_then_tag() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="z-duplicate:image", image_id="shared", size_bytes=200, created=None, present=True),
+        reporter.ImageSizeRecord(tag="unique:image", image_id="unique", size_bytes=100, created=None, present=True),
+        reporter.ImageSizeRecord(tag="a-duplicate:image", image_id="shared", size_bytes=300, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+        reporter.ImageSizeRecord(tag="unknown-id:image", image_id=None, size_bytes=400, created=None, present=True),
+    ]
+
+    assert [record.tag for record in reporter.sort_records(records, "duplicate-id-first")] == [
+        "a-duplicate:image",
+        "z-duplicate:image",
+        "missing:image",
+        "unique:image",
+        "unknown-id:image",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "unique-id-first")] == [
+        "missing:image",
+        "unique:image",
+        "unknown-id:image",
+        "a-duplicate:image",
+        "z-duplicate:image",
+    ]
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -1014,6 +1039,11 @@ def test_sort_records_orders_unknown_metadata_first_then_tag() -> None:
         ("unknown-created", "unknown-created-first"),
         ("unknown_creation_first", "unknown-created-first"),
         ("missing-created", "unknown-created-first"),
+        ("duplicate-id", "duplicate-id-first"),
+        ("duplicate_image_ids", "duplicate-id-first"),
+        ("shared-id-first", "duplicate-id-first"),
+        ("unique-id", "unique-id-first"),
+        ("unique_image_ids_first", "unique-id-first"),
     ],
 )
 def test_parse_sort_choice_accepts_case_and_aliases(value: str, expected: str) -> None:
