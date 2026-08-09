@@ -34,7 +34,9 @@ SORT_CHOICES = (
     "age-desc",
     "present-first",
     "missing-first",
+    "known-size-first",
     "unknown-size-first",
+    "known-created-first",
     "unknown-created-first",
     "duplicate-id-first",
     "unique-id-first",
@@ -181,11 +183,34 @@ SORT_ALIASES = {
     "absent-first": "missing-first",
     "unavailable": "missing-first",
     "unavailable-first": "missing-first",
+    "known-size": "known-size-first",
+    "known-sizes": "known-size-first",
+    "known-size-first": "known-size-first",
+    "known-image-size": "known-size-first",
+    "known-image-sizes": "known-size-first",
+    "known-image-size-first": "known-size-first",
+    "known-image-sizes-first": "known-size-first",
+    "sized": "known-size-first",
+    "sized-first": "known-size-first",
+    "sized-images": "known-size-first",
+    "sized-images-first": "known-size-first",
     "unknown-size": "unknown-size-first",
     "unknown-sizes": "unknown-size-first",
     "unknown-size-first": "unknown-size-first",
     "missing-size": "unknown-size-first",
     "missing-size-first": "unknown-size-first",
+    "known-created": "known-created-first",
+    "known-created-first": "known-created-first",
+    "known-creation": "known-created-first",
+    "known-creation-first": "known-created-first",
+    "known-created-time": "known-created-first",
+    "known-created-time-first": "known-created-first",
+    "known-image-created": "known-created-first",
+    "known-image-created-first": "known-created-first",
+    "timestamped": "known-created-first",
+    "timestamped-first": "known-created-first",
+    "dated": "known-created-first",
+    "dated-first": "known-created-first",
     "unknown-created": "unknown-created-first",
     "unknown-created-first": "unknown-created-first",
     "unknown-creation": "unknown-created-first",
@@ -328,8 +353,15 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
         return sorted(records, key=lambda record: (not record.present, record.tag))
     if sort_by == "missing-first":
         return sorted(records, key=lambda record: (record.present, record.tag))
+    if sort_by == "known-size-first":
+        return sorted(records, key=lambda record: (not (record.present and record.size_bytes is not None), record.tag))
     if sort_by == "unknown-size-first":
         return sorted(records, key=lambda record: (not (record.present and record.size_bytes is None), record.tag))
+    if sort_by == "known-created-first":
+        return sorted(
+            records,
+            key=lambda record: (not (record.present and parse_created_datetime(record.created) is not None), record.tag),
+        )
     if sort_by == "unknown-created-first":
         return sorted(
             records,
@@ -1101,7 +1133,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default="input",
         help=(
             "Order output records by input order, image tag, image size, image creation time, "
-            "image age, presence, unknown size, or unknown creation time."
+            "image age, presence, known or unknown size, known or unknown creation time, "
+            "or shared image IDs."
         ),
     )
     parser.add_argument(
