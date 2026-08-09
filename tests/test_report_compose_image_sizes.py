@@ -919,6 +919,28 @@ def test_sort_records_orders_unknown_metadata_first_then_tag() -> None:
     ]
 
 
+def test_sort_records_orders_known_metadata_first_then_tag() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="z-known:image", image_id="z", size_bytes=200, created="2026-07-31T12:00:00Z", present=True),
+        reporter.ImageSizeRecord(tag="a-unknown-size:image", image_id="a", size_bytes=None, created="2026-07-31T12:00:00Z", present=True),
+        reporter.ImageSizeRecord(tag="b-unknown-created:image", image_id="b", size_bytes=100, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    assert [record.tag for record in reporter.sort_records(records, "known-size-first")] == [
+        "b-unknown-created:image",
+        "z-known:image",
+        "a-unknown-size:image",
+        "missing:image",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "known-created-first")] == [
+        "a-unknown-size:image",
+        "z-known:image",
+        "b-unknown-created:image",
+        "missing:image",
+    ]
+
+
 def test_sort_records_orders_duplicate_image_ids_then_tag() -> None:
     records = [
         reporter.ImageSizeRecord(tag="z-duplicate:image", image_id="shared", size_bytes=200, created=None, present=True),
@@ -1033,9 +1055,15 @@ def test_sort_records_orders_duplicate_image_ids_then_tag() -> None:
         ("missing-images", "missing-first"),
         ("absent_first", "missing-first"),
         ("unavailable-first", "missing-first"),
+        ("known-size", "known-size-first"),
+        ("known_image_sizes_first", "known-size-first"),
+        ("sized-first", "known-size-first"),
         ("unknown-size", "unknown-size-first"),
         ("unknown_sizes", "unknown-size-first"),
         ("missing-size-first", "unknown-size-first"),
+        ("known-created", "known-created-first"),
+        ("known_creation_first", "known-created-first"),
+        ("timestamped-first", "known-created-first"),
         ("unknown-created", "unknown-created-first"),
         ("unknown_creation_first", "unknown-created-first"),
         ("missing-created", "unknown-created-first"),
