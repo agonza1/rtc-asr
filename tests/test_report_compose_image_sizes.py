@@ -1268,6 +1268,7 @@ def test_main_format_alias_emits_summary_markdown(
 
 
 def test_parse_args_accepts_json_summary_aliases() -> None:
+    assert reporter.parse_args(["--summary"]).summary_only is True
     assert reporter.parse_args(["--json-summary"]).summary_only is True
     assert reporter.parse_args(["--summary-json"]).summary_only is True
     assert reporter.parse_args(["--json-summary-output"]).summary_only is True
