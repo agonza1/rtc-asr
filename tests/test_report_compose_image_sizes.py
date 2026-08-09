@@ -875,6 +875,28 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
     ]
 
 
+def test_sort_records_orders_by_image_presence_then_tag() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="z-present:image", image_id="z", size_bytes=200, created=None, present=True),
+        reporter.ImageSizeRecord(tag="a-missing:image", image_id=None, size_bytes=None, created=None, present=False),
+        reporter.ImageSizeRecord(tag="a-present:image", image_id="a", size_bytes=100, created=None, present=True),
+        reporter.ImageSizeRecord(tag="z-missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    assert [record.tag for record in reporter.sort_records(records, "present-first")] == [
+        "a-present:image",
+        "z-present:image",
+        "a-missing:image",
+        "z-missing:image",
+    ]
+    assert [record.tag for record in reporter.sort_records(records, "missing-first")] == [
+        "a-missing:image",
+        "z-missing:image",
+        "a-present:image",
+        "z-present:image",
+    ]
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -950,6 +972,16 @@ def test_sort_records_orders_by_image_age(monkeypatch: pytest.MonkeyPatch) -> No
         ("stalest_age", "age-desc"),
         ("oldest-age-first", "age-desc"),
         ("oldest_by_age", "age-desc"),
+        ("by-present", "present-first"),
+        ("present", "present-first"),
+        ("present_images", "present-first"),
+        ("available-first", "present-first"),
+        ("existing_first", "present-first"),
+        ("by-missing", "missing-first"),
+        ("missing", "missing-first"),
+        ("missing-images", "missing-first"),
+        ("absent_first", "missing-first"),
+        ("unavailable-first", "missing-first"),
     ],
 )
 def test_parse_sort_choice_accepts_case_and_aliases(value: str, expected: str) -> None:
