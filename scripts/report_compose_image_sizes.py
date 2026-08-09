@@ -1043,6 +1043,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-only",
+        "--summary",
         "--json-summary",
         "--summary-json",
         "--json-summary-output",
