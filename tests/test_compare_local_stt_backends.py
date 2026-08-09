@@ -229,7 +229,13 @@ def test_parse_args_accepts_readable_first_partial_win_aliases() -> None:
 
 
 def test_parse_args_accepts_readable_minimum_stream_aliases() -> None:
-    for alias in ["--minimum-streams", "--min-stream-count", "--minimum-stream-count"]:
+    for alias in [
+        "--minimum-streams",
+        "--min-stream-count",
+        "--minimum-stream-count",
+        "--min-concurrent-streams",
+        "--minimum-concurrent-streams",
+    ]:
         args = compare_module.parse_args(
             [
                 "baseline.json",
@@ -244,6 +250,27 @@ def test_parse_args_accepts_readable_minimum_stream_aliases() -> None:
         )
 
         assert args.min_concurrency == 3
+
+
+def test_parse_args_accepts_readable_resource_metric_aliases() -> None:
+    for alias in [
+        "--require-resource-monitoring",
+        "--require-cpu-memory-metrics",
+        "--require-memory-cpu-metrics",
+    ]:
+        args = compare_module.parse_args(
+            [
+                "baseline.json",
+                "candidate.json",
+                "--baseline",
+                "faster-whisper:rolling_window",
+                "--candidate",
+                "vosk:stateful",
+                alias,
+            ]
+        )
+
+        assert args.require_resource_metrics is True
 
 
 def test_compare_backends_recommends_supported_when_candidate_clears_latency_gate(tmp_path: Path) -> None:
