@@ -1198,6 +1198,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--max-size-mb",
+        "--max-size",
+        "--size-budget",
+        "--size-budget-mb",
         "--max-image-size-mb",
         "--max-image-size",
         "--image-size-budget",
@@ -1208,6 +1211,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--max-total-size-mb",
+        "--max-total-size",
+        "--total-budget",
+        "--total-budget-mb",
+        "--total-image-size-budget",
         "--max-total-image-size-mb",
         "--total-size-budget",
         "--total-image-size-budget-mb",
@@ -1217,6 +1224,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--max-age-days",
+        "--max-age",
+        "--age-budget",
+        "--age-budget-days",
+        "--image-age-budget",
         "--image-age-budget-days",
         "--max-image-age-days",
         "--image-max-age-days",
