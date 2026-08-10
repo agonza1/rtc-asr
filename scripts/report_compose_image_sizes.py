@@ -1323,6 +1323,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Exit non-zero when a present image does not report a Docker creation timestamp.",
     )
     parser.add_argument(
+        "--require-complete-metadata",
+        "--require-image-metadata",
+        "--require-known-metadata",
+        "--fail-on-unknown-metadata",
+        "--fail-on-incomplete-metadata",
+        dest="require_complete_metadata",
+        action="store_true",
+        help="Exit non-zero when a present image does not report both Docker image size and creation timestamp.",
+    )
+    parser.add_argument(
         "--require-unique-image-ids",
         "--fail-on-duplicate-image-ids",
         "--fail-on-shared-image-id",
@@ -1348,6 +1358,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         args.summary_csv = True
     elif args.output_format == "summary-markdown":
         args.summary_markdown = True
+    if args.require_complete_metadata:
+        args.require_size = True
+        args.require_created = True
     args.images = normalize_image_args(args.images, args.option_images)
     delattr(args, "option_images")
     return args

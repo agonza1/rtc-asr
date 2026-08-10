@@ -1533,6 +1533,24 @@ def test_parse_args_accepts_fail_on_unknown_created_aliases(option: str) -> None
     assert reporter.parse_args([option]).require_created is True
 
 
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--require-complete-metadata",
+        "--require-image-metadata",
+        "--require-known-metadata",
+        "--fail-on-unknown-metadata",
+        "--fail-on-incomplete-metadata",
+    ],
+)
+def test_parse_args_accepts_complete_metadata_aliases(option: str) -> None:
+    args = reporter.parse_args([option])
+
+    assert args.require_complete_metadata is True
+    assert args.require_size is True
+    assert args.require_created is True
+
+
 def test_main_require_created_rejects_invalid_creation_time(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1728,6 +1746,25 @@ def test_main_fails_when_present_image_creation_time_is_required_but_unknown(
 
     assert reporter.main(["--require-created", "unknown:image"]) == 1
     assert "Images with unknown creation time: unknown:image" in capsys.readouterr().err
+    assert reporter.main(["unknown:image"]) == 0
+
+
+def test_main_complete_metadata_requires_known_size_and_creation_time(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag=images[0], image_id="unknown", size_bytes=None, created=None, present=True)
+        ],
+    )
+
+    assert reporter.main(["--require-complete-metadata", "unknown:image"]) == 1
+    captured = capsys.readouterr()
+    assert "Images with unknown size: unknown:image" in captured.err
+    assert "Images with unknown creation time: unknown:image" in captured.err
+
     assert reporter.main(["unknown:image"]) == 0
 
 
