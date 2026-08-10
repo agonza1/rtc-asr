@@ -173,6 +173,7 @@ class LocalStreamingSTTService(STTService):
         self._suppress_transcripts = True
         self._utterance_active = False
         self._pre_roll_buffer.clear()
+        self._update_pre_roll_buffer_metric()
         self._aggregate_buffer.clear()
         self._aggregate_duration_ms = 0.0
         self._update_aggregate_buffer_metric()
@@ -196,6 +197,7 @@ class LocalStreamingSTTService(STTService):
         if self._pre_roll_buffer:
             pre_roll = bytes(self._pre_roll_buffer)
             self._pre_roll_buffer.clear()
+            self._update_pre_roll_buffer_metric()
             await self._queue_audio_for_send(pre_roll)
 
     async def _handle_audio(self, audio: bytes) -> None:
@@ -526,6 +528,7 @@ class LocalStreamingSTTService(STTService):
         self._clear_send_queue()
         self._release_final_waiters()
         self._pre_roll_buffer.clear()
+        self._update_pre_roll_buffer_metric()
         self._aggregate_buffer.clear()
         self._aggregate_duration_ms = 0.0
         self._update_aggregate_buffer_metric()
@@ -574,6 +577,7 @@ class LocalStreamingSTTService(STTService):
         overflow = len(self._pre_roll_buffer) - self.config.pre_roll_bytes
         if overflow > 0:
             del self._pre_roll_buffer[:overflow]
+        self._update_pre_roll_buffer_metric()
 
     def _validate_audio_frame(self, frame: AudioRawFrame) -> None:
         sample_rate = getattr(frame, "sample_rate", self.config.sample_rate)
@@ -617,6 +621,20 @@ class LocalStreamingSTTService(STTService):
         self.metrics.local_stt_aggregate_buffer_ms = buffered_ms
         self.metrics.local_stt_aggregate_buffer_high_water_ms = max(
             self.metrics.local_stt_aggregate_buffer_high_water_ms,
+            buffered_ms,
+        )
+
+    def _update_pre_roll_buffer_metric(self) -> None:
+        buffered_bytes = len(self._pre_roll_buffer)
+        buffered_ms = round(self._audio_duration_ms(self._pre_roll_buffer), 3) if buffered_bytes else 0.0
+        self.metrics.local_stt_pre_roll_buffer_bytes = buffered_bytes
+        self.metrics.local_stt_pre_roll_buffer_bytes_high_water = max(
+            self.metrics.local_stt_pre_roll_buffer_bytes_high_water,
+            buffered_bytes,
+        )
+        self.metrics.local_stt_pre_roll_buffer_ms = buffered_ms
+        self.metrics.local_stt_pre_roll_buffer_high_water_ms = max(
+            self.metrics.local_stt_pre_roll_buffer_high_water_ms,
             buffered_ms,
         )
 

@@ -229,6 +229,10 @@ def test_service_reports_aggregate_buffer_depth_until_flush() -> None:
     asyncio.run(_test_service_reports_aggregate_buffer_depth_until_flush())
 
 
+def test_service_reports_pre_roll_buffer_depth_until_utterance_start() -> None:
+    asyncio.run(_test_service_reports_pre_roll_buffer_depth_until_utterance_start())
+
+
 async def _test_fake_server_verifies_start_binary_audio_finalize_and_transcript_mapping() -> None:
     websocket = FakeLocalSTTWebSocket()
     service = LocalStreamingSTTService(LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=20), connect_fn=lambda _url: asyncio.sleep(0, websocket))
@@ -306,6 +310,31 @@ async def _test_service_reports_aggregate_buffer_depth_until_flush() -> None:
     assert service.metrics.local_stt_aggregate_buffer_bytes == 0
     assert service.metrics.local_stt_aggregate_buffer_bytes_high_water == 1280
     assert service.metrics.local_stt_aggregate_buffer_high_water_ms == 40.0
+
+
+async def _test_service_reports_pre_roll_buffer_depth_until_utterance_start() -> None:
+    websocket = FakeLocalSTTWebSocket()
+    service = LocalStreamingSTTService(
+        LocalSTTConfig(url="ws://fake/v1/stt/stream", aggregation_ms=60, pre_roll_ms=40),
+        connect_fn=lambda _url: asyncio.sleep(0, websocket),
+    )
+
+    await service.start(StartFrame(audio_in_sample_rate=16000))
+    await service.process_frame(AudioRawFrame(audio=b"a" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"b" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+    await service.process_frame(AudioRawFrame(audio=b"c" * 640, sample_rate=16000, num_channels=1), FrameDirection.DOWNSTREAM)
+
+    metrics = service.metrics_snapshot()
+    assert metrics["local_stt_pre_roll_buffer_bytes"] == 1280
+    assert metrics["local_stt_pre_roll_buffer_ms"] == 40.0
+    assert metrics["local_stt_pre_roll_buffer_bytes_high_water"] == 1280
+    assert metrics["local_stt_pre_roll_buffer_high_water_ms"] == 40.0
+
+    await service.process_frame(VADUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await service.stop(EndFrame())
+
+    assert service.metrics.local_stt_pre_roll_buffer_bytes == 0
+    assert service.metrics.local_stt_pre_roll_buffer_ms == 0.0
 
 
 async def _test_service_counts_ready_timeout() -> None:
