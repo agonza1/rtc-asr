@@ -435,6 +435,16 @@ def parse_positive_float(value: str) -> float:
     return parsed
 
 
+def parse_nonnegative_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"must be a nonnegative integer: {value!r}") from exc
+    if parsed < 0:
+        raise argparse.ArgumentTypeError(f"must be a nonnegative integer: {value!r}")
+    return parsed
+
+
 def parse_size_mb(value: str) -> float:
     match = re.fullmatch(r"\s*(-?(?:\d+(?:[,_]\d{3})+|\d+)(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
     if match is None:
@@ -465,6 +475,7 @@ def normalize_image_args(positional_images: Sequence[str], option_images: Sequen
 
 def records_to_json(
     records: Iterable[ImageSizeRecord],
+    max_missing: int | None = None,
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
     max_deduplicated_total_size_mb: float | None = None,
@@ -473,6 +484,7 @@ def records_to_json(
     record_list = list(records)
     summary = records_summary(
         record_list,
+        max_missing=max_missing,
         max_size_mb=max_size_mb,
         max_total_size_mb=max_total_size_mb,
         max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
@@ -519,6 +531,7 @@ def records_to_csv(records: Iterable[ImageSizeRecord]) -> str:
 
 def records_summary(
     records: Sequence[ImageSizeRecord],
+    max_missing: int | None = None,
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
     max_deduplicated_total_size_mb: float | None = None,
@@ -624,6 +637,15 @@ def records_summary(
                 "over_budget_excess_mb": round(over_budget_excess_bytes / 1_000_000, 1),
             }
         )
+    if max_missing is not None:
+        missing_budget_excess = max(0, len(missing) - max_missing)
+        summary.update(
+            {
+                "missing_image_budget": max_missing,
+                "missing_over_budget": len(missing) > max_missing,
+                "missing_budget_excess": missing_budget_excess,
+            }
+        )
     if max_total_size_mb is not None:
         total_budget_excess_bytes = max(0, int(total_bytes - max_total_size_mb * 1_000_000))
         summary.update(
@@ -690,6 +712,7 @@ def records_summary(
 
 def records_summary_to_json(
     records: Sequence[ImageSizeRecord],
+    max_missing: int | None = None,
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
     max_deduplicated_total_size_mb: float | None = None,
@@ -698,6 +721,7 @@ def records_summary_to_json(
     return json.dumps(
         records_summary(
             records,
+            max_missing=max_missing,
             max_size_mb=max_size_mb,
             max_total_size_mb=max_total_size_mb,
             max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
@@ -720,6 +744,7 @@ def summary_csv_value(value: Any) -> str:
 
 def records_summary_to_csv(
     records: Sequence[ImageSizeRecord],
+    max_missing: int | None = None,
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
     max_deduplicated_total_size_mb: float | None = None,
@@ -727,6 +752,7 @@ def records_summary_to_csv(
 ) -> str:
     summary = records_summary(
         records,
+        max_missing=max_missing,
         max_size_mb=max_size_mb,
         max_total_size_mb=max_total_size_mb,
         max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
@@ -742,6 +768,7 @@ def records_summary_to_csv(
 
 def records_summary_to_markdown(
     records: Sequence[ImageSizeRecord],
+    max_missing: int | None = None,
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
     max_deduplicated_total_size_mb: float | None = None,
@@ -749,6 +776,7 @@ def records_summary_to_markdown(
 ) -> str:
     summary = records_summary(
         records,
+        max_missing=max_missing,
         max_size_mb=max_size_mb,
         max_total_size_mb=max_total_size_mb,
         max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
@@ -782,6 +810,14 @@ def records_summary_to_markdown(
                 budget=summary["image_size_budget_mb"],
                 count=summary["over_budget_count"],
                 excess=summary["over_budget_excess_mb"],
+            )
+        )
+    if max_missing is not None:
+        rows.append(
+            "| Missing image budget | {budget}; {count} missing; {excess} over |".format(
+                budget=summary["missing_image_budget"],
+                count=summary["missing"],
+                excess=summary["missing_budget_excess"],
             )
         )
     if max_total_size_mb is not None:
@@ -1011,6 +1047,7 @@ def markdown_cell(value: str | None) -> str:
 
 def records_to_markdown(
     records: Sequence[ImageSizeRecord],
+    max_missing: int | None = None,
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
     max_deduplicated_total_size_mb: float | None = None,
@@ -1118,6 +1155,14 @@ def records_to_markdown(
         )
         if largest_budget_utilization_percent is not None:
             rows.append(f"Largest image budget utilization: {largest_budget_utilization_percent:.1f}%")
+    if max_missing is not None:
+        rows.append(
+            "Missing image budget: {budget}, {missing} missing, {excess} over.".format(
+                budget=max_missing,
+                missing=len(missing),
+                excess=max(0, len(missing) - max_missing),
+            )
+        )
     if max_total_size_mb is not None:
         total_budget_excess_mb = max(0.0, total_bytes / 1_000_000 - max_total_size_mb)
         rows.append(
@@ -1307,6 +1352,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Exit non-zero when any present image is larger than this size budget. Bare numbers are decimal megabytes.",
     )
     parser.add_argument(
+        "--max-missing",
+        "--max-missing-images",
+        "--missing-budget",
+        "--missing-image-budget",
+        "--missing-images-budget",
+        type=parse_nonnegative_int,
+        dest="max_missing",
+        help="Exit non-zero when more than this many requested images are absent.",
+    )
+    parser.add_argument(
         "--max-total-size-mb",
         "--max-total-size",
         "--total-budget",
@@ -1447,6 +1502,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.summary_csv:
         output = records_summary_to_csv(
             records,
+            max_missing=args.max_missing,
             max_size_mb=args.max_size_mb,
             max_total_size_mb=args.max_total_size_mb,
             max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
@@ -1455,6 +1511,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.summary_markdown:
         output = records_summary_to_markdown(
             records,
+            max_missing=args.max_missing,
             max_size_mb=args.max_size_mb,
             max_total_size_mb=args.max_total_size_mb,
             max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
@@ -1463,6 +1520,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif args.summary_only:
         output = records_summary_to_json(
             records,
+            max_missing=args.max_missing,
             max_size_mb=args.max_size_mb,
             max_total_size_mb=args.max_total_size_mb,
             max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
@@ -1474,6 +1532,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         output = (
             records_to_json(
                 records,
+                max_missing=args.max_missing,
                 max_size_mb=args.max_size_mb,
                 max_total_size_mb=args.max_total_size_mb,
                 max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
@@ -1482,6 +1541,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.json
             else records_to_markdown(
                 records,
+                max_missing=args.max_missing,
                 max_size_mb=args.max_size_mb,
                 max_total_size_mb=args.max_total_size_mb,
                 max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
@@ -1507,6 +1567,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.max_deduplicated_total_size_mb is not None
         and deduplicated_total_size_bytes > args.max_deduplicated_total_size_mb * 1_000_000
     )
+    missing_over_budget = args.max_missing is not None and len(missing_records) > args.max_missing
     if args.require_present and missing_records:
         print(
             "Missing required images: {tags}".format(tags=", ".join(record.tag for record in missing_records)),
@@ -1515,6 +1576,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.require_any_present and records and not any_present:
         print(
             "No requested images are present: {tags}".format(tags=", ".join(record.tag for record in records)),
+            file=sys.stderr,
+        )
+    if missing_over_budget:
+        print(
+            "Missing image count over {budget}: {count} missing ({tags})".format(
+                budget=args.max_missing,
+                count=len(missing_records),
+                tags=", ".join(record.tag for record in missing_records),
+            ),
             file=sys.stderr,
         )
     if args.require_size and unknown_size_records:
@@ -1585,6 +1655,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if (
         (args.require_present and missing_records)
         or (args.require_any_present and records and not any_present)
+        or missing_over_budget
         or (args.require_size and unknown_size_records)
         or (args.require_created and unknown_created_records)
         or (args.require_unique_image_ids and duplicate_image_id_groups)

@@ -586,6 +586,23 @@ def test_records_summary_reports_size_budget_status() -> None:
     assert summary["over_budget_excess_mb"] == 1.0
 
 
+def test_records_summary_reports_missing_image_budget_status() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="present:image", image_id="present", size_bytes=1, created=None, present=True),
+        reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+    ]
+
+    summary = reporter.records_summary(records, max_missing=0)
+    markdown = reporter.records_to_markdown(records, max_missing=0)
+    summary_markdown = reporter.records_summary_to_markdown(records, max_missing=0)
+
+    assert summary["missing_image_budget"] == 0
+    assert summary["missing_over_budget"] is True
+    assert summary["missing_budget_excess"] == 1
+    assert "Missing image budget: 0, 1 missing, 1 over." in markdown
+    assert "| Missing image budget | 0; 1 missing; 1 over |" in summary_markdown
+
+
 def test_records_summary_reports_total_size_budget_status() -> None:
     records = [
         reporter.ImageSizeRecord(tag="small:image", image_id="small", size_bytes=199_000_000, created=None, present=True),
@@ -1179,6 +1196,17 @@ def test_parse_positive_float_rejects_nonpositive_nonfinite_and_invalid_values(v
         reporter.parse_positive_float(value)
 
 
+@pytest.mark.parametrize("value", ["0", "1", "42"])
+def test_parse_nonnegative_int_accepts_nonnegative_values(value: str) -> None:
+    assert reporter.parse_nonnegative_int(value) == int(value)
+
+
+@pytest.mark.parametrize("value", ["-1", "1.5", "not-a-number"])
+def test_parse_nonnegative_int_rejects_negative_fractional_and_invalid_values(value: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="must be a nonnegative integer"):
+        reporter.parse_nonnegative_int(value)
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -1686,6 +1714,11 @@ def test_main_fails_when_present_image_exceeds_size_budget(
         ("--max-image-size", "max_size_mb"),
         ("--image-size-budget", "max_size_mb"),
         ("--image-size-budget-mb", "max_size_mb"),
+        ("--max-missing", "max_missing"),
+        ("--max-missing-images", "max_missing"),
+        ("--missing-budget", "max_missing"),
+        ("--missing-image-budget", "max_missing"),
+        ("--missing-images-budget", "max_missing"),
         ("--max-total-size", "max_total_size_mb"),
         ("--total-budget", "max_total_size_mb"),
         ("--total-budget-mb", "max_total_size_mb"),
@@ -1740,6 +1773,23 @@ def test_main_fails_when_present_images_exceed_total_size_budget(
     assert reporter.main(["--max-total-size-mb", "400", "small:image", "large:image"]) == 1
     assert "Total image size over 400.0 MB: 400.0 MB" in capsys.readouterr().err
     assert reporter.main(["--max-total-size-mb", "401", "small:image", "large:image"]) == 0
+
+
+def test_main_fails_when_missing_images_exceed_missing_budget(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag="present:image", image_id="present", size_bytes=100_000_000, created=None, present=True),
+            reporter.ImageSizeRecord(tag="missing:image", image_id=None, size_bytes=None, created=None, present=False),
+        ],
+    )
+
+    assert reporter.main(["--max-missing", "0", "present:image", "missing:image"]) == 1
+    assert "Missing image count over 0: 1 missing (missing:image)" in capsys.readouterr().err
+    assert reporter.main(["--max-missing", "1", "present:image", "missing:image"]) == 0
 
 
 def test_main_fails_when_present_images_exceed_deduplicated_total_size_budget(
