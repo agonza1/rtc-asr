@@ -1463,6 +1463,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Exit non-zero when a present image does not report both Docker image size and creation timestamp.",
     )
     parser.add_argument(
+        "--require-image-id",
+        "--require-known-image-id",
+        "--fail-on-unknown-image-id",
+        "--fail-on-missing-image-id",
+        dest="require_image_id",
+        action="store_true",
+        help="Exit non-zero when a present image does not report a Docker image ID.",
+    )
+    parser.add_argument(
         "--require-unique-image-ids",
         "--fail-on-duplicate-image-ids",
         "--fail-on-shared-image-id",
@@ -1555,6 +1564,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     unknown_created_records = [
         record for record in records if record.present and parse_created_datetime(record.created) is None
     ]
+    unknown_image_id_records = [record for record in records if record.present and not record.image_id]
     duplicate_image_id_groups = records_with_duplicate_image_ids(records)
     oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
     over_age_records = records_over_age_budget(records, args.max_age_days) if args.max_age_days is not None else []
@@ -1596,6 +1606,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             "Images with unknown creation time: {tags}".format(
                 tags=", ".join(record.tag for record in unknown_created_records)
+            ),
+            file=sys.stderr,
+        )
+    if args.require_image_id and unknown_image_id_records:
+        print(
+            "Images with unknown image ID: {tags}".format(
+                tags=", ".join(record.tag for record in unknown_image_id_records)
             ),
             file=sys.stderr,
         )
@@ -1658,6 +1675,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         or missing_over_budget
         or (args.require_size and unknown_size_records)
         or (args.require_created and unknown_created_records)
+        or (args.require_image_id and unknown_image_id_records)
         or (args.require_unique_image_ids and duplicate_image_id_groups)
         or oversized_records
         or over_age_records

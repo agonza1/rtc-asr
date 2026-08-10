@@ -1597,6 +1597,18 @@ def test_parse_args_accepts_complete_metadata_aliases(option: str) -> None:
     assert args.require_created is True
 
 
+@pytest.mark.parametrize(
+    "option",
+    [
+        "--require-known-image-id",
+        "--fail-on-unknown-image-id",
+        "--fail-on-missing-image-id",
+    ],
+)
+def test_parse_args_accepts_require_image_id_aliases(option: str) -> None:
+    assert reporter.parse_args([option]).require_image_id is True
+
+
 def test_main_require_created_rejects_invalid_creation_time(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1616,6 +1628,22 @@ def test_main_require_created_rejects_invalid_creation_time(
 
     assert reporter.main(["--require-created", "invalid:image"]) == 1
     assert "Images with unknown creation time: invalid:image" in capsys.readouterr().err
+
+
+def test_main_fails_when_present_image_id_is_required_but_unknown(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag=images[0], image_id=None, size_bytes=100_000_000, created=None, present=True)
+        ],
+    )
+
+    assert reporter.main(["--require-image-id", "unknown:image"]) == 1
+    assert "Images with unknown image ID: unknown:image" in capsys.readouterr().err
+    assert reporter.main(["unknown:image"]) == 0
 
 
 @pytest.mark.parametrize(
