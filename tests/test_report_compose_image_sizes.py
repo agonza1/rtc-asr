@@ -142,6 +142,10 @@ def test_records_to_json_includes_bytes_decimal_megabytes_and_age(monkeypatch: p
                 "unknown_created_tags": [],
                 "total_size_bytes": 987_654_321,
                 "total_size_mb": 987.7,
+                "deduplicated_total_size_bytes": 987_654_321,
+                "deduplicated_total_size_mb": 987.7,
+                "duplicate_size_savings_bytes": 0,
+                "duplicate_size_savings_mb": 0.0,
                 "largest_present_tag": "realtime-asr:parakeet-nemo-cpu",
                 "largest_present_size_bytes": 987_654_321,
                 "largest_present_size_mb": 987.7,
@@ -231,6 +235,10 @@ def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
         "unknown_created_tags": [],
         "total_size_bytes": 1_234_567_890,
         "total_size_mb": 1234.6,
+        "deduplicated_total_size_bytes": 1_234_567_890,
+        "deduplicated_total_size_mb": 1234.6,
+        "duplicate_size_savings_bytes": 0,
+        "duplicate_size_savings_mb": 0.0,
         "largest_present_tag": "realtime-asr:faster-whisper-cpu",
         "largest_present_size_bytes": 1_234_567_890,
         "largest_present_size_mb": 1234.6,
@@ -276,6 +284,8 @@ def test_records_summary_to_csv_emits_single_aggregate_row() -> None:
     assert rows[0]["missing_tags"] == '["missing:image"]'
     assert rows[0]["duplicate_image_id_groups"] == '[{"image_id": "shared123", "tags": ["first:image", "second:image"]}]'
     assert rows[0]["total_size_mb"] == "400.0"
+    assert rows[0]["deduplicated_total_size_mb"] == "100.0"
+    assert rows[0]["duplicate_size_savings_mb"] == "300.0"
 
 
 def test_records_summary_to_markdown_emits_compact_aggregate_table() -> None:
@@ -303,6 +313,8 @@ def test_records_summary_to_markdown_emits_compact_aggregate_table() -> None:
     assert "| Present images | 2 (66.7%) |" in markdown
     assert "| Missing images | 1 (33.3%) |" in markdown
     assert "| Total present image size | 400.0 MB |" in markdown
+    assert "| Deduplicated present image size | 100.0 MB |" in markdown
+    assert "| Shared-image size savings | 300.0 MB |" in markdown
     assert "| Largest present image | second:image (300.0 MB) |" in markdown
     assert "| Unknown creation times | 1: second:image |" in markdown
     assert "| Per-image size budget | 200.0 MB; 1 over; 100.0 MB excess |" in markdown
@@ -533,7 +545,27 @@ def test_records_summary_reports_duplicate_image_ids() -> None:
     assert summary["unique_image_ids"] == 2
     assert summary["duplicate_image_id_tag_refs"] == 2
     assert "Unique image IDs: 2/3 present image references with IDs." in markdown
+    assert "Shared-image size savings: 100.0 MB." in markdown
     assert "Duplicate image IDs: shared123: first:image, second:image" in markdown
+
+
+def test_records_summary_reports_deduplicated_present_image_size() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="first:image", image_id="shared", size_bytes=100_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="second:image", image_id="shared", size_bytes=100_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="unique:image", image_id="unique", size_bytes=250_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="unknown-id:image", image_id=None, size_bytes=50_000_000, created=None, present=True),
+    ]
+
+    summary = reporter.records_summary(records)
+    markdown = reporter.records_to_markdown(records)
+
+    assert summary["total_size_bytes"] == 500_000_000
+    assert summary["deduplicated_total_size_bytes"] == 400_000_000
+    assert summary["deduplicated_total_size_mb"] == 400.0
+    assert summary["duplicate_size_savings_bytes"] == 100_000_000
+    assert summary["duplicate_size_savings_mb"] == 100.0
+    assert "| Deduplicated present images |  | 400.0 |  |  |  |" in markdown
 
 
 def test_records_summary_reports_size_budget_status() -> None:
@@ -1283,6 +1315,10 @@ def test_main_summary_only_emits_summary_json(monkeypatch: pytest.MonkeyPatch, c
         "unknown_created_tags": ["present:image"],
         "total_size_bytes": 100_000_000,
         "total_size_mb": 100.0,
+        "deduplicated_total_size_bytes": 100_000_000,
+        "deduplicated_total_size_mb": 100.0,
+        "duplicate_size_savings_bytes": 0,
+        "duplicate_size_savings_mb": 0.0,
         "largest_present_tag": "present:image",
         "largest_present_size_bytes": 100_000_000,
         "largest_present_size_mb": 100.0,

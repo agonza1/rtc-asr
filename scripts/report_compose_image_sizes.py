@@ -524,6 +524,7 @@ def records_summary(
 ) -> dict[str, Any]:
     present_sizes = [record.size_bytes for record in records if record.present and record.size_bytes is not None]
     total_bytes = sum(present_sizes)
+    deduplicated_total_bytes = deduplicated_present_size_bytes(records)
     median_size_bytes = round(median(present_sizes)) if present_sizes else None
     missing = [record.tag for record in records if not record.present]
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
@@ -563,6 +564,10 @@ def records_summary(
         "unknown_created_tags": unknown_created,
         "total_size_bytes": total_bytes,
         "total_size_mb": round(total_bytes / 1_000_000, 1) if total_bytes else 0.0,
+        "deduplicated_total_size_bytes": deduplicated_total_bytes,
+        "deduplicated_total_size_mb": round(deduplicated_total_bytes / 1_000_000, 1) if deduplicated_total_bytes else 0.0,
+        "duplicate_size_savings_bytes": max(0, total_bytes - deduplicated_total_bytes),
+        "duplicate_size_savings_mb": round(max(0, total_bytes - deduplicated_total_bytes) / 1_000_000, 1),
         "average_present_size_bytes": round(total_bytes / len(present_sizes)) if present_sizes else None,
         "average_present_size_mb": round(total_bytes / len(present_sizes) / 1_000_000, 1) if present_sizes else None,
         "median_present_size_bytes": median_size_bytes,
@@ -724,6 +729,8 @@ def records_summary_to_markdown(
         f"| Present images | {summary['present']} ({summary['present_percent']:.1f}%) |",
         f"| Missing images | {summary['missing']} ({summary['missing_percent']:.1f}%) |",
         f"| Total present image size | {summary['total_size_mb']:.1f} MB |",
+        f"| Deduplicated present image size | {summary['deduplicated_total_size_mb']:.1f} MB |",
+        f"| Shared-image size savings | {summary['duplicate_size_savings_mb']:.1f} MB |",
         f"| Average present image size | {format_optional_mb(summary['average_present_size_mb'])} |",
         f"| Median present image size | {format_optional_mb(summary['median_present_size_mb'])} |",
         f"| Largest present image | {format_tag_mb(summary['largest_present_tag'], summary['largest_present_size_mb'])} |",
@@ -942,6 +949,20 @@ def records_with_duplicate_image_ids(records: Sequence[ImageSizeRecord]) -> list
     ]
 
 
+def deduplicated_present_size_bytes(records: Sequence[ImageSizeRecord]) -> int:
+    seen_image_ids: set[str] = set()
+    total = 0
+    for record in records:
+        if not record.present or record.size_bytes is None:
+            continue
+        if record.image_id:
+            if record.image_id in seen_image_ids:
+                continue
+            seen_image_ids.add(record.image_id)
+        total += record.size_bytes
+    return total
+
+
 def markdown_cell(value: str | None) -> str:
     if not value:
         return ""
@@ -970,12 +991,24 @@ def records_to_markdown(
             )
         )
     total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
+    deduplicated_total_bytes = deduplicated_present_size_bytes(records)
     if total_bytes:
         rows.append(
             "| {tag} | {present} | {size:.1f} | {image_id} | {created} | {age_days} |".format(
                 tag="Total present images",
                 present="",
                 size=round(total_bytes / 1_000_000, 1),
+                image_id="",
+                created="",
+                age_days="",
+            )
+        )
+    if deduplicated_total_bytes and deduplicated_total_bytes != total_bytes:
+        rows.append(
+            "| {tag} | {present} | {size:.1f} | {image_id} | {created} | {age_days} |".format(
+                tag="Deduplicated present images",
+                present="",
+                size=round(deduplicated_total_bytes / 1_000_000, 1),
                 image_id="",
                 created="",
                 age_days="",
@@ -1110,6 +1143,11 @@ def records_to_markdown(
             )
         )
     if duplicate_image_id_groups:
+        rows.append(
+            "Shared-image size savings: {savings:.1f} MB.".format(
+                savings=round(max(0, total_bytes - deduplicated_total_bytes) / 1_000_000, 1)
+            )
+        )
         rows.append(
             "Duplicate image IDs: {groups}".format(
                 groups=markdown_cell(format_duplicate_image_id_groups(duplicate_image_id_groups))
