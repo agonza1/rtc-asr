@@ -602,6 +602,24 @@ def test_records_summary_reports_total_size_budget_status() -> None:
     assert summary["total_budget_excess_mb"] == 1.0
 
 
+def test_records_summary_reports_deduplicated_total_size_budget_status() -> None:
+    records = [
+        reporter.ImageSizeRecord(tag="first:image", image_id="shared", size_bytes=250_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="alias:image", image_id="shared", size_bytes=250_000_000, created=None, present=True),
+        reporter.ImageSizeRecord(tag="unique:image", image_id="unique", size_bytes=160_000_000, created=None, present=True),
+    ]
+
+    summary = reporter.records_summary(records, max_deduplicated_total_size_mb=400.0)
+    markdown = reporter.records_summary_to_markdown(records, max_deduplicated_total_size_mb=400.0)
+
+    assert summary["deduplicated_total_image_size_budget_mb"] == 400.0
+    assert summary["deduplicated_total_budget_utilization_percent"] == 102.5
+    assert summary["deduplicated_total_over_budget"] is True
+    assert summary["deduplicated_total_budget_excess_bytes"] == 10_000_000
+    assert summary["deduplicated_total_budget_excess_mb"] == 10.0
+    assert "| Deduplicated total image size budget | 400.0 MB; 102.5% utilization; 10.0 MB excess |" in markdown
+
+
 def test_records_summary_reports_image_age_budget_status() -> None:
     records = [
         reporter.ImageSizeRecord(
@@ -1675,6 +1693,13 @@ def test_main_fails_when_present_image_exceeds_size_budget(
         ("--max-total-image-size-mb", "max_total_size_mb"),
         ("--total-size-budget", "max_total_size_mb"),
         ("--total-image-size-budget-mb", "max_total_size_mb"),
+        ("--max-deduplicated-total-size", "max_deduplicated_total_size_mb"),
+        ("--deduplicated-total-budget", "max_deduplicated_total_size_mb"),
+        ("--deduplicated-total-budget-mb", "max_deduplicated_total_size_mb"),
+        ("--dedupe-total-budget", "max_deduplicated_total_size_mb"),
+        ("--dedupe-total-budget-mb", "max_deduplicated_total_size_mb"),
+        ("--unique-total-budget", "max_deduplicated_total_size_mb"),
+        ("--unique-total-budget-mb", "max_deduplicated_total_size_mb"),
         ("--max-age", "max_age_days"),
         ("--age-budget", "max_age_days"),
         ("--age-budget-days", "max_age_days"),
@@ -1715,6 +1740,24 @@ def test_main_fails_when_present_images_exceed_total_size_budget(
     assert reporter.main(["--max-total-size-mb", "400", "small:image", "large:image"]) == 1
     assert "Total image size over 400.0 MB: 400.0 MB" in capsys.readouterr().err
     assert reporter.main(["--max-total-size-mb", "401", "small:image", "large:image"]) == 0
+
+
+def test_main_fails_when_present_images_exceed_deduplicated_total_size_budget(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag="first:image", image_id="shared", size_bytes=250_000_000, created=None, present=True),
+            reporter.ImageSizeRecord(tag="alias:image", image_id="shared", size_bytes=250_000_000, created=None, present=True),
+            reporter.ImageSizeRecord(tag="unique:image", image_id="unique", size_bytes=160_000_001, created=None, present=True),
+        ],
+    )
+
+    assert reporter.main(["--max-deduplicated-total-size-mb", "410", "first:image", "alias:image", "unique:image"]) == 1
+    assert "Deduplicated total image size over 410.0 MB: 410.0 MB" in capsys.readouterr().err
+    assert reporter.main(["--max-deduplicated-total-size-mb", "411", "first:image", "alias:image", "unique:image"]) == 0
 
 
 def test_main_fails_when_present_image_size_is_required_but_unknown(
@@ -1856,3 +1899,24 @@ def test_main_summary_only_includes_total_size_budget_status(
     assert payload["total_over_budget"] is True
     assert payload["total_budget_excess_bytes"] == 1
     assert payload["total_budget_excess_mb"] == 0.0
+
+
+def test_main_summary_only_includes_deduplicated_total_size_budget_status(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        reporter,
+        "inspect_images",
+        lambda images: [
+            reporter.ImageSizeRecord(tag=images[0], image_id="large", size_bytes=250_000_001, created=None, present=True)
+        ],
+    )
+
+    assert reporter.main(["--summary-only", "--max-deduplicated-total-size-mb", "250", "large:image"]) == 1
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["deduplicated_total_image_size_budget_mb"] == 250.0
+    assert payload["deduplicated_total_budget_utilization_percent"] == 100.0
+    assert payload["deduplicated_total_over_budget"] is True
+    assert payload["deduplicated_total_budget_excess_bytes"] == 1
+    assert payload["deduplicated_total_budget_excess_mb"] == 0.0

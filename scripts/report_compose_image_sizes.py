@@ -467,6 +467,7 @@ def records_to_json(
     records: Iterable[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_deduplicated_total_size_mb: float | None = None,
     max_age_days: float | None = None,
 ) -> str:
     record_list = list(records)
@@ -474,6 +475,7 @@ def records_to_json(
         record_list,
         max_size_mb=max_size_mb,
         max_total_size_mb=max_total_size_mb,
+        max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
         max_age_days=max_age_days,
     )
     payload = [
@@ -519,6 +521,7 @@ def records_summary(
     records: Sequence[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_deduplicated_total_size_mb: float | None = None,
     max_age_days: float | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
@@ -636,6 +639,29 @@ def records_summary(
                 "total_budget_excess_mb": round(total_budget_excess_bytes / 1_000_000, 1),
             }
         )
+    if max_deduplicated_total_size_mb is not None:
+        deduplicated_total_budget_excess_bytes = max(
+            0,
+            int(deduplicated_total_bytes - max_deduplicated_total_size_mb * 1_000_000),
+        )
+        summary.update(
+            {
+                "deduplicated_total_image_size_budget_mb": max_deduplicated_total_size_mb,
+                "deduplicated_total_budget_utilization_percent": (
+                    round(deduplicated_total_bytes / (max_deduplicated_total_size_mb * 1_000_000) * 100, 1)
+                    if max_deduplicated_total_size_mb > 0
+                    else None
+                ),
+                "deduplicated_total_over_budget": (
+                    deduplicated_total_bytes > max_deduplicated_total_size_mb * 1_000_000
+                ),
+                "deduplicated_total_budget_excess_bytes": deduplicated_total_budget_excess_bytes,
+                "deduplicated_total_budget_excess_mb": round(
+                    deduplicated_total_budget_excess_bytes / 1_000_000,
+                    1,
+                ),
+            }
+        )
     if max_age_days is not None:
         now = now or datetime.now(UTC)
         over_age = records_over_age_budget(records, max_age_days, now=now)
@@ -666,6 +692,7 @@ def records_summary_to_json(
     records: Sequence[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_deduplicated_total_size_mb: float | None = None,
     max_age_days: float | None = None,
 ) -> str:
     return json.dumps(
@@ -673,6 +700,7 @@ def records_summary_to_json(
             records,
             max_size_mb=max_size_mb,
             max_total_size_mb=max_total_size_mb,
+            max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
             max_age_days=max_age_days,
         ),
         indent=2,
@@ -694,12 +722,14 @@ def records_summary_to_csv(
     records: Sequence[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_deduplicated_total_size_mb: float | None = None,
     max_age_days: float | None = None,
 ) -> str:
     summary = records_summary(
         records,
         max_size_mb=max_size_mb,
         max_total_size_mb=max_total_size_mb,
+        max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
         max_age_days=max_age_days,
     )
     output = io.StringIO()
@@ -714,12 +744,14 @@ def records_summary_to_markdown(
     records: Sequence[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_deduplicated_total_size_mb: float | None = None,
     max_age_days: float | None = None,
 ) -> str:
     summary = records_summary(
         records,
         max_size_mb=max_size_mb,
         max_total_size_mb=max_total_size_mb,
+        max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
         max_age_days=max_age_days,
     )
     rows = [
@@ -758,6 +790,14 @@ def records_summary_to_markdown(
                 budget=summary["total_image_size_budget_mb"],
                 utilization=format_optional_percent(summary["total_budget_utilization_percent"]),
                 excess=summary["total_budget_excess_mb"],
+            )
+        )
+    if max_deduplicated_total_size_mb is not None:
+        rows.append(
+            "| Deduplicated total image size budget | {budget:.1f} MB; {utilization} utilization; {excess:.1f} MB excess |".format(
+                budget=summary["deduplicated_total_image_size_budget_mb"],
+                utilization=format_optional_percent(summary["deduplicated_total_budget_utilization_percent"]),
+                excess=summary["deduplicated_total_budget_excess_mb"],
             )
         )
     if max_age_days is not None:
@@ -973,6 +1013,7 @@ def records_to_markdown(
     records: Sequence[ImageSizeRecord],
     max_size_mb: float | None = None,
     max_total_size_mb: float | None = None,
+    max_deduplicated_total_size_mb: float | None = None,
     max_age_days: float | None = None,
 ) -> str:
     rows = [
@@ -1088,6 +1129,24 @@ def records_to_markdown(
         )
         if max_total_size_mb > 0:
             rows.append(f"Total image size budget utilization: {total_bytes / (max_total_size_mb * 1_000_000) * 100:.1f}%")
+    if max_deduplicated_total_size_mb is not None:
+        deduplicated_total_budget_excess_mb = max(
+            0.0,
+            deduplicated_total_bytes / 1_000_000 - max_deduplicated_total_size_mb,
+        )
+        rows.append(
+            "Deduplicated total image size budget: {budget:.1f} MB, current deduplicated total {total:.1f} MB, {excess:.1f} MB over.".format(
+                budget=max_deduplicated_total_size_mb,
+                total=round(deduplicated_total_bytes / 1_000_000, 1) if deduplicated_total_bytes else 0.0,
+                excess=deduplicated_total_budget_excess_mb,
+            )
+        )
+        if max_deduplicated_total_size_mb > 0:
+            rows.append(
+                "Deduplicated total image size budget utilization: {utilization:.1f}%".format(
+                    utilization=deduplicated_total_bytes / (max_deduplicated_total_size_mb * 1_000_000) * 100
+                )
+            )
     if max_age_days is not None:
         over_age = records_over_age_budget(records, max_age_days)
         freshest_age_record = freshest_image_age_record(records)
@@ -1261,6 +1320,22 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Exit non-zero when all present images exceed this combined size budget. Bare numbers are decimal megabytes.",
     )
     parser.add_argument(
+        "--max-deduplicated-total-size-mb",
+        "--max-deduplicated-total-size",
+        "--deduplicated-total-budget",
+        "--deduplicated-total-budget-mb",
+        "--dedupe-total-budget",
+        "--dedupe-total-budget-mb",
+        "--unique-total-budget",
+        "--unique-total-budget-mb",
+        type=parse_size_mb,
+        dest="max_deduplicated_total_size_mb",
+        help=(
+            "Exit non-zero when unique present image IDs exceed this combined size budget. "
+            "Bare numbers are decimal megabytes."
+        ),
+    )
+    parser.add_argument(
         "--max-age-days",
         "--max-age",
         "--age-budget",
@@ -1374,6 +1449,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             records,
             max_size_mb=args.max_size_mb,
             max_total_size_mb=args.max_total_size_mb,
+            max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
             max_age_days=args.max_age_days,
         )
     elif args.summary_markdown:
@@ -1381,6 +1457,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             records,
             max_size_mb=args.max_size_mb,
             max_total_size_mb=args.max_total_size_mb,
+            max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
             max_age_days=args.max_age_days,
         )
     elif args.summary_only:
@@ -1388,6 +1465,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             records,
             max_size_mb=args.max_size_mb,
             max_total_size_mb=args.max_total_size_mb,
+            max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
             max_age_days=args.max_age_days,
         )
     elif args.csv:
@@ -1398,6 +1476,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 records,
                 max_size_mb=args.max_size_mb,
                 max_total_size_mb=args.max_total_size_mb,
+                max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
                 max_age_days=args.max_age_days,
             )
             if args.json
@@ -1405,6 +1484,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 records,
                 max_size_mb=args.max_size_mb,
                 max_total_size_mb=args.max_total_size_mb,
+                max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
                 max_age_days=args.max_age_days,
             )
         )
@@ -1419,8 +1499,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     oversized_records = records_over_size_budget(records, args.max_size_mb) if args.max_size_mb is not None else []
     over_age_records = records_over_age_budget(records, args.max_age_days) if args.max_age_days is not None else []
     total_size_bytes = sum(record.size_bytes or 0 for record in records if record.present)
+    deduplicated_total_size_bytes = deduplicated_present_size_bytes(records)
     total_over_budget = (
         args.max_total_size_mb is not None and total_size_bytes > args.max_total_size_mb * 1_000_000
+    )
+    deduplicated_total_over_budget = (
+        args.max_deduplicated_total_size_mb is not None
+        and deduplicated_total_size_bytes > args.max_deduplicated_total_size_mb * 1_000_000
     )
     if args.require_present and missing_records:
         print(
@@ -1477,6 +1562,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             file=sys.stderr,
         )
+    if deduplicated_total_over_budget:
+        print(
+            "Deduplicated total image size over {budget:.1f} MB: {total:.1f} MB".format(
+                budget=args.max_deduplicated_total_size_mb,
+                total=round(deduplicated_total_size_bytes / 1_000_000, 1),
+            ),
+            file=sys.stderr,
+        )
     if over_age_records:
         print(
             "Images older than {budget:.1f} days: {tags}".format(
@@ -1498,6 +1591,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         or oversized_records
         or over_age_records
         or total_over_budget
+        or deduplicated_total_over_budget
     ):
         return 1
     return 0
