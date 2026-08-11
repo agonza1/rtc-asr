@@ -1203,6 +1203,25 @@ def test_parse_positive_float_rejects_nonpositive_nonfinite_and_invalid_values(v
         reporter.parse_positive_float(value)
 
 
+@pytest.mark.parametrize(
+    ("value", "expected_days"),
+    [
+        ("14", 14.0),
+        ("14d", 14.0),
+        ("48h", 2.0),
+        ("2 weeks", 14.0),
+    ],
+)
+def test_parse_age_days_accepts_readable_units(value: str, expected_days: float) -> None:
+    assert reporter.parse_age_days(value) == expected_days
+
+
+@pytest.mark.parametrize("value", ["0d", "-1w", "nan", "10months", "not-a-number"])
+def test_parse_age_days_rejects_nonpositive_nonfinite_and_invalid_values(value: str) -> None:
+    with pytest.raises(argparse.ArgumentTypeError, match="age must be|age unit must be"):
+        reporter.parse_age_days(value)
+
+
 @pytest.mark.parametrize("value", ["0", "1", "42"])
 def test_parse_nonnegative_int_accepts_nonnegative_values(value: str) -> None:
     assert reporter.parse_nonnegative_int(value) == int(value)
@@ -1771,6 +1790,8 @@ def test_main_fails_when_present_image_exceeds_size_budget(
         ("--max-age", "max_age_days"),
         ("--age-budget", "max_age_days"),
         ("--age-budget-days", "max_age_days"),
+        ("--older-than", "max_age_days"),
+        ("--older-than-days", "max_age_days"),
         ("--image-age-budget", "max_age_days"),
         ("--image-age-budget-days", "max_age_days"),
         ("--max-image-age-days", "max_age_days"),
@@ -1791,6 +1812,12 @@ def test_parse_args_accepts_readable_image_size_budgets() -> None:
 
     assert args.max_size_mb == 1500.0
     assert args.max_total_size_mb == 2147.483648
+
+
+def test_parse_args_accepts_readable_image_age_budget() -> None:
+    args = reporter.parse_args(["--max-age-days", "2w"])
+
+    assert args.max_age_days == 14.0
 
 
 def test_main_fails_when_present_images_exceed_total_size_budget(

@@ -299,6 +299,22 @@ BYTE_SIZE_UNITS = {
     "tebibyte": 1024**4,
     "tebibytes": 1024**4,
 }
+AGE_DAY_UNITS = {
+    "": 1.0,
+    "d": 1.0,
+    "day": 1.0,
+    "days": 1.0,
+    "h": 1.0 / 24.0,
+    "hr": 1.0 / 24.0,
+    "hrs": 1.0 / 24.0,
+    "hour": 1.0 / 24.0,
+    "hours": 1.0 / 24.0,
+    "w": 7.0,
+    "wk": 7.0,
+    "wks": 7.0,
+    "week": 7.0,
+    "weeks": 7.0,
+}
 
 
 @dataclass(frozen=True)
@@ -437,6 +453,23 @@ def parse_positive_float(value: str) -> float:
     if not math.isfinite(parsed) or parsed <= 0:
         raise argparse.ArgumentTypeError(f"must be a positive finite number: {value!r}")
     return parsed
+
+
+def parse_age_days(value: str) -> float:
+    match = re.fullmatch(r"\s*(-?(?:\d+(?:[,_]\d{3})+|\d+)(?:\.\d+)?)\s*([a-zA-Z]*)\s*", value)
+    if match is None:
+        raise argparse.ArgumentTypeError("age must be a positive finite value in days, hours, or weeks")
+
+    amount_text, unit_text = match.groups()
+    amount = float(amount_text.replace(",", "").replace("_", ""))
+    if not math.isfinite(amount) or amount <= 0:
+        raise argparse.ArgumentTypeError(f"age must be a positive finite value: {value!r}")
+
+    multiplier = AGE_DAY_UNITS.get(unit_text.lower())
+    if multiplier is None:
+        raise argparse.ArgumentTypeError("age unit must be one of: hours, days, weeks")
+
+    return amount * multiplier
 
 
 def parse_nonnegative_int(value: str) -> int:
@@ -1399,6 +1432,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--max-age",
         "--age-budget",
         "--age-budget-days",
+        "--older-than",
+        "--older-than-days",
         "--image-age-budget",
         "--image-age-budget-days",
         "--max-image-age-days",
@@ -1406,9 +1441,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--stale-image-age-days",
         "--stale-after-days",
         "--fail-on-stale-after-days",
-        type=parse_positive_float,
+        type=parse_age_days,
         dest="max_age_days",
-        help="Exit non-zero when any present image creation timestamp is older than this many days.",
+        help="Exit non-zero when any present image creation timestamp is older than this age. Bare numbers are days.",
     )
     parser.add_argument(
         "--require-present",
