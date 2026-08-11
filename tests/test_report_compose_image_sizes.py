@@ -1627,8 +1627,14 @@ def test_parse_args_accepts_complete_metadata_aliases(option: str) -> None:
     "option",
     [
         "--require-known-image-id",
+        "--require-id",
+        "--require-known-id",
+        "--known-image-id",
+        "--known-id",
         "--fail-on-unknown-image-id",
+        "--fail-on-unknown-id",
         "--fail-on-missing-image-id",
+        "--fail-on-missing-id",
     ],
 )
 def test_parse_args_accepts_require_image_id_aliases(option: str) -> None:
