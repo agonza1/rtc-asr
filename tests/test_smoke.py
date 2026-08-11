@@ -14,11 +14,14 @@ from starlette.websockets import WebSocketDisconnect
 
 from src.config import AppConfig
 from src.main import (
+    StreamClientError,
     StreamRuntime,
     StreamSession,
     _close_streaming_decoder_async,
+    _create_stream_session,
     _finalize_streaming_decoder_async,
     _local_stt_asr_worker,
+    _parse_local_stt_start_message,
     _prepare_uds_socket,
     _push_streaming_audio_async,
     _receive_raw_uds_event,
@@ -2200,6 +2203,21 @@ def test_local_stt_v1_partial_interval_chunks_remains_supported() -> None:
             "prefix": chunk[:4],
         }
     ]
+
+
+def test_local_stt_v1_legacy_partial_interval_chunks_rejects_boolean() -> None:
+    with pytest.raises(LocalSttProtocolError, match="partial_interval_chunks must be a positive integer"):
+        _parse_local_stt_start_message(
+            {
+                "type": "start",
+                "protocol": "local-stt-v1",
+                "sample_rate": HOT_PATH_SAMPLE_RATE,
+                "channels": HOT_PATH_CHANNELS,
+                "format": HOT_PATH_PCM_FORMAT,
+                "frame_ms": HOT_PATH_FRAME_MS,
+                "partial_interval_chunks": True,
+            }
+        )
 
 
 def test_local_stt_v1_nested_start_ignores_legacy_partial_interval_chunks() -> None:
@@ -4472,6 +4490,18 @@ def test_streaming_client_can_cancel_a_stream() -> None:
         assert client._websocket.sent == [json.dumps({"type": "cancel"})]
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("value", [0, 1.5, True])
+def test_create_stream_session_rejects_invalid_sample_rate(value: object) -> None:
+    with pytest.raises(StreamClientError, match="sample_rate must be a positive integer"):
+        _create_stream_session({"sample_rate": value}, AppConfig(), stream_id=1)
+
+
+@pytest.mark.parametrize("value", [0, 1.5, True])
+def test_create_stream_session_rejects_invalid_partial_interval_chunks(value: object) -> None:
+    with pytest.raises(StreamClientError, match="partial_interval_chunks must be a positive integer"):
+        _create_stream_session({"partial_interval_chunks": value}, AppConfig(), stream_id=1)
 
 
 @pytest.mark.parametrize("value", [0, 1.5, True])

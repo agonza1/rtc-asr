@@ -1502,9 +1502,9 @@ def _create_stream_session(
         field_name="max_buffer_seconds",
     )
 
-    if not isinstance(sample_rate, int) or sample_rate < 1:
+    if not _is_positive_integer(sample_rate):
         raise StreamClientError("sample_rate must be a positive integer")
-    if not isinstance(partial_interval, int) or partial_interval < 1:
+    if not _is_positive_integer(partial_interval):
         raise StreamClientError("partial_interval_chunks must be a positive integer")
     if language is not None and not isinstance(language, str):
         raise StreamClientError("language must be a string or null")
@@ -1609,7 +1609,7 @@ def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConf
         partial_interval_chunks = max(1, math.ceil(partial_interval_ms / start.audio.frame_ms))
         partial_interval_audio_ms = partial_interval_chunks * start.audio.frame_ms
     elif legacy_partial_interval_chunks is not None:
-        if not isinstance(legacy_partial_interval_chunks, int) or legacy_partial_interval_chunks < 1:
+        if not _is_positive_integer(legacy_partial_interval_chunks):
             raise LocalSttProtocolError("partial_interval_chunks must be a positive integer")
         partial_interval_chunks = legacy_partial_interval_chunks
 
@@ -1802,6 +1802,10 @@ def _coerce_positive_seconds(value: Any, *, field_name: str, error_cls: type[Val
     if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
         raise error_cls(f"{field_name} must be a positive number")
     return float(value)
+
+
+def _is_positive_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 def _seconds_to_buffer_bytes(seconds: float, sample_rate: int) -> int:
