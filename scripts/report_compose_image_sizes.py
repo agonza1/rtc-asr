@@ -408,7 +408,7 @@ def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[Image
 
 
 def parse_sort_choice(value: str) -> str:
-    normalized = value.lower().replace("_", "-")
+    normalized = normalize_choice_token(value)
     normalized = SORT_ALIASES.get(normalized, normalized)
     if normalized not in SORT_CHOICE_SET:
         choices = ", ".join(SORT_CHOICES)
@@ -417,12 +417,16 @@ def parse_sort_choice(value: str) -> str:
 
 
 def parse_output_format(value: str) -> str:
-    normalized = value.lower().replace("_", "-")
+    normalized = normalize_choice_token(value)
     normalized = OUTPUT_FORMAT_ALIASES.get(normalized, normalized)
     if normalized not in OUTPUT_FORMAT_CHOICE_SET:
         choices = ", ".join(OUTPUT_FORMAT_CHOICES)
         raise argparse.ArgumentTypeError(f"invalid output format: {value!r}; choose one of: {choices}")
     return normalized
+
+
+def normalize_choice_token(value: str) -> str:
+    return re.sub(r"[\s_/]+", "-", value.strip().lower())
 
 
 def parse_positive_float(value: str) -> float:
