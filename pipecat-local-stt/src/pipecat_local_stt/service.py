@@ -44,6 +44,7 @@ from .protocol import (
 )
 
 logger = logging.getLogger(__name__)
+_INVALID_GENERATION = object()
 
 
 class WebSocketConnection(Protocol):
@@ -378,7 +379,7 @@ class LocalStreamingSTTService(STTService):
             return
         if event_type == "ready":
             generation = self._payload_generation(payload)
-            if isinstance(generation, int) and generation != self._generation:
+            if generation is _INVALID_GENERATION or isinstance(generation, int) and generation != self._generation:
                 self.metrics.local_stt_stale_ready_events_total += 1
                 return
             self.metrics.local_stt_ready_events_total += 1
@@ -412,17 +413,19 @@ class LocalStreamingSTTService(STTService):
             self._release_final_waiters()
             logger.warning("Local STT protocol error: %s", payload.get("message", payload))
 
-    def _event_generation(self, event: LocalSTTTranscriptEvent) -> int | None:
+    def _event_generation(self, event: LocalSTTTranscriptEvent) -> int | object | None:
         return self._metadata_generation(event.metadata)
 
-    def _payload_generation(self, payload: dict[str, Any]) -> int | None:
+    def _payload_generation(self, payload: dict[str, Any]) -> int | object | None:
         metadata = payload.get("metadata")
         if not isinstance(metadata, dict):
             return None
         return self._metadata_generation(metadata)
 
-    def _metadata_generation(self, metadata: dict[str, Any]) -> int | None:
+    def _metadata_generation(self, metadata: dict[str, Any]) -> int | object | None:
         generation = _coerce_generation(metadata.get("local_stt_generation"))
+        if generation is _INVALID_GENERATION:
+            return generation
         if generation is None:
             client_metadata = metadata.get("client_metadata")
             if isinstance(client_metadata, dict):
@@ -431,7 +434,7 @@ class LocalStreamingSTTService(STTService):
 
     def _is_stale_transcript(self, event: LocalSTTTranscriptEvent) -> bool:
         generation = self._event_generation(event)
-        return isinstance(generation, int) and generation != self._generation
+        return generation is _INVALID_GENERATION or isinstance(generation, int) and generation != self._generation
 
     def _record_final_transcript_received(self, event: LocalSTTTranscriptEvent) -> None:
         generation = self._event_generation(event)
@@ -733,16 +736,19 @@ def _pong_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return response
 
 
-def _coerce_generation(value: Any) -> int | None:
-    if isinstance(value, bool):
+def _coerce_generation(value: Any) -> int | object | None:
+    if value is None:
         return None
+    if isinstance(value, bool):
+        return _INVALID_GENERATION
     if isinstance(value, int):
         return value
     if isinstance(value, str):
         normalized = value.strip()
         if normalized.isdecimal():
             return int(normalized)
-    return None
+        return _INVALID_GENERATION
+    return _INVALID_GENERATION
 
 
 async def _default_connect(config: LocalSTTConfig) -> WebSocketConnection:
