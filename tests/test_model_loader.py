@@ -27,6 +27,7 @@ from src.model_loader import (
 )
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "smoke.wav"
+CONFIG_EXAMPLE_PATH = Path(__file__).parent.parent / "config.example"
 
 
 def test_backend_aliases_for_reports_runtime_env_values() -> None:
@@ -39,6 +40,16 @@ def test_backend_aliases_for_reports_runtime_env_values() -> None:
         "voxtral-realtime-mlx",
     ]
     assert backend_aliases_for("custom-test-backend") == []
+
+
+def test_config_example_uses_default_low_power_model_size() -> None:
+    config_values = dict(
+        line.split("=", 1)
+        for line in CONFIG_EXAMPLE_PATH.read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#") and "=" in line
+    )
+
+    assert config_values["ASR_MODEL_SIZE"] == AppConfig().asr_model_size
 
 
 @pytest.mark.parametrize("backend", ["qwen", "qwen-asr", "qwen3-asr"])

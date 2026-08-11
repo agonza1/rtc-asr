@@ -22,7 +22,7 @@ LOCAL_STT_RAW_UDS_PATH=/run/rtc-asr/stt.raw.sock
 
 # ASR Backend Settings
 ASR_BACKEND=faster-whisper
-ASR_MODEL_SIZE=small.en
+ASR_MODEL_SIZE=base.en
 ASR_DEVICE=cpu
 ASR_COMPUTE_TYPE=int8
 ASR_VAD_FILTER=true
