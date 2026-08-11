@@ -184,9 +184,40 @@ def test_service_rejects_boolean_generation_metadata() -> None:
 
     asyncio.run(service._handle_server_payload({"type": "ready", "metadata": {"local_stt_generation": True}}))
 
-    assert service._ready_event.is_set() is True
-    assert service.metrics.local_stt_ready_events_total == 1
-    assert service.metrics.local_stt_stale_ready_events_total == 0
+    assert service._ready_event.is_set() is False
+    assert service.metrics.local_stt_ready_events_total == 0
+    assert service.metrics.local_stt_stale_ready_events_total == 1
+
+
+def test_service_rejects_malformed_generation_metadata() -> None:
+    service = LocalStreamingSTTService()
+    service._generation = 2
+    service._ready_event = asyncio.Event()
+
+    asyncio.run(service._handle_server_payload({"type": "ready", "metadata": {"local_stt_generation": "two"}}))
+
+    assert service._ready_event.is_set() is False
+    assert service.metrics.local_stt_ready_events_total == 0
+    assert service.metrics.local_stt_stale_ready_events_total == 1
+
+
+def test_service_rejects_malformed_transcript_generation_metadata() -> None:
+    service = LocalStreamingSTTService()
+    service._generation = 2
+
+    asyncio.run(service._handle_server_payload({
+        "type": "transcript",
+        "text": "bad generation",
+        "is_final": True,
+        "speech_final": True,
+        "revision": 1,
+        "audio_received_ms": 20,
+        "audio_transcribed_ms": 20,
+        "metadata": {"local_stt_generation": True},
+    }))
+
+    assert service.metrics.local_stt_stale_transcript_events_total == 1
+    assert service.metrics.local_stt_final_events_total == 0
 
 
 def test_service_counts_closed_acknowledgements() -> None:
