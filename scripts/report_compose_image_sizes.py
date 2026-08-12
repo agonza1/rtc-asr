@@ -1501,10 +1501,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--require-complete-metadata",
+        "--require-complete-image-metadata",
+        "--require-all-image-metadata",
         "--require-image-metadata",
         "--require-known-metadata",
+        "--require-known-image-metadata",
         "--fail-on-unknown-metadata",
+        "--fail-on-unknown-image-metadata",
         "--fail-on-incomplete-metadata",
+        "--fail-on-incomplete-image-metadata",
+        "--fail-on-missing-image-metadata",
         dest="require_complete_metadata",
         action="store_true",
         help="Exit non-zero when a present image does not report both Docker image size and creation timestamp.",
