@@ -3532,6 +3532,7 @@ def test_local_stt_socket_mode_env_accepts_tcp_aliases(
         "unix domain socket transport",
         "unix domain web socket",
         "unix domain web socket transport",
+        "unix domain socket ws transport",
         "unix socket",
     ],
 )
@@ -3571,6 +3572,7 @@ def test_local_stt_transport_env_selects_uds_socket_mode(monkeypatch: pytest.Mon
         "unix domain",
         "websocket+uds",
         "websocket unix socket",
+        "websocket unix domain socket transport",
         "ws unix",
         "unix-websocket",
         "unix-domain-socket",
@@ -3584,6 +3586,7 @@ def test_local_stt_transport_env_selects_uds_socket_mode(monkeypatch: pytest.Mon
         "domain socket websocket transport",
         "domain socket web socket",
         "domain socket web socket transport",
+        "domain socket ws transport",
     ],
 )
 def test_local_stt_transport_env_accepts_uds_aliases(
