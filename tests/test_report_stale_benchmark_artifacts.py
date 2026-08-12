@@ -95,10 +95,12 @@ def test_parse_args_accepts_symmetric_summary_output_aliases() -> None:
     json_args = parse_args(["--summary-json-output"])
     csv_args = parse_args(["--csv-summary-output"])
     markdown_args = parse_args(["--markdown-summary-output"])
+    text_args = parse_args(["--text-summary-output"])
 
     assert json_args.json_summary is True
     assert csv_args.summary_csv is True
     assert markdown_args.summary_markdown is True
+    assert text_args.summary_only is True
 
 
 def test_parse_args_accepts_symmetric_artifact_output_aliases() -> None:
