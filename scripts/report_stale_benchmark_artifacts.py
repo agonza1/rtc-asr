@@ -3160,7 +3160,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--summary-only",
+        "--summary-text",
+        "--text-summary",
+        "--summary-text-output",
+        "--text-summary-output",
         action="store_true",
+        dest="summary_only",
         help="Print only stale artifact totals grouped by track slug",
     )
     parser.add_argument(
