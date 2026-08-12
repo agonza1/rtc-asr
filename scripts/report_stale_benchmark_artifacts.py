@@ -79,6 +79,13 @@ SUMMARY_GROUP_KEYS = {
 
 SUMMARY_OUTPUT_REQUIREMENT = "--summary-only, --json-summary, --summary-csv, or --summary-markdown"
 
+STATUS_FILTER_ALIASES = {
+    "stale": "legacy",
+    "old": "legacy",
+    "outdated": "legacy",
+    "legacy-candidates": "legacy-candidate",
+}
+
 SUMMARY_GROUP_ALIASES = {
     "path-name": "artifact-name",
     "path-basename": "artifact-name",
@@ -3317,7 +3324,7 @@ def normalize_status_filters(statuses: list[str] | None) -> set[str] | None:
     if statuses is None:
         return {"legacy"}
     normalized = {
-        status.strip().lower()
+        STATUS_FILTER_ALIASES.get(normalize_cli_token(status), normalize_cli_token(status))
         for value in statuses
         for status in value.split(",")
         if status.strip()
