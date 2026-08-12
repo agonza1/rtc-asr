@@ -2437,30 +2437,35 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--slug",
+        "--slugs",
         action="append",
         default=None,
         help="Only include stale artifacts for this benchmark track slug; repeat to include multiple slugs",
     )
     parser.add_argument(
         "--slug-contains",
+        "--slugs-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose track slug contains this text; repeat to include multiple matches",
     )
     parser.add_argument(
         "--label",
+        "--labels",
         action="append",
         default=None,
         help="Only include stale artifacts whose label contains this text; repeat to include multiple labels",
     )
     parser.add_argument(
         "--backend",
+        "--backends",
         action="append",
         default=None,
         help="Only include stale artifacts for this backend; repeat to include multiple backends",
     )
     parser.add_argument(
         "--model",
+        "--models",
         action="append",
         default=None,
         help="Only include stale artifacts whose model contains this text; repeat to include multiple models",
@@ -2585,8 +2590,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--current-path",
+        "--current-paths",
         "--current-artifact",
+        "--current-artifacts",
         "--current-artifact-path",
+        "--current-artifact-paths",
         action="append",
         default=None,
         help=(
@@ -2596,8 +2604,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--current-path-contains",
+        "--current-paths-contains",
         "--current-artifact-contains",
+        "--current-artifacts-contains",
         "--current-artifact-path-contains",
+        "--current-artifact-paths-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose current track artifact path contains this text; repeat to include multiple matches",
@@ -2743,14 +2754,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-path",
+        "--artifact-paths",
         "--path",
+        "--paths",
         action="append",
         default=None,
         help="Only include this stale artifact path; repeat to include multiple paths",
     )
     parser.add_argument(
         "--artifact-path-contains",
+        "--artifact-paths-contains",
         "--path-contains",
+        "--paths-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose artifact path contains this text; repeat to include multiple matches",
@@ -2893,16 +2908,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--detail-page",
+        "--detail-pages",
         "--detail-path",
+        "--detail-paths",
         "--detail-page-path",
+        "--detail-page-paths",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page path matches this path; repeat to include multiple paths",
     )
     parser.add_argument(
         "--detail-page-contains",
+        "--detail-pages-contains",
         "--detail-path-contains",
+        "--detail-paths-contains",
         "--detail-page-path-contains",
+        "--detail-page-paths-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose generated detail page path contains this text; repeat to include multiple matches",
@@ -3015,14 +3036,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--status",
+        "--statuses",
         "--artifact-status",
+        "--artifact-statuses",
         action="append",
         default=None,
         help="Only include stale artifacts with this status; repeat to include multiple statuses; use 'any' for all statuses (default: legacy)",
     )
     parser.add_argument(
         "--status-contains",
+        "--statuses-contains",
         "--artifact-status-contains",
+        "--artifact-statuses-contains",
         action="append",
         default=None,
         help="Only include stale artifacts whose status contains this text; repeat to include multiple matches",
