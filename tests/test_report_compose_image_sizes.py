@@ -1609,10 +1609,16 @@ def test_parse_args_accepts_fail_on_unknown_created_aliases(option: str) -> None
     "option",
     [
         "--require-complete-metadata",
+        "--require-complete-image-metadata",
+        "--require-all-image-metadata",
         "--require-image-metadata",
         "--require-known-metadata",
+        "--require-known-image-metadata",
         "--fail-on-unknown-metadata",
+        "--fail-on-unknown-image-metadata",
         "--fail-on-incomplete-metadata",
+        "--fail-on-incomplete-image-metadata",
+        "--fail-on-missing-image-metadata",
     ],
 )
 def test_parse_args_accepts_complete_metadata_aliases(option: str) -> None:
