@@ -121,6 +121,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--markdown-output",
+        "--markdown-report",
+        "--report-output",
+        "--md-report",
+        "--summary-markdown",
+        "--markdown-summary",
         "--markdown-summary-output",
         "--summary-markdown-output",
         "--md-output",
