@@ -3103,12 +3103,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--include-detail-pages",
+        "--include-detail-page-paths",
+        "--with-detail-pages",
+        "--with-detail-page-paths",
         action="store_true",
+        dest="include_detail_pages",
         help="With --paths-only, also print matching prerendered detail page paths",
     )
     parser.add_argument(
         "--detail-pages-only",
+        "--detail-page-paths-only",
+        "--only-detail-pages",
+        "--only-detail-page-paths",
         action="store_true",
+        dest="detail_pages_only",
         help="With --paths-only, only print matching prerendered detail page paths",
     )
     parser.add_argument(

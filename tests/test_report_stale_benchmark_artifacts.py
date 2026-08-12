@@ -150,6 +150,22 @@ def test_parse_args_accepts_path_list_aliases() -> None:
         assert parse_args([alias]).paths_only is True
 
 
+def test_parse_args_accepts_detail_page_path_output_aliases() -> None:
+    for alias in [
+        "--include-detail-page-paths",
+        "--with-detail-pages",
+        "--with-detail-page-paths",
+    ]:
+        assert parse_args([alias]).include_detail_pages is True
+
+    for alias in [
+        "--detail-page-paths-only",
+        "--only-detail-pages",
+        "--only-detail-page-paths",
+    ]:
+        assert parse_args([alias]).detail_pages_only is True
+
+
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
         [
