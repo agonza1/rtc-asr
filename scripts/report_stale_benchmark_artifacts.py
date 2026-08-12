@@ -3066,7 +3066,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--paths-only",
+        "--print-paths",
+        "--path-list",
+        "--list-paths",
+        "--artifact-path-list",
+        "--artifacts-path-list",
         action="store_true",
+        dest="paths_only",
         help="Print one stale artifact path per line for cleanup scripts",
     )
     parser.add_argument(

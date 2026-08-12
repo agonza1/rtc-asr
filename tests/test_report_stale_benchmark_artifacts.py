@@ -139,6 +139,17 @@ def test_parse_args_accepts_symmetric_artifact_output_aliases() -> None:
         assert parse_args([alias]).markdown is True
 
 
+def test_parse_args_accepts_path_list_aliases() -> None:
+    for alias in [
+        "--print-paths",
+        "--path-list",
+        "--list-paths",
+        "--artifact-path-list",
+        "--artifacts-path-list",
+    ]:
+        assert parse_args([alias]).paths_only is True
+
+
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
         [
