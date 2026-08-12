@@ -1754,6 +1754,24 @@ def test_main_applies_sort_order_before_rendering(monkeypatch: pytest.MonkeyPatc
     assert lines[3].startswith("| small:image |")
 
 
+@pytest.mark.parametrize(
+    ("alias", "canonical"),
+    [
+        ("present-last", "missing-first"),
+        ("missing-last", "present-first"),
+        ("known-size-last", "unknown-size-first"),
+        ("unknown-size-last", "known-size-first"),
+        ("known-created-last", "unknown-created-first"),
+        ("unknown-created-last", "known-created-first"),
+        ("duplicate-id-last", "unique-id-first"),
+        ("unique-id-last", "duplicate-id-first"),
+        ("shared-image-id-last", "unique-id-first"),
+    ],
+)
+def test_parse_sort_choice_accepts_inverse_position_aliases(alias: str, canonical: str) -> None:
+    assert reporter.parse_sort_choice(alias) == canonical
+
+
 def test_main_fails_when_present_image_exceeds_size_budget(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
