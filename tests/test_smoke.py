@@ -3690,7 +3690,17 @@ def test_uds_socket_mode_rejects_empty_path(monkeypatch: pytest.MonkeyPatch) -> 
         AppConfig.from_env()
 
 
-def test_local_stt_raw_uds_path_rejects_empty_value(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_disabled_raw_uds_listener_ignores_empty_raw_socket_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", "   ")
+
+    config = AppConfig.from_env()
+
+    assert config.local_stt_raw_uds_enabled is False
+    assert config.local_stt_raw_uds_path == "/run/rtc-asr/stt.raw.sock"
+
+
+def test_enabled_raw_uds_listener_rejects_empty_raw_socket_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCAL_STT_RAW_UDS_ENABLED", "true")
     monkeypatch.setenv("LOCAL_STT_RAW_UDS_PATH", "   ")
 
     with pytest.raises(ValueError, match="LOCAL_STT_RAW_UDS_PATH must not be empty"):

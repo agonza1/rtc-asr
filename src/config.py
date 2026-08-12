@@ -299,10 +299,14 @@ class AppConfig:
             defaults.local_stt_uds_path,
             required=local_stt_socket_mode == "uds",
         )
+        local_stt_raw_uds_enabled = _env_flag(
+            "LOCAL_STT_RAW_UDS_ENABLED",
+            defaults.local_stt_raw_uds_enabled,
+        )
         local_stt_raw_uds_path = _socket_path_env(
             "LOCAL_STT_RAW_UDS_PATH",
             defaults.local_stt_raw_uds_path,
-            required=True,
+            required=local_stt_raw_uds_enabled,
         )
 
         return cls(
@@ -331,10 +335,7 @@ class AppConfig:
             ),
             local_stt_socket_mode=local_stt_socket_mode,
             local_stt_uds_path=str(Path(local_stt_uds_path)),
-            local_stt_raw_uds_enabled=_env_flag(
-                "LOCAL_STT_RAW_UDS_ENABLED",
-                defaults.local_stt_raw_uds_enabled,
-            ),
+            local_stt_raw_uds_enabled=local_stt_raw_uds_enabled,
             local_stt_raw_uds_path=str(Path(local_stt_raw_uds_path)),
             asr_backend=_env_lower_text("ASR_BACKEND", defaults.asr_backend),
             asr_model_size=_first_env("ASR_MODEL_SIZE", "MODEL_NAME") or defaults.asr_model_size,
