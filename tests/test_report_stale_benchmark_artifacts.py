@@ -359,6 +359,50 @@ def test_parse_args_accepts_age_range_filter_aliases() -> None:
     assert readable_args.newer_than_days == 90
 
 
+def test_parse_args_accepts_plural_repeatable_filter_aliases() -> None:
+    args = parse_args(
+        [
+            "--slugs",
+            "base",
+            "--labels",
+            "Base CPU",
+            "--backends",
+            "faster-whisper",
+            "--models",
+            "base.en",
+            "--current-paths",
+            "current-a.json",
+            "--current-artifact-paths-contains",
+            "current",
+            "--artifact-paths",
+            "legacy-a.json",
+            "--paths-contains",
+            "legacy",
+            "--detail-pages",
+            "pages/legacy-a.html",
+            "--detail-page-paths-contains",
+            "pages",
+            "--statuses",
+            "legacy",
+            "--artifact-statuses-contains",
+            "leg",
+        ]
+    )
+
+    assert args.slug == ["base"]
+    assert args.label == ["Base CPU"]
+    assert args.backend == ["faster-whisper"]
+    assert args.model == ["base.en"]
+    assert args.current_path == ["current-a.json"]
+    assert args.current_path_contains == ["current"]
+    assert args.artifact_path == ["legacy-a.json"]
+    assert args.artifact_path_contains == ["legacy"]
+    assert args.detail_page == ["pages/legacy-a.html"]
+    assert args.detail_page_contains == ["pages"]
+    assert args.status == ["legacy"]
+    assert args.status_contains == ["leg"]
+
+
 def test_parse_args_accepts_plural_age_bucket_filter_aliases() -> None:
     args = parse_args(["--age-buckets", "30-89d", "--staleness-buckets", "90d+"])
 
