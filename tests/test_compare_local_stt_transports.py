@@ -29,6 +29,21 @@ def test_parse_args_accepts_output_aliases(tmp_path: Path) -> None:
     ).decision_output == (tmp_path / "decision.json")
 
 
+def test_parse_args_accepts_readable_markdown_output_aliases(tmp_path: Path) -> None:
+    artifact = tmp_path / "artifact.json"
+
+    for alias in [
+        "--markdown-report",
+        "--report-output",
+        "--md-report",
+        "--summary-markdown",
+        "--markdown-summary",
+    ]:
+        args = compare_module.parse_args([alias, str(tmp_path / "comparison.md"), str(artifact)])
+
+        assert args.markdown_output == (tmp_path / "comparison.md")
+
+
 def test_normalized_transport_accepts_direct_target_aliases() -> None:
     assert compare_module.normalized_transport({"target": {"transport": "raw-uds"}}) == "raw_uds"
     assert compare_module.normalized_transport({"target": {"transport": "uds-websocket"}}) == "uds_ws"
