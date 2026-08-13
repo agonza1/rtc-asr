@@ -2663,6 +2663,32 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
     ]
 
 
+def test_parse_args_accepts_plural_current_artifact_file_component_aliases() -> None:
+    args = parse_args(
+        [
+            "--current-artifact-stems",
+            "current",
+            "--current-file-stems-contains",
+            "curr",
+            "--current-artifact-dirs",
+            "benchmark-results/current",
+            "--current-path-directories-contains",
+            "benchmark",
+            "--current-artifact-extensions",
+            ".json",
+            "--current-file-extensions-contains",
+            "json",
+        ]
+    )
+
+    assert args.current_path_stem == ["current"]
+    assert args.current_path_stem_contains == ["curr"]
+    assert args.current_path_dir == ["benchmark-results/current"]
+    assert args.current_path_dir_contains == ["benchmark"]
+    assert args.current_path_extension == [".json"]
+    assert args.current_path_extension_contains == ["json"]
+
+
 def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() -> None:
     args = parse_args(
         [
