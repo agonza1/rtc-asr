@@ -316,6 +316,70 @@ def test_compare_backends_recommends_supported_when_candidate_clears_latency_gat
     assert comparison["recommendation"] == "Keep vosk:stateful as a supported low-latency backend."
 
 
+def test_compare_backends_accepts_common_run_count_aliases(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=220.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+    )
+
+    for path, key, count in (
+        (baseline, "run_count", " 4 "),
+        (candidate, "sample_count", 5),
+    ):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload.pop("runs")
+        payload[key] = count
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["backends"]["faster-whisper:rolling_window"]["runs"] == 4
+    assert comparison["backends"]["vosk:stateful"]["runs"] == 5
+
+
+def test_compare_backends_infers_run_count_from_sample_mapping(tmp_path: Path) -> None:
+    baseline = write_artifact(
+        tmp_path / "rolling.json",
+        backend="faster-whisper",
+        decoder_mode="rolling_window",
+        first_interim_p95=220.0,
+    )
+    candidate = write_artifact(
+        tmp_path / "vosk.json",
+        backend="vosk",
+        decoder_mode="stateful",
+        first_interim_p95=150.0,
+    )
+
+    for path, count in ((baseline, 3), (candidate, 6)):
+        payload = json.loads(path.read_text(encoding="utf8"))
+        payload.pop("runs")
+        sample = payload["samples"][0]
+        payload["samples"] = {f"run_{index}": sample for index in range(count)}
+        path.write_text(json.dumps(payload), encoding="utf8")
+
+    comparison = compare_module.compare_artifacts(
+        [baseline, candidate],
+        baseline_key="faster-whisper:rolling_window",
+        candidate_key="vosk:stateful",
+    )
+
+    assert comparison["backends"]["faster-whisper:rolling_window"]["runs"] == 3
+    assert comparison["backends"]["vosk:stateful"]["runs"] == 6
+
+
 def test_compare_backends_keeps_candidate_experimental_for_input_mismatch(tmp_path: Path) -> None:
     baseline = write_artifact(
         tmp_path / "rolling.json",
