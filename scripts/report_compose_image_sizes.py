@@ -368,6 +368,7 @@ class ImageSizeRecord:
     size_bytes: int | None
     created: str | None
     present: bool
+    containers: tuple[str, ...] = ()
 
     @property
     def size_mb(self) -> float | None:
@@ -414,6 +415,48 @@ def inspect_images(images: Sequence[str]) -> list[ImageSizeRecord]:
             continue
         records.append(_normalize_inspect_entry(image, payload[0]))
     return records
+
+
+def inspect_container_refs() -> dict[str, tuple[str, ...]]:
+    result = subprocess.run(
+        ["docker", "container", "ls", "--all", "--format", "{{json .}}"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return {}
+
+    refs: dict[str, list[str]] = {}
+    for line in result.stdout.splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        image = payload.get("Image")
+        name = payload.get("Names") or payload.get("Name") or payload.get("ID")
+        if isinstance(image, str) and image and isinstance(name, str) and name:
+            refs.setdefault(image, []).append(name)
+    return {image: tuple(sorted(names)) for image, names in refs.items()}
+
+
+def attach_container_refs(
+    records: Sequence[ImageSizeRecord],
+    container_refs: dict[str, tuple[str, ...]],
+) -> list[ImageSizeRecord]:
+    return [
+        ImageSizeRecord(
+            tag=record.tag,
+            image_id=record.image_id,
+            size_bytes=record.size_bytes,
+            created=record.created,
+            present=record.present,
+            containers=container_refs.get(record.tag, ()),
+        )
+        for record in records
+    ]
 
 
 def sort_records(records: Sequence[ImageSizeRecord], sort_by: str) -> list[ImageSizeRecord]:
@@ -561,6 +604,7 @@ def records_to_json(
     max_total_size_mb: float | None = None,
     max_deduplicated_total_size_mb: float | None = None,
     max_age_days: float | None = None,
+    include_container_refs: bool = False,
 ) -> str:
     record_list = list(records)
     summary = records_summary(
@@ -571,8 +615,9 @@ def records_to_json(
         max_deduplicated_total_size_mb=max_deduplicated_total_size_mb,
         max_age_days=max_age_days,
     )
-    payload = [
-        {
+    payload = []
+    for record in record_list:
+        row = {
             "tag": record.tag,
             "present": record.present,
             "image_id": record.image_id,
@@ -581,32 +626,39 @@ def records_to_json(
             "created": record.created,
             "age_days": image_age_days(record),
         }
-        for record in record_list
-    ]
+        if include_container_refs:
+            row["containers"] = list(record.containers)
+            row["container_count"] = len(record.containers)
+        payload.append(row)
     payload.append({"summary": summary})
     return json.dumps(payload, indent=2, sort_keys=True)
 
 
-def records_to_csv(records: Iterable[ImageSizeRecord]) -> str:
+def records_to_csv(records: Iterable[ImageSizeRecord], include_container_refs: bool = False) -> str:
     output = io.StringIO()
+    fieldnames = ["tag", "present", "image_id", "size_bytes", "size_mb", "created", "age_days"]
+    if include_container_refs:
+        fieldnames.extend(["container_count", "containers"])
     writer = csv.DictWriter(
         output,
-        fieldnames=("tag", "present", "image_id", "size_bytes", "size_mb", "created", "age_days"),
+        fieldnames=fieldnames,
         lineterminator="\n",
     )
     writer.writeheader()
     for record in records:
-        writer.writerow(
-            {
-                "tag": record.tag,
-                "present": "yes" if record.present else "no",
-                "image_id": record.image_id or "",
-                "size_bytes": record.size_bytes if record.size_bytes is not None else "",
-                "size_mb": f"{record.size_mb:.1f}" if record.size_mb is not None else "",
-                "created": record.created or "",
-                "age_days": f"{age_days:.1f}" if (age_days := image_age_days(record)) is not None else "",
-            }
-        )
+        row = {
+            "tag": record.tag,
+            "present": "yes" if record.present else "no",
+            "image_id": record.image_id or "",
+            "size_bytes": record.size_bytes if record.size_bytes is not None else "",
+            "size_mb": f"{record.size_mb:.1f}" if record.size_mb is not None else "",
+            "created": record.created or "",
+            "age_days": f"{age_days:.1f}" if (age_days := image_age_days(record)) is not None else "",
+        }
+        if include_container_refs:
+            row["container_count"] = len(record.containers)
+            row["containers"] = json.dumps(list(record.containers))
+        writer.writerow(row)
     return output.getvalue().rstrip("\n")
 
 
@@ -1133,22 +1185,30 @@ def records_to_markdown(
     max_total_size_mb: float | None = None,
     max_deduplicated_total_size_mb: float | None = None,
     max_age_days: float | None = None,
+    include_container_refs: bool = False,
 ) -> str:
-    rows = [
-        "| Image | Present | Size MB | Image ID | Created | Age days |",
-        "| --- | --- | ---: | --- | --- | ---: |",
-    ]
+    if include_container_refs:
+        rows = [
+            "| Image | Present | Size MB | Image ID | Created | Age days | Containers |",
+            "| --- | --- | ---: | --- | --- | ---: | --- |",
+        ]
+    else:
+        rows = [
+            "| Image | Present | Size MB | Image ID | Created | Age days |",
+            "| --- | --- | ---: | --- | --- | ---: |",
+        ]
     for record in records:
-        rows.append(
-            "| {tag} | {present} | {size} | {image_id} | {created} | {age_days} |".format(
-                tag=markdown_cell(record.tag),
-                present="yes" if record.present else "no",
-                size=f"{record.size_mb:.1f}" if record.size_mb is not None else "",
-                image_id=markdown_cell(record.image_id),
-                created=markdown_cell(record.created),
-                age_days=f"{age_days:.1f}" if (age_days := image_age_days(record)) is not None else "",
-            )
-        )
+        columns = [
+            markdown_cell(record.tag),
+            "yes" if record.present else "no",
+            f"{record.size_mb:.1f}" if record.size_mb is not None else "",
+            markdown_cell(record.image_id),
+            markdown_cell(record.created),
+            f"{age_days:.1f}" if (age_days := image_age_days(record)) is not None else "",
+        ]
+        if include_container_refs:
+            columns.append(markdown_cell(", ".join(record.containers)))
+        rows.append(f"| {' | '.join(columns)} |")
     total_bytes = sum(record.size_bytes or 0 for record in records if record.present)
     deduplicated_total_bytes = deduplicated_present_size_bytes(records)
     if total_bytes:
@@ -1298,6 +1358,15 @@ def records_to_markdown(
                 rows.append(f"Oldest image age budget utilization: {oldest_age_days / max_age_days * 100:.1f}%")
     if missing:
         rows.append("Missing images: {tags}".format(tags=markdown_cell(", ".join(missing))))
+    container_refs = [record for record in records if record.containers]
+    if include_container_refs and container_refs:
+        rows.append(
+            "Images referenced by containers: {refs}".format(
+                refs=markdown_cell(
+                    "; ".join(f"{record.tag}: {', '.join(record.containers)}" for record in container_refs)
+                )
+            )
+        )
     unknown_size = [record.tag for record in records if record.present and record.size_bytes is None]
     if unknown_size:
         rows.append(
@@ -1383,6 +1452,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "image age, presence, known or unknown size, known or unknown creation time, "
             "or shared image IDs."
         ),
+    )
+    parser.add_argument(
+        "--include-container-refs",
+        "--include-containers",
+        "--with-container-refs",
+        "--with-containers",
+        dest="include_container_refs",
+        action="store_true",
+        help="Include current Docker container names that reference each requested image tag.",
     )
     parser.add_argument(
         "--summary-only",
@@ -1611,6 +1689,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     records = sort_records(inspect_images(args.images), args.sort_by)
+    if args.include_container_refs:
+        records = attach_container_refs(records, inspect_container_refs())
     if args.summary_csv:
         output = records_summary_to_csv(
             records,
@@ -1639,7 +1719,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_age_days=args.max_age_days,
         )
     elif args.csv:
-        output = records_to_csv(records)
+        output = records_to_csv(records, include_container_refs=args.include_container_refs)
     else:
         output = (
             records_to_json(
@@ -1649,6 +1729,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_total_size_mb=args.max_total_size_mb,
                 max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
                 max_age_days=args.max_age_days,
+                include_container_refs=args.include_container_refs,
             )
             if args.json
             else records_to_markdown(
@@ -1658,6 +1739,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 max_total_size_mb=args.max_total_size_mb,
                 max_deduplicated_total_size_mb=args.max_deduplicated_total_size_mb,
                 max_age_days=args.max_age_days,
+                include_container_refs=args.include_container_refs,
             )
         )
     print(output)
