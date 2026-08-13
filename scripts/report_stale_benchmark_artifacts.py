@@ -83,6 +83,9 @@ STATUS_FILTER_ALIASES = {
     "stale": "legacy",
     "old": "legacy",
     "outdated": "legacy",
+    "obsolete": "legacy",
+    "superseded": "legacy",
+    "replaced": "legacy",
     "legacy-candidates": "legacy-candidate",
 }
 

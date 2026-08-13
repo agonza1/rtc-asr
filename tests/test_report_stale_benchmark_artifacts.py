@@ -60,7 +60,7 @@ def test_status_filters_accept_comma_separated_values() -> None:
 
 
 def test_status_filters_accept_common_aliases_and_underscores() -> None:
-    assert normalize_status_filters(["stale, old, legacy_candidates"]) == {
+    assert normalize_status_filters(["stale, old, obsolete, superseded, replaced, legacy_candidates"]) == {
         "legacy",
         "legacy-candidate",
     }
