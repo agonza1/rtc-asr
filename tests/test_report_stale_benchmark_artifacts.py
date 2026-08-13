@@ -60,7 +60,7 @@ def test_status_filters_accept_comma_separated_values() -> None:
 
 
 def test_status_filters_accept_common_aliases_and_underscores() -> None:
-    assert normalize_status_filters(["stale, old, legacy_candidates"]) == {
+    assert normalize_status_filters(["stale, old, obsolete, superseded, replaced, legacy_candidates"]) == {
         "legacy",
         "legacy-candidate",
     }
@@ -137,6 +137,65 @@ def test_parse_args_accepts_symmetric_artifact_output_aliases() -> None:
         "--artifacts-md-output",
     ]:
         assert parse_args([alias]).markdown is True
+
+
+def test_parse_args_accepts_path_list_aliases() -> None:
+    for alias in [
+        "--print-paths",
+        "--path-list",
+        "--list-paths",
+        "--artifact-path-list",
+        "--artifacts-path-list",
+    ]:
+        assert parse_args([alias]).paths_only is True
+
+
+def test_parse_args_accepts_detail_page_path_output_aliases() -> None:
+    for alias in [
+        "--include-detail-page-paths",
+        "--with-detail-pages",
+        "--with-detail-page-paths",
+    ]:
+        assert parse_args([alias]).include_detail_pages is True
+
+    for alias in [
+        "--detail-page-paths-only",
+        "--only-detail-pages",
+        "--only-detail-page-paths",
+    ]:
+        assert parse_args([alias]).detail_pages_only is True
+
+
+def test_parse_args_accepts_plural_detail_page_file_component_aliases() -> None:
+    args = parse_args(
+        [
+            "--detail-page-names",
+            "artifact.html",
+            "--detail-file-names-contains",
+            "artifact",
+            "--detail-page-stems",
+            "artifact",
+            "--detail-file-stems-contains",
+            "artifact",
+            "--detail-page-dirs",
+            "benchmark-results/pages",
+            "--detail-directories-contains",
+            "pages",
+            "--detail-page-extensions",
+            ".html",
+            "--detail-file-extensions-contains",
+            "html",
+        ]
+    )
+
+    assert args.detail_page_name == ["artifact.html"]
+    assert args.detail_page_name_contains == ["artifact"]
+    assert args.detail_page_stem == ["artifact"]
+    assert args.detail_page_stem_contains == ["artifact"]
+    assert args.detail_page_dir == ["benchmark-results/pages"]
+    assert args.detail_page_dir_contains == ["pages"]
+    assert args.detail_page_extension == [".html"]
+    assert args.detail_page_extension_contains == ["html"]
 
 
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
@@ -2634,6 +2693,32 @@ def test_parse_args_accepts_current_artifact_filter_aliases() -> None:
         "flac",
         "opus",
     ]
+
+
+def test_parse_args_accepts_plural_current_artifact_file_component_aliases() -> None:
+    args = parse_args(
+        [
+            "--current-artifact-stems",
+            "current",
+            "--current-file-stems-contains",
+            "curr",
+            "--current-artifact-dirs",
+            "benchmark-results/current",
+            "--current-path-directories-contains",
+            "benchmark",
+            "--current-artifact-extensions",
+            ".json",
+            "--current-file-extensions-contains",
+            "json",
+        ]
+    )
+
+    assert args.current_path_stem == ["current"]
+    assert args.current_path_stem_contains == ["curr"]
+    assert args.current_path_dir == ["benchmark-results/current"]
+    assert args.current_path_dir_contains == ["benchmark"]
+    assert args.current_path_extension == [".json"]
+    assert args.current_path_extension_contains == ["json"]
 
 
 def test_parse_args_accepts_artifact_directory_and_extension_filter_aliases() -> None:
