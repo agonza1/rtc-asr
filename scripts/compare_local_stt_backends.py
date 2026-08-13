@@ -179,9 +179,9 @@ def positive_int(value: str) -> int:
 
 
 def backend_key(artifact: dict[str, Any]) -> str:
-    samples = artifact.get("samples")
     sample: dict[str, Any] = {}
-    if isinstance(samples, list) and samples and isinstance(samples[0], dict):
+    samples = sample_records(artifact)
+    if samples:
         sample = samples[0]
     backend = first_string(
         sample.get("backend"),
@@ -201,14 +201,10 @@ def backend_key(artifact: dict[str, Any]) -> str:
 
 
 def model_name(artifact: dict[str, Any]) -> str | None:
-    samples = artifact.get("samples")
-    if isinstance(samples, list):
-        for sample in samples:
-            if not isinstance(sample, dict):
-                continue
-            model = sample.get("model")
-            if isinstance(model, str) and model:
-                return model
+    for sample in sample_records(artifact):
+        model = sample.get("model")
+        if isinstance(model, str) and model:
+            return model
     return first_optional_string(
         artifact.get("model"),
         nested_value(artifact, "target", "model"),
@@ -287,15 +283,11 @@ def protocol_error_free(artifact: dict[str, Any]) -> bool:
 
 
 def transcript_sanity(artifact: dict[str, Any]) -> dict[str, Any]:
-    samples = artifact.get("samples")
     normalized_transcripts: list[str] = []
-    if isinstance(samples, list):
-        for sample in samples:
-            if not isinstance(sample, dict):
-                continue
-            transcript = sample.get("final_transcript")
-            if isinstance(transcript, str):
-                normalized_transcripts.append(normalize_transcript(transcript))
+    for sample in sample_records(artifact):
+        transcript = sample.get("final_transcript")
+        if isinstance(transcript, str):
+            normalized_transcripts.append(normalize_transcript(transcript))
     nonempty_transcripts = [transcript for transcript in normalized_transcripts if transcript]
     expected = expected_final_transcript(artifact)
     expected_matches = [transcript for transcript in nonempty_transcripts if expected is not None and transcript == expected]
@@ -353,6 +345,45 @@ def benchmark_command(artifact: dict[str, Any]) -> str | None:
     return command if isinstance(command, str) else None
 
 
+def artifact_run_count(artifact: dict[str, Any]) -> int | None:
+    for key in (
+        "runs",
+        "run_count",
+        "run_counts",
+        "iteration_count",
+        "iterations",
+        "sample_count",
+        "samples_count",
+        "num_runs",
+        "n_runs",
+    ):
+        value = artifact.get(key)
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            try:
+                return int(value.strip())
+            except ValueError:
+                continue
+    samples = artifact.get("samples")
+    if isinstance(samples, list):
+        return len(samples)
+    if isinstance(samples, dict):
+        return len([sample for sample in samples.values() if isinstance(sample, dict)])
+    return None
+
+
+def sample_records(artifact: dict[str, Any]) -> list[dict[str, Any]]:
+    samples = artifact.get("samples")
+    if isinstance(samples, list):
+        return [sample for sample in samples if isinstance(sample, dict)]
+    if isinstance(samples, dict):
+        return [sample for sample in samples.values() if isinstance(sample, dict)]
+    return []
+
+
 def expected_final_transcript(artifact: dict[str, Any]) -> str | None:
     candidates = [artifact.get(key) for key in EXPECTED_TRANSCRIPT_KEYS]
     settings = artifact.get("settings") if isinstance(artifact.get("settings"), dict) else {}
@@ -401,7 +432,7 @@ def compare_artifacts(
             "settings": artifact.get("settings") or {},
             "environment": artifact.get("environment") or {},
             "benchmark_command": benchmark_command(artifact),
-            "runs": artifact.get("runs"),
+            "runs": artifact_run_count(artifact),
             "protocol_error_free": protocol_error_free(artifact),
             "comparable_snapshot": comparable_snapshot(artifact),
             "transcript_sanity": transcript_sanity(artifact),
