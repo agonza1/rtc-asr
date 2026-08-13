@@ -196,6 +196,86 @@ def test_records_to_csv_emits_tabular_image_rows(monkeypatch: pytest.MonkeyPatch
     ]
 
 
+def test_container_refs_are_attached_by_image_tag() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="rtc-asr:local",
+            image_id="abcdef123456",
+            size_bytes=100_000_000,
+            created=None,
+            present=True,
+        ),
+        reporter.ImageSizeRecord(
+            tag="realtime-asr:faster-whisper-cpu",
+            image_id="fedcba654321",
+            size_bytes=200_000_000,
+            created=None,
+            present=True,
+        ),
+    ]
+
+    annotated = reporter.attach_container_refs(
+        records,
+        {
+            "rtc-asr:local": ("agentic-contact-center-rtc-asr-1",),
+            "unused:image": ("unused-container",),
+        },
+    )
+
+    assert annotated[0].containers == ("agentic-contact-center-rtc-asr-1",)
+    assert annotated[1].containers == ()
+    assert records[0].containers == ()
+
+
+def test_records_outputs_include_container_refs_when_requested() -> None:
+    records = [
+        reporter.ImageSizeRecord(
+            tag="rtc-asr:local",
+            image_id="abcdef123456",
+            size_bytes=100_000_000,
+            created=None,
+            present=True,
+            containers=("agentic-contact-center-rtc-asr-1",),
+        )
+    ]
+
+    markdown = reporter.records_to_markdown(records, include_container_refs=True)
+    csv_rows = reporter.records_to_csv(records, include_container_refs=True).splitlines()
+    json_payload = json.loads(reporter.records_to_json(records, include_container_refs=True))
+
+    assert "| Image | Present | Size MB | Image ID | Created | Age days | Containers |" in markdown
+    assert "| rtc-asr:local | yes | 100.0 | abcdef123456 |  |  | agentic-contact-center-rtc-asr-1 |" in markdown
+    assert "Images referenced by containers: rtc-asr:local: agentic-contact-center-rtc-asr-1" in markdown
+    assert csv_rows == [
+        "tag,present,image_id,size_bytes,size_mb,created,age_days,container_count,containers",
+        'rtc-asr:local,yes,abcdef123456,100000000,100.0,,,1,"[""agentic-contact-center-rtc-asr-1""]"',
+    ]
+    assert json_payload[0]["container_count"] == 1
+    assert json_payload[0]["containers"] == ["agentic-contact-center-rtc-asr-1"]
+
+
+def test_inspect_container_refs_tolerates_docker_failures_and_bad_rows(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        assert command == ["docker", "container", "ls", "--all", "--format", "{{json .}}"]
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=(
+                '{"Image":"rtc-asr:local","Names":"acc-rtc-asr-1"}\n'
+                "not json\n"
+                '{"Image":"rtc-asr:local","Names":"agentic-contact-center-rtc-asr-1"}\n'
+                '{"Image":"missing-name"}\n'
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(reporter.subprocess, "run", fake_run)
+
+    assert reporter.inspect_container_refs() == {
+        "rtc-asr:local": ("acc-rtc-asr-1", "agentic-contact-center-rtc-asr-1")
+    }
+
+
 def test_records_summary_to_json_emits_only_aggregate_fields() -> None:
     records = [
         reporter.ImageSizeRecord(
