@@ -166,6 +166,38 @@ def test_parse_args_accepts_detail_page_path_output_aliases() -> None:
         assert parse_args([alias]).detail_pages_only is True
 
 
+def test_parse_args_accepts_plural_detail_page_file_component_aliases() -> None:
+    args = parse_args(
+        [
+            "--detail-page-names",
+            "artifact.html",
+            "--detail-file-names-contains",
+            "artifact",
+            "--detail-page-stems",
+            "artifact",
+            "--detail-file-stems-contains",
+            "artifact",
+            "--detail-page-dirs",
+            "benchmark-results/pages",
+            "--detail-directories-contains",
+            "pages",
+            "--detail-page-extensions",
+            ".html",
+            "--detail-file-extensions-contains",
+            "html",
+        ]
+    )
+
+    assert args.detail_page_name == ["artifact.html"]
+    assert args.detail_page_name_contains == ["artifact"]
+    assert args.detail_page_stem == ["artifact"]
+    assert args.detail_page_stem_contains == ["artifact"]
+    assert args.detail_page_dir == ["benchmark-results/pages"]
+    assert args.detail_page_dir_contains == ["pages"]
+    assert args.detail_page_extension == [".html"]
+    assert args.detail_page_extension_contains == ["html"]
+
+
 def test_summary_groups_accept_case_insensitive_values_and_aliases() -> None:
     assert normalize_summary_groups(
         [
