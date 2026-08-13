@@ -78,6 +78,20 @@ def test_normalized_transport_accepts_readable_target_transport_aliases() -> Non
     assert compare_module.normalized_transport({"target": {"transport": "domain socket raw"}}) == "raw_uds"
 
 
+def test_normalized_transport_accepts_target_mode_and_camel_case_metadata() -> None:
+    assert compare_module.normalized_transport({"target": {"mode": "raw uds socket"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"target": {"transportType": "unix domain websocket"}}) == "uds_ws"
+    assert compare_module.normalized_transport({"target": {"transportMode": "tcp secure websocket"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"target": {"socketMode": "raw unix domain socket"}}) == "raw_uds"
+
+
+def test_normalized_transport_accepts_nested_mode_and_camel_case_metadata() -> None:
+    assert compare_module.normalized_transport({"contract": {"transportMode": "raw uds"}}) == "raw_uds"
+    assert compare_module.normalized_transport({"integration": {"socketMode": "unix ws"}}) == "uds_ws"
+    assert compare_module.normalized_transport({"streaming": {"mode": "tcp websocket"}}) == "tcp_ws"
+    assert compare_module.normalized_transport({"benchmark": {"transportType": "raw unix socket"}}) == "raw_uds"
+
+
 def test_normalized_transport_accepts_punctuated_readable_aliases() -> None:
     assert compare_module.normalized_transport({"target": {"transport": "tcp/ws"}}) == "tcp_ws"
     assert compare_module.normalized_transport({"target": {"transport": "tcp/wss"}}) == "tcp_ws"
