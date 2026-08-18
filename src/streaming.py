@@ -20,6 +20,8 @@ class StreamConfig:
     partial_interval_chunks: int = 1
     partial_window_seconds: float | None = None
     max_buffer_seconds: float | None = None
+    finalize_on_stable_partial: bool = False
+    stable_partial_cycles: int | None = None
     partial_event_timeout_seconds: float = 0.1
     send_binary_frames: bool = False
 
@@ -32,6 +34,10 @@ class StreamConfig:
             raise ValueError("partial_window_seconds must be a positive finite number")
         if self.max_buffer_seconds is not None and not _is_positive_finite_number(self.max_buffer_seconds):
             raise ValueError("max_buffer_seconds must be a positive finite number")
+        if not isinstance(self.finalize_on_stable_partial, bool):
+            raise ValueError("finalize_on_stable_partial must be a boolean")
+        if self.stable_partial_cycles is not None and not _is_positive_integer(self.stable_partial_cycles):
+            raise ValueError("stable_partial_cycles must be a positive integer")
         if not _is_nonnegative_finite_number(self.partial_event_timeout_seconds):
             raise ValueError("partial_event_timeout_seconds must be zero or a finite positive number")
 
@@ -46,6 +52,10 @@ class StreamConfig:
             payload["partial_window_seconds"] = self.partial_window_seconds
         if self.max_buffer_seconds is not None:
             payload["max_buffer_seconds"] = self.max_buffer_seconds
+        if self.finalize_on_stable_partial:
+            payload["finalize_on_stable_partial"] = self.finalize_on_stable_partial
+        if self.stable_partial_cycles is not None:
+            payload["stable_partial_cycles"] = self.stable_partial_cycles
         return payload
 
 
