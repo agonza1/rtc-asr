@@ -3249,6 +3249,71 @@ def test_local_stt_v1_runs_at_most_one_partial_decode_per_stream() -> None:
     assert [call["audio_size"] for call in transcriber.calls] == [len(chunk), len(chunk) * 2, len(chunk) * 4]
 
 
+def test_local_stt_v1_can_finalize_after_repeated_stable_partials() -> None:
+    transcriber = StableTextTranscriber()
+    chunk = b"s" * HOT_PATH_BYTES_PER_FRAME
+
+    with TestClient(create_app(transcriber=transcriber)) as client:
+        with client.websocket_connect("/v1/stt/stream") as websocket:
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                    "partial_interval_ms": HOT_PATH_FRAME_MS,
+                    "finalize_on_stable_partial": True,
+                    "stable_partial_cycles": 3,
+                    "client_stream_id": "segment-a",
+                }
+            )
+            ready = parse_server_message(websocket.receive_json())
+            events = []
+            for _ in range(3):
+                websocket.send_bytes(chunk)
+                events.append(parse_server_message(websocket.receive_json()))
+
+            websocket.send_json(
+                {
+                    "type": "start",
+                    "protocol": "local-stt-v1",
+                    "sample_rate": HOT_PATH_SAMPLE_RATE,
+                    "channels": HOT_PATH_CHANNELS,
+                    "format": HOT_PATH_PCM_FORMAT,
+                }
+            )
+            next_ready = parse_server_message(websocket.receive_json())
+
+    assert ready.metadata["finalize_on_stable_partial"] is True
+    assert ready.metadata["stable_partial_cycles"] == 3
+    assert [event.is_final for event in events] == [False, False, True]
+    assert [event.metadata["stability_count"] for event in events] == [1, 2, 3]
+    assert events[-1].metadata["segment_id"] == "segment-a"
+    assert events[-1].metadata["window_start_ms"] == 0
+    assert events[-1].metadata["window_end_ms"] == HOT_PATH_FRAME_MS * 3
+    assert next_ready.type == "ready"
+
+
+def test_stream_stability_resets_for_changed_or_empty_text() -> None:
+    session = StreamSession(
+        stream_id=1,
+        language="en",
+        sample_rate=HOT_PATH_SAMPLE_RATE,
+        max_buffer_bytes=DEFAULT_MAX_BUFFER_BYTES,
+        finalize_on_stable_partial=True,
+        stable_partial_cycles=2,
+    )
+
+    assert session.record_transcript_stability({"text": " Hello   WORLD "}) == 1
+    assert session.record_transcript_stability({"text": "hello world"}) == 2
+    assert session.should_finalize_stable_partial() is True
+    assert session.record_transcript_stability({"text": "changed"}) == 1
+    assert session.should_finalize_stable_partial() is False
+    assert session.record_transcript_stability({"text": "   "}) == 0
+    assert session.stable_partial_text is None
+
+
 def test_local_stt_v1_finalize_suppresses_inflight_stale_partial() -> None:
     transcriber = SleepingTranscriber(delay_seconds=0.05)
     chunk = b"b" * HOT_PATH_BYTES_PER_FRAME

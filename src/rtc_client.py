@@ -413,6 +413,8 @@ class AsyncLocalSttClient:
         partial_interval_ms: int = HOT_PATH_FRAME_MS,
         partial_window_seconds: float | None = None,
         max_buffer_seconds: float | None = None,
+        finalize_on_stable_partial: bool = False,
+        stable_partial_cycles: int | None = None,
         client_stream_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -424,6 +426,9 @@ class AsyncLocalSttClient:
         _validate_positive_integer(partial_interval_ms, field_name="partial_interval_ms")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
         _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
+        _validate_boolean(finalize_on_stable_partial, field_name="finalize_on_stable_partial")
+        if stable_partial_cycles is not None:
+            _validate_positive_integer(stable_partial_cycles, field_name="stable_partial_cycles")
         _validate_metadata_object(metadata)
         websocket = await self.connect()
         payload: dict[str, Any] = {
@@ -444,6 +449,10 @@ class AsyncLocalSttClient:
             payload["partial_window_seconds"] = partial_window_seconds
         if max_buffer_seconds is not None:
             payload["max_buffer_seconds"] = max_buffer_seconds
+        if finalize_on_stable_partial:
+            payload["finalize_on_stable_partial"] = True
+        if stable_partial_cycles is not None:
+            payload["stable_partial_cycles"] = stable_partial_cycles
         if client_stream_id is not None:
             payload["client_stream_id"] = client_stream_id
         if metadata:
@@ -596,6 +605,8 @@ class AsyncRawUdsLocalSttClient:
         partial_interval_ms: int = HOT_PATH_FRAME_MS,
         partial_window_seconds: float | None = None,
         max_buffer_seconds: float | None = None,
+        finalize_on_stable_partial: bool = False,
+        stable_partial_cycles: int | None = None,
         client_stream_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -607,6 +618,9 @@ class AsyncRawUdsLocalSttClient:
         _validate_positive_integer(partial_interval_ms, field_name="partial_interval_ms")
         _validate_positive_number(partial_window_seconds, field_name="partial_window_seconds")
         _validate_positive_number(max_buffer_seconds, field_name="max_buffer_seconds")
+        _validate_boolean(finalize_on_stable_partial, field_name="finalize_on_stable_partial")
+        if stable_partial_cycles is not None:
+            _validate_positive_integer(stable_partial_cycles, field_name="stable_partial_cycles")
         _validate_metadata_object(metadata)
         payload: dict[str, Any] = {
             "type": "start",
@@ -626,6 +640,10 @@ class AsyncRawUdsLocalSttClient:
             payload["partial_window_seconds"] = partial_window_seconds
         if max_buffer_seconds is not None:
             payload["max_buffer_seconds"] = max_buffer_seconds
+        if finalize_on_stable_partial:
+            payload["finalize_on_stable_partial"] = True
+        if stable_partial_cycles is not None:
+            payload["stable_partial_cycles"] = stable_partial_cycles
         if client_stream_id is not None:
             payload["client_stream_id"] = client_stream_id
         if metadata:

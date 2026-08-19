@@ -86,6 +86,7 @@ OPTIONAL_EXTERNAL_BENCHMARK_FIELDS = [
     "thermal_observation",
     "thermal_duration_minutes",
 ]
+DEFAULT_STABLE_PARTIAL_CYCLES = 3
 
 
 class TranscribeRequest(BaseModel):
@@ -438,6 +439,8 @@ class StreamSession:
     max_buffer_seconds: float | None = None
     partial_window_bytes: int | None = None
     interim_results: bool = True
+    finalize_on_stable_partial: bool = False
+    stable_partial_cycles: int = DEFAULT_STABLE_PARTIAL_CYCLES
     client_stream_id: str | None = None
     client_metadata: dict[str, Any] = field(default_factory=dict)
     decoder_mode: str = "rolling_window"
@@ -446,6 +449,8 @@ class StreamSession:
     last_partial_chunks_received: int = 0
     last_partial_audio_received_ms: int = 0
     last_partial_result: dict[str, object] | None = None
+    stable_partial_text: str | None = None
+    stable_partial_count: int = 0
     transcript_revision: int = 0
 
     def append_audio(self, chunk: bytes) -> None:
@@ -487,6 +492,22 @@ class StreamSession:
             return bytes(self.audio_buffer)
         return bytes(self.audio_buffer[-self.partial_window_bytes :])
 
+    def record_transcript_stability(self, transcript: dict[str, object]) -> int:
+        normalized = _normalize_stability_text(transcript.get("text"))
+        if normalized is None:
+            self.stable_partial_text = None
+            self.stable_partial_count = 0
+            return self.stable_partial_count
+        if normalized == self.stable_partial_text:
+            self.stable_partial_count += 1
+        else:
+            self.stable_partial_text = normalized
+            self.stable_partial_count = 1
+        return self.stable_partial_count
+
+    def should_finalize_stable_partial(self) -> bool:
+        return self.finalize_on_stable_partial and self.stable_partial_count >= self.stable_partial_cycles
+
     def next_transcript_revision(self) -> int:
         self.transcript_revision += 1
         return self.transcript_revision
@@ -526,6 +547,8 @@ class StreamRuntime:
         self.cancel_requested.set()
         self.session.audio_buffer.clear()
         self.session.last_partial_result = None
+        self.session.stable_partial_text = None
+        self.session.stable_partial_count = 0
         self.audio_updated.set()
 
     def close(self) -> None:
@@ -549,6 +572,8 @@ class LocalSttStartConfig:
     partial_interval_audio_ms: int | None = None
     partial_window_seconds: float | None = None
     max_buffer_seconds: float | None = None
+    finalize_on_stable_partial: bool = False
+    stable_partial_cycles: int = DEFAULT_STABLE_PARTIAL_CYCLES
     client_stream_id: str | None = None
     client_metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -892,6 +917,9 @@ def create_app(config: AppConfig | None = None, transcriber: Transcriber | None 
                     except asyncio.CancelledError:
                         pass
                     await worker_task
+                    await runtime.outgoing_events.join()
+                    await stop_runtime()
+                    continue
 
                 payload, event_type = await receive_task
 
@@ -1095,6 +1123,9 @@ async def _raw_uds_stream_client(
                 with suppress(asyncio.CancelledError):
                     await receive_task
                 await worker_task
+                await runtime.outgoing_events.join()
+                await stop_runtime()
+                continue
 
             payload, event_type = await receive_task
 
@@ -1390,17 +1421,22 @@ async def _local_stt_asr_worker(runtime: StreamRuntime) -> None:
             chunks_received=partial_chunks_received,
             audio_received_ms=partial_audio_received_ms,
         )
+        session.record_transcript_stability(partial)
         partial_text = str(partial.get("text", "")).strip()
         if partial_text:
             await runtime.enqueue_event(
                 _local_stt_transcript_event(
                     session,
                     partial,
-                    is_final=False,
+                    is_final=session.should_finalize_stable_partial(),
                     transcribed_audio_bytes=len(partial_audio_bytes),
                     metrics=_decode_metrics(runtime, decode_ms),
                 )
             )
+            if session.should_finalize_stable_partial():
+                runtime.final_emitted = True
+                runtime.closed = True
+                return
         if runtime.dirty:
             runtime.audio_updated.set()
 
@@ -1559,6 +1595,8 @@ def _create_local_stt_stream_session(
         max_buffer_seconds=payload.max_buffer_seconds,
         partial_window_bytes=partial_window_bytes,
         interim_results=payload.start.interim_results,
+        finalize_on_stable_partial=payload.finalize_on_stable_partial,
+        stable_partial_cycles=payload.stable_partial_cycles,
         client_stream_id=payload.client_stream_id,
         client_metadata=dict(payload.client_metadata),
     )
@@ -1590,6 +1628,8 @@ def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConf
             "partial_interval_ms": payload.get("partial_interval_ms"),
             "partial_window_seconds": payload.get("partial_window_seconds"),
             "max_buffer_seconds": payload.get("max_buffer_seconds"),
+            "finalize_on_stable_partial": payload.get("finalize_on_stable_partial", False),
+            "stable_partial_cycles": payload.get("stable_partial_cycles"),
             "client_stream_id": payload.get("client_stream_id"),
             "metadata": payload.get("metadata", {}),
         }
@@ -1622,6 +1662,8 @@ def _parse_local_stt_start_message(payload: dict[str, Any]) -> LocalSttStartConf
         partial_interval_audio_ms=partial_interval_audio_ms,
         partial_window_seconds=partial_window_seconds,
         max_buffer_seconds=max_buffer_seconds,
+        finalize_on_stable_partial=start.finalize_on_stable_partial,
+        stable_partial_cycles=start.stable_partial_cycles or DEFAULT_STABLE_PARTIAL_CYCLES,
         client_stream_id=client_stream_id,
         client_metadata=dict(start.metadata),
     )
@@ -1682,6 +1724,9 @@ def _local_stt_ready_event(session: StreamSession, *, backend: str, model: str) 
         metadata["partial_window_seconds"] = session.partial_window_seconds
     if session.max_buffer_seconds is not None:
         metadata["max_buffer_seconds"] = session.max_buffer_seconds
+    if session.finalize_on_stable_partial:
+        metadata["finalize_on_stable_partial"] = True
+        metadata["stable_partial_cycles"] = session.stable_partial_cycles
 
     return ReadyMessage(
         type="ready",
@@ -1712,6 +1757,14 @@ def _local_stt_transcript_event(
         "buffered_bytes": len(session.audio_buffer),
         "remaining_buffer_bytes": session.max_buffer_bytes - len(session.audio_buffer),
         "decoder_mode": session.decoder_mode,
+        "segment_id": session.client_stream_id or str(session.stream_id),
+        "window_start_ms": max(
+            0,
+            session.audio_received_ms()
+            - _audio_bytes_to_duration_ms(transcribed_audio_bytes, session.sample_rate),
+        ),
+        "window_end_ms": session.audio_received_ms(),
+        "stability_count": session.stable_partial_count,
     }
     backend = transcript.get("backend")
     if isinstance(backend, str):
@@ -1794,6 +1847,13 @@ def _audio_bytes_to_duration_ms(byte_count: int, sample_rate: int) -> int:
     if sample_rate < 1:
         return 0
     return max(0, round((byte_count / 2) * 1000 / sample_rate))
+
+
+def _normalize_stability_text(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = " ".join(value.casefold().split())
+    return normalized or None
 
 
 def _coerce_positive_seconds(value: Any, *, field_name: str, error_cls: type[ValueError] = StreamClientError) -> float | None:

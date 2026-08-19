@@ -120,6 +120,8 @@ The checked-in protocol contract test exercises this mapping with only local tes
   "language": "en",
   "interim_results": true,
   "partial_interval_ms": 100,
+  "finalize_on_stable_partial": true,
+  "stable_partial_cycles": 3,
   "partial_window_seconds": 1.5,
   "max_buffer_seconds": 10,
   "client_stream_id": "turn-abc",
@@ -136,6 +138,8 @@ Required behavior:
 - Unknown optional fields MUST be ignored.
 - Unsupported required values MUST return a protocol `error`.
 - `partial_interval_ms` MAY request transcript cadence in milliseconds; servers MAY round it up to the nearest supported audio frame boundary.
+- `finalize_on_stable_partial` is an opt-in mode. When `true`, the server emits a final transcript once the normalized non-empty partial text repeats for `stable_partial_cycles` decode cycles (default `3`) without requiring `finalize`/`stop`.
+- `stable_partial_cycles` MUST be a positive integer when supplied. Changing or empty partial text resets the stability count. When the opt-in flag is absent or `false`, lifecycle behavior is unchanged.
 - `partial_window_seconds` MAY bound how much trailing audio contributes to interim transcripts.
 - `max_buffer_seconds` MAY bound how much audio a server keeps before it requires finalize/cancel.
 - `client_stream_id` MAY carry a caller-chosen utterance/session id for downstream correlation.
@@ -216,7 +220,12 @@ The service echoes `ping_id`, `timestamp_ms`, and `metadata` in the matching `po
   "revision": 1,
   "audio_received_ms": 1000,
   "audio_transcribed_ms": 900,
-  "metadata": {}
+  "metadata": {
+    "segment_id": "turn-abc",
+    "window_start_ms": 100,
+    "window_end_ms": 1000,
+    "stability_count": 2
+  }
 }
 ```
 
@@ -231,6 +240,8 @@ Required fields:
 - `metadata`: implementation-specific optional metadata object.
 
 `metadata.decoder_mode` mirrors the `ready` event for every transcript revision so clients and benchmarks can attribute partial and final behavior to either the `stateful` path or the `rolling_window` fallback without retaining connection-side state.
+
+Transcript metadata also includes `segment_id` (the client stream id when supplied, otherwise the server stream id), `window_start_ms`, `window_end_ms`, and `stability_count`. Window offsets are relative to the current utterance. An auto-final transcript has `is_final` and `speech_final` set to `true`; the connection remains reusable for a new `start`. Explicit `finalize` and `cancel` retain their existing behavior.
 
 Timing rules:
 

@@ -277,10 +277,12 @@ class StartMessage(LocalSttModel):
     partial_interval_ms: int | None = None
     partial_window_seconds: float | None = None
     max_buffer_seconds: float | None = None
+    finalize_on_stable_partial: bool = False
+    stable_partial_cycles: int | None = None
     client_stream_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator("partial_interval_ms", mode="before")
+    @field_validator("partial_interval_ms", "stable_partial_cycles", mode="before")
     @classmethod
     def reject_boolean_integer_fields(cls, value: Any) -> Any:
         return _reject_boolean_integer_field(value)
@@ -295,7 +297,7 @@ class StartMessage(LocalSttModel):
     def require_finite_numeric_fields(cls, value: Any) -> Any:
         return _require_finite_numeric_field(value)
 
-    @field_validator("partial_interval_ms")
+    @field_validator("partial_interval_ms", "stable_partial_cycles")
     @classmethod
     def require_positive_interval_ms(cls, value: Any) -> Any:
         return _require_positive_integer_field(value)
@@ -305,7 +307,7 @@ class StartMessage(LocalSttModel):
     def require_positive_numeric_fields(cls, value: Any) -> Any:
         return _require_positive_numeric_field(value)
 
-    @field_validator("interim_results", mode="before")
+    @field_validator("interim_results", "finalize_on_stable_partial", mode="before")
     @classmethod
     def require_boolean_fields(cls, value: Any) -> Any:
         return _require_boolean_field(value)
@@ -529,6 +531,8 @@ def build_start_message(
     partial_interval_ms: int | None = None,
     partial_window_seconds: float | None = None,
     max_buffer_seconds: float | None = None,
+    finalize_on_stable_partial: bool = False,
+    stable_partial_cycles: int | None = None,
     client_stream_id: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> StartMessage:
@@ -541,6 +545,8 @@ def build_start_message(
         partial_interval_ms=partial_interval_ms,
         partial_window_seconds=partial_window_seconds,
         max_buffer_seconds=max_buffer_seconds,
+        finalize_on_stable_partial=finalize_on_stable_partial,
+        stable_partial_cycles=stable_partial_cycles,
         client_stream_id=client_stream_id,
         metadata={} if metadata is None else metadata,
     )
@@ -904,6 +910,8 @@ def _normalize_raw_uds_control_payload(payload: dict[str, Any]) -> dict[str, Any
         "partial_interval_ms": payload.get("partial_interval_ms"),
         "partial_window_seconds": payload.get("partial_window_seconds"),
         "max_buffer_seconds": payload.get("max_buffer_seconds"),
+        "finalize_on_stable_partial": payload.get("finalize_on_stable_partial", False),
+        "stable_partial_cycles": payload.get("stable_partial_cycles"),
         "client_stream_id": payload.get("client_stream_id"),
         "metadata": payload.get("metadata", {}),
     }
@@ -986,6 +994,8 @@ def _compact_raw_uds_message_payload(message: LocalSttModel) -> dict[str, Any]:
     payload = message.model_dump(exclude_none=True)
     if payload.get("metadata") == {}:
         payload.pop("metadata")
+    if payload.get("finalize_on_stable_partial") is False:
+        payload.pop("finalize_on_stable_partial")
     return payload
 
 

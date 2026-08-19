@@ -88,6 +88,8 @@ def test_builders_emit_hot_path_messages_for_clients_and_servers() -> None:
         "partial_interval_ms": 100,
         "partial_window_seconds": 1.5,
         "max_buffer_seconds": 10.0,
+        "finalize_on_stable_partial": False,
+        "stable_partial_cycles": None,
         "client_stream_id": "turn-abc",
         "metadata": {"turn_id": "abc"},
     }
