@@ -178,6 +178,17 @@ Benchmark artifacts now include extra streaming responsiveness metrics for low-l
 - `time_to_final_from_audio_end_ms`: per-sample finalization delay after audio stops
 - `time_to_final_from_audio_end_*`: aggregated finalization delay summary used by the benchmark site (`final_*` remains a compatibility alias)
 
+Local STT v1 streaming artifacts produced by `scripts/bench_local_stt_stream.py` also include a compact `scorecard` section for realtime QA checks. It mirrors the existing detailed sample and summary metrics, but groups the issue-critical fields in one place:
+
+- `partial_event_count`
+- `first_partial_latency_ms`
+- `inter_partial_latency_ms` with `p50`, `p95`, and `max`
+- `finalization_latency_ms`
+- `final_wer`
+- `backend`, `model`, `protocol`, and the transport/chunk/window settings used for the run
+
+`final_wer` is populated only when the run supplies fixture ground truth with `--expected-final-transcript`; otherwise the WER fields stay `null` and `scorecard.ground_truth_available` is `false`. Existing benchmark commands keep working because the scorecard is additive and the older per-sample fields remain in the artifact.
+
 Rebuild the homepage manifest after artifact or track changes:
 
 ```bash
