@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import platform
 import re
@@ -177,8 +178,8 @@ def positive_int(value: str) -> int:
 
 def nonnegative_float(value: str) -> float:
     parsed = float(value)
-    if parsed < 0:
-        raise argparse.ArgumentTypeError("value must be greater than or equal to 0")
+    if not math.isfinite(parsed) or parsed < 0:
+        raise argparse.ArgumentTypeError("value must be finite and greater than or equal to 0")
     return parsed
 
 
@@ -188,6 +189,15 @@ def metadata_pair(value: str) -> tuple[str, str]:
     if not separator or not key:
         raise argparse.ArgumentTypeError("metadata must use KEY=VALUE with a non-empty key")
     return key, metadata_value.strip()
+
+
+def validate_scorecard_metadata(metadata: dict[str, str]) -> None:
+    for key in ("partial_window_seconds", "partial_window"):
+        if key not in metadata:
+            continue
+        parsed = optional_float(metadata[key])
+        if parsed is None:
+            raise argparse.ArgumentTypeError(f"{key} metadata must be a finite number")
 
 
 def normalize_transport(value: str) -> str:
@@ -289,6 +299,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     if args.send_aggregate_ms is not None:
         validate_send_aggregate_ms(frame_ms=args.frame_ms, send_aggregate_ms=args.send_aggregate_ms)
     args.metadata = dict(args.metadata)
+    validate_scorecard_metadata(args.metadata)
     return args
 
 
@@ -1181,7 +1192,9 @@ def _append_optional_ms(values: list[float], value: object) -> None:
     if isinstance(value, bool) or value is None:
         return
     if isinstance(value, (int, float)):
-        values.append(float(value))
+        parsed = float(value)
+        if math.isfinite(parsed):
+            values.append(parsed)
 
 
 def _optional_int(value: object) -> int | None:
@@ -1196,12 +1209,14 @@ def optional_float(value: object) -> float | None:
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, (int, float)):
-        return float(value)
+        parsed = float(value)
+        return parsed if math.isfinite(parsed) else None
     if isinstance(value, str):
         try:
-            return float(value)
+            parsed = float(value)
         except ValueError:
             return None
+        return parsed if math.isfinite(parsed) else None
     return None
 
 
@@ -1213,7 +1228,7 @@ def most_common_string(values: Iterator[object]) -> str | None:
 
 
 def normalize_transcript_for_wer(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", text.lower())
+    return re.findall(r"[^\W_]+", text.casefold(), flags=re.UNICODE)
 
 
 def compute_word_error_rate(reference: str | None, hypothesis: str | None) -> float | None:

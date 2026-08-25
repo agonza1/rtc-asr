@@ -530,13 +530,34 @@ def test_parse_args_rejects_negative_power_and_thermal_values(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
 
+    invalid_values = ("-1", "nan", "inf", "-inf")
     for flag in ("--package-power-watts", "--energy-per-audio-second-j", "--thermal-peak-celsius", "--thermal-duration-minutes"):
+        for value in invalid_values:
+            try:
+                benchmark_module.parse_args(["--input-raw-pcm", str(pcm_path), flag, value])
+            except SystemExit as exc:
+                assert exc.code == 2
+            else:
+                raise AssertionError(f"expected {flag} to reject {value}")
+
+
+def test_parse_args_rejects_non_finite_partial_window_metadata(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    for value in ("nan", "inf", "-inf"):
         try:
-            benchmark_module.parse_args(["--input-raw-pcm", str(pcm_path), flag, "-1"])
-        except SystemExit as exc:
-            assert exc.code == 2
+            benchmark_module.parse_args([
+                "--input-raw-pcm",
+                str(pcm_path),
+                "--metadata",
+                f"partial_window_seconds={value}",
+            ])
+        except argparse.ArgumentTypeError as exc:
+            assert "partial_window_seconds metadata must be a finite number" in str(exc)
         else:
-            raise AssertionError(f"expected {flag} to reject negative values")
+            raise AssertionError(f"expected partial_window_seconds={value} to fail")
+
 
 def test_describe_environment_records_host_capacity(monkeypatch) -> None:
     monkeypatch.setattr(benchmark_module.platform, "platform", lambda: "TestOS")
@@ -996,6 +1017,8 @@ def test_compute_word_error_rate_stays_null_without_ground_truth() -> None:
     assert benchmark_module.compute_word_error_rate("hello world", None) is None
     assert benchmark_module.compute_word_error_rate("Hello, WORLD!", "hello world") == 0.0
     assert benchmark_module.compute_word_error_rate("hello new world", "hello brave new world") == 0.333
+    assert benchmark_module.compute_word_error_rate("こんにちは 世界", "こんにちは") == 0.5
+    assert benchmark_module.compute_word_error_rate("café résumé", "cafe resume") == 1.0
 
 
 def test_run_benchmark_sends_aggregated_voice_agent_chunks() -> None:
