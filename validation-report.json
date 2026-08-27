@@ -1,0 +1,16 @@
+{
+  "durationSeconds": 120.0,
+  "sampleRate": 48000,
+  "maleChannels": 1,
+  "femaleChannels": 1,
+  "stereoReferenceChannels": 2,
+  "overlapSamples": 0,
+  "firstSampleMale": 0.0,
+  "firstSampleFemale": 0.0,
+  "lastSampleMale": 0.0,
+  "lastSampleFemale": 0.0,
+  "finalSilenceSeconds": 2.501,
+  "wordCount": 254,
+  "tempoAdjustment": 1.0,
+  "naturalTempoAdjustment": true
+}

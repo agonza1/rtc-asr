@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "webrtc-testlab.dialogue-asset.v1",
+  "profile": "dialogue-v1",
+  "durationSeconds": 120.0,
+  "sampleRate": 48000,
+  "channels": {
+    "0": {
+      "speaker": "male",
+      "voice": "am_michael"
+    },
+    "1": {
+      "speaker": "female",
+      "voice": "af_heart"
+    }
+  },
+  "activeSpeechOverlapSamples": 0,
+  "loopBoundarySilent": true,
+  "initialSilenceSeconds": 0.5,
+  "finalSilenceSeconds": 2.501,
+  "asset": {
+    "file": "webrtc-dialogue-v1-runtime-stereo.mp3",
+    "bytes": 1440621,
+    "sha256": "0ef4d595676aef37ca4ede3fea1ed9482030644aebb4772964863206d52dc0eb",
+    "codec": "MP3",
+    "bitrateKbps": 96
+  },
+  "generation": {
+    "engine": "Kokoro 0.9.4",
+    "runtimeTtsRequired": false,
+    "tempoAdjustment": 1.0
+  },
+  "license": {
+    "modelWeights": "Apache-2.0",
+    "dialogueAndGeneratedAssets": "Apache-2.0"
+  }
+}
