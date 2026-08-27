@@ -134,6 +134,14 @@ jobs:
           git commit -m "Publish WebRTC TestLab dialogue-v1 audio asset"
           git push --force origin HEAD:assets/webrtc-testlab-dialogue-v1
 
+      - name: Upload runtime asset package
+        uses: actions/upload-artifact@v4
+        with:
+          name: webrtc-dialogue-v1-runtime
+          path: /tmp/webrtc-dialogue-v1/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload dialogue package
         uses: actions/upload-artifact@v4
         with:
