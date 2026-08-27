@@ -15,7 +15,7 @@ SOURCE_RATE = 24_000
 OUTPUT_RATE = 48_000
 TARGET_SECONDS = 120.0
 INITIAL_SILENCE_SECONDS = 0.5
-MAX_BODY_SECONDS = 118.8
+MAX_BODY_SECONDS = 118.5
 OUTPUT_DIR = Path("artifacts/webrtc-dialogue-2min")
 
 
@@ -27,26 +27,18 @@ class Turn:
 
 
 DIALOGUE = [
-    Turn("M", "When people hear WebRTC, they still picture browser-to-browser video calls. Why is it now showing up so often in voice AI architectures?", 340),
-    Turn("F", "Because the same transport solves difficult real-time media problems. It connects browsers, mobile apps, and servers while keeping audio interactive instead of treating it like an uploaded file.", 320),
-    Turn("M", "So an AI session does not have to be peer to peer.", 270),
-    Turn("F", "Right. Media can terminate in the cloud. WebRTC still provides ICE and NAT traversal, encrypted DTLS and SRTP transport, codec negotiation, RTCP feedback, jitter buffering, and echo cancellation on capable clients.", 360),
-    Turn("M", "That is a lot of infrastructure a team no longer rebuilds for every platform.", 300),
-    Turn("F", "Exactly. Browser, mobile, and native clients can share a familiar real-time stack. The service can connect live audio to transcription, reasoning, tool calls, and speech generation.", 350),
-    Turn("M", "And the model does not wait for a complete recording before it starts working.", 270),
-    Turn("F", "No. It can process audio as it arrives, enabling faster responses, natural interruptions, and barge-in. OpenAI has emphasized that voice AI feels natural only when the conversation moves at the speed of speech.", 400),
-    Turn("M", "That makes network behavior part of the product, not just an operations metric.", 280),
-    Turn("F", "Definitely. Jitter shifts turn timing. Packet loss clips words. A long round trip can make both speakers talk at once because neither side realizes the other has started.", 360),
-    Turn("M", "Scaling it is still harder than opening a WebSocket.", 270),
-    Turn("F", "Much harder. Stateful ICE and DTLS sessions need stable ownership, media consumes ports, and global routing must keep the first hop close. OpenAI described separating relay and transceiver responsibilities so standard WebRTC behavior stays at the edge while the internal system scales.", 420),
-    Turn("M", "The data channel helps too. Audio stays on the media path while events, transcripts, tool results, and control messages travel beside it.", 320),
-    Turn("F", "Yes. A tool can run without blocking incoming audio, while the agent keeps tracking the conversation and decides when it is safe to respond.", 350),
-    Turn("M", "This also explains why our benchmark should use speech instead of a constant beep.", 290),
-    Turn("F", "A tone proves packets are moving, but speech has silence, consonants, vowels, changing energy, and uneven bursts. Those patterns exercise voice activity detection, discontinuous transmission, jitter buffers, concealment, and bitrate behavior more realistically.", 410),
-    Turn("M", "We should keep it deterministic so every provider receives the same source.", 270),
-    Turn("F", "Agreed. The male and female tracks share one two-minute timeline. Each endpoint is silent while the other talks, both files loop at exactly the same boundary, and the stereo reference makes the speaker easy to identify.", 390),
-    Turn("M", "Then we can compare adaptation and recovery without pretending the synthetic call is a real user.", 300),
-    Turn("F", "Exactly. WebRTC gives voice AI a mature cross-platform transport, and the benchmark gives us repeatable evidence about how well each implementation preserves conversation when the network stops being ideal.", 600),
+    Turn("M", "When people hear WebRTC, they still picture browser-to-browser video calls. Why is it becoming important for voice AI?", 520),
+    Turn("F", "Because it also works well from a client to a cloud service. It keeps audio interactive and solves connectivity, encryption, codec, and network adaptation problems that every real-time product otherwise rebuilds.", 560),
+    Turn("M", "So the AI session does not need to be peer to peer.", 480),
+    Turn("F", "Exactly. Media can terminate in the cloud while WebRTC provides ICE and NAT traversal, DTLS and SRTP encryption, codec negotiation, RTCP feedback, jitter buffering, and echo cancellation.", 620),
+    Turn("M", "And the model can process audio while the person is still speaking.", 480),
+    Turn("F", "Right. That supports faster responses, interruptions, and barge-in. OpenAI emphasizes that voice AI feels natural only when conversation moves at the speed of speech.", 600),
+    Turn("M", "Which makes network behavior part of the product experience.", 480),
+    Turn("F", "Yes. Jitter shifts turn timing, packet loss clips words, and long round trips create awkward pauses. Low and stable media latency matters as much as model speed.", 620),
+    Turn("M", "Scaling WebRTC is not trivial, though.", 460),
+    Turn("F", "No. Stateful ICE and DTLS sessions need stable ownership, media consumes ports, and global routing should keep the first hop close. OpenAI described separating relay and transceiver responsibilities to scale while preserving standard WebRTC behavior.", 700),
+    Turn("M", "The data channel can carry transcripts, tool results, and control events beside the audio stream.", 520),
+    Turn("F", "Exactly. An agent can keep listening while a tool runs. And for our benchmark, realistic speech is better than a beep: these synchronized male and female tracks include silence, changing energy, natural turns, and an exact two-minute loop.", 1100),
 ]
 
 SPEAKERS = {
@@ -284,6 +276,7 @@ def main() -> None:
             "initialSilenceSeconds": INITIAL_SILENCE_SECONDS,
             "finalSilenceSeconds": round(final_silence_samples / OUTPUT_RATE, 3),
             "loopBoundarySilent": bool(final_silence_samples >= round(0.25 * OUTPUT_RATE)),
+            "naturalTempoAdjustment": tempo <= 1.12,
         },
         "design": {
             "runtimeTtsRequired": False,
@@ -312,6 +305,8 @@ def main() -> None:
         "lastSampleFemale": float(female[-1]),
         "finalSilenceSeconds": round(final_silence_samples / OUTPUT_RATE, 3),
         "wordCount": sum(len(turn.text.split()) for turn in DIALOGUE),
+        "tempoAdjustment": round(tempo, 6),
+        "naturalTempoAdjustment": tempo <= 1.12,
     }
     (OUTPUT_DIR / "validation-report.json").write_text(json.dumps(validation, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(validation, indent=2))
