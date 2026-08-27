@@ -74,6 +74,7 @@ jobs:
           from pathlib import Path
           root = Path('/tmp/webrtc-dialogue-v1')
           asset = root / 'webrtc-dialogue-v1-runtime-stereo.mp3'
+          validation = json.loads((root / 'validation-report.json').read_text())
           digest = hashlib.sha256(asset.read_bytes()).hexdigest()
           manifest = {
               'schemaVersion': 'webrtc-testlab.dialogue-asset.v1',
@@ -87,7 +88,7 @@ jobs:
               'activeSpeechOverlapSamples': 0,
               'loopBoundarySilent': True,
               'initialSilenceSeconds': 0.5,
-              'finalSilenceSeconds': 2.403,
+              'finalSilenceSeconds': validation['finalSilenceSeconds'],
               'asset': {
                   'file': asset.name,
                   'bytes': asset.stat().st_size,
@@ -98,7 +99,7 @@ jobs:
               'generation': {
                   'engine': 'Kokoro 0.9.4',
                   'runtimeTtsRequired': False,
-                  'tempoAdjustment': 1.0,
+                  'tempoAdjustment': validation['tempoAdjustment'],
               },
               'license': {
                   'modelWeights': 'Apache-2.0',
@@ -114,7 +115,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch --orphan assets/webrtc-testlab-dialogue-v1
-          git rm -rf .
+          git rm -rf . || true
           cp -R /tmp/webrtc-dialogue-v1/. .
           cat > README.md <<'EOF'
           # WebRTC TestLab dialogue-v1 audio
