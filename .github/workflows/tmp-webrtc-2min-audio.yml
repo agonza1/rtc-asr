@@ -9,7 +9,7 @@ on:
       - .github/workflows/tmp-webrtc-2min-audio.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
@@ -54,7 +54,84 @@ jobs:
           assert report['durationSeconds'] == 120.0
           assert report['overlapSamples'] == 0
           assert report['finalSilenceSeconds'] >= 0.25
+          assert report['naturalTempoAdjustment'] is True
           PY
+
+      - name: Prepare deterministic runtime asset
+        run: |
+          mkdir -p /tmp/webrtc-dialogue-v1
+          ffmpeg -hide_banner -loglevel error -y \
+            -i artifacts/webrtc-dialogue-2min/webrtc-dialogue-2min-male.wav \
+            -i artifacts/webrtc-dialogue-2min/webrtc-dialogue-2min-female.wav \
+            -filter_complex '[0:a][1:a]amerge=inputs=2[a]' \
+            -map '[a]' -c:a libmp3lame -b:a 96k -joint_stereo 0 -ar 48000 \
+            /tmp/webrtc-dialogue-v1/webrtc-dialogue-v1-runtime-stereo.mp3
+          cp artifacts/webrtc-dialogue-2min/webrtc-dialogue-2min-transcript.txt /tmp/webrtc-dialogue-v1/transcript.txt
+          cp artifacts/webrtc-dialogue-2min/validation-report.json /tmp/webrtc-dialogue-v1/validation-report.json
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          root = Path('/tmp/webrtc-dialogue-v1')
+          asset = root / 'webrtc-dialogue-v1-runtime-stereo.mp3'
+          digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+          manifest = {
+              'schemaVersion': 'webrtc-testlab.dialogue-asset.v1',
+              'profile': 'dialogue-v1',
+              'durationSeconds': 120.0,
+              'sampleRate': 48000,
+              'channels': {
+                  '0': {'speaker': 'male', 'voice': 'am_michael'},
+                  '1': {'speaker': 'female', 'voice': 'af_heart'},
+              },
+              'activeSpeechOverlapSamples': 0,
+              'loopBoundarySilent': True,
+              'initialSilenceSeconds': 0.5,
+              'finalSilenceSeconds': 2.403,
+              'asset': {
+                  'file': asset.name,
+                  'bytes': asset.stat().st_size,
+                  'sha256': digest,
+                  'codec': 'MP3',
+                  'bitrateKbps': 96,
+              },
+              'generation': {
+                  'engine': 'Kokoro 0.9.4',
+                  'runtimeTtsRequired': False,
+                  'tempoAdjustment': 1.0,
+              },
+              'license': {
+                  'modelWeights': 'Apache-2.0',
+                  'dialogueAndGeneratedAssets': 'Apache-2.0',
+              },
+          }
+          (root / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Publish pinned public asset branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan assets/webrtc-testlab-dialogue-v1
+          git rm -rf .
+          cp -R /tmp/webrtc-dialogue-v1/. .
+          cat > README.md <<'EOF'
+          # WebRTC TestLab dialogue-v1 audio
+
+          Deterministic two-minute male/female conversation audio for WebRTC TestLab.
+
+          - Channel 0: male speaker
+          - Channel 1: female speaker
+          - Exact shared 120-second timeline
+          - No active-speech overlap
+          - Generated offline with Kokoro 0.9.4; no runtime TTS
+
+          The consuming runner verifies the SHA-256 in `manifest.json` before decoding the asset.
+          EOF
+          git add README.md manifest.json transcript.txt validation-report.json webrtc-dialogue-v1-runtime-stereo.mp3
+          git commit -m "Publish WebRTC TestLab dialogue-v1 audio asset"
+          git push --force origin HEAD:assets/webrtc-testlab-dialogue-v1
 
       - name: Upload dialogue package
         uses: actions/upload-artifact@v4
