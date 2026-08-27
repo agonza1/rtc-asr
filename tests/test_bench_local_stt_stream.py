@@ -170,6 +170,11 @@ class MissingMetadataLocalSttClient(FinalOnlyLocalSttClient):
         )
 
 
+class MissingFinalLocalSttClient(FinalOnlyLocalSttClient):
+    async def finalize(self) -> None:
+        self.finalized = True
+
+
 class BarrierProbeLocalSttClient(FakeLocalSttClient):
     instances_created = 0
     ready_count = 0
@@ -545,7 +550,7 @@ def test_parse_args_rejects_non_finite_partial_window_metadata(tmp_path) -> None
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
 
-    for value in ("nan", "inf", "-inf"):
+    for value in ("0", "-1", "nan", "inf", "-inf"):
         try:
             benchmark_module.parse_args([
                 "--input-raw-pcm",
@@ -554,7 +559,7 @@ def test_parse_args_rejects_non_finite_partial_window_metadata(tmp_path) -> None
                 f"partial_window_seconds={value}",
             ])
         except argparse.ArgumentTypeError as exc:
-            assert "partial_window_seconds metadata must be a finite number" in str(exc)
+            assert "partial_window_seconds metadata must be a positive finite number" in str(exc)
         else:
             raise AssertionError(f"expected partial_window_seconds={value} to fail")
 
@@ -980,6 +985,13 @@ def test_run_benchmark_scorecard_handles_missing_partials_metadata_and_ground_tr
         frames=[b"a" * 640],
     )
 
+    clients = []
+
+    def client_factory(url: str):
+        client = MissingMetadataLocalSttClient(url)
+        clients.append(client)
+        return client
+
     payload = asyncio.run(
         benchmark_module.run_benchmark(
             url="ws://example.test/v1/stt/stream",
@@ -987,7 +999,7 @@ def test_run_benchmark_scorecard_handles_missing_partials_metadata_and_ground_tr
             partial_interval_ms=100,
             runs=1,
             realtime_pace=False,
-            client_factory=MissingMetadataLocalSttClient,
+            client_factory=client_factory,
             metadata={"partial_window_seconds": "0.75"},
             expected_final_transcript="hello new world",
         )
@@ -1010,11 +1022,38 @@ def test_run_benchmark_scorecard_handles_missing_partials_metadata_and_ground_tr
     assert payload["scorecard"]["backend"] is None
     assert payload["scorecard"]["model"] is None
     assert payload["scorecard"]["settings"]["partial_window_seconds"] == 0.75
+    assert clients[0].started["partial_window_seconds"] == 0.75
+
+
+def test_run_benchmark_scores_missing_final_as_full_deletion_error() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            receive_timeout_seconds=0.01,
+            client_factory=MissingFinalLocalSttClient,
+            expected_final_transcript="hello world",
+        )
+    )
+
+    assert payload["samples"][0]["final_transcript"] is None
+    assert payload["samples"][0]["final_wer"] == 1.0
+    assert payload["scorecard"]["final_wer"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
 
 
 def test_compute_word_error_rate_stays_null_without_ground_truth() -> None:
     assert benchmark_module.compute_word_error_rate(None, "hello world") is None
-    assert benchmark_module.compute_word_error_rate("hello world", None) is None
+    assert benchmark_module.compute_word_error_rate("hello world", None) == 1.0
     assert benchmark_module.compute_word_error_rate("Hello, WORLD!", "hello world") == 0.0
     assert benchmark_module.compute_word_error_rate("hello new world", "hello brave new world") == 0.333
     assert benchmark_module.compute_word_error_rate("こんにちは 世界", "こんにちは") == 0.5

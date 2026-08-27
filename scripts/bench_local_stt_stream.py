@@ -196,8 +196,8 @@ def validate_scorecard_metadata(metadata: dict[str, str]) -> None:
         if key not in metadata:
             continue
         parsed = optional_float(metadata[key])
-        if parsed is None:
-            raise argparse.ArgumentTypeError(f"{key} metadata must be a finite number")
+        if parsed is None or parsed <= 0:
+            raise argparse.ArgumentTypeError(f"{key} metadata must be a positive finite number")
 
 
 def normalize_transport(value: str) -> str:
@@ -630,7 +630,7 @@ def build_scorecard(
     concurrency: int,
     realtime_pace: bool,
     expected_final_transcript: str | None,
-    metadata: dict[str, str] | None,
+    partial_window_seconds: float | None,
 ) -> dict[str, Any]:
     summary = summarize_samples(samples)
     backend = most_common_string(sample.get("backend") for sample in samples)
@@ -640,7 +640,6 @@ def build_scorecard(
         for sample in samples
         if sample.get("inter_partial_latency_max_ms") is not None
     ]
-    metadata = metadata or {}
     return {
         "partial_event_count": summary["partial_event_count"],
         "first_partial_latency_ms": summary["first_partial_latency_ms"],
@@ -662,7 +661,7 @@ def build_scorecard(
             "send_aggregate_ms": send_aggregate_ms,
             "chunk_ms": send_aggregate_ms,
             "partial_interval_ms": partial_interval_ms,
-            "partial_window_seconds": optional_float(metadata.get("partial_window_seconds") or metadata.get("partial_window")),
+            "partial_window_seconds": partial_window_seconds,
             "realtime_pace": realtime_pace,
             "concurrency": concurrency,
         },
@@ -741,6 +740,8 @@ async def run_benchmark(
         raise ValueError("concurrency must be greater than 0")
     validate_transport_args(transport, Path(uds_path) if uds_path is not None else None)
     resolved_send_aggregate_ms = send_aggregate_ms or audio.frame_ms
+    metadata = metadata or {}
+    partial_window_seconds = optional_float(metadata.get("partial_window_seconds") or metadata.get("partial_window"))
     validate_send_aggregate_ms(frame_ms=audio.frame_ms, send_aggregate_ms=resolved_send_aggregate_ms)
     factory = client_factory or make_client_factory(transport=transport, uds_path=uds_path)
     metrics_monitor = ProcessMetricsMonitor(pid=metrics_pid)
@@ -766,6 +767,7 @@ async def run_benchmark(
                         client_factory=factory,
                         send_start_barrier=send_start_barrier,
                         expected_final_transcript=expected_final_transcript,
+                        partial_window_seconds=partial_window_seconds,
                     )
                 )
                 for session_index in range(1, concurrency + 1)
@@ -830,7 +832,7 @@ async def run_benchmark(
             "send_aggregate_ms": resolved_send_aggregate_ms,
             "concurrency": concurrency,
             "scenario": scenario,
-            "metadata": dict(sorted((metadata or {}).items())),
+            "metadata": dict(sorted(metadata.items())),
         },
         "expected_final_transcript": expected_final_transcript,
         "runs": runs,
@@ -846,7 +848,7 @@ async def run_benchmark(
             concurrency=concurrency,
             realtime_pace=realtime_pace,
             expected_final_transcript=expected_final_transcript,
-            metadata=metadata,
+            partial_window_seconds=partial_window_seconds,
         ),
         "diagnostics": summarize_diagnostics(samples),
         "summary": summary,
@@ -922,6 +924,7 @@ async def _run_once(
     client_factory: ClientFactory,
     send_start_barrier: asyncio.Barrier | None = None,
     expected_final_transcript: str | None = None,
+    partial_window_seconds: float | None = None,
 ) -> dict[str, Any]:
     client = client_factory(url)
     first_audio_sent_at: float | None = None
@@ -962,7 +965,13 @@ async def _run_once(
     )
 
     try:
-        ready_event = await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
+        start_options: dict[str, Any] = {
+            "sample_rate": audio.sample_rate,
+            "partial_interval_ms": partial_interval_ms,
+        }
+        if partial_window_seconds is not None:
+            start_options["partial_window_seconds"] = partial_window_seconds
+        ready_event = await client.start(**start_options)
         if isinstance(ready_event, dict):
             ready_metadata = ready_event.get("metadata")
             if isinstance(ready_metadata, dict):
@@ -1232,10 +1241,10 @@ def normalize_transcript_for_wer(text: str) -> list[str]:
 
 
 def compute_word_error_rate(reference: str | None, hypothesis: str | None) -> float | None:
-    if not reference or hypothesis is None:
+    if not reference:
         return None
     reference_words = normalize_transcript_for_wer(reference)
-    hypothesis_words = normalize_transcript_for_wer(hypothesis)
+    hypothesis_words = normalize_transcript_for_wer(hypothesis or "")
     if not reference_words:
         return 0.0 if not hypothesis_words else None
     distance = levenshtein_distance(reference_words, hypothesis_words)
