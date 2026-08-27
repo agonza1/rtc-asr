@@ -1,0 +1,65 @@
+name: Temporary WebRTC two-minute dialogue
+
+on:
+  push:
+    branches:
+      - tmp/webrtc-2min-audio
+    paths:
+      - .github/scripts/generate_webrtc_2min_dialogue.py
+      - .github/workflows/tmp-webrtc-2min-audio.yml
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HF_HUB_DISABLE_XET: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install system audio dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng ffmpeg libsndfile1
+
+      - name: Install neural TTS dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0
+          python -m pip install kokoro==0.9.4 soundfile==0.13.1 scipy==1.15.2
+
+      - name: Generate two-minute dialogue
+        run: python .github/scripts/generate_webrtc_2min_dialogue.py
+
+      - name: Validate generated media
+        run: |
+          ffprobe -v error -show_entries format=duration:stream=codec_name,sample_rate,channels -of json artifacts/webrtc-dialogue-2min/webrtc-dialogue-2min-stereo.wav
+          ffprobe -v error -show_entries format=duration:stream=codec_name,sample_rate,channels -of json artifacts/webrtc-dialogue-2min/webrtc-dialogue-2min-male.wav
+          ffprobe -v error -show_entries format=duration:stream=codec_name,sample_rate,channels -of json artifacts/webrtc-dialogue-2min/webrtc-dialogue-2min-female.wav
+          cat artifacts/webrtc-dialogue-2min/validation-report.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('artifacts/webrtc-dialogue-2min/validation-report.json').read_text())
+          assert report['durationSeconds'] == 120.0
+          assert report['overlapSamples'] == 0
+          assert report['finalSilenceSeconds'] >= 0.25
+          PY
+
+      - name: Upload dialogue package
+        uses: actions/upload-artifact@v4
+        with:
+          name: webrtc-dialogue-2min-male-female
+          path: artifacts/webrtc-dialogue-2min/
+          if-no-files-found: error
+          retention-days: 7
