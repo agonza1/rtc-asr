@@ -144,6 +144,37 @@ class OverlapLocalSttClient(FakeLocalSttClient):
         await asyncio.sleep(0.01)
 
 
+class FinalOnlyLocalSttClient(FakeLocalSttClient):
+    async def send_audio(self, chunk: bytes) -> None:
+        self.sent.append(chunk)
+
+
+class MissingMetadataLocalSttClient(FinalOnlyLocalSttClient):
+    async def start(self, **kwargs):
+        self.started = kwargs
+        return {"type": "ready"}
+
+    async def finalize(self) -> None:
+        self.finalized = True
+        await self._events.put(
+            TranscriptEvent(
+                type="final",
+                text="hello brave new world",
+                stream_id=None,
+                is_final=True,
+                chunks_received=len(self.sent),
+                buffered_bytes=sum(len(chunk) for chunk in self.sent),
+                remaining_buffer_bytes=0,
+                metadata={},
+            )
+        )
+
+
+class MissingFinalLocalSttClient(FinalOnlyLocalSttClient):
+    async def finalize(self) -> None:
+        self.finalized = True
+
+
 class BarrierProbeLocalSttClient(FakeLocalSttClient):
     instances_created = 0
     ready_count = 0
@@ -504,13 +535,34 @@ def test_parse_args_rejects_negative_power_and_thermal_values(tmp_path) -> None:
     pcm_path = tmp_path / "sample.pcm"
     pcm_path.write_bytes(b"\0" * 640)
 
+    invalid_values = ("-1", "nan", "inf", "-inf")
     for flag in ("--package-power-watts", "--energy-per-audio-second-j", "--thermal-peak-celsius", "--thermal-duration-minutes"):
+        for value in invalid_values:
+            try:
+                benchmark_module.parse_args(["--input-raw-pcm", str(pcm_path), flag, value])
+            except SystemExit as exc:
+                assert exc.code == 2
+            else:
+                raise AssertionError(f"expected {flag} to reject {value}")
+
+
+def test_parse_args_rejects_non_finite_partial_window_metadata(tmp_path) -> None:
+    pcm_path = tmp_path / "sample.pcm"
+    pcm_path.write_bytes(b"\0" * 640)
+
+    for value in ("0", "-1", "nan", "inf", "-inf"):
         try:
-            benchmark_module.parse_args(["--input-raw-pcm", str(pcm_path), flag, "-1"])
-        except SystemExit as exc:
-            assert exc.code == 2
+            benchmark_module.parse_args([
+                "--input-raw-pcm",
+                str(pcm_path),
+                "--metadata",
+                f"partial_window_seconds={value}",
+            ])
+        except argparse.ArgumentTypeError as exc:
+            assert "partial_window_seconds metadata must be a positive finite number" in str(exc)
         else:
-            raise AssertionError(f"expected {flag} to reject negative values")
+            raise AssertionError(f"expected partial_window_seconds={value} to fail")
+
 
 def test_describe_environment_records_host_capacity(monkeypatch) -> None:
     monkeypatch.setattr(benchmark_module.platform, "platform", lambda: "TestOS")
@@ -808,7 +860,10 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["protocol_errors"] == 0
     assert sample["protocol_error_codes"] == []
     assert sample["time_to_first_interim_ms"] is not None
+    assert sample["first_partial_latency_ms"] == sample["time_to_first_interim_ms"]
     assert sample["time_to_final_after_finalize_ms"] is not None
+    assert sample["finalization_latency_ms"] == sample["time_to_final_after_finalize_ms"]
+    assert sample["final_wer"] == 0.0
     assert sample["audio_end_finalization_rtf"] is not None
     assert sample["audio_end_finalization_rtf"] >= 0
     assert sample["audio_send_duration_ms"] is not None
@@ -816,6 +871,9 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["audio_send_queue_depth_p95_ms"] == 2.0
     assert sample["audio_send_queue_depth_samples"] == 3
     assert sample["audio_send_latency_p95_ms"] is not None
+    assert sample["inter_partial_latency_p50_ms"] is not None
+    assert sample["inter_partial_latency_p95_ms"] is not None
+    assert sample["inter_partial_latency_max_ms"] is not None
     assert sample["partial_cadence_p95_ms"] is not None
     assert sample["partial_cadence_jitter_ms"] == 0.0
     assert sample["pcm16_normalization_p95_ms"] is not None
@@ -828,7 +886,32 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert sample["decoder_compute_rtf"] == 0.338
     assert sample["websocket_roundtrip_p95_ms"] == 6.0
     assert sample["websocket_roundtrip_samples"] == 3
+    assert payload["scorecard"]["partial_event_count"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
+    assert payload["scorecard"]["first_partial_latency_ms"]["p95"] >= 0
+    assert payload["scorecard"]["inter_partial_latency_ms"]["p50"] >= 0
+    assert payload["scorecard"]["inter_partial_latency_ms"]["p95"] >= 0
+    assert payload["scorecard"]["inter_partial_latency_ms"]["max"] >= 0
+    assert payload["scorecard"]["finalization_latency_ms"]["p95"] >= 0
+    assert payload["scorecard"]["final_wer"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+    assert payload["scorecard"]["ground_truth_available"] is True
+    assert payload["scorecard"]["backend"] == "fake-asr"
+    assert payload["scorecard"]["model"] == "tiny-fixture"
+    assert payload["scorecard"]["protocol"] == "local-stt.v1"
+    assert payload["scorecard"]["settings"] == {
+        "transport": "tcp_ws",
+        "sample_rate": 16000,
+        "input_frame_ms": 20,
+        "send_aggregate_ms": 20,
+        "chunk_ms": 20,
+        "partial_interval_ms": 100,
+        "partial_window_seconds": None,
+        "realtime_pace": False,
+        "concurrency": 1,
+    }
     assert payload["summary"]["time_to_first_interim_ms"]["p95"] >= 0
+    assert payload["summary"]["first_partial_latency_ms"]["p95"] >= 0
+    assert payload["summary"]["finalization_latency_ms"]["p95"] >= 0
+    assert payload["summary"]["final_wer"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["audio_end_finalization_rtf"]["p95"] >= 0
     assert payload["summary"]["audio_send_duration_ms"]["p95"] >= 0
     assert payload["summary"]["send_receive_overlap_ms"]["p95"] >= 0
@@ -844,6 +927,9 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["websocket_roundtrip_p95_ms"] == {"p50": 6.0, "p95": 6.0, "p99": 6.0}
     assert payload["summary"]["websocket_roundtrip_samples"] == {"p50": 3.0, "p95": 3.0, "p99": 3.0}
     assert payload["summary"]["audio_send_latency_p95_ms"]["p95"] >= 0
+    assert payload["summary"]["inter_partial_latency_p50_ms"]["p95"] >= 0
+    assert payload["summary"]["inter_partial_latency_p95_ms"]["p95"] >= 0
+    assert payload["summary"]["inter_partial_latency_max_ms"]["p95"] >= 0
     assert payload["summary"]["partial_cadence_p95_ms"]["p95"] >= 0
     assert payload["summary"]["partial_cadence_jitter_ms"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
     assert payload["summary"]["pcm16_normalization_p95_ms"]["p95"] >= 0
@@ -860,6 +946,7 @@ def test_run_benchmark_records_required_latency_metrics() -> None:
     assert payload["summary"]["audio_frames_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["audio_chunks_sent"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["audio_frames_dropped"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+    assert payload["summary"]["partial_event_count"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["interim_events_received"] == {"p50": 2.0, "p95": 2.0, "p99": 2.0}
     assert payload["summary"]["interim_transcript_changes"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
     assert payload["summary"]["final_events_received"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
@@ -888,6 +975,90 @@ def test_run_benchmark_records_actual_tail_frame_audio_duration() -> None:
     )
 
     assert payload["audio"]["duration_ms"] == 30.0
+
+
+def test_run_benchmark_scorecard_handles_missing_partials_metadata_and_ground_truth() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    clients = []
+
+    def client_factory(url: str):
+        client = MissingMetadataLocalSttClient(url)
+        clients.append(client)
+        return client
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            client_factory=client_factory,
+            metadata={"partial_window_seconds": "0.75"},
+            expected_final_transcript="hello new world",
+        )
+    )
+
+    sample = payload["samples"][0]
+    assert sample["partial_event_count"] == 0
+    assert sample["first_partial_latency_ms"] is None
+    assert sample["inter_partial_latency_p50_ms"] is None
+    assert sample["inter_partial_latency_p95_ms"] is None
+    assert sample["inter_partial_latency_max_ms"] is None
+    assert sample["finalization_latency_ms"] is not None
+    assert sample["final_wer"] == 0.333
+    assert sample["backend"] is None
+    assert sample["model"] is None
+    assert payload["scorecard"]["partial_event_count"] == {"p50": 0.0, "p95": 0.0, "p99": 0.0}
+    assert payload["scorecard"]["first_partial_latency_ms"] == {"p50": None, "p95": None, "p99": None}
+    assert payload["scorecard"]["inter_partial_latency_ms"] == {"p50": None, "p95": None, "max": None}
+    assert payload["scorecard"]["final_wer"] == {"p50": 0.333, "p95": 0.333, "p99": 0.333}
+    assert payload["scorecard"]["backend"] is None
+    assert payload["scorecard"]["model"] is None
+    assert payload["scorecard"]["settings"]["partial_window_seconds"] == 0.75
+    assert clients[0].started["partial_window_seconds"] == 0.75
+
+
+def test_run_benchmark_scores_missing_final_as_full_deletion_error() -> None:
+    audio = benchmark_module.AudioInput(
+        source="fixture.raw",
+        sample_rate=16000,
+        frame_ms=20,
+        frames=[b"a" * 640],
+    )
+
+    payload = asyncio.run(
+        benchmark_module.run_benchmark(
+            url="ws://example.test/v1/stt/stream",
+            audio=audio,
+            partial_interval_ms=100,
+            runs=1,
+            realtime_pace=False,
+            receive_timeout_seconds=0.01,
+            client_factory=MissingFinalLocalSttClient,
+            expected_final_transcript="hello world",
+        )
+    )
+
+    assert payload["samples"][0]["final_transcript"] is None
+    assert payload["samples"][0]["final_wer"] == 1.0
+    assert payload["scorecard"]["final_wer"] == {"p50": 1.0, "p95": 1.0, "p99": 1.0}
+
+
+def test_compute_word_error_rate_stays_null_without_ground_truth() -> None:
+    assert benchmark_module.compute_word_error_rate(None, "hello world") is None
+    assert benchmark_module.compute_word_error_rate("hello world", None) == 1.0
+    assert benchmark_module.compute_word_error_rate("Hello, WORLD!", "hello world") == 0.0
+    assert benchmark_module.compute_word_error_rate("hello new world", "hello brave new world") == 0.333
+    assert benchmark_module.compute_word_error_rate("こんにちは 世界", "こんにちは") == 0.5
+    assert benchmark_module.compute_word_error_rate("café résumé", "cafe resume") == 1.0
+    assert benchmark_module.compute_word_error_rate("café", "cafe\u0301") == 0.0
 
 
 def test_run_benchmark_sends_aggregated_voice_agent_chunks() -> None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import platform
 import re
@@ -16,6 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 import sys
 import threading
+import unicodedata
 from typing import Any, Callable, Iterator, Protocol
 
 import numpy as np
@@ -177,8 +179,8 @@ def positive_int(value: str) -> int:
 
 def nonnegative_float(value: str) -> float:
     parsed = float(value)
-    if parsed < 0:
-        raise argparse.ArgumentTypeError("value must be greater than or equal to 0")
+    if not math.isfinite(parsed) or parsed < 0:
+        raise argparse.ArgumentTypeError("value must be finite and greater than or equal to 0")
     return parsed
 
 
@@ -188,6 +190,15 @@ def metadata_pair(value: str) -> tuple[str, str]:
     if not separator or not key:
         raise argparse.ArgumentTypeError("metadata must use KEY=VALUE with a non-empty key")
     return key, metadata_value.strip()
+
+
+def validate_scorecard_metadata(metadata: dict[str, str]) -> None:
+    for key in ("partial_window_seconds", "partial_window"):
+        if key not in metadata:
+            continue
+        parsed = optional_float(metadata[key])
+        if parsed is None or parsed <= 0:
+            raise argparse.ArgumentTypeError(f"{key} metadata must be a positive finite number")
 
 
 def normalize_transport(value: str) -> str:
@@ -289,6 +300,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     if args.send_aggregate_ms is not None:
         validate_send_aggregate_ms(frame_ms=args.frame_ms, send_aggregate_ms=args.send_aggregate_ms)
     args.metadata = dict(args.metadata)
+    validate_scorecard_metadata(args.metadata)
     return args
 
 
@@ -550,20 +562,26 @@ def summarize_percentile(metric: str, values: list[float], q: float) -> float | 
         return None
     ordered = sorted(values)
     index = min(len(ordered) - 1, max(0, round((len(ordered) - 1) * q)))
-    precision = 3 if metric.endswith("_rtf") else 1
+    precision = 3 if metric.endswith("_rtf") or metric.endswith("_wer") else 1
     return round(ordered[index], precision)
 
 
 def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, float | None]]:
     keys = [
         "time_to_first_interim_ms",
+        "first_partial_latency_ms",
         "time_to_final_after_finalize_ms",
+        "finalization_latency_ms",
+        "final_wer",
         "audio_end_finalization_rtf",
         "audio_send_duration_ms",
         "send_receive_overlap_ms",
         "audio_send_queue_depth_p95_ms",
         "audio_send_queue_depth_samples",
         "audio_send_latency_p95_ms",
+        "inter_partial_latency_p50_ms",
+        "inter_partial_latency_p95_ms",
+        "inter_partial_latency_max_ms",
         "partial_cadence_p95_ms",
         "partial_cadence_jitter_ms",
         "pcm16_normalization_p95_ms",
@@ -583,6 +601,7 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
         "audio_frames_sent",
         "audio_chunks_sent",
         "audio_frames_dropped",
+        "partial_event_count",
         "interim_events_received",
         "interim_transcript_changes",
         "final_events_received",
@@ -599,6 +618,55 @@ def summarize_samples(samples: list[dict[str, Any]]) -> dict[str, dict[str, floa
             "p99": summarize_percentile(key, values, 0.99),
         }
     return summary
+
+
+def build_scorecard(
+    *,
+    samples: list[dict[str, Any]],
+    protocol: str,
+    transport: str,
+    audio: AudioInput,
+    partial_interval_ms: int,
+    send_aggregate_ms: int,
+    concurrency: int,
+    realtime_pace: bool,
+    expected_final_transcript: str | None,
+    partial_window_seconds: float | None,
+) -> dict[str, Any]:
+    summary = summarize_samples(samples)
+    backend = most_common_string(sample.get("backend") for sample in samples)
+    model = most_common_string(sample.get("model") for sample in samples)
+    inter_partial_max_values = [
+        float(sample["inter_partial_latency_max_ms"])
+        for sample in samples
+        if sample.get("inter_partial_latency_max_ms") is not None
+    ]
+    return {
+        "partial_event_count": summary["partial_event_count"],
+        "first_partial_latency_ms": summary["first_partial_latency_ms"],
+        "inter_partial_latency_ms": {
+            "p50": summary["inter_partial_latency_p50_ms"]["p50"],
+            "p95": summary["inter_partial_latency_p95_ms"]["p95"],
+            "max": _rounded_or_none(max(inter_partial_max_values) if inter_partial_max_values else None),
+        },
+        "finalization_latency_ms": summary["finalization_latency_ms"],
+        "final_wer": summary["final_wer"],
+        "ground_truth_available": bool(expected_final_transcript),
+        "backend": backend,
+        "model": model,
+        "protocol": protocol,
+        "settings": {
+            "transport": transport,
+            "sample_rate": audio.sample_rate,
+            "input_frame_ms": audio.frame_ms,
+            "send_aggregate_ms": send_aggregate_ms,
+            "chunk_ms": send_aggregate_ms,
+            "partial_interval_ms": partial_interval_ms,
+            "partial_window_seconds": partial_window_seconds,
+            "realtime_pace": realtime_pace,
+            "concurrency": concurrency,
+        },
+    }
 
 
 def describe_environment(
@@ -673,6 +741,8 @@ async def run_benchmark(
         raise ValueError("concurrency must be greater than 0")
     validate_transport_args(transport, Path(uds_path) if uds_path is not None else None)
     resolved_send_aggregate_ms = send_aggregate_ms or audio.frame_ms
+    metadata = metadata or {}
+    partial_window_seconds = optional_float(metadata.get("partial_window_seconds") or metadata.get("partial_window"))
     validate_send_aggregate_ms(frame_ms=audio.frame_ms, send_aggregate_ms=resolved_send_aggregate_ms)
     factory = client_factory or make_client_factory(transport=transport, uds_path=uds_path)
     metrics_monitor = ProcessMetricsMonitor(pid=metrics_pid)
@@ -697,6 +767,8 @@ async def run_benchmark(
                         receive_timeout_seconds=receive_timeout_seconds,
                         client_factory=factory,
                         send_start_barrier=send_start_barrier,
+                        expected_final_transcript=expected_final_transcript,
+                        partial_window_seconds=partial_window_seconds,
                     )
                 )
                 for session_index in range(1, concurrency + 1)
@@ -715,9 +787,11 @@ async def run_benchmark(
     finally:
         metrics_monitor.stop()
 
+    protocol = "local-stt.v1"
+    summary = summarize_samples(samples)
     return {
         "kind": "local-stt-v1-latency-benchmark",
-        "protocol": "local-stt.v1",
+        "protocol": protocol,
         "target": describe_benchmark_target(transport=transport, url=url, uds_path=uds_path),
         "target_contract": describe_transport_contract(transport),
         "environment": describe_environment(
@@ -759,14 +833,26 @@ async def run_benchmark(
             "send_aggregate_ms": resolved_send_aggregate_ms,
             "concurrency": concurrency,
             "scenario": scenario,
-            "metadata": dict(sorted((metadata or {}).items())),
+            "metadata": dict(sorted(metadata.items())),
         },
         "expected_final_transcript": expected_final_transcript,
         "runs": runs,
         "concurrency": concurrency,
         "samples": samples,
+        "scorecard": build_scorecard(
+            samples=samples,
+            protocol=protocol,
+            transport=transport,
+            audio=audio,
+            partial_interval_ms=partial_interval_ms,
+            send_aggregate_ms=resolved_send_aggregate_ms,
+            concurrency=concurrency,
+            realtime_pace=realtime_pace,
+            expected_final_transcript=expected_final_transcript,
+            partial_window_seconds=partial_window_seconds,
+        ),
         "diagnostics": summarize_diagnostics(samples),
-        "summary": summarize_samples(samples),
+        "summary": summary,
     }
 
 
@@ -838,6 +924,8 @@ async def _run_once(
     receive_timeout_seconds: int,
     client_factory: ClientFactory,
     send_start_barrier: asyncio.Barrier | None = None,
+    expected_final_transcript: str | None = None,
+    partial_window_seconds: float | None = None,
 ) -> dict[str, Any]:
     client = client_factory(url)
     first_audio_sent_at: float | None = None
@@ -878,7 +966,13 @@ async def _run_once(
     )
 
     try:
-        ready_event = await client.start(sample_rate=audio.sample_rate, partial_interval_ms=partial_interval_ms)
+        start_options: dict[str, Any] = {
+            "sample_rate": audio.sample_rate,
+            "partial_interval_ms": partial_interval_ms,
+        }
+        if partial_window_seconds is not None:
+            start_options["partial_window_seconds"] = partial_window_seconds
+        ready_event = await client.start(**start_options)
         if isinstance(ready_event, dict):
             ready_metadata = ready_event.get("metadata")
             if isinstance(ready_metadata, dict):
@@ -1031,13 +1125,19 @@ async def _run_once(
         (received_at - previous_received_at) * 1000
         for previous_received_at, received_at in zip(interim_received_at, interim_received_at[1:])
     ]
+    first_partial_latency_ms = _rounded_or_none(first_interim_ms)
+    finalization_latency_ms = _rounded_or_none(final_after_finalize_ms)
+    final_wer = compute_word_error_rate(expected_final_transcript, final_transcript)
     return {
         "index": index,
         "run_index": run_index,
         "session_index": session_index,
         "concurrency": concurrency,
-        "time_to_first_interim_ms": _rounded_or_none(first_interim_ms),
-        "time_to_final_after_finalize_ms": _rounded_or_none(final_after_finalize_ms),
+        "time_to_first_interim_ms": first_partial_latency_ms,
+        "first_partial_latency_ms": first_partial_latency_ms,
+        "time_to_final_after_finalize_ms": finalization_latency_ms,
+        "finalization_latency_ms": finalization_latency_ms,
+        "final_wer": final_wer,
         "audio_end_finalization_rtf": compute_audio_end_finalization_rtf(final_after_finalize_ms, audio),
         "audio_send_duration_ms": _rounded_or_none(
             None
@@ -1055,6 +1155,9 @@ async def _run_once(
         "audio_send_queue_depth_p95_ms": percentile(audio_send_queue_depth_latencies, 0.95),
         "audio_send_queue_depth_samples": len(audio_send_queue_depth_latencies),
         "audio_send_latency_p95_ms": send_p95,
+        "inter_partial_latency_p50_ms": percentile(partial_cadences, 0.50),
+        "inter_partial_latency_p95_ms": percentile(partial_cadences, 0.95),
+        "inter_partial_latency_max_ms": _rounded_or_none(max(partial_cadences) if partial_cadences else None),
         "partial_cadence_p95_ms": percentile(partial_cadences, 0.95),
         "partial_cadence_jitter_ms": compute_partial_cadence_jitter_ms(partial_cadences),
         "pcm16_normalization_p95_ms": percentile(pcm16_normalization_latencies, 0.95),
@@ -1070,6 +1173,7 @@ async def _run_once(
         "audio_frames_sent": source_frames_sent,
         "audio_chunks_sent": chunks_sent,
         "audio_frames_dropped": frames_dropped + max(0, len(audio.frames) - source_frames_sent - frames_dropped),
+        "partial_event_count": interim_events,
         "interim_events_received": interim_events,
         "interim_transcript_changes": interim_transcript_changes,
         "final_events_received": final_events,
@@ -1098,7 +1202,9 @@ def _append_optional_ms(values: list[float], value: object) -> None:
     if isinstance(value, bool) or value is None:
         return
     if isinstance(value, (int, float)):
-        values.append(float(value))
+        parsed = float(value)
+        if math.isfinite(parsed):
+            values.append(parsed)
 
 
 def _optional_int(value: object) -> int | None:
@@ -1107,6 +1213,61 @@ def _optional_int(value: object) -> int | None:
     if isinstance(value, int):
         return value
     return None
+
+
+def optional_float(value: object) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+        return parsed if math.isfinite(parsed) else None
+    if isinstance(value, str):
+        try:
+            parsed = float(value)
+        except ValueError:
+            return None
+        return parsed if math.isfinite(parsed) else None
+    return None
+
+
+def most_common_string(values: Iterator[object]) -> str | None:
+    counts = Counter(value for value in values if isinstance(value, str) and value)
+    if not counts:
+        return None
+    return counts.most_common(1)[0][0]
+
+
+def normalize_transcript_for_wer(text: str) -> list[str]:
+    normalized_text = unicodedata.normalize("NFC", text)
+    return re.findall(r"[^\W_]+", normalized_text.casefold(), flags=re.UNICODE)
+
+
+def compute_word_error_rate(reference: str | None, hypothesis: str | None) -> float | None:
+    if not reference:
+        return None
+    reference_words = normalize_transcript_for_wer(reference)
+    hypothesis_words = normalize_transcript_for_wer(hypothesis or "")
+    if not reference_words:
+        return 0.0 if not hypothesis_words else None
+    distance = levenshtein_distance(reference_words, hypothesis_words)
+    return round(distance / len(reference_words), 3)
+
+
+def levenshtein_distance(reference: list[str], hypothesis: list[str]) -> int:
+    previous = list(range(len(hypothesis) + 1))
+    for ref_index, ref_word in enumerate(reference, start=1):
+        current = [ref_index]
+        for hyp_index, hyp_word in enumerate(hypothesis, start=1):
+            substitution_cost = 0 if ref_word == hyp_word else 1
+            current.append(
+                min(
+                    previous[hyp_index] + 1,
+                    current[hyp_index - 1] + 1,
+                    previous[hyp_index - 1] + substitution_cost,
+                )
+            )
+        previous = current
+    return previous[-1]
 
 
 def normalize_pcm16_buffer(audio_data: bytes) -> np.ndarray:
@@ -1263,11 +1424,12 @@ def _format_summary_value(metric: str, value: float | None) -> str:
         or metric.endswith("_changes")
         or metric.endswith("_samples")
         or metric.endswith("_bytes")
+        or metric.endswith("_count")
         or metric == "successful_runs"
         or metric == "reconnects"
     ):
         return "n/a" if value is None else str(value)
-    if metric.endswith("_rtf"):
+    if metric.endswith("_rtf") or metric.endswith("_wer"):
         return "n/a" if value is None else str(value)
     return _format_ms(value)
 

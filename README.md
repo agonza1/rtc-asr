@@ -229,9 +229,7 @@ curl http://localhost:8080/api/models
 
 ## Benchmarks
 
-Use the checked-in benchmark flow when you need reproducible latency artifacts:
-
-For pre/post optimization comparisons, keep the audio fixture, `--frame-ms`, `--partial-interval-ms`, backend, model, device, compute type, preload setting, and run count unchanged between artifacts. Compare `summary.time_to_first_interim_ms`, `summary.partial_cadence_p95_ms`, `summary.time_to_final_after_finalize_ms`, `summary.audio_end_finalization_rtf`, `summary.audio_send_duration_ms`, `summary.send_receive_overlap_ms`, `summary.pcm16_normalization_p95_ms`, warning counts, and protocol error counts first; `summary.send_receive_overlap_ms` proves interim/final events arrived while audio was still being sent, `summary.audio_end_finalization_rtf` normalizes finalization lag by clip duration, and `summary.asr_decode_p95_ms` stays reserved for server-side backend decode timing when exposed separately. Then inspect raw per-run samples for outliers before claiming a regression or win.
+Use the checked-in targets to generate reproducible benchmark artifacts:
 
 ```bash
 make benchmark-faster-whisper-matrix
@@ -239,23 +237,24 @@ make benchmark-qwen-mps
 make benchmark-compose-qwen
 make benchmark-compose-parakeet
 make benchmark-compose-parakeet-nemo
-make benchmark-site-check
-make benchmark-artifact-cleanup-check
 ```
 
-For fair comparisons, benchmark the warmed service path when possible. One-shot runs mostly measure startup overhead, while the service harness reflects the latency users see after preload and warm-up.
+For fair comparisons:
 
-The benchmark harness now defaults to preloaded runs. Managed benchmark servers start with `ASR_PRELOAD_MODEL=true`, and benchmarks against an existing service fail by default unless `/api/models` reports `preload_enabled=true`. Use `--allow-unpreloaded-service` only when you intentionally want a cold-path diagnostic run.
+- Keep the audio fixture, `--frame-ms`, `--partial-interval-ms`, backend/model, device/compute type, preload mode, and run count unchanged.
+- Prefer warmed, preloaded service runs. Use `--allow-unpreloaded-service` only for intentional cold-start diagnostics.
+- Read the artifact `scorecard` first: first-partial latency, inter-partial p50/p95/max, finalization latency, and optional final WER. Then inspect diagnostics and raw samples for warnings, protocol errors, and outliers.
 
-Use `make benchmark-artifact-cleanup-check` in CI or release prep to fail when legacy benchmark artifacts older than `BENCHMARK_ARTIFACT_CLEANUP_DAYS` still need cleanup.
-Use `make benchmark-artifact-cleanup-plan` when you want the matching artifact and detail-page paths printed relative to the repo root for a reviewable cleanup commit.
-For direct script usage, `--repo-relative-paths` also accepts shorter cleanup aliases like `--repo-paths`, `--repo-relative`, `--relative-paths`, and `--relative`.
-The stale-artifact summary output flags also accept review-friendly aliases such as `--summary-text`, `--text-summary`, `--summary-text-output`, `--text-summary-output`, `--summary-json`, `--summary-json-output`, `--json-summary-output`, `--csv-summary`, `--csv-summary-output`, `--summary-csv-output`, `--markdown-summary`, `--markdown-summary-output`, `--summary-md`, `--md-summary`, `--summary-md-output`, and `--md-summary-output`.
-The stale-artifact sort flags accept readable direction aliases such as `--sort largest-to-smallest`, `--sort smallest-to-largest`, `--sort newest-to-oldest`, and `--sort oldest-to-newest`.
-The Compose image size report accepts readable image tag aliases such as `--tag`, `--tags`, and `--image-tags`, readable summary aliases such as `--summary`, `--summary-json`, `--summary-csv`, and `--summary-markdown`, readable budget aliases such as `--size-budget`, `--total-budget`, `--deduplicated-total-budget`, `--age-budget`, `--older-than`, and `--missing-budget`, plus readable sort aliases such as `--sort largest-to-smallest`, `--sort newest-to-oldest`, `--sort stale-first`, `--sort present-first`, `--sort present-last`, `--sort missing-first`, `--sort missing-last`, `--sort known-size-first`, `--sort known-size-last`, `--sort known-created-first`, `--sort known-created-last`, `--sort duplicate-id-first`, and `--sort duplicate-id-last`, and readable gate aliases including `--all-images-present`, `--any-image-present`, `--require-known-image-size`, `--require-known-image-created`, `--known-image-id`, and `--unique-image-ids`. Size budgets accept units such as `MB` or `GiB`; image age budgets accept bare days plus `h`, `d`, and `w` suffixes. Summary output also reports deduplicated present-image size and shared-image size savings so tag aliases do not hide the actual local Docker footprint. Use `--include-container-refs` to show container names that currently reference inspected tags before any manual prune, and use `make compose-image-hygiene-check` for a review-friendly 14-day metadata and duplicate-ID gate before pruning local Compose images.
-The Local STT backend comparison script accepts review-friendly aliases such as `--baseline-key`, `--baseline-backend`, `--candidate-key`, `--candidate-backend`, `--json-output`, `--comparison-output`, `--markdown-report`, `--report-output`, `--min-ttfb-win-ms`, `--min-first-interim-win-ms`, `--require-resources`, `--require-resource-evidence`, and `--min-streams`. Its resource evidence check also accepts common artifact field aliases such as `metrics.memory.rss_peak_mb` and `metrics.cpu.average_utilization_percent`.
-The streaming backend artifact comparison script accepts path aliases such as `--baseline-artifact`, `--baseline-json`, `--candidate-artifact`, `--candidate-json`, `--json-output`, `--comparison-output`, `--markdown-report`, `--md-report`, `--summary-markdown`, and `--report-output`. The Local STT transport comparator also accepts readable Markdown output aliases such as `--markdown-report`, `--md-report`, `--summary-markdown`, and `--report-output`, plus readable minimum-run aliases such as `--minimum-runs`, `--min-run-count`, `--minimum-run-count`, `--min-samples`, and `--minimum-samples`.
-The one-shot Parakeet MLX benchmark accepts readable aliases such as `--mlx-model`, `--runs`, `--input-audio`, `--synthesis-text`, `--cli-command`, `--average-package-power-watts`, `--thermal-status`, `--thermal-duration-min`, and `--json-output`.
+Useful validation and maintenance checks:
+
+```bash
+make benchmark-site-check
+make benchmark-artifact-cleanup-check
+make benchmark-artifact-cleanup-plan
+make compose-image-hygiene-check
+```
+
+See [Benchmark documentation](./docs/benchmarks.md) for current results, methodology, artifact fields, comparison tools, cleanup workflows, and all CLI options.
 
 ## Project Structure
 
