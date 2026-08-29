@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 import sys
 import threading
+import unicodedata
 from typing import Any, Callable, Iterator, Protocol
 
 import numpy as np
@@ -1237,7 +1238,8 @@ def most_common_string(values: Iterator[object]) -> str | None:
 
 
 def normalize_transcript_for_wer(text: str) -> list[str]:
-    return re.findall(r"[^\W_]+", text.casefold(), flags=re.UNICODE)
+    normalized_text = unicodedata.normalize("NFC", text)
+    return re.findall(r"[^\W_]+", normalized_text.casefold(), flags=re.UNICODE)
 
 
 def compute_word_error_rate(reference: str | None, hypothesis: str | None) -> float | None:

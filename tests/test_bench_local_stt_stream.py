@@ -1058,6 +1058,7 @@ def test_compute_word_error_rate_stays_null_without_ground_truth() -> None:
     assert benchmark_module.compute_word_error_rate("hello new world", "hello brave new world") == 0.333
     assert benchmark_module.compute_word_error_rate("こんにちは 世界", "こんにちは") == 0.5
     assert benchmark_module.compute_word_error_rate("café résumé", "cafe resume") == 1.0
+    assert benchmark_module.compute_word_error_rate("café", "cafe\u0301") == 0.0
 
 
 def test_run_benchmark_sends_aggregated_voice_agent_chunks() -> None:
